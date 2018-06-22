@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#2!/usr/bin/env python
 import os
 import subprocess
 import sys
@@ -66,7 +66,7 @@ except ImportError:
 class PyTest(TestCommand):
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = ['packagename/tests']
+        self.test_args = ['falco/tests']
         self.test_suite = True
 
     def run_tests(self):
