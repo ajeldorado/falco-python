@@ -1,5 +1,5 @@
 import numpy as np
-#import poppy
+import poppy
 import proper
 
 from . import utils
