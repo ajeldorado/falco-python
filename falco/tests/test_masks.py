@@ -21,7 +21,7 @@ def test_annular_fpm():
 
 def test_falco_gen_DM_stop():
     #using a MATLAB generated data stored in _LC_single_trial_mp_data to generate a mask and compare it to MATLAB generated mask
-    from falco.tests._LC_single_trial_mp_data import mp
+    from falco.tests.TEMPFILE_LC_single_trial_mp_data import mp
 
     mask = masks.falco_gen_DM_stop(mp.P2.full.dx,mp.dm1.Dstop,mp.centering)
     assert(np.allclose(mp.dm1.full.mask, mask))
@@ -29,7 +29,7 @@ def test_falco_gen_DM_stop():
 
 def test_falco_gen_pupil_WFIRST_20180103():
     #using a MATLAB generated data stored in _LC_single_trial_mp_data to generate a mask and compare it to MATLAB generated mask
-    from falco.tests._LC_single_trial_mp_data import mp
+    from falco.tests.TEMPFILE_LC_single_trial_mp_data import mp
 
     mask = masks.falco_gen_pupil_WFIRST_20180103(mp.P1.full.Nbeam, mp.centering)
     assert(np.allclose(mp.P1.full.mask, mask))
@@ -37,7 +37,7 @@ def test_falco_gen_pupil_WFIRST_20180103():
 
 def test_falco_gen_pupil_WFIRSTcycle6_LS():
     #using a MATLAB generated data stored in _LC_single_trial_mp_data to generate a mask and compare it to MATLAB generated mask
-    from falco.tests._LC_single_trial_mp_data import mp
+    from falco.tests.TEMPFILE_LC_single_trial_mp_data import mp
 
     mask = masks.falco_gen_pupil_WFIRSTcycle6_LS(mp.P4.full.Nbeam, mp.P4.D, mp.P4.IDnorm, mp.P4.ODnorm, mp.LS_strut_width, mp.centering, True)
     assert(np.allclose(mp.P4.full.mask, mask))
