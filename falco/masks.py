@@ -1,6 +1,9 @@
 import numpy as np
+import os
 import poppy
 import proper
+import scipy.interpolate
+import scipy.ndimage
 
 from . import utils
 
@@ -81,6 +84,8 @@ def annular_fpm(pixres_fpm, rho_inner, rho_outer, fpm_amp_factor=0.0,
     return mask
 
 def _init_proper(Dmask, dx, centering):
+    assert(centering in ("pixel", "interpixel"))
+
     #number of points across output array:
     if centering=="pixel":
     	Narray = 2*np.ceil(0.5*(Dmask/dx + 0.5)) #Sometimes requires two more pixels when pixel centered. Same size as width when interpixel centered.
@@ -102,6 +107,26 @@ def falco_gen_DM_stop(dx, Dmask, centering):
     proper.prop_circular_aperture(wf, diam/2, cshift, cshift)
 
     return np.fft.ifftshift(np.abs(wf.wfarr))
+
+def falco_gen_pupil_WFIRST_20180103(Nbeam, centering, rot180deg=False):
+    pupil_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pupil_WFIRST_CGI_20180103.png")
+    pupil0 = scipy.misc.imread(pupil_file)
+    pupil0 = np.rot90(pupil0, 2+2*rot180deg)
+
+    pupil1 = np.sum(pupil0, axis=2)
+    pupil1 = pupil1/np.max(pupil1)
+
+    #Temporarily using 0th order interpolation to ensure the result is identical to MATLAB's.
+    #In MATLAB code, this is equivalent to floor(interp2(Xs0,Xs0.',pupil1,Xs1,Xs1.','nearest',0));
+    if centering in ("interpixel", "even"):
+        xs = np.arange(0,Nbeam+1)*len(pupil1)/float(Nbeam)
+        Xs = np.meshgrid(xs,xs,indexing="ij")
+        return scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False)
+    else:
+        xs = np.arange(0,Nbeam+1)*len(pupil1)/float(Nbeam) - 0.5
+        Xs = np.meshgrid(xs,xs,indexing="ij")
+        temp = scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False)
+        return np.pad(temp, ((1, 0), (1, 0)), "constant", constant_values=(0,0))
 
 def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering, rot180deg=False):
     strut_width = strut_width*Dbeam #now in meters
