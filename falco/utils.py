@@ -75,9 +75,9 @@ def padOrCropEven(Ain, Ndes, **kwargs):
 
 def allcomb(*args, **kwargs):
     """
-    Compute the Cartesian product of a series of lists, i.e. the list consisting of all n-tuples
-    formed by choosing one element from each of the n input lists.  The output list will have
-    have length ( P1 x P2 x ... x PN), where P1, P2, ..., PN are the lengths of the N input lists.
+    Compute the Cartesian product of a series of iterables, i.e. the list consisting of all n-tuples
+    formed by choosing one element from each of the n inputs.  The output list will have
+    have length (P1 x P2 x ... x PN), where P1, P2, ..., PN are the lengths of the N input lists.
 
     Examples:
         allcomb([1, 3, 5], [-3, 8], [0, 1]) % numerical input:
@@ -93,7 +93,7 @@ def allcomb(*args, **kwargs):
     Parameters
     ----------
     args
-        An arbitrary long series of lists.  May be of different lengths and types.
+        An arbitrary long series of iterables.  May be of different lengths and types.
 
     Returns
     -------
