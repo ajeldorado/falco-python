@@ -32,3 +32,18 @@ def test_padOrCropEven():
             elif pad == size:  # If input and output are same size, make sure input is unmodified
                 assert np.allclose(input, output)
 
+
+def test_allcomb():
+    def assert_lists_equal(first, second):
+        assert all([a == b for a, b in zip(first, second)])
+
+    # Test cases adapted from documentation for MATLAB version
+    assert_lists_equal(utils.allcomb([1, 3, 5], [-3, 8], [0, 1]),
+                       [(1, -3, 0), (1, -3, 1), (1, 8, 0), (1, 8, 1), (3, -3, 0), (3, -3, 1), (3, 8, 0),
+                        (3, 8, 1), (5, -3, 0), (5, -3, 1), (5, 8, 0), (5, 8, 1)])
+
+    assert_lists_equal(utils.allcomb('abc','XY'),
+                       [('a', 'X'), ('a', 'Y'), ('b', 'X'), ('b', 'Y'), ('c', 'X'), ('c', 'Y')])
+
+    assert_lists_equal(utils.allcomb('abc', [-3, 8]),
+                       [('a', -3), ('a', 8), ('b', -3), ('b', 8), ('c', -3), ('c', 8)])
