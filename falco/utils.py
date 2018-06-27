@@ -80,14 +80,14 @@ def allcomb(*args, **kwargs):
     have length ( P1 x P2 x ... x PN), where P1, P2, ..., PN are the lengths of the N input lists.
 
     Examples:
-        allcomb([1 3 5], [-3 8], [0 1]) % numerical input:
+        allcomb([1, 3, 5], [-3, 8], [0, 1]) % numerical input:
             [(1, -3, 0), (1, -3, 1), (1, 8, 0), (1, 8, 1), (3, -3, 0), (3, -3, 1), (3, 8, 0),
             (3, 8, 1), (5, -3, 0), (5, -3, 1), (5, 8, 0), (5, 8, 1)]
 
         allcomb('abc','XY') % character arrays
             [('a', 'X'), ('a', 'Y'), ('b', 'X'), ('b', 'Y'), ('c', 'X'), ('c', 'Y')]
 
-        allcomb('xy',[65 66]) % a combination
+        allcomb('xy', [65, 66]) % a combination
             [('x', 65), ('x', 66), ('y', 65), ('y', 66)]  % a 4-by-2 character array
 
     Parameters
