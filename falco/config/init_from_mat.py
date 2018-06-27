@@ -55,6 +55,14 @@ def loadmat(filename):
 
 add_ident = lambda s: "    " + s
 
+def _spec_arg(k,kwargs,v):
+    if k in kwargs:
+        return kwargs[k]
+    elif "mat_struct" in kwargs:
+        return eval(kwargs["mat_struct"] + "." + k)
+    else:
+        return v
+
 def reconstruct_classes(d, keys=None, outter_scope=False):
     """
     Recursively generate code nested classes (similar to MATLAB's nested structs) from a nested dictionary.
@@ -67,22 +75,22 @@ def reconstruct_classes(d, keys=None, outter_scope=False):
     l_subclasses = []
     for k in keys:
         if isinstance(d[k],dict):
-            l_subclasses.append("class %s_base:"%(k))
+            l_subclasses.append("class _base_%s:"%(k))
             l_subclasses += map(add_ident, reconstruct_classes(d[k]))
             if outter_scope:
                 l_vars.append("global " + k)
-                l_vars.append("%s = %s_base()"%(k,k))
+                l_vars.append("%s = _base_%s()"%(k,k))
             else:
-                l_vars.append("%s = self.%s_base()"%(k,k))
+                l_vars.append((k, "self._base_%s()"%(k)))
         elif isinstance(d[k],basestring):
-            l_vars += ["%s = \"%s\""%(k,d[k])]
+            l_vars.append((k, "\"" + d[k] + "\""))
         else:
-            l_vars += ["%s = %s"%(k,d[k])]
+            l_vars.append((k, d[k]))
 
     l = l_subclasses
     if outter_scope:
         l += l_vars
     else:
-         l += ["def __init__(self):"] + [add_ident("self." + v) for v in l_vars]
+        l += ["def __init__(self,**kwargs):"] + [add_ident("self.%s = _spec_arg(\"%s\", kwargs, %s)"%(k,k,v)) for k,v in l_vars]
 
     return l
