@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 def ceil_even(x_in):
     """Compute the next highest even integer above the input
@@ -70,3 +71,33 @@ def padOrCropEven(Ain, Ndes, **kwargs):
         Aout = Ain
 
     return Aout
+
+
+def allcomb(*args, **kwargs):
+    """
+    Compute the Cartesian product of a series of lists, i.e. the list consisting of all n-tuples
+    formed by choosing one element from each of the n input lists.  The output list will have
+    have length ( P1 x P2 x ... x PN), where P1, P2, ..., PN are the lengths of the N input lists.
+
+    Examples:
+        allcomb([1 3 5], [-3 8], [0 1]) % numerical input:
+            [(1, -3, 0), (1, -3, 1), (1, 8, 0), (1, 8, 1), (3, -3, 0), (3, -3, 1), (3, 8, 0),
+            (3, 8, 1), (5, -3, 0), (5, -3, 1), (5, 8, 0), (5, 8, 1)]
+
+        allcomb('abc','XY') % character arrays
+            [('a', 'X'), ('a', 'Y'), ('b', 'X'), ('b', 'Y'), ('c', 'X'), ('c', 'Y')]
+
+        allcomb('xy',[65 66]) % a combination
+            [('x', 65), ('x', 66), ('y', 65), ('y', 66)]  % a 4-by-2 character array
+
+    Parameters
+    ----------
+    args
+        An arbitrary long series of lists.  May be of different lengths and types.
+
+    Returns
+    -------
+    list of tuple
+        Cartesian product of input lists (explained above)
+    """
+    return list(itertools.product(*args))
