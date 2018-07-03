@@ -19,3 +19,4 @@ def init_from_mat(mat_file_name, structs=None):
 
     python_definitions = "\n".join(reconstruct_classes(mp_mat, structs, True))
     exec(python_definitions)
+    return "from numpy import inf\n" + python_definitions
