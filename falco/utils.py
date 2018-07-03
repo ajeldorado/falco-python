@@ -1,5 +1,8 @@
 import numpy as np
 import itertools
+from falco.config.ModelParameters import ModelParameters
+from falco import models
+
 
 def ceil_even(x_in):
     """Compute the next highest even integer above the input
@@ -101,3 +104,42 @@ def allcomb(*args, **kwargs):
         Cartesian product of input lists (explained above)
     """
     return list(itertools.product(*args))
+
+
+def falco_est_perfect_Efield_full(mp, DM):
+    """
+    Function to return the perfect-knowledge E-field and summed intensity for the full model.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Parameter structure for current model.
+    DM : DeformableMirrorParameters (placeholder class for now)
+        Parameter structure for deformable mirrors
+    Returns
+    -------
+    Emat : np.ndarray
+        Exact electric field inside dark hole
+    Isum2D : float
+        Total intensity inside dark hole
+    """
+
+    Icube = np.zeros((mp.F4.full.Neta, mp.F4.full.Nxi, mp.Nttlam), dtype=np.float64)
+    Emat = np.zeros((mp.F4.full.corr.inds.shape[0], mp.Nttlam), dtype=np.float64)
+
+    modvar = {
+        'flagCalcJac': 0,
+        'wpsbpIndex': mp.wi_ref,
+        'whichSource': 'star'
+    }
+
+    for tsi in range(mp.Nttlam):
+        modvar['sbpIndex'] = mp.Wttlam_si[tsi]
+        modvar['ttIndex'] = mp.Wttlam_ti[tsi]
+
+        E2D = models.model_full(mp, DM, modvar)
+        Emat[:, tsi] = E2D[mp.F4.corr.inds]  # Exact field inside estimation area
+        Icube[:, :, tsi] = (np.abs(E2D) ** 2) * mp.WttlamVec(tsi) / mp.Wsum
+
+    Isum2D = Icube.sum(axis=2)
+    return Emat, Isum2D
