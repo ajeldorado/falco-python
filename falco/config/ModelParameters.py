@@ -1,5 +1,8 @@
 from numpy import inf
 import numpy as np
+from falco import models
+import numpy as np
+
 
 def _spec_arg(k,kwargs,v):
     if k in kwargs:
@@ -140,6 +143,46 @@ class ModelParameters:
         self.thput_eval_y = _spec_arg("thput_eval_y", kwargs, 0)
         self.thput_eval_x = _spec_arg("thput_eval_x", kwargs, 6)
         self.WspatialDef = _spec_arg("WspatialDef", kwargs, [])
+        self.F4.compact.I00 = np.ones((1, self.Nsbp), dtype=np.float64)
+        self.F4.full.I00 = np.ones((1, self.Nsbp), dtype=np.float64)
+
+    def get_PSF_norm_factor(self, DM):
+        """
+        Compute the normalization value for the compact and full models.  The normalization value is
+        the peak intensity for an on-axis object with the entire coronagraph in place, except with
+        the focal plane mask removed.
+
+        Parameters
+        ----------
+        DM : DeformableMirrorParameters (placeholder class for now)
+            Parameter structure for deformable mirrors
+
+        """
+        modvar = {
+            'flagCalcJac': 0,
+            'ttIndex': 1,  # 1 is the zero-offset tip/tilt setting
+            'whichSource': 'star'
+        }
+
+        for si in range(self.Nsbp):
+            Im_temp_full = np.zeros((self.F4.full.Neta, self.F4.full.Nxi, self.Nwpsbp),
+                                    dtype=np.float64)
+
+            for wi in range(self.Nwpsbp):
+                modvar['sbpIndex'] = si
+                modvar['wpsbpIndex'] = wi
+
+                EtempFull = models.model_full(self, DM, modvar)
+                Im_temp_full[:, :, wi] = np.abs(EtempFull) ** 2
+
+            EtempCompact = models.model_compact(self, DM, modvar)
+            Im_temp_compact = np.abs(EtempCompact) ** 2
+
+            self.F4.full.I00[si] = np.mean(Im_temp_full, axis=2).max()
+            self.F4.compact.I00[si] = np.mean(Im_temp_compact)
+
+        modvar['flagGetNormVal'] = False  # Not sure if/why this is needed
+
 
 def get_default_LC_config():
     return ModelParameters() #All there is for now
