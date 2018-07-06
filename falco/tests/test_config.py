@@ -43,9 +43,9 @@ def test_default_LC_config():
     #Python class generated from a MATLAB struct
     mp3 = falco.config.ModelParameters.ModelParameters(mat_struct=mp2)
 
-    _recursive_compare(mp1,mp2,exceptions=["init_ws"])
-    _recursive_compare(mp1,mp3,exceptions=["init_ws"])
-    _recursive_compare(mp2,mp3,exceptions=["init_ws"])
+    _recursive_compare(mp1,mp2,exceptions=["init_ws","get_PSF_norm_factor"])
+    _recursive_compare(mp1,mp3,exceptions=["init_ws","get_PSF_norm_factor"])
+    _recursive_compare(mp2,mp3,exceptions=["init_ws","get_PSF_norm_factor"])
 
 def test_init_ws():
     mp1 = falco.config.ModelParameters.get_default_LC_config()
