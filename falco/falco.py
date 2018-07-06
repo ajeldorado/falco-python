@@ -15,8 +15,8 @@ def init_from_mat(mat_file_name, structs=None):
     """
     mp_mat = loadmat(mat_file_name)
     if structs is None:
-        structs = [k for k in mp_mat.keys() if not k in ('__version__', '__header__', '__globals__')]
+        structs = [k for k in mp_mat.keys() if not k in ("__version__", "__header__", "__globals__", "pwd0", "fn_config")]
 
     python_definitions = "\n".join(reconstruct_classes(mp_mat, structs, True))
-    exec(python_definitions)
+    #exec(python_definitions)
     return "from numpy import inf\n" + python_definitions
