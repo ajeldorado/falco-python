@@ -128,6 +128,51 @@ def falco_gen_pupil_WFIRST_20180103(Nbeam, centering, rot180deg=False):
         temp = scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False)
         return np.pad(temp, ((1, 0), (1, 0)), "constant", constant_values=(0,0))
 
+def falco_gen_SW_mask(pixresFP, rhoInner, rhoOuter, angDeg, whichSide, FOV=None, centering="pixel"):
+    if FOV is None:
+        FOV = rhoOuter
+
+    angRad = np.radians(angDeg)
+
+    #Number of points across each axis. Crop the vertical (eta) axis if angDeg<180 degrees.
+    if centering == "interpixel":
+        Nxi =  utils.ceil_even(2*FOV*pixresFP) # Number of points across the full FPM
+        Neta = utils.ceil_even(2*np.sin(angRad/2)*FOV*pixresFP)
+    else:
+        Nxi =  utils.ceil_even(2*(FOV*pixresFP+0.5)) # Number of points across the full FPM
+        Neta = utils.ceil_even(2*(np.sin(angRad/2)*FOV*pixresFP+0.5));
+
+
+    #Focal Plane Coordinates
+    deta = dxi = 1.0/pixresFP
+    
+    if centering == "interpixel":
+        xis  = np.arange(-(Nxi-1)/2, (Nxi+1)/2 )*dxi
+        etas = np.arange(-(Neta-1)/2, (Neta+1)/2)*deta
+    else:
+        xis  = np.arange(-Nxi/2, Nxi/2)*dxi
+        etas = np.arange(-Neta/2, Neta/2)*deta
+
+
+    [XIS,ETAS] = np.meshgrid(xis,etas)
+    RHOS = np.sqrt(XIS**2 + ETAS**2)
+    TAN = np.arctan(ETAS/XIS)
+
+    #Generate the Software Mask
+    maskSW = 1.0*(RHOS>=rhoInner)*(RHOS<=rhoOuter)*(TAN<=angRad/2)*(TAN>=-angRad/2)
+
+    #Determine if it is one-sided or not
+    if whichSide in ("L","left"):
+        maskSW[XIS>=0] = 0
+    elif whichSide in ("R","right"):
+        maskSW[XIS<=0] = 0
+    elif whichSide in ("T", "top"):
+        maskSW[ETAS<=0] = 0
+    elif whichSide in ("B","bottom"):
+        maskSW[ETAS>=0] = 0
+
+    return maskSW, xis, etas
+
 def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering, rot180deg=False):
     strut_width = strut_width*Dbeam #now in meters
     dx = Dbeam/Nbeam
@@ -216,3 +261,49 @@ def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering
         mask = np.rot90(mask,2)
 
     return mask
+
+def falco_gen_annular_FPM(pixresFPM, rhoInner, rhoOuter, FPMampFac, centering, rot180=False):
+    dxiUL = 1.0/pixresFPM #lambda_c/D per pixel. "UL" for unitless
+
+    if np.isinf(rhoOuter):
+        if centering == "interpixel":
+            Narray = utils.ceil_even((2*rhoInner/dxiUL)) #number of points across the inner diameter of the FPM.
+        else:
+            Narray = utils.ceil_even(2*(rhoInner/dxiUL+0.5)) #number of points across the inner diameter of the FPM. Another half pixel added for pixel-centered masks.
+    else:
+        if centering == "interpixel":
+            Narray = utils.ceil_even(2*rhoOuter/dxiUL) #number of points across the outer diameter of the FPM. 
+        else:
+            Narray = utils.ceil_even(2*(rhoOuter/dxiUL+0.5)) #number of points across the outer diameter of the FPM. Another half pixel added for pixel-centered masks.
+
+    xshift = 0 #translation in x of FPM (in lambda_c/D)
+    yshift = 0 #translation in y of FPM (in lambda_c/D)
+
+    Darray = Narray*dxiUL #width of array in lambda_c/D
+    diam = Darray
+    wl_dummy = 1e-6 #wavelength (m); Dummy value--no propagation here, so not used.
+
+    if centering == "interpixel":
+        cshift = -diam/2/Narray
+    elif rot180:
+        cshift = -diam/Narray
+    else:
+        cshift = 0
+
+    wf = proper.prop_begin(diam, wl_dummy, Narray, 1.0)
+
+    if not np.isinf(rhoOuter):
+        #Outer opaque ring of FPM
+        cx_OD = 0 + cshift + xshift
+        cy_OD = 0 + cshift + yshift
+        proper.prop_circular_aperture(wf, rhoOuter, cx_OD, cy_OD)
+
+    #Inner spot of FPM (Amplitude transmission can be nonzero)
+    ra_ID = (rhoInner)
+    cx_ID = 0 + cshift + xshift
+    cy_ID = 0 + cshift + yshift
+    innerSpot = proper.prop_ellipse(wf, rhoInner, rhoInner, cx_ID, cy_ID, DARK=True)*(1-FPMampFac) + FPMampFac
+
+    mask = np.fft.ifftshift(np.abs(wf.wfarr)); #undo PROPER's fftshift
+    return mask*innerSpot #Include the inner FPM spot
+

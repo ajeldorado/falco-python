@@ -103,4 +103,3 @@ def allcomb(*args, **kwargs):
     """
     return list(itertools.product(*args))
 
-
