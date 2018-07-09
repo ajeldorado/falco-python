@@ -1,0 +1,2 @@
+class ModelVariables:
+    pass
