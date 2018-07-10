@@ -440,11 +440,11 @@ class ModelParameters:
         self.F4.full.score.settings = collections.namedtuple("_F4_full_score_settings", maskScore.keys())(**maskScore) #Store values for future reference
 
         #Indices of dark hole pixels
-        self.F4.compact.corr.inds = np.where(self.F4.compact.corr.mask <> 0)
-        self.F4.compact.score.inds = np.where(self.F4.compact.score.mask <> 0)
+        self.F4.compact.corr.inds = np.where(self.F4.compact.corr.mask != 0)
+        self.F4.compact.score.inds = np.where(self.F4.compact.score.mask != 0)
 
-        self.F4.full.score.inds = np.where(self.F4.full.score.mask <> 0)
-        self.F4.full.corr.inds = np.where(self.F4.full.corr.mask <> 0)
+        self.F4.full.score.inds = np.where(self.F4.full.score.mask != 0)
+        self.F4.full.corr.inds = np.where(self.F4.full.corr.mask != 0)
 
         self.F4.compact.Neta, self.F4.compact.Nxi  = self.F4.compact.score.mask.shape
         self.F4.full.Neta, self.F4.full.Nxi  = self.F4.full.score.mask.shape
@@ -489,8 +489,8 @@ class ModelParameters:
         ## Initial Electric Fields for Star and Exoplanet
         # Starlight. Can add some propagation here to create an aberrate wavefront
         # starting from a primary mirror.
-        assert(self.whichPupil <> "LUVOIRA5predef") #Not implemented yet
-        if self.whichPupil <> "LUVOIRA5predef":
+        assert(self.whichPupil != "LUVOIRA5predef") #Not implemented yet
+        if self.whichPupil != "LUVOIRA5predef":
             self.P1.full.E = np.ones((self.P1.full.Narr, self.P1.full.Narr, self.Nwpsbp, self.Nsbp)) # Input E-field at entrance pupil
             self.Eplanet = self.P1.full.E #Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
             self.P1.compact.E = np.ones((self.P1.compact.Narr, self.P1.compact.Narr, self.Nsbp))
