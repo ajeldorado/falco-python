@@ -3,16 +3,9 @@ from numpy import inf
 import numpy as np
 import falco.masks
 import falco.utils
+from falco.utils import _spec_arg
 import collections
 from falco import models
-
-def _spec_arg(k,kwargs,v):
-    if k in kwargs:
-        return kwargs[k]
-    elif "mat_struct" in kwargs:
-        return eval("kwargs[\"mat_struct\"]." + k)
-    else:
-        return v
 
 class ModelParameters:
     class _base_dm1:
@@ -520,7 +513,3 @@ class ModelParameters:
         self.maskCore[self.FP4.compact.RHOS <= self.thput_radius] = 1
 
         self.thput_vec = np.zeros((self.Nitr,1))
-
-
-def get_default_LC_config():
-    return ModelParameters() #All there is for now
