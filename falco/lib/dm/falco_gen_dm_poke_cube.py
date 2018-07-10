@@ -285,8 +285,22 @@ def falco_gen_dm_poke_cube(dm, mp, dx_dm, flagGenCube=True, **kwds):
         #fprintf('done.  Time = %.1fs\n',toc);
         print('done.')
 
+        dmoutGenCube = {
+            'xy_cent_act_inPix':xy_cent_act_inPix,
+            'xy_cent_act_box':xy_cent_act_box,
+            'xy_cent_act_box_inM':xy_cent_act_box_inM,
+            'xy_box_lowerLeft':xy_box_lowerLeft,
+            'x_box0':x_box0,
+            'Xbox0':Xbox0,
+            'Ybox0':Ybox0,
+            'inf_datacube':inf_datacube,
+            'Xbox':Xbox,
+            'Ybox':Ybox,
+        }
+
     else:
         act_ele = range(NactTotal)
+        dmoutGenCube = {}
 
 
     # build return dict
@@ -299,6 +313,7 @@ def falco_gen_dm_poke_cube(dm, mp, dx_dm, flagGenCube=True, **kwds):
         'dx':dx_dm,
         'Xact':Xact,
         'Yact':Yact,
+        'NactTotal':NactTotal,
         'xy_cent_act':xy_cent_act,
         'infMaster':infMaster,
         'Nbox':Nbox,
@@ -308,7 +323,8 @@ def falco_gen_dm_poke_cube(dm, mp, dx_dm, flagGenCube=True, **kwds):
         'NdmPad':NdmPad,
         'x_pupPad':x_pupPad,
         'y_pupPad':y_pupPad,
-        'act_ele':act_ele,
+        'act_ele':act_ele,        
         })
+    dmout.update(dmoutGenCube)
     
     return dmout
