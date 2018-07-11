@@ -82,7 +82,7 @@ def reconstruct_classes(d, keys=None, outter_scope=False):
                 l_vars.append("%s = _base_%s()"%(k,k))
             else:
                 l_vars.append((k, "self._base_%s()"%(k)))
-        elif isinstance(d[k],basestring):
+        elif isinstance(d[k],str):
             l_vars.append((k, "\"" + d[k] + "\""))
         else:
             l_vars.append((k, d[k]))
