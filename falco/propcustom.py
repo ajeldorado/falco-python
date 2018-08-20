@@ -4,6 +4,9 @@ from falco import utils
 
 log = logging.getLogger(__name__)
 
+_VALID_CENTERING = ['pixel', 'interpixel']
+_CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
+
 
 def propcustom_2FT(E_in, centering='pixel'):
     """
@@ -28,11 +31,8 @@ def propcustom_2FT(E_in, centering='pixel'):
         The input array, after propagation with two Fourier transforms.
 
     """
-    _valid_centering = ['pixel', 'interpixel']
-
     if centering not in _valid_centering:
-        raise ValueError('propcustom_2FT: invalid centering specification.' +
-                         'Options: {}'.format(_valid_centering))
+        raise ValueError(_CENTERING_ERR)
 
     E_out = (1 / 1j) ** 2 * E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
 
