@@ -179,9 +179,9 @@ def model_full_LC(mp, DM, modvar):
 
     # Set the point source as exoplanet or star
     if modvar.whichSource == 'exoplanet':
-        """ 
-        Don't include tip/tilt jitter for planet wavefront since the effect is minor.  The 
-        planet does not move in sky angle, so the actual tip/tilt angle needs to scale inversely 
+        """
+        Don't include tip/tilt jitter for planet wavefront since the effect is minor.  The
+        planet does not move in sky angle, so the actual tip/tilt angle needs to scale inversely
         with wavelength.
         """
         planetAmp = np.sqrt(mp.c_planet)  # Scale the E-field to the correct contrast
@@ -206,7 +206,6 @@ def model_full_LC(mp, DM, modvar):
 
         except AttributeError:  # No tip/tilt information specified
             Ein = mp.P1.full.E[:, :, modvar.wpsbpIndex, modvar.sbpIndex]
-
 
     fn_PSD = 'maps_PSF_{}.mat'.format(mp.coro)
 
@@ -270,7 +269,7 @@ def model_full_LC(mp, DM, modvar):
     # Apply apodizer mask
     if mp.flagApod:
         EP3 = falco.padOrCropEven(mp.P3.full.mask, mp.P3.full.Narr) * \
-              falco.padOrCropEven(EP3, mp.P3.full.Narr)
+            falco.padOrCropEven(EP3, mp.P3.full.Narr)
 
     # MFT from apodizer plane to FPM (i.e. P3 to F3)
     EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl, lambda_, mp.P2.full.dx,

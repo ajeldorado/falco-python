@@ -1,5 +1,10 @@
-from .config.init_from_mat import *
+# from .config.init_from_mat import *  # TODO: what is this import actually doing?
+from falco.config import init_from_mat as ifm
 
+
+# TODO: add another function to initialize from nested dict, so that Python-only solutions can be
+# implemented
+# Alternatively, add an interface class to convert from .mat to an intermediate representation as a # nested dictionary
 def init_from_mat(mat_file_name, structs=None):
     """
     Loads nested structs from a .mat file, defines the relevant classes and instantiates them.
@@ -13,10 +18,11 @@ def init_from_mat(mat_file_name, structs=None):
         print(falco.mp.P1.compact.Nbeam)
 
     """
-    mp_mat = loadmat(mat_file_name)
+    mp_mat = ifm.loadmat(mat_file_name)
     if structs is None:
-        structs = [k for k in mp_mat.keys() if not k in ("__version__", "__header__", "__globals__", "pwd0", "fn_config")]
+        structs = [k for k in mp_mat.keys() if k not in
+                   ("__version__", "__header__", "__globals__", "pwd0", "fn_config")]
 
-    python_definitions = "\n".join(reconstruct_classes(mp_mat, structs, True))
-    #exec(python_definitions)
+    python_definitions = "\n".join(ifm.reconstruct_classes(mp_mat, structs, True))
+    # exec(python_definitions)
     return "from numpy import inf\n" + python_definitions
