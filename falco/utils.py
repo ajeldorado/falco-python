@@ -185,3 +185,34 @@ def radial_grid(axis):
     """
     x, y = broadcast(axis)
     return np.sqrt(x ** 2 + y ** 2)
+
+
+def create_axis(N, step, centering='pixel'):
+    """
+    Create a one-dimensional coordinate axis with a given size and step size.  Can be constructed
+    to follow either the FFT (pixel-centered) or MFT (inter-pixel-centered) convention,
+    which differ by half a pixel.
+
+    Parameters
+    ----------
+    N : int
+        Number of pixels in output axis
+    step : float
+        Physical step size between axis elements
+    centering : str
+        Either 'pixel' (pixel-centered) or 'interpixel' (inter-pixel-centered).  Note that if N is
+        odd, the result will be pixel-centered regardless of the value of this keyword.
+
+    Returns
+    -------
+    Union[np.ndarray, np.matrix]
+        The output coordinate axis
+    """
+    axis = np.arange(-N // 2, N // 2, dtype=np.float64) * step
+    even = not N % 2  # Even number of samples?
+
+    if even and (centering == 'interpixel'):
+        # Inter-pixel-centering only makes sense if the number of samples is even
+        axis += 0.5 * step
+
+    return axis
