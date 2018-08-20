@@ -444,8 +444,8 @@ class ModelParameters:
                     -(self.F3.compact.Nxi - 1) / 2,
                     (self.F3.compact.Nxi - 1) / 2 + 1) / self.F3.compact.res
                 self.F3.compact.etasDL = np.arange(
-                    -(self.F3.compact.Neta-1) /2,
-                    (self.F3.compact.Neta-1) / 2 + 1) / self.F3.compact.res
+                    -(self.F3.compact.Neta - 1) / 2,
+                    (self.F3.compact.Neta - 1) / 2 + 1) / self.F3.compact.res
 
             else:
                 self.F3.full.xisDL = np.arange(-self.F3.full.Nxi / 2,
