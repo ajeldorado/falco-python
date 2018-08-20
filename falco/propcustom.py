@@ -85,3 +85,58 @@ def propcustom_PTP(E_in, full_width, lambda_, dz):
     intermediate = np.fft.fftn(np.fft.fftshift(E_in))
 
     return np.fft.ifftshift(np.fft.ifftn(kernel * intermediate))
+
+
+def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel'):
+    """
+    Propagate a field from a focal plane to a pupil plane, using a matrix-multiply DFT.
+
+    Parameters
+    ----------
+    E_foc : array_like
+        Electric field array in focal plane
+    fl : float
+        Focal length of Fourier transforming lens
+    lambda_ : float
+        Propagation wavelength
+    dxi : float
+        Step size along horizontal axis of focal plane
+    deta : float
+        Step size along vertical axis of focal plane
+    dx : float
+        Step size along either axis of focal plane.  The vertical and horizontal step sizes are
+        assumed to be equal.
+    N : int
+        Number of datapoints along each side of the pupil-plane (output) array
+    centering : string
+        Whether the input and output arrays are pixel-centered or inter-pixel-centered.
+        Possible values: 'pixel', 'interpixel'
+
+    Returns
+    -------
+    array_like
+        Field in pupil plane, after propagating through Fourier transforming lens
+
+    """
+    if centering not in _VALID_CENTERING:
+        raise ValueError(_CENTERING_ERR)
+
+    Neta, Nxi = E_foc.shape
+    dy = dx  # Assume equal sample spacing along both directions
+
+    # Focal-plane coordinates
+    xi = utils.create_axis(Nxi, dxi, centering=centering)[:, None]  # Broadcast to column vector
+    eta = utils.create_axis(Neta, dxi, centering=centering)[None, :]  # Broadcast to row vector
+
+    # Pupil-plane coordinates
+    x = utils.create_axis(N, dx, centering=centering)[None, :]  # Broadcast to row vector
+    y = x.T  # Column vector
+
+    # Fourier transform matrices
+    pre = np.exp(-2 * np.pi * 1j * (y * eta) / (lambda_ * fl))
+    post = np.exp(-2 * np.pi * 1j * (xi * x) / (lambda_ * fl))
+
+    # Constant scaling factor in front of Fourier transform
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
+
+    return scaling * np.linalg.multi_dot([pre, E_foc, post])
