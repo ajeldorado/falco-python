@@ -68,7 +68,7 @@ def propcustom_PTP(E_in, full_width, lambda_, dz):
     N_critical = int(np.floor(lambda_ * np.abs(dz) / (dx ** 2)))  # Critical sampling
 
     if M != N:  # Input array is not square
-        raise ValueError('propcustom_PTP: input array is not square')
+        raise ValueError('Input array is not square')
 
     elif N < N_critical:
         log.warning(
@@ -140,3 +140,63 @@ def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel')
     scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_foc, post])
+
+
+def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering='pixel'):
+    """
+    Propagate a field from a pupil plane to a focal plane, using a matrix-multiply DFT.
+
+    Parameters
+    ----------
+    E_pup : array_like
+        Electric field array in pupil plane
+    fl : float
+        Focal length of Fourier transforming lens
+    lambda_ : float
+        Propagation wavelength
+    dx : float
+        Step size along either axis of focal plane.  The vertical and horizontal step sizes are
+        assumed to be equal.
+    dxi : float
+        Step size along horizontal axis of focal plane
+    Nxi : int
+        Number of samples along horizontal axis of focal plane.
+    deta : float
+        Step size along vertical axis of focal plane
+    Neta : int
+        Number of samples along vertical axis of focal plane.
+    centering : string
+        Whether the input and output arrays are pixel-centered or inter-pixel-centered.
+        Possible values: 'pixel', 'interpixel'
+
+    Returns
+    -------
+    array_like
+        Field in pupil plane, after propagating through Fourier transforming lens
+
+    """
+    if centering not in _VALID_CENTERING:
+        raise ValueError(_CENTERING_ERR)
+
+    M, N = E_pup.shape
+    dy = dx
+
+    if M != N:
+        raise ValueError('Input array is not square')
+
+    # Pupil-plane coordinates
+    x = utils.create_axis(N, dx, centering=centering)[:, None]  # Broadcast to column vector
+    y = x.T  # Row vector
+
+    # Focal-plane coordinates
+    xi = utils.create_axis(Nxi, dxi, centering=centering)[None, :]  # Broadcast to row vector
+    eta = utils.create_axis(Neta, deta, centering=centering)[:, None]  # Broadcast to column vector
+
+    # Fourier transform matrices
+    pre = np.exp(-2 * np.pi * 1j * (eta * y) / (lambda_ * fl))
+    post = np.exp(-2 * np.pi * 1j * (x * xi) / (lambda_ * fl))
+
+    # Constant scaling factor in front of Fourier transform
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
+
+    return scaling * np.linalg.multi_dot([pre, E_pup, post])
