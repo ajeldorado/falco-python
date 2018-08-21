@@ -205,7 +205,7 @@ def create_axis(N, step, centering='pixel'):
 
     Returns
     -------
-    Union[np.ndarray, np.matrix]
+    array_like
         The output coordinate axis
     """
     axis = np.arange(-N // 2, N // 2, dtype=np.float64) * step
