@@ -22,7 +22,7 @@ def test_annular_fpm():
 
 def _get_LC_single_trial_mp_data():
     #using a MATLAB generated data stored in _LC_single_trial_mp_data to generate a mask and compare it to MATLAB generated mask
-    _LC_single_trial_mp_data_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_LC_single_trial_mp_data.mat")
+    _LC_single_trial_mp_data_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_default_LC_init_ws_data.mat")
     return scipy.io.loadmat(_LC_single_trial_mp_data_file, struct_as_record=False, squeeze_me=True)["mp"]
 
 def test_falco_gen_DM_stop():

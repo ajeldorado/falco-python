@@ -9,8 +9,13 @@ def _get_default_LC_config_data():
     _LC_default_LC_config_data_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_default_LC_config_data.mat")
     return scipy.io.loadmat(_LC_default_LC_config_data_file, struct_as_record=False, squeeze_me=True)
 
+def _get_default_LC_init_ws_data():
+    _LC_default_LC_config_data_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_default_LC_init_ws_data.mat")
+    return scipy.io.loadmat(_LC_default_LC_config_data_file, struct_as_record=False, squeeze_me=True)
+
 def _recursive_compare(c1, c2, exceptions=[], only_check_common=False):
     if type(c1) in (int,float,str) or type(c2) in (int,float,str):
+        print(c1,c2)
         assert(c1==c2)
         return
 
@@ -31,6 +36,7 @@ def _recursive_compare(c1, c2, exceptions=[], only_check_common=False):
     for k in c1_k:
         if k in exceptions or (only_check_common and not k in c2_k):
             continue
+        print(c1,k)
         v1 = eval("c1."+k)
         v2 = eval("c2."+k)
 
@@ -52,16 +58,22 @@ def test_default_LC_config():
     _recursive_compare(mp1,mp3,exceptions=["init_ws","get_PSF_norm_factor","runLabel"])
     _recursive_compare(mp2,mp3,exceptions=["init_ws","get_PSF_norm_factor","runLabel"])
 
-    _recursive_compare(dm1,dm2,exceptions=[])
-    _recursive_compare(dm1,dm3,exceptions=[])
-    _recursive_compare(dm2,dm3,exceptions=[])
+    _recursive_compare(dm1,dm2,exceptions=["init_ws","falco_gen_dm_poke_cube"])
+    _recursive_compare(dm1,dm3,exceptions=["init_ws","falco_gen_dm_poke_cube"])
+    _recursive_compare(dm2,dm3,exceptions=["init_ws","falco_gen_dm_poke_cube"])
 
 def test_init_ws():
     mp1 = falco.config.ModelParameters()
     mp1.init_ws()
+    DM1 = falco.config.DeformableMirrorParameters()
+    DM1.init_ws(mp1)
 
-    mp2 = falco.tests.test_masks._get_LC_single_trial_mp_data()
-
+    init_ws_data = _get_default_LC_init_ws_data()
+    mp2 = init_ws_data["mp"]
+    DM2 = init_ws_data["DM"]
     #Wttlam_ele are indices and MATLAB is one off
     exceptions=["Wttlam_ele","Wttlam_si","Wttlam_ti","inds"]
     _recursive_compare(mp1,mp2,exceptions=exceptions,only_check_common=True)
+    exceptions=["act_ele", "inf_datacube"]
+    #note that inf_datacube are close but not the same due to interpolation issue (see DeformableMirrorParameters.init_ws)
+    _recursive_compare(DM1,DM2,exceptions=exceptions,only_check_common=True)
