@@ -4,6 +4,7 @@ import numpy as np
 import falco.masks
 import falco.utils
 from falco.utils import _spec_arg
+from falco.config import DeformableMirrorParameters
 import collections
 from falco import models
 
@@ -187,10 +188,10 @@ class ModelParameters:
                 modvar['sbpIndex'] = si
                 modvar['wpsbpIndex'] = wi
 
-                EtempFull = models.model_full(self, DM, modvar)
+                EtempFull = models.model_full_LC(self, DM, modvar)
                 Im_temp_full[:, :, wi] = np.abs(EtempFull) ** 2
 
-            EtempCompact = models.model_compact(self, DM, modvar)
+            EtempCompact = models.model_compact_LC(self, DM, modvar)
             Im_temp_compact = np.abs(EtempCompact) ** 2
 
             self.F4.full.I00[si] = np.mean(Im_temp_full, axis=2).max()
@@ -583,7 +584,7 @@ class ModelParameters:
                 self.Nsbp)
 
         else:
-            self.sbp_center_vec = self.lambda0
+            self.sbp_center_vec = np.array([self.lambda0])
 
         # Fill the whole band if just one sub-bandpass
         if self.Nwpsbp > 1 and self.Nsbp == 1:
@@ -599,7 +600,7 @@ class ModelParameters:
                 self.Nwpsbp)
 
         else:
-            self.lamFac_vec = 1
+            self.lamFac_vec = np.array([1])
 
         self.lam_array = np.outer(self.lamFac_vec, self.sbp_center_vec)
 
@@ -631,7 +632,10 @@ class ModelParameters:
         # Get the starlight normalization factor for the compact and full models (to convert images
         # to normalized intensity)
         # TODO: uncommentd when get_PSF_norm_factor is implemented and DM is initialized elsewhere
-        #mp = self.get_PSF_norm_factor(DM);
+        DM = DeformableMirrorParameters.DeformableMirrorParameters()
+        DM.init_ws(self)
+        #mp = self.get_PSF_norm_factor(DM)
+        print("TODO Model Parameters 638")
 
         XIS, ETAS = np.meshgrid(self.F4.full.xisDL - self.x_planet,
                                 self.F4.full.etasDL - self.y_planet)
