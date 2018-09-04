@@ -173,7 +173,7 @@ class ModelParameters:
         """
         modvar = {
             'flagCalcJac': 0,
-            'ttIndex': 1,  # 1 is the zero-offset tip/tilt setting
+            'ttIndex': 0,  # 0 is the zero-offset tip/tilt setting
             'whichSource': 'star'
         }
 
@@ -632,10 +632,7 @@ class ModelParameters:
         # Get the starlight normalization factor for the compact and full models (to convert images
         # to normalized intensity)
         # TODO: uncommentd when get_PSF_norm_factor is implemented and DM is initialized elsewhere
-        DM = DeformableMirrorParameters.DeformableMirrorParameters()
-        DM.init_ws(self)
-        #mp = self.get_PSF_norm_factor(DM)
-        print("TODO Model Parameters 638")
+        #mp = self.get_PSF_norm_factor(self.DM)
 
         XIS, ETAS = np.meshgrid(self.F4.full.xisDL - self.x_planet,
                                 self.F4.full.etasDL - self.y_planet)
