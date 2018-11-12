@@ -2,13 +2,17 @@ import scipy.io
 import numpy as np
 from numpy import inf
 
-#https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
+
 def loadmat(filename):
     '''
     this function should be called instead of direct spio.loadmat
     as it cures the problem of not properly recovering python dictionaries
     from mat files. It calls the function check keys to cure all entries
     which are still mat-objects
+
+    See
+    https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
+    for more info
     '''
     def _check_keys(d):
         '''
@@ -53,15 +57,19 @@ def loadmat(filename):
     data = scipy.io.loadmat(filename, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
 
-add_ident = lambda s: "    " + s
 
-def _spec_arg(k,kwargs,v):
+def add_ident(s):
+    return "    " + s
+
+
+def _spec_arg(k, kwargs, v):
     if k in kwargs:
         return kwargs[k]
     elif "mat_struct" in kwargs:
         return eval(kwargs["mat_struct"] + "." + k)
     else:
         return v
+
 
 def reconstruct_classes(d, keys=None, outter_scope=False):
     """
@@ -74,23 +82,26 @@ def reconstruct_classes(d, keys=None, outter_scope=False):
     l_vars = []
     l_subclasses = []
     for k in keys:
-        if isinstance(d[k],dict):
-            l_subclasses.append("class _base_%s:"%(k))
+        if isinstance(d[k], dict):
+            l_subclasses.append("class _base_%s:" % (k))
             l_subclasses += map(add_ident, reconstruct_classes(d[k]))
             if outter_scope:
                 l_vars.append("global " + k)
-                l_vars.append("%s = _base_%s()"%(k,k))
+                l_vars.append("%s = _base_%s()" % (k, k))
             else:
-                l_vars.append((k, "self._base_%s()"%(k)))
-        elif isinstance(d[k],str):
+                l_vars.append((k, "self._base_%s()" % (k)))
+        elif isinstance(d[k], str):
             l_vars.append((k, "\"" + d[k] + "\""))
         else:
             l_vars.append((k, d[k]))
 
+    # TODO: give this a more descriptive name
     l = l_subclasses
     if outter_scope:
         l += l_vars
     else:
-        l += ["def __init__(self,**kwargs):"] + [add_ident("self.%s = _spec_arg(\"%s\", kwargs, %s)"%(k,k,v)) for k,v in l_vars]
+        # TODO: update to python3 string formatting
+        l += ["def __init__(self,**kwargs):"] + \
+            [add_ident("self.%s = _spec_arg(\"%s\", kwargs, %s)" % (k, k, v)) for k, v in l_vars]
 
     return l

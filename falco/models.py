@@ -26,7 +26,7 @@ def model_compact_LC(mp, DM, modvar):
         Electric field in final focal plane
 
     """
-    lambda_ = mp.sbp_center_vec[modvar.sbpIndex]  # Center wavelength
+    lambda_ = mp.sbp_center_vec[modvar['sbpIndex']]  # Center wavelength
     mirrorFac = 2  # Phase change from surface is doubled in reflection mode
     NdmPad = DM.compact.NdmPad
 
@@ -34,16 +34,16 @@ def model_compact_LC(mp, DM, modvar):
 
     # Include tip/tilt in input wavefront, if any
     try:
-        x_offset = mp.ttx[modvar.ttIndex]
-        y_offset = mp.tty[modvar.ttIndex]
+        x_offset = mp.ttx[modvar['ttIndex']]
+        y_offset = mp.tty[modvar['ttIndex']]
         TTphase = -2 * np.pi * (x_offset * mp.P2.compact.XsDL + y_offset * mp.P2.compact.YsDL)
 
         # Scale phase by lambda0/lambda because ttx and tty are in lambda0/D units
         Ett = np.exp(1j * TTphase * mp.lambda0 / lambda_)
-        Ein = Ett * mp.P1.compact.E[:, :, modvar.sbpIndex]
+        Ein = Ett * mp.P1.compact.E[:, :, modvar['sbpIndex']]
 
     except AttributeError:  # No tip/tilt information specified
-        Ein = mp.P1.compact.E[:, :, modvar.sbpIndex]
+        Ein = mp.P1.compact.E[:, :, modvar['sbpIndex']]
 
     """ Masks and DM surfaces """
 
@@ -125,7 +125,7 @@ def model_compact_LC(mp, DM, modvar):
     EP4 = mp.P4.compact.croppedMask * (EP4noFPM - EP4sub)
 
     try:
-        if modvar.flagGetNormVal:
+        if modvar['flagGetNormVal']:
             EP4 = mp.P4.compact.croppedMask * EP4noFPM  # No FPM, so just model DMs and Lyot stop
     except AttributeError:
         pass
@@ -139,11 +139,11 @@ def model_compact_LC(mp, DM, modvar):
     # Don't apply FPM if in normalization mode, if flag doesn't exist (for testing only)
     Eout = EF4
 
-    if hasattr(modvar, 'flagGetNormVal'):
-        if not modvar.flagGetNormVal:
-            Eout = EF4 / np.sqrt(mp.F4.compact.I00[modvar.sbpIndex])  # Apply normalization
+    if 'flagGetNormVal' in modvar:
+        if not modvar['flagGetNormVal']:
+            Eout = EF4 / np.sqrt(mp.F4.compact.I00[modvar['sbpIndex']])  # Apply normalization
     elif hasattr(mp.F4.compact, 'I00'):
-        Eout = EF4 / np.sqrt(mp.F4.compact.I00[modvar.sbpIndex])  # Apply normalization
+        Eout = EF4 / np.sqrt(mp.F4.compact.I00[modvar['sbpIndex']])  # Apply normalization
 
     return Eout
 
@@ -171,42 +171,41 @@ def model_full_LC(mp, DM, modvar):
         Electric field in final focal plane
 
     """
-    lambda_ = mp.sbp_center_vec[modvar.sbpIndex] * mp.lamFac_vec[modvar.wpsbpIndex]
+    lambda_ = mp.sbp_center_vec[modvar['sbpIndex']] * mp.lamFac_vec[modvar['wpsbpIndex']]
     mirrorFac = 2  # Phase change is twice the DM surface height in reflection mode
     NdmPad = DM.full.NdmPad
 
     """ Input E-fields """
 
     # Set the point source as exoplanet or star
-    if modvar.whichSource == 'exoplanet':
-        """ 
-        Don't include tip/tilt jitter for planet wavefront since the effect is minor.  The 
-        planet does not move in sky angle, so the actual tip/tilt angle needs to scale inversely 
+    if modvar['whichSource'] == 'exoplanet':
+        """
+        Don't include tip/tilt jitter for planet wavefront since the effect is minor.  The
+        planet does not move in sky angle, so the actual tip/tilt angle needs to scale inversely
         with wavelength.
         """
         planetAmp = np.sqrt(mp.c_planet)  # Scale the E-field to the correct contrast
         planetPhase = -2 * np.pi * (mp.x_planet*mp.P2.full.XsDL + mp.y_planet*mp.P2.full.YsDL)
         Ein = planetAmp * np.exp(1j * planetPhase * mp.lambda0 / lambda_)
 
-    elif modvar.whichSource == 'offaxis':  # Used for throughput calculations
-        TTphase = -2 * np.pi * (modvar.x_offset*mp.P2.full.XsDL + modvar.y_offset*mp.P2.full.YsDL)
+    elif modvar['whichSource'] == 'offaxis':  # Used for throughput calculations
+        TTphase = -2 * np.pi * (modvar['x_offset']*mp.P2.full.XsDL + modvar['y_offset']*mp.P2.full.YsDL)
         Ett = np.exp(1j * TTphase * mp.lambda0 / lambda_)
-        Ein = Ett * mp.P1.full.E[:, :, modvar.wpsbpIndex, modvar.sbpIndex]
+        Ein = Ett * mp.P1.full.E[:, :, modvar['wpsbpIndex'], modvar['sbpIndex']]
 
     else:  # Default to using on-axis starlight
         # Include tip/tilt in input wavefront, if any
         try:
-            x_offset = mp.ttx[modvar.ttIndex]
-            y_offset = mp.tty[modvar.ttIndex]
+            x_offset = mp.ttx[modvar['ttIndex']]
+            y_offset = mp.tty[modvar['ttIndex']]
             TTphase = -2 * np.pi * (x_offset * mp.P2.full.XsDL + y_offset * mp.P2.full.YsDL)
 
             # Scale phase by lambda0/lambda because ttx and tty are in lambda0/D units
             Ett = np.exp(1j * TTphase * mp.lambda0 / lambda_)
-            Ein = Ett * mp.P1.compact.E[:, :, modvar.sbpIndex]
+            Ein = Ett * mp.P1.compact.E[:, :, modvar['sbpIndex']]
 
         except AttributeError:  # No tip/tilt information specified
-            Ein = mp.P1.full.E[:, :, modvar.wpsbpIndex, modvar.sbpIndex]
-
+            Ein = mp.P1.full.E[:, :, modvar['wpsbpIndex'], modvar['sbpIndex']]
 
     fn_PSD = 'maps_PSF_{}.mat'.format(mp.coro)
 
@@ -270,7 +269,7 @@ def model_full_LC(mp, DM, modvar):
     # Apply apodizer mask
     if mp.flagApod:
         EP3 = falco.padOrCropEven(mp.P3.full.mask, mp.P3.full.Narr) * \
-              falco.padOrCropEven(EP3, mp.P3.full.Narr)
+            falco.padOrCropEven(EP3, mp.P3.full.Narr)
 
     # MFT from apodizer plane to FPM (i.e. P3 to F3)
     EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl, lambda_, mp.P2.full.dx,
@@ -290,7 +289,7 @@ def model_full_LC(mp, DM, modvar):
     EP4 = mp.P4.full.croppedMask * (EP4noFPM - EP4sub)
 
     try:
-        if modvar.flagGetNormVal:
+        if modvar['flagGetNormVal']:
             EP4 = mp.P4.full.croppedMask * EP4noFPM  # No FPM, so just model DMs and Lyot stop
     except AttributeError:
         pass
@@ -304,10 +303,10 @@ def model_full_LC(mp, DM, modvar):
     # Don't apply FPM if in normalization mode, if flag doesn't exist (for testing only)
     Eout = EF4
 
-    if hasattr(modvar, 'flagGetNormVal'):
-        if not modvar.flagGetNormVal:
-            Eout = EF4 / np.sqrt(mp.F4.full.I00[modvar.sbpIndex])  # Apply normalization
+    if 'flagGetNormVal' in modvar:
+        if not modvar['flagGetNormVal']:
+            Eout = EF4 / np.sqrt(mp.F4.full.I00[modvar['sbpIndex']])  # Apply normalization
     elif hasattr(mp.F4.compact, 'I00'):
-        Eout = EF4 / np.sqrt(mp.F4.full.I00[modvar.sbpIndex])  # Apply normalization
+        Eout = EF4 / np.sqrt(mp.F4.full.I00[modvar['sbpIndex']])  # Apply normalization
 
     return Eout
