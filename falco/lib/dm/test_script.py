@@ -6,7 +6,8 @@ import sys, os
 import pdb
 #import scipy.io as sio
 
-sys.path.append('y:/src/Falco/falco-python/falco/')
+#sys.path.append('y:/src/Falco/falco-python/falco/')
+sys.path.append('/home/dmarx/src/Falco/falco-python/falco/')
 import config.init_from_mat
 
 from falco_gen_dm_poke_cube import * # falco_gen_dm_poke_cube
