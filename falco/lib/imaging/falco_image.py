@@ -1,15 +1,27 @@
 import falco
 
 def falco_get_expected_summed_image(mp, cvar):
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_gpct_sbp_image(mp, si):
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_hcst_sbp_image(mp, si):
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_image(mp, modvar):
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_sbp_image(mp, si):
@@ -29,6 +41,10 @@ def falco_get_sbp_image(mp, si):
         Sub-bandpass image in units of normalized intensity
 
     """
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     if mp.flagSim:
         ImNI = falco_get_sim_sbp_image(mp, si)
     else:
@@ -53,10 +69,13 @@ def falco_get_sbp_image_fiber(mp, si):
         Sub-bandpass image in units of normalized intensity
     """
 
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     if mp.flagSim:
         ImNI = falco_get_sim_sbp_image_fiber(mp, si)
     else:
-        raise ValueError('Testbed functionality not implemented for fibers yet.')
+        raise NotImplementedError('Testbed functionality not implemented for fibers yet.')
 
     return ImNI
 
@@ -76,6 +95,9 @@ def falco_get_sim_sbp_image(mp, si):
     TBD
         Sub-bandpass image in units of normalized intensity
     """
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     pass
 
 def falco_get_sim_sbp_image_fiber(mp, si):
@@ -95,6 +117,10 @@ def falco_get_sim_sbp_image_fiber(mp, si):
         Sub-bandpass image in units of normalized intensity
 
     """
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     pass
 
 def falco_get_summed_image(mp):
@@ -115,7 +141,7 @@ def falco_get_summed_image(mp):
     """
 
     if mp is not falco.config.ModelParameters:
-        raise TypeError('Input must be of type ModelParameters')
+        raise TypeError('Input "mp" must be of type ModelParameters')
 
     ### Compute the DM surfaces outside the full model to save some time
     
@@ -143,6 +169,9 @@ def falco_get_summed_image_fiber(mp):
     
     """
 
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     pass
 
 def falco_get_testbed_sbp_image(mp, si):
@@ -165,6 +194,10 @@ def falco_get_testbed_sbp_image(mp, si):
            by a photometry measurement at a single offset)
 
     """
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     pass
 
 def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
@@ -188,4 +221,8 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
     TBD
         Tuple with E-field and summed intensity for compact model
     """
+
+    if mp is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
     pass
