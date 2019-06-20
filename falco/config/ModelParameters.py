@@ -14,11 +14,15 @@ class ModelParameters:
         def __init__(self, **kwargs):
             self.dummy = _spec_arg("dummy", kwargs, 1)
             self.Dstop = _spec_arg("Dstop", kwargs, 0.048)
+            self.dx= _spec_arg("dx", kwargs, 0)
+            self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
 
     class _base_dm2:
         def __init__(self, **kwargs):
             self.dummy = _spec_arg("dummy", kwargs, 1)
-            self.Dstop = _spec_arg("Dstop", kwargs, 0.048)
+            self.Dstop = _spec_arg("Dstop", kwargs, 0)
+            self.dx= _spec_arg("dx", kwargs, 0.048)
+            self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
 
     class _base_P2:
         def __init__(self, **kwargs):
@@ -116,6 +120,8 @@ class ModelParameters:
             self.sides = _spec_arg("sides", kwargs, "both")
 
     def __init__(self, **kwargs):
+        
+
         self.Nitr = _spec_arg("Nitr", kwargs, 10)
         self.SPname = _spec_arg("SPname", kwargs, 0)
         self.TToffset = _spec_arg("TToffset", kwargs, 1)
@@ -177,6 +183,8 @@ class ModelParameters:
             'whichSource': 'star'
         }
 
+        mp.sbp_weights = np.ones((1, mp.Nsbp), dtype=np.float64)
+
         self.F4.compact.I00 = np.ones((1, self.Nsbp), dtype=np.float64)
         self.F4.full.I00 = np.ones((1, self.Nsbp), dtype=np.float64)
 
@@ -200,6 +208,13 @@ class ModelParameters:
         modvar['flagGetNormVal'] = False  # Not sure if/why this is needed
 
     def init_ws(self):
+        """
+
+        """
+
+        self.dm_ind = [] # Which DMs to use
+        self.flagSim = False
+
         # MATLAB prints were commented out but left for clarity
         #disp(['DM 1-2 Fresnel number = ',num2str((mp.P2.D/2)^2/(mp.d_dm1_dm2*mp.lambda0))]);
         self.si_ref = int(np.ceil(self.Nsbp/2.0))
@@ -585,6 +600,7 @@ class ModelParameters:
 
         else:
             self.sbp_center_vec = np.array([self.lambda0])
+
 
         # Fill the whole band if just one sub-bandpass
         if self.Nwpsbp > 1 and self.Nsbp == 1:
