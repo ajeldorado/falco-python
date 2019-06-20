@@ -1,25 +1,98 @@
 import falco
 
 def falco_get_expected_summed_image(mp, cvar):
+    """
+    Function to generate the expected broadband image over the entire
+    bandpass by adding the model-based delta electric field on top of the
+    current E-field estimate in each sub-bandpass.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    cvar: TBD
+        TBD
+
+    Returns
+    -------
+    TBD
+        band-averaged image in units of normalized intensity
+    """
 
     if mp is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_gpct_sbp_image(mp, si):
+    """
+    Function to get an image in the specified sub-bandpass from the GPCT.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    si: int
+        Index of sub-bandpass for which to take the image
+
+    Returns
+    -------
+    TBD
+        Normalized intensity in the sub-bandpass
+        (i.e. approximate raw contrast but normalized 
+        by a photometry measurement at a single offset)
+
+    """
 
     if mp is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_hcst_sbp_image(mp, si):
+    """
+    Function to get an image in the specified sub-bandpass from the Caltech
+    HCST testbed. This function will need to be replaced in order to run on a
+    different testbed. Note that the number of pixels per lambda*F# is
+    predetermined. 
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    si: int
+        Index of sub-bandpass for which to take the image
+
+    Returns
+    -------
+    TBD
+        Normalized intensity in the sub-bandpass
+        (i.e. approximate raw contrast but normalized 
+        by a photometry measurement at a single offset)
+
+    """
 
     if mp is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
 def falco_get_image(mp, modvar):
+    """
+    Wrapper function to obtain a real image from a testbed camera or
+    a simulated image with noise using the full model.
+    For a single sub-bandpass only.
 
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    modvar: TBD
+        Structure of model variables
+
+    Returns
+    -------
+    TBD
+        TBD
+
+    """
     if mp is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
