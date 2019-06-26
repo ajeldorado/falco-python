@@ -8,7 +8,7 @@ def falco_config_gen_FPM_FOHLC(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -27,7 +27,7 @@ def falco_config_gen_FPM_HLC(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -35,7 +35,7 @@ def falco_config_gen_FPM_HLC(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_gen_FPM_LC(mp):
@@ -46,7 +46,7 @@ def falco_config_gen_FPM_LC(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -54,7 +54,7 @@ def falco_config_gen_FPM_LC(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_gen_FPM_Roddier(mp):
@@ -65,7 +65,7 @@ def falco_config_gen_FPM_Roddier(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -73,7 +73,7 @@ def falco_config_gen_FPM_Roddier(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_gen_FPM_SPLC(mp):
@@ -84,7 +84,7 @@ def falco_config_gen_FPM_SPLC(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -92,7 +92,7 @@ def falco_config_gen_FPM_SPLC(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_gen_chosen_LS(mp):
@@ -103,7 +103,7 @@ def falco_config_gen_chosen_LS(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -111,7 +111,7 @@ def falco_config_gen_chosen_LS(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_gen_chosen_apodizer(mp):
@@ -122,7 +122,7 @@ def falco_config_gen_chosen_apodizer(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -130,7 +130,7 @@ def falco_config_gen_chosen_apodizer(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_gen_chosen_pupil(mp):
@@ -141,7 +141,7 @@ def falco_config_gen_chosen_pupil(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -149,7 +149,7 @@ def falco_config_gen_chosen_pupil(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_jac_weights(mp):
@@ -160,7 +160,7 @@ def falco_config_jac_weights(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -168,7 +168,7 @@ def falco_config_jac_weights(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 def falco_config_spatial_weights(mp):
@@ -179,7 +179,7 @@ def falco_config_spatial_weights(mp):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters.ModelParameters
+    mp: falco.config.ModelParameters
         Structure of model parameters
     Returns
     -------
@@ -187,6 +187,6 @@ def falco_config_spatial_weights(mp):
         Return value descriptio here
     """
 
-    if type(mp) is not falco.config.ModelParameters.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
