@@ -214,6 +214,10 @@ class ModelParameters:
 
         self.dm_ind = [] # Which DMs to use
         self.flagSim = False
+        self.layout = ''
+        self.flagFiber = False
+        self.source_x_offset_norm = 0
+        self.source_y_offset_norm = 0
 
         # MATLAB prints were commented out but left for clarity
         #disp(['DM 1-2 Fresnel number = ',num2str((mp.P2.D/2)^2/(mp.d_dm1_dm2*mp.lambda0))]);

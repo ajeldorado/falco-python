@@ -2,6 +2,8 @@ import falco
 
 def falco_get_expected_summed_image(mp, cvar):
     """
+    Returns summed image.
+
     Function to generate the expected broadband image over the entire
     bandpass by adding the model-based delta electric field on top of the
     current E-field estimate in each sub-bandpass.
