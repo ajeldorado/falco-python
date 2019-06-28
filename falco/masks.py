@@ -4,7 +4,7 @@ import poppy
 import proper
 import scipy.interpolate
 import scipy.ndimage
-
+import math
 from . import utils
 
 
@@ -133,6 +133,7 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
      3.219259259259259e-02,
      3.219259259259259e-02,
     ])
+    lStrut = 5.500000000000000e-01
     angStrutVec = np.array([
      4.308638741879215e+01,
      1.828091850580443e+01,
@@ -168,7 +169,153 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
      -2.822938064533701e+00,
     ])
 
+    class Changes(object):
+        pass
+
     ### Changes to the pupil
+    changes = Changes()
+    if len(kwargs) > 1:
+        raise ValueError('falco_gen_pupil_WFIRST_CGI_180718.m: Too many inputs')
+    elif len(kwargs) == 1:
+        changes = 0
+    else:
+        changes.dummy = 1
+    
+    print('HHHHHHEEEEEEELLLLLLLLLOOOOOOO')
+    ### Oversized strut features: overwrite defaults if values specified
+    if hasattr(changes, 'OD'):
+        OD = changes.OD
+    if hasattr(changes, 'ID'):
+        ID = changes.ID
+    if hasattr(changes, 'wStrut'):
+        wStrutVec = changes.wStrut * np.ones((6,1))
+    if hasattr(changes, 'wStrutVec'):
+        wStrutVec = changes.wStrutVec
+
+    ### Padding values for obscuration
+    #--Defaults of Bulk Changes: (All length units are pupil diameters. All angles are in degrees.)
+    if not hasattr(changes, 'xShear'): changes.xShear = 0
+    if not hasattr(changes, 'yShear'): changes.yShear = 0
+    if not hasattr(changes, 'magFac'): changes.magFac = 1.0
+    if not hasattr(changes, 'clock_deg'): changes.clock_deg = 0.0
+    if not hasattr(changes, 'flagRot180'): changes.flagRot180 = False
+
+    #--Defaults for obscuration padding: (All length units are pupil diameters.)
+    if not hasattr(changes, 'pad_all'): changes.pad_all = 0.
+    if not hasattr(changes, 'pad_strut'): changes.pad_strut = 0.
+    if not hasattr(changes, 'pad_COBS'): changes.pad_COBS = 0.
+    if not hasattr(changes, 'pad_COBStabs'): changes.pad_COBStabs = 0.
+    if not hasattr(changes, 'pad_OD'): changes.pad_OD = 0.
+
+    #--Values to use for bulk clocking, magnification, and translation
+    xShear = changes.xShear;# - xcOD;
+    yShear = changes.yShear;# - ycOD;
+    magFac = changes.magFac;
+    clock_deg = changes.clock_deg;
+    flagRot180 = changes.flagRot180;
+    
+    #--Padding values. (pad_all is added to all the rest)
+    pad_all = changes.pad_all;#0.2/100; #--Uniform padding on all features
+    pad_strut = changes.pad_strut + pad_all;
+    pad_COBS = changes.pad_COBS + pad_all;
+    pad_COBStabs = changes.pad_COBStabs + pad_all;
+    pad_OD = changes.pad_OD + pad_all; #--Radial padding at the edge
+
+    rotMat = np.array([[math.cos(math.radians(clock_deg)), -math.sin(math.radians(clock_deg))], [math.sin(math.radians(clock_deg)), math.cos(math.radians(clock_deg))]])
+
+    ## Coordinates
+    if centering.lower() in ('pixel', 'odd'):
+        Narray = utils.ceil_even(Nbeam + 1) #--number of points across output array. Requires two more pixels when pixel centered.
+    else:
+        Narray = utils.ceil_even(Nbeam) #--No zero-padding needed if beam is centered between pixels
+
+    if centering.lower() == 'interpixel':
+        xs = np.arange(-(Nbeam-1)/2, (Nbeam-1)/2)/Nbeam
+    else:
+        xs = np.arange(-(Narray/2), Narray/2-1)/Nbeam
+
+    #[XS, YS] = meshgrid(xs)
+
+    ## Proper Setup Values
+    Dbeam = 1                 #--Diameter of aperture, normalized to itself
+    wl   = 1e-6              # wavelength (m); Dummy value--no propagation here, so not used.
+    bdf = Nbeam/Narray #--beam diameter factor in output array
+    dx = Dbeam/Nbeam
+
+    if centering.lower() in ('interpixel', 'even'):
+        cshift = -dx/2
+    elif centering.lower() in ('pixel', 'odd'):
+        cshift = 0
+        if flagRot180:
+            cshift = -dx
+
+    ## INITIALIZE PROPER
+    bm = proper.prop_begin(Dbeam, wl, Narray,bdf)
+    ## PRIMARY MIRROR (OUTER DIAMETER)
+    ra_OD = magFac*(OD/2-pad_OD)
+    cx_OD = magFac*xcOD
+    cy_OD = magFac*ycOD
+    cxy = np.matmul(rotMat, np.array([[cx_OD],[cy_OD]]))
+    cx_OD = cxy[0]-xShear
+    cy_OD = cxy[1]-yShear
+    print('ra_OD', ra_OD)
+    print('cx_OD', cx_OD)
+    print('cy_OD', cy_OD)
+    print('cshift', cshift)
+    bm = proper.prop_circular_aperture(bm, ra_OD, cx_OD+cshift, cy_OD+cshift)
+
+    for istrut in range(6):
+        print(istrut)
+        angDeg = angStrutVec[istrut] + clock_deg; # degrees
+        wStrut = magFac*(wStrutVec[istrut]+pad_strut);
+        lStrutIn = magFac*lStrut;
+        xc = magFac*(xcStrutVec[istrut]); 
+        yc = magFac*(ycStrutVec[istrut]); 
+        cxy = np.matmul(rotMat, np.array([[xc], [yc]]))
+        xc = cxy[0]-xShear;
+        yc = cxy[1]-yShear;
+        #bm = proper.prop_rectangular_obscuration(bm, lStrutIn, wStrut, xc+cshift, yc+cshift, ROTATION=angDeg)#, norm)
+
+    ## TABS ON SECONDARY MIRROR
+    #--Compute as new shape, and then multiply the obscuration with the rest of
+    #the pupil.
+    
+    return
+    #--SOFTWARE MASK:
+    XSnew = (1/1*XS+xcCOBStabs)+xShear
+    YSnew = (1/1*YS+ycCOBStabs)+yShear
+    
+    overSizeFac = 1.3
+    cobsTabsMask = np.zeros(Narray)
+    THETAS = math.atan2(YSnew,XSnew)
+    clock_rad = np.deg2rad(clock_deg)
+
+#if(angTabStart(1)>angTabEnd(1))
+#    cobsTabsMask( (XSnew).^2 + (YSnew).^2 <= (overSizeFac*magFac*IDtabs/2)^2 & ...
+#        ( ( THETAS>=angTabEnd(1)+clock_rad & THETAS<=angTabStart(1)+clock_rad )...
+#        | ( THETAS>=angTabEnd(2)+clock_rad & THETAS<=angTabStart(2)+clock_rad )...
+#        | ( THETAS>=angTabEnd(3)+clock_rad & THETAS<=angTabStart(3)+clock_rad ) )...
+#        ) = 1;
+#else
+#    cobsTabsMask( (XSnew).^2 + (YSnew).^2 <= (overSizeFac*magFac*IDtabs/2)^2 & ...
+#        ( ( THETAS<=angTabEnd(1)+clock_rad & THETAS>=angTabStart(1)+clock_rad )...
+#        | ( THETAS<=angTabEnd(2)+clock_rad & THETAS>=angTabStart(2)+clock_rad )...
+#        | ( THETAS<=angTabEnd(3)+clock_rad & THETAS>=angTabStart(3)+clock_rad ) )...
+#        ) = 1;
+#end
+#    if angTabStart[0] > angTabEnd[0]:
+#        cobsTabsMask( (XSnew)**2 + (YSnew)**2 <= (overSizeFac*magFac*IDtabs/2)**2 & ...
+#            ( ( THETAS>=angTabEnd[0]+clock_rad & THETAS<=angTabStart[0]+clock_rad )...
+#            | ( THETAS>=angTabEnd[1]+clock_rad & THETAS<=angTabStart[1]+clock_rad )...
+#            | ( THETAS>=angTabEnd[2]+clock_rad & THETAS<=angTabStart[2]+clock_rad ) )...
+#            ) = 1;
+#    else:
+#        cobsTabsMask( (XSnew)**2 + (YSnew)**2 <= (overSizeFac*magFac*IDtabs/2)**2 & ...
+#            ( ( THETAS<=angTabEnd[0]+clock_rad & THETAS>=angTabStart[0]+clock_rad )...
+#            | ( THETAS<=angTabEnd[1]+clock_rad & THETAS>=angTabStart[1]+clock_rad )...
+#            | ( THETAS<=angTabEnd[2]+clock_rad & THETAS>=angTabStart[2]+clock_rad ) )...
+#            ) = 1;
+
 
 def falco_gen_pupil_WFIRST_20180103(Nbeam, centering, rot180deg=False):
     pupil_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
