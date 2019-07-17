@@ -1,7 +1,30 @@
 import numpy as np
+import falco
 
-from falco import models
+#from falco import models
 
+def falco_wfsc_loop(mp):
+
+    """
+    Quick Description here
+
+    Detailed description here
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    Returns
+    -------
+    TBD
+        Return value descriptio here
+    """
+
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+
+    
 
 def falco_est_perfect_Efield(mp, DM, which_model='full'):
     """
@@ -27,11 +50,11 @@ def falco_est_perfect_Efield(mp, DM, which_model='full'):
     if which_model == 'full':
         Icube_shape = (mp.F4.full.Neta, mp.F4.full.Nxim, mp.Nttlam)
         Emat_shape = (mp.F4.full.corr.inds.shape[0], mp.Nttlam)
-        model = models.model_full
+        model = falco.models.model_full
     elif which_model == 'compact':
         Icube_shape = (mp.F4.compact.Neta, mp.F4.compact.Nxim, mp.Nttlam)
         Emat_shape = (mp.F4.compact.corr.inds.shape[0], mp.Nttlam)
-        model = models.model_compact
+        model = falco.models.model_compact
     else:
         raise ValueError('Invalid model specified.  Try \'full\' or \'compact\'.')
 
