@@ -2,6 +2,7 @@ import numpy as np
 import falco
 import os
 import pickle
+import math
 
 #from falco import models
 
@@ -15,7 +16,7 @@ def falco_init_ws(config):
     print('DM 1-to-2 Fresnel number (using radius) = ' + str((mp.P2.D/2)**2/(mp.d_dm1_dm2*mp.lambda0)))
 
     ## Intializations of structures (if they don't exist yet)
-    #mp.jac.dummy = 1;
+    mp.jac.dummy = 1;
     
     ## Optional/Hidden flags
     if not hasattr(mp,'flagSaveWS'):  
@@ -37,6 +38,120 @@ def falco_init_ws(config):
     if not hasattr(mp.ctrl,'flagUseModel'):  
         mp.ctrl.flagUseModel = False #--Whether to perform a model-based (vs empirical) grid search for the controller
     
+    ## Optional/Hidden variables
+    if not hasattr(mp,'propMethodPTP'):
+        mp.propMethodPTP = 'fft' #--Propagation method for postage stamps around the influence functions. 'mft' or 'fft'
+    if not hasattr(mp,'SPname'):  
+        mp.SPname = 'none' #--Apodizer name default
+
+    ## File Paths
+    
+    #--Storage directories (data in these folders will not be synced via Git
+    filesep = os.pathsep
+    if not hasattr(mp.path,'ws'):
+        mp.path.ws = mainPath + 'data' + filesep + 'ws' + filesep # Store final workspace data here
+    if not hasattr(mp.path,'maps'): 
+        mp.path.falcoaps = mainPath + 'maps' + filesep # Maps go here
+    if not hasattr(mp.path,'jac'): 
+        mp.path.jac = mainPath + 'data' + filesep + 'jac' + filesep # Store the control Jacobians here
+    if not hasattr(mp.path,'images'): 
+        mp.path.images = mainPath + 'data' + filesep + 'images' + filesep # Store all full, reduced images here
+    if not hasattr(mp.path,'dm'): 
+        mp.path.dm = mainPath + 'data' + filesep + 'DM' + filesep # Store DM command maps here
+    if not hasattr(mp.path,'ws_inprogress'): 
+        mp.path.ws_inprogress = mainPath + 'data' + filesep + 'ws_inprogress' + filesep # Store in progress workspace data here
+
+    ## Loading previous DM commands as the starting point
+    #--Stash DM8 and DM9 starting commands if they are given in the main script
+    if hasattr(mp,'dm8'):
+        if hasattr(mp.dm8,'V'): 
+            mp.DM8V0 = mp.dm8.V
+        if hasattr(mp.dm9,'V'): 
+            mp.DM9V0 = mp.dm9.V
+
+    ## Useful factor
+    mp.mas2lam0D = 1/(mp.lambda0/mp.P1.D*180/np.pi*3600*1000); #--Conversion factor: milliarcseconds (mas) to lambda0/D
+    
+    ## Estimator
+    if not hasattr(mp,'estimator'): 
+        mp.estimator = 'perfect'
+
+    ## Bandwidth and Wavelength Specs
+    
+    if not hasattr(mp,'Nwpsbp'):
+        mp.Nwpsbp = 1;
+
+    ### NOTE: I added this 
+    if not hasattr(mp, 'full'):
+        mp.full = falco.config.EmptyObject()
+
+    mp.full.Nlam = mp.Nsbp*mp.Nwpsbp; #--Total number of wavelengths in the full model
+
+    #--When in simulation and using perfect estimation, use end wavelengths in bandbass, which (currently) requires Nwpsbp=1. 
+    if mp.estimator.lower() == 'perfect' and mp.Nsbp>1:
+        if mp.Nwpsbp>1:
+            print('* Forcing mp.Nwpsbp = 1 * \n')
+            mp.Nwpsbp = 1; # number of wavelengths per sub-bandpass. To approximate better each finite sub-bandpass in full model with an average of images at these values. Only >1 needed when each sub-bandpass is too large (say >3#).
+    
+    #--Center-ish wavelength indices (ref = reference)
+    mp.si_ref = math.ceil(mp.Nsbp/2);
+    mp.wi_ref = math.ceil(mp.Nwpsbp/2);
+
+    #--Wavelengths used for Compact Model (and Jacobian Model)
+    mp.sbp_weights = np.ones((mp.Nsbp,1));
+    
+    if mp.estimator.lower() == 'perfect' and mp.Nsbp>1: #--For design or modeling without estimation: Choose ctrl wvls evenly between endpoints (inclusive) of the total bandpass
+        mp.fracBWsbp = mp.fracBW/(mp.Nsbp-1);
+        mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBW/2,1+mp.fracBW/2,mp.Nsbp);
+    else: #--For cases with estimation: Choose est/ctrl wavelengths to be at subbandpass centers.
+        mp.fracBWsbp = mp.fracBW/mp.Nsbp;
+        mp.fracBWcent2cent = mp.fracBW*(1-1/mp.Nsbp); #--Bandwidth between centers of endpoint subbandpasses.
+        mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2,1+mp.fracBWcent2cent/2,mp.Nsbp); #--Space evenly at the centers of the subbandpasses.
+    mp.sbp_weights = mp.sbp_weights/np.sum(mp.sbp_weights); #--Normalize the sum of the weights
+    
+    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f# total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
+    print('Sub-bandpasses are centered at wavelengths [nm]:\t ')
+    print('%.2f  '%(1e9*mp.sbp_centers))
+    print('\n\n');
+
+    #--Wavelength factors/weights within sub-bandpasses in the full model
+    mp.full.lambda_weights = np.ones((mp.Nwpsbp,1)); #--Initialize as all ones. Weights within a single sub-bandpass
+    if mp.Nsbp==1:
+        mp.full.sbp_facs = np.linspace(1-mp.fracBW/2,1+mp.fracBW/2,mp.Nwpsbp);
+        if mp.Nwpsbp>2: #--Include end wavelengths with half weights
+            mp.full.lambda_weights[0] = 1/2;
+            mp.full.lambda_weights[-1] = 1/2;
+    else: #--For cases with estimation (est/ctrl wavelengths at subbandpass centers). Full model only
+        mp.full.sbp_facs = np.linspace(1-(mp.fracBWsbp/2)*(1-1/mp.Nwpsbp), \
+                               1+(mp.fracBWsbp/2)*(1-1/mp.Nwpsbp), mp.Nwpsbp)
+    if mp.Nwpsbp==1:  
+        mp.full.sbp_facs = np.array([1]) #--Set factor to 1 if only 1 value.
+    
+    mp.full.lambda_weights = mp.full.lambda_weights/np.sum(mp.full.lambda_weights); #--Normalize sum of the weights
+
+    #--Make vector of all wavelengths and weights used in the full model
+    mp.full.lambdas = np.zeros((mp.Nsbp*mp.Nwpsbp,1));
+    mp.full.weights = np.zeros((mp.Nsbp*mp.Nwpsbp,1));
+    counter = 0;
+    for si in range(0,mp.Nsbp):
+        for wi in range(0,mp.Nwpsbp):
+            mp.full.lambdas[counter] = mp.sbp_centers[si]*mp.full.sbp_facs[wi];
+            mp.full.all_weights = mp.sbp_weights[si]*mp.full.lambda_weights[wi];
+            counter = counter+1;
+
+    ## Zernike and Chromatic Weighting of the Control Jacobian
+    if not hasattr(mp.jac,'zerns'):  
+        mp.jac.zerns = 1 #--Which Zernike modes to include in Jacobian [Noll index]. Always include 1 for piston term.
+    if not hasattr(mp.jac,'Zcoef'):  
+        mp.jac.Zcoef = 1e-9*np.ones((10,1)); end #--meters RMS of Zernike aberrations. (piston value is reset to 1 later for correct normalization)
+
+    falco.configs.falco_config_jac_weights(mp)
+
+    ## Pupil Masks
+    #falco.configs.falco_config_gen_chosen_pupil(mp) #--input pupil mask
+    #falco.configs.falco_config_gen_chosen_apodizer(mp) #--apodizer mask
+    #falco.configs.falco_config_gen_chosen_LS(mp) #--Lyot stop
+
     pass
 
 def falco_wfsc_loop(mp):
