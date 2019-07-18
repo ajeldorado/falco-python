@@ -53,13 +53,15 @@ mp.estimator = 'perfect';
 
 ####### NEED TO DETERMINE
 ###--New variables for pairwise probing estimation:
-#mp.est.probe.Npairs = 3;#2;     # Number of pair-wise probe PAIRS to use.
-#mp.est.probe.whichDM = 1;    # Which DM # to use for probing. 1 or 2. Default is 1
-#mp.est.probe.radius = 12;#20;    # Max x/y extent of probed region [actuators].
-#mp.est.probe.offsetX = 0;   # offset of probe center in x [actuators]. Use to avoid central obscurations.
-#mp.est.probe.offsetY = 14;    # offset of probe center in y [actuators]. Use to avoid central obscurations.
-#mp.est.probe.axis = 'alternate';     # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
-#mp.est.probe.gainFudge = 1;     # empirical fudge factor to make average probe amplitude match desired value.
+mp.est = falco.config.EmptyObject()
+mp.est.probe = falco.config.EmptyObject()
+mp.est.probe.Npairs = 3;#2;     # Number of pair-wise probe PAIRS to use.
+mp.est.probe.whichDM = 1;    # Which DM # to use for probing. 1 or 2. Default is 1
+mp.est.probe.radius = 12;#20;    # Max x/y extent of probed region [actuators].
+mp.est.probe.offsetX = 0;   # offset of probe center in x [actuators]. Use to avoid central obscurations.
+mp.est.probe.offsetY = 14;    # offset of probe center in y [actuators]. Use to avoid central obscurations.
+mp.est.probe.axis = 'alternate';     # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
+mp.est.probe.gainFudge = 1;     # empirical fudge factor to make average probe amplitude match desired value.
 
 ###--New variables for pairwise probing with a Kalman filter
 ###  mp.est.ItrStartKF =  #Which correction iteration to start recursive estimate
@@ -77,21 +79,24 @@ mp.logGmin = -6;  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobia
 
 ####### NEED TO DETERMINE
 ###--Zernikes to suppress with controller
-#mp.jac.zerns = 1;  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
-#mp.jac.Zcoef = 1e-9*ones(size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
+mp.jac = falco.config.EmptyObject()
+mp.jac.zerns = 1;  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
+mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
     
 ####### NEED TO DETERMINE
 ###--Zernikes to compute sensitivities for
-#mp.eval.indsZnoll = 2:6; #--Noll indices of Zernikes to compute values for
+mp.eval = falco.config.EmptyObject()
+mp.eval.indsZnoll = list(range(1,5)) #--Noll indices of Zernikes to compute values for
 
 ####### NEED TO DETERMINE
 ###--Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
-#mp.eval.Rsens = [3., 4.;4., 8.];  
+mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  
 
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
-#mp.ctrl.log10regVec = -6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
-#mp.ctrl.dmfacVec = 1;            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1].
+mp.ctrl = falco.config.EmptyObject()
+mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
+mp.ctrl.dmfacVec = 1;            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1].
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
 ###--Spatial pixel weighting

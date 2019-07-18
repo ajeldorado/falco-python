@@ -17,25 +17,25 @@ def falco_init_ws(config):
     ## Intializations of structures (if they don't exist yet)
     #mp.jac.dummy = 1;
     
-#    ## Optional/Hidden flags
-#    if not hasattr(mp,'flagSaveWS'):  
-#        mp.flagSaveWS = False  #--Whehter to save otu the entire workspace at the end of the trial. Can take up lots of space.
-#    if not hasattr(mp,'flagSaveEachItr'):  
-#        mp.flagSaveEachItr = False  #--Whether to save out the performance at each iteration. Useful for long trials in case it crashes or is stopped early.
-#    if not hasattr(mp,'flagSVD'):
-#        mp.flagSVD = False    #--Whether to compute and save the singular mode spectrum of the control Jacobian (each iteration)
-#    if not hasattr(mp,'flagFiber'):
-#        mp.flagFiber = False  #--Whether to couple the final image through lenslets and a single mode fiber.
-#    if not hasattr(mp,'flagDMwfe'):  
-#        mp.flagDMwfe = False  #--Temporary for BMC quilting study
-#    if not hasattr(mp,'flagTrainModel'):  
-#        mp.flagTrainModel = False  #--Whether to call the Expectation-Maximization (E-M) algorithm to improve the linearized model. 
-#    if not hasattr(mp,'flagUseLearnedJac'):  
-#        mp.flagUseLearnedJac = False #--Whether to load and use an improved Jacobian from the Expectation-Maximization (E-M) algorithm 
-#    if not hasattr(mp.est,'flagUseJac'):  
-#        mp.est.flagUseJac = False   #--Whether to use the Jacobian or not for estimation. (If not using Jacobian, model is called and differenced.)
-#    if not hasattr(mp.ctrl,'flagUseModel'):  
-#        mp.ctrl.flagUseModel = False #--Whether to perform a model-based (vs empirical) grid search for the controller
+    ## Optional/Hidden flags
+    if not hasattr(mp,'flagSaveWS'):  
+        mp.flagSaveWS = False  #--Whehter to save otu the entire workspace at the end of the trial. Can take up lots of space.
+    if not hasattr(mp,'flagSaveEachItr'):  
+        mp.flagSaveEachItr = False  #--Whether to save out the performance at each iteration. Useful for long trials in case it crashes or is stopped early.
+    if not hasattr(mp,'flagSVD'):
+        mp.flagSVD = False    #--Whether to compute and save the singular mode spectrum of the control Jacobian (each iteration)
+    if not hasattr(mp,'flagFiber'):
+        mp.flagFiber = False  #--Whether to couple the final image through lenslets and a single mode fiber.
+    if not hasattr(mp,'flagDMwfe'):  
+        mp.flagDMwfe = False  #--Temporary for BMC quilting study
+    if not hasattr(mp,'flagTrainModel'):  
+        mp.flagTrainModel = False  #--Whether to call the Expectation-Maximization (E-M) algorithm to improve the linearized model. 
+    if not hasattr(mp,'flagUseLearnedJac'):  
+        mp.flagUseLearnedJac = False #--Whether to load and use an improved Jacobian from the Expectation-Maximization (E-M) algorithm 
+    if not hasattr(mp.est,'flagUseJac'):  
+        mp.est.flagUseJac = False   #--Whether to use the Jacobian or not for estimation. (If not using Jacobian, model is called and differenced.)
+    if not hasattr(mp.ctrl,'flagUseModel'):  
+        mp.ctrl.flagUseModel = False #--Whether to perform a model-based (vs empirical) grid search for the controller
     
     pass
 
