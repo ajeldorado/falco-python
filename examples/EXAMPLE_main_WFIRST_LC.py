@@ -10,6 +10,16 @@ mp = DEFAULTS.mp
 
 print(mp.__dict__)
 
+mp.path = falco.config.EmptyObject()
+
+mp.path.falco = './'  #--Location of FALCO
+mp.path.proper = './' #--Location of the MATLAB PROPER library
+
+##--Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
+mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
+mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
+
+
 ## Step 3: Overwrite default values as desired
 
 # ##--Special Computational Settings
