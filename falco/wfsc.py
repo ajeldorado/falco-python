@@ -148,9 +148,9 @@ def falco_init_ws(config):
     falco.configs.falco_config_jac_weights(mp)
 
     ## Pupil Masks
-    #falco.configs.falco_config_gen_chosen_pupil(mp) #--input pupil mask
-    #falco.configs.falco_config_gen_chosen_apodizer(mp) #--apodizer mask
-    #falco.configs.falco_config_gen_chosen_LS(mp) #--Lyot stop
+    falco.configs.falco_config_gen_chosen_pupil(mp) #--input pupil mask
+    falco.configs.falco_config_gen_chosen_apodizer(mp) #--apodizer mask
+    falco.configs.falco_config_gen_chosen_LS(mp) #--Lyot stop
 
     pass
 

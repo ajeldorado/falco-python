@@ -6,7 +6,8 @@ import falco
 
 
 mp = falco.config.ModelParameters()
-
+#mp.init_ws()
+#type(mp.P2.full)
 ### Parameters from EXAMPLE_defaults_WFIRST_LC.m
 
 mp.SeriesNum = 1;
