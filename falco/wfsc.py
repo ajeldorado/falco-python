@@ -3,6 +3,7 @@ import falco
 import os
 import pickle
 import math
+import scipy
 
 #from falco import models
 
@@ -151,6 +152,263 @@ def falco_init_ws(config):
     falco.configs.falco_config_gen_chosen_pupil(mp) #--input pupil mask
     falco.configs.falco_config_gen_chosen_apodizer(mp) #--apodizer mask
     falco.configs.falco_config_gen_chosen_LS(mp) #--Lyot stop
+
+    # SFF Stuff:  This stuff probably got defined in the functions above
+    if not hasattr(mp.P1.compact, 'Narr'):
+        mp.P1.compact.Narr = 252
+    if not hasattr(mp.P4.compact, 'mask'):
+        mp.P4.compact.mask = np.zeros((mp.P1.compact.Narr,mp.P1.compact.Narr))
+    if not hasattr(mp.P1.compact, 'mask'):
+        mp.P1.compact.mask = np.zeros((mp.P1.compact.Narr,mp.P1.compact.Narr))
+
+    ## Plot the pupil and Lyot stop on top of each other to make sure they are aligned correctly
+    #--Only for coronagraphs using Babinet's principle, for which the input
+    #pupil and Lyot plane have the same resolution.
+    if mp.coro in ['FOHLC','HLC','LC','APLC','VC','AVC']:
+        if mp.flagPlot:
+            P4mask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P1.compact.Narr)
+            P4mask = np.rot90(P4mask,2);
+            if mp.centering.lower() == 'pixel':
+               #P4mask = circshift(P4mask,[1 1]);
+               print(type(P4mask))
+               P4mask = np.roll(P4mask,(1,1),(0,1))
+            P1andP4 = mp.P1.compact.mask + P4mask;
+            #figure(301); imagesc(P1andP4); axis xy equal tight; colorbar; set(gca,'Fontsize',20); title('Pupil and LS Superimposed','Fontsize',16');
+
+            if mp.flagApod:
+                P1andP3 = mp.P1.compact.mask + padOrCropEven(mp.P3.compact.mask,len(mp.P1.compact.mask));
+                #figure(302); imagesc(P1andP3); axis xy equal tight; colorbar; set(gca,'Fontsize',20); title('Pupil and Apod Superimposed','Fontsize',16');
+
+    ## DM Initialization
+    
+    # SFF Stuff
+    mp.dm3 = falco.config.EmptyObject()   
+    mp.dm4 = falco.config.EmptyObject()   
+    mp.dm5 = falco.config.EmptyObject()   
+    mp.dm6 = falco.config.EmptyObject()   
+    mp.dm7 = falco.config.EmptyObject()   
+    mp.dm8 = falco.config.EmptyObject()   
+    mp.dm9 = falco.config.EmptyObject()   
+
+    #--Initialize the number of actuators (NactTotal) and actuators used (Nele).
+    mp.dm1.NactTotal=0; mp.dm2.NactTotal=0; mp.dm3.NactTotal=0; mp.dm4.NactTotal=0; mp.dm5.NactTotal=0; mp.dm6.NactTotal=0; mp.dm7.NactTotal=0; mp.dm8.NactTotal=0; mp.dm9.NactTotal=0; #--Initialize for bookkeeping later.
+    mp.dm1.Nele=0; mp.dm2.Nele=0; mp.dm3.Nele=0; mp.dm4.Nele=0; mp.dm5.Nele=0; mp.dm6.Nele=0; mp.dm7.Nele=0; mp.dm8.Nele=0; mp.dm9.Nele=0; #--Initialize for Jacobian calculations later. 
+
+    ## HLC and EHLC FPM: Initialization and Generation
+    
+    print(mp.layout.lower())
+    print(mp.coro.upper())
+    if mp.layout.lower() == 'fourier':
+        if mp.coro.upper() == 'HLC':
+            if mp.dm9.inf0name == '3foldZern':
+                falco_setup_FPM_HLC_3foldZern(mp);
+            else:
+                falco_setup_FPM_HLC(mp);
+            falco.configs.falco_config_gen_FPM_HLC(mp);
+        elif mp.coro.upper() == 'FOHLC':
+            falco_setup_FPM_FOHLC(mp);
+            falco.configs.falco_config_gen_FPM_FOHLC(mp);
+            mp.compact.Nfpm = max([mp.dm8.compact.NdmPad,mp.dm9.compact.NdmPad]); #--Width of the FPM array in the compact model.
+            mp.full.Nfpm = max([mp.dm8.NdmPad,mp.dm9.NdmPad]); #--Width of the FPM array in the full model.
+        elif mp.coro.upper() == 'EHLC':
+            falco_setup_FPM_EHLC(mp);
+            falco.configs.falco_config_gen_FPM_EHLC(mp);
+        elif mp.coro.upper() == 'SPHLC':
+            falco.configs.falco_config_gen_FPM_SPHLC(mp);
+    
+            ##--Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
+            if mp.coro in ['EHLC','HLC','SPHLC']:
+                [mp.complexTransCompact,mp.complexTransFull] = falco_gen_complex_trans_table(mp);
+
+    ## Generate FPM
+    if mp.coro.upper() in ['LC', 'APLC']: #--Occulting spot FPM (can be HLC-style and partially transmissive)
+        falco.configs.falco_config_gen_FPM_LC(mp);
+    elif mp.coro.upper() in ['SPLC', 'FLC']:
+        falco.configs.falco_config_gen_FPM_SPLC(mp);
+    elif mp.coro.upper() == 'RODDIER':
+        falco.configs.falco_config_gen_FPM_Roddier(mp);
+
+    # SFF Stuff
+    if not hasattr(mp.F3.compact, 'Nxi'):
+        mp.F3.compact.Nxi = 24
+    if not hasattr(mp.F3.compact, 'Neta'):
+        mp.F3.compact.Neta = 24
+    if not hasattr(mp.F3.compact, 'mask'):
+        mp.F3.compact.mask = falco.config.EmptyObject() 
+    if not hasattr(mp.F3.compact.mask, 'amp'):
+        mp.F3.compact.mask.amp = np.zeros((24,24))
+
+    if not hasattr(mp.F3.full, 'Nxi'):
+        mp.F3.full.Nxi = 24
+    if not hasattr(mp.F3.full, 'Neta'):
+        mp.F3.full.Neta = 24
+    if not hasattr(mp.F3.full, 'mask'):
+        mp.F3.full.mask = falco.config.EmptyObject() 
+    if not hasattr(mp.F3.full.mask, 'amp'):
+        mp.F3.full.mask.amp = np.zeros((24,24))
+
+    ## FPM coordinates, [meters] and [dimensionless]
+    
+    if mp.coro.upper() in ['VORTEX','VC','AVC']: #--Nothing needed to run the vortex model
+        pass
+    elif mp.coro.upper() == 'SPHLC':
+        pass
+    else:
+        if mp.layout in ['wfirst_phaseb_simple','wfirst_phaseb_proper']:
+            pass
+        else:
+            #--FPM (at F3) Resolution [meters]
+            mp.F3.full.dxi = (mp.fl*mp.lambda0/mp.P2.D)/mp.F3.full.res;
+            mp.F3.full.deta = mp.F3.full.dxi;
+        mp.F3.compact.dxi = (mp.fl*mp.lambda0/mp.P2.D)/mp.F3.compact.res;
+        mp.F3.compact.deta = mp.F3.compact.dxi;
+    
+        #--Coordinates in FPM plane in the compact model [meters]
+        if mp.centering.lower() == 'interpixel' or mp.F3.compact.Nxi%2 == 1:
+            mp.F3.compact.xis  = np.arange(-(mp.F3.compact.Nxi-1)/2,(mp.F3.compact.Nxi-1)/2)*mp.F3.compact.dxi;
+            #mp.F3.compact.etas = np.arange(-(mp.F3.compact.Neta-1)/2,(mp.F3.compact.Neta-1)/2).'*mp.F3.compact.deta;
+        else:
+            mp.F3.compact.xis  = np.arange(-mp.F3.compact.Nxi/2, (mp.F3.compact.Nxi/2-1))*mp.F3.compact.dxi;
+            #mp.F3.compact.etas = (-mp.F3.compact.Neta/2:(mp.F3.compact.Neta/2-1)).'*mp.F3.compact.deta;
+
+        if mp.layout in ['wfirst_phaseb_simple','wfirst_phaseb_proper']:
+            pass
+        else:
+            #--Coordinates (dimensionless [DL]) for the FPMs in the full model
+            if mp.centering.lower() == 'interpixel' or mp.F3.full.Nxi%2==1:
+                mp.F3.full.xisDL  = np.arange(-(mp.F3.full.Nxi-1)/2,(mp.F3.full.Nxi-1)/2)/mp.F3.full.res;
+                mp.F3.full.etasDL = np.arange(-(mp.F3.full.Neta-1)/2, (mp.F3.full.Neta-1)/2)/mp.F3.full.res;
+            else:
+                mp.F3.full.xisDL  = np.arange(-mp.F3.full.Nxi/2,(mp.F3.full.Nxi/2-1))/mp.F3.full.res;
+                mp.F3.full.etasDL = np.arange(-mp.F3.full.Neta/2,(mp.F3.full.Neta/2-1))/mp.F3.full.res;
+
+        #--Coordinates (dimensionless [DL]) for the FPMs in the compact model
+        if mp.centering.lower() == 'interpixel' or mp.F3.compact.Nxi%2==1:
+            mp.F3.compact.xisDL  = np.arange(-(mp.F3.compact.Nxi-1)/2,(mp.F3.compact.Nxi-1)/2)/mp.F3.compact.res;
+            mp.F3.compact.etasDL = np.arange(-(mp.F3.compact.Neta-1)/2,(mp.F3.compact.Neta-1)/2)/mp.F3.compact.res;
+        else:
+            mp.F3.compact.xisDL  = np.arange(-mp.F3.compact.Nxi/2,(mp.F3.compact.Nxi/2-1))/mp.F3.compact.res;
+            mp.F3.compact.etasDL = np.arange(-mp.F3.compact.Neta/2,(mp.F3.compact.Neta/2-1))/mp.F3.compact.res;
+
+    ## Sampling/Resolution and Scoring/Correction Masks for Final Focal Plane (Fend.
+    
+    mp.Fend.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.res; # sampling at Fend.[meters]
+    mp.Fend.deta = mp.Fend.dxi; # sampling at Fend.[meters]    
+    
+    if mp.flagFiber:
+        mp.Fend.lenslet.D = 2*mp.Fend.res*mp.Fend.lensletWavRad*mp.Fend.dxi;
+        mp.Fend.x_lenslet_phys = mp.Fend.dxi*mp.Fend.res*mp.Fend.x_lenslet;
+        mp.Fend.y_lenslet_phys = mp.Fend.deta*mp.Fend.res*mp.Fend.y_lenslet;
+    
+        mp.F5.dxi = mp.lensletFL*mp.lambda0/mp.Fend.lenslet.D/mp.F5.res;
+        mp.F5.deta = mp.F5.dxi;
+    
+    ## Software Mask for Correction (corr) and Scoring (score)
+    
+    #--Set Inputs:  SFF NOTE:  The use of dictionary of maskCorr was done in ModelParameters.py so I went along with it
+    maskCorr = {}
+    maskCorr["pixresFP"] = mp.Fend.res;
+    maskCorr["rhoInner"] = mp.Fend.corr.Rin #--lambda0/D
+    maskCorr["rhoOuter"] = mp.Fend.corr.Rout  #--lambda0/D
+    maskCorr["angDeg"] = mp.Fend.corr.ang #--degrees
+    maskCorr["centering"] = mp.centering
+    maskCorr["FOV"] = mp.Fend.FOV
+    maskCorr["whichSide"] = mp.Fend.sides; #--which (sides) of the dark hole have open
+    if hasattr(mp.Fend,'shape'):
+        maskCorr.shape = mp.Fend.shape
+    
+    #--Compact Model: Generate Software Mask for Correction 
+    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);
+    mp.Fend.corr.settings = maskCorr; #--Store values for future reference
+    #--Size of the output image 
+    #--Need the sizes to be the same for the correction and scoring masks
+    mp.Fend.Nxi  = mp.Fend.corr.mask.shape[1] #size(mp.Fend.corr.mask,2);
+    mp.Fend.Neta = mp.Fend.corr.mask.shape[0] #size(mp.Fend.corr.mask,1);
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+    #--Mask defining the area covered by the lenslet.  Only the immediate area
+    #around the lenslet is propagated, saving computation time.  This lenslet
+    #can then be moved around to different positions in Fend.
+    if mp.flagFiber:
+        maskLenslet["pixresFP"] = mp.Fend.res;
+        maskLenslet["rhoInner"] = 0;
+        maskLenslet["rhoOuter"] = mp.Fend.lensletWavRad;
+        maskLenslet["angDeg"] = mp.Fend.corr.ang;
+        maskLenslet["centering"] = mp.centering;
+        maskLenslet["FOV"] = mp.Fend.FOV;
+        maskLenslet["whichSide"] = mp.Fend.sides;
+        mp.Fend.lenslet.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskLenslet);
+    
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+        #--Dummy mask to calculate the F5 coordinates correctly.
+        maskF5["pixresFP"] = mp.F5.res;
+        maskF5["rhoInner"] = 0;
+        maskF5["rhoOuter"] = 1.22;
+        maskF5["angDeg"] = 180;
+        maskF5["centering"] = mp.centering;
+        maskF5["FOV"] = mp.F5.FOV;
+        maskF5["whichSide"] = mp.Fend.sides;
+        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.masks.falco_gen_SW_mask(**maskF5);
+    
+        #--Size of the output image in F5
+        mp.F5.Nxi = mp.F5.mask.shape[1] #size(mp.F5.mask, 2);
+        mp.F5.Neta = mp.F5.mask.shape[0]
+    
+        ## Set up the fiber mode in F5
+    
+        V = 2*pi/mp.lambda0*mp.fiber.a*mp.fiber.NA;
+        W = 1.1428*V - 0.996;
+        U = math.sqrt(V**2 - W**2);
+    
+        maskFiberCore["pixresFP"] = mp.F5.res;
+        maskFiberCore["rhoInner"] = 0;
+        maskFiberCore["rhoOuter"] = mp.fiber.a;
+        maskFiberCore["angDeg"] = 180;
+        maskFiberCore["FOV"] = mp.F5.FOV;
+        maskFiberCore["whichSide"] = mp.Fend.sides;
+        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskFiberCore);
+    
+        maskFiberCladding["pixresFP"] = mp.F5.res;
+        maskFiberCladding["rhoInner"] = mp.fiber.a;
+        maskFiberCladding["rhoOuter"] = 10;
+        maskFiberCladding["angDeg"] = 180;
+        maskFiberCladding["FOV"] = mp.F5.FOV;
+        maskFiberCladding["whichSide"] = mp.Fend.sides;
+        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskFiberCladding);
+    
+        F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
+    
+        mp.F5.RHOS = math.sqrt((F5XIS - mp.F5.fiberPos[0])**2 + (F5ETAS - mp.F5.fiberPos[1])**2);
+        mp.F5.fiberCore.mode = mp.F5.fiberCore.mask*scipy.special.j0(U*mp.F5.RHOS/mp.fiber.a)/scipy.special.j0(0,U);
+        mp.F5.fiberCladding.mode = mp.F5.fiberCladding.mask*scipy.special.k0(W*mp.F5.RHOS/mp.fiber.a)/scipy.special.k0(W);
+        mp.F5.fiberCladding.mode[np.isnan(mp.F5.fiberCladding.mode)] = 0;
+        mp.F5.fiberMode = mp.F5.fiberCore.mode + mp.F5.fiberCladding.mode;
+        fiberModeNorm = np.sqrt(np.sum(np.sum(np.abs(mp.F5.fiberMode)**2)));
+        mp.F5.fiberMode = mp.F5.fiberMode/fiberModeNorm;
+
+#    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#    
+#    #--Evaluation Model for Computing Throughput (same as Compact Model but
+#    # with different Fend.resolution)
+#    mp.Fend.eval.dummy = 1; #--Initialize the structure if it doesn't exist.
+#    if not hasattr(mp.Fend.eval,'res'):  
+#        mp.Fend.eval.res = 10
+#    maskCorr.pixresFP = mp.Fend.eval.res; #--Assign the resolution
+#    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);  #--Generate the mask
+#    mp.Fend.eval.Nxi  = mp.Fend.eval.mask.shape[1]
+#    mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
+#    mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res; # higher sampling at Fend.for evaulation [meters]
+#    mp.Fend.eval.deta = mp.Fend.eval.dxi; # higher sampling at Fend.for evaulation [meters]   
+#    
+#    # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
+#    XIS,ETAS = np.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x, mp.Fend.eval.etasDL - mp.thput_eval_y);
+#    mp.Fend.eval.RHOS = np.sqrt(XIS**2 + ETAS**2);
+#    
+#    #--Storage array for throughput at each iteration
+#    mp.thput_vec = np.zeros(mp.Nitr+1,1);
+
 
     pass
 
