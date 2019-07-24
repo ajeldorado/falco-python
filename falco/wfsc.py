@@ -4,6 +4,7 @@ import os
 import pickle
 import math
 import scipy
+from astropy.io import fits
 
 #from falco import models
 
@@ -388,27 +389,398 @@ def falco_init_ws(config):
         fiberModeNorm = np.sqrt(np.sum(np.sum(np.abs(mp.F5.fiberMode)**2)));
         mp.F5.fiberMode = mp.F5.fiberMode/fiberModeNorm;
 
-#    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#    
-#    #--Evaluation Model for Computing Throughput (same as Compact Model but
-#    # with different Fend.resolution)
-#    mp.Fend.eval.dummy = 1; #--Initialize the structure if it doesn't exist.
-#    if not hasattr(mp.Fend.eval,'res'):  
-#        mp.Fend.eval.res = 10
-#    maskCorr.pixresFP = mp.Fend.eval.res; #--Assign the resolution
-#    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);  #--Generate the mask
-#    mp.Fend.eval.Nxi  = mp.Fend.eval.mask.shape[1]
-#    mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
-#    mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res; # higher sampling at Fend.for evaulation [meters]
-#    mp.Fend.eval.deta = mp.Fend.eval.dxi; # higher sampling at Fend.for evaulation [meters]   
-#    
-#    # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
-#    XIS,ETAS = np.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x, mp.Fend.eval.etasDL - mp.thput_eval_y);
-#    mp.Fend.eval.RHOS = np.sqrt(XIS**2 + ETAS**2);
-#    
-#    #--Storage array for throughput at each iteration
-#    mp.thput_vec = np.zeros(mp.Nitr+1,1);
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+    # SFF 
+    if not hasattr(mp.Fend, 'eval'):
+        mp.Fend.eval = falco.config.EmptyObject()
 
+    #--Evaluation Model for Computing Throughput (same as Compact Model but
+    # with different Fend.resolution)
+    mp.Fend.eval.dummy = 1; #--Initialize the structure if it doesn't exist.
+    if not hasattr(mp.Fend.eval,'res'):  
+        mp.Fend.eval.res = 10
+    maskCorr["pixresFP"] = mp.Fend.eval.res; #--Assign the resolution
+    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);  #--Generate the mask
+    mp.Fend.eval.Nxi  = mp.Fend.eval.mask.shape[1]
+    mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
+    mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res; # higher sampling at Fend.for evaulation [meters]
+    mp.Fend.eval.deta = mp.Fend.eval.dxi; # higher sampling at Fend.for evaulation [meters]   
+    
+    # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
+    XIS,ETAS = np.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x, mp.Fend.eval.etasDL - mp.thput_eval_y);
+    mp.Fend.eval.RHOS = np.sqrt(XIS**2 + ETAS**2);
+    
+    #--Storage array for throughput at each iteration
+    mp.thput_vec = np.zeros((mp.Nitr+1,1));
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+    #--Software Mask for Scoring Contrast 
+    #--Set Inputs
+    maskScore = {}
+    maskScore["rhoInner"] = mp.Fend.score.Rin; #--lambda0/D
+    maskScore["rhoOuter"] = mp.Fend.score.Rout ; #--lambda0/D
+    maskScore["angDeg"] = mp.Fend.score.ang; #--degrees
+    maskScore["centering"] = mp.centering;
+    maskScore["FOV"] = mp.Fend.FOV; #--Determines max dimension length
+    maskScore["whichSide"] = mp.Fend.sides; #--which (sides) of the dark hole have open
+    if hasattr(mp.Fend,'shape'):  
+        maskScore["shape"] = mp.Fend.shape
+    #--Compact Model: Generate Software Mask for Scoring Contrast 
+    #SFF NOTE: Nxi not listed in falco_gen_SW_mask.  Conflicts
+    #maskScore["Nxi"] = mp.Fend.Nxi; #--Set min dimension length to be same as for corr 
+    maskScore["pixresFP"] = mp.Fend.res;
+    mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskScore);
+    mp.Fend.score.settings = maskScore; #--Store values for future reference
+    
+    #--Number of pixels used in the dark hole
+    mp.Fend.corr.Npix = np.sum(np.sum(mp.Fend.corr.mask));
+    mp.Fend.score.Npix = np.sum(np.sum(mp.Fend.score.mask));
+    
+    #--Indices of dark hole pixels and logical masks
+    if mp.flagFiber:
+        #mp.Fend.corr.inds = find(np.sum(mp.Fend.lenslet.mask,3)~=0);
+        #mp.Fend.corr.maskBool = logical(mp.Fend.corr.mask);
+        mp.Fend.corr.inds = np.where(np.sum(mp.Fend.lenslet.mask,3)!=0);
+        mp.Fend.corr.maskBool = numpy.array(mp.Fend.corr.mask, dtype=bool)
+    else:
+        #mp.Fend.corr.inds = find(mp.Fend.corr.mask~=0);
+        #mp.Fend.corr.maskBool = logical(mp.Fend.corr.mask);
+        mp.Fend.corr.inds = np.where(mp.Fend.corr.mask!=0);
+        mp.Fend.corr.maskBool = np.array(mp.Fend.corr.mask, dtype=bool)
+    
+    #mp.Fend.score.inds = find(mp.Fend.score.mask~=0)
+    #mp.Fend.score.maskBool = logical(mp.Fend.score.mask);
+    mp.Fend.score.inds = np.where(mp.Fend.score.mask!=0)
+    mp.Fend.score.maskBool = np.array(mp.Fend.score.mask, dtype=bool)
+
+    ## Spatial weighting of pixel intensity. 
+    # NOTE: For real instruments and testbeds, only the compact model should be 
+    # used. The full model spatial weighting is included too if in simulation 
+    # the full model has a different detector resolution than the compact model.
+    
+    if mp.flagFiber:
+        mp.WspatialVec = np.ones((mp.Fend.Nlens,1));
+    else:
+        falco.configs.falco_config_spatial_weights(mp);
+        #SFF NOTE
+        if not hasattr(mp, 'Wspatial'):
+            mp.Wspatial = np.zeros((56,56))
+        #--Extract the vector of weights at the pixel locations of the dark hole pixels.
+        mp.WspatialVec = mp.Wspatial[mp.Fend.corr.inds];
+    
+    ## Deformable Mirror (DM) 1 and 2 Parameters
+    
+    if hasattr(mp,'dm1'):
+
+        #SFF NOTE
+        # Read the influence function header data from the FITS file
+        dx1 = None
+        pitch1 = None
+        mp.dm1.inf0 = None
+        mp.dm1.dx_inf0 = None
+        with fits.open(mp.dm1.inf_fn) as hdul:
+            PrimaryData = hdul[0].header
+            count = 0
+            dx1 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
+            pitch1 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
+    
+            mp.dm1.inf0 = hdul[0].data[0,:,:]
+        mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1);
+    
+        if mp.dm1.inf_sign[0] in ['-','n','m']:
+            mp.dm1.inf0 = -1*mp.dm1.inf0;
+        else:
+            #--Leave coefficient as +1
+            pass
+
+    if hasattr(mp,'dm2'):
+        # Read the influence function header data from the FITS file
+        dx2 = None
+        pitch2 = None
+        mp.dm2.inf0 = None
+        mp.dm2.dx_inf0 = None
+        with fits.open(mp.dm2.inf_fn) as hdul:
+            PrimaryData = hdul[0].header
+            count = 0
+            dx2 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
+            pitch2 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
+    
+            mp.dm2.inf0 = hdul[0].data[0,:,:]
+        mp.dm2.dx_inf0 = mp.dm2.dm_spacing*(dx2/pitch2);
+    
+        if mp.dm2.inf_sign[0] in ['-','n','m']:
+            mp.dm2.inf0 = -1*mp.dm2.inf0;
+        else:
+            #--Leave coefficient as +1
+            pass
+
+    #--Create influence function datacubes for each DM
+    #SFF NOTE
+    if not hasattr(mp.P2, 'full'):
+        mp.P2.full = falco.config.EmptyObject()
+    if not hasattr(mp.P2.full, 'dx'):
+        mp.P2.full.dx = 1.8519e-04
+    if not hasattr(mp.P2, 'compact'):
+        mp.P2.compact = falco.config.EmptyObject()
+    if not hasattr(mp.P2.compact, 'dx'):
+        mp.P2.compact.dx = 1.8519e-04
+
+    if np.any(mp.dm_ind==1):
+        mp.dm1.centering = mp.centering;
+        mp.dm1.compact = mp.dm1;
+        mp.dm1 = falco.configs.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx,'NOCUBE');
+        mp.dm1.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx);
+    else:
+        mp.dm1.compact = mp.dm1;
+        mp.dm1 = falco.configs.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx,'NOCUBE');
+        mp.dm1.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx,'NOCUBE');
+    
+    if np.any(mp.dm_ind==2):
+        mp.dm2.centering = mp.centering;
+        mp.dm2.compact = mp.dm2;
+        mp.dm2.dx = mp.P2.full.dx;
+        mp.dm2.compact.dx = mp.P2.compact.dx;
+    
+        mp.dm2 = falco.configs.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, 'NOCUBE');
+        mp.dm2.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx);
+    else:
+        mp.dm2.compact = mp.dm2;
+        mp.dm2.dx = mp.P2.full.dx;
+        mp.dm2.compact.dx = mp.P2.compact.dx;
+    
+        mp.dm2 = falco.configs.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, 'NOCUBE');
+        mp.dm2.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx,'NOCUBE');
+
+    #--Initial DM voltages
+    if not hasattr(mp.dm1,'V'):
+        mp.dm1.V = np.zeros((mp.dm1.Nact,mp.dm1.Nact))
+    if not hasattr(mp.dm2,'V'): 
+        mp.dm2.V = np.zeros((mp.dm2.Nact,mp.dm2.Nact))
+    
+    ## DM Aperture Masks (moved here because the commands mp.dm2.compact = mp.dm2; and mp.dm1.compact = mp.dm1; otherwise would overwrite the compact model masks)
+    
+    #SFF NOTE
+    if not hasattr(mp.dm2, 'full'):
+        mp.dm2.full = falco.config.EmptyObject()
+    if not hasattr(mp.dm2, 'compact'):
+        mp.dm2.compact = falco.config.EmptyObject()
+
+    if mp.flagDM1stop:
+        mp.dm1.full.mask = falco.masks.falco_gen_DM_stop(mp.P2.full.dx,mp.dm1.Dstop,mp.centering);
+        mp.dm1.compact.mask = falco.masks.falco_gen_DM_stop(mp.P2.compact.dx,mp.dm1.Dstop,mp.centering);
+    if mp.flagDM2stop:
+        mp.dm2.full.mask = falco.masks.falco_gen_DM_stop(mp.P2.full.dx,mp.dm2.Dstop,mp.centering);
+        mp.dm2.compact.mask = falco.masks.falco_gen_DM_stop(mp.P2.compact.dx,mp.dm2.Dstop,mp.centering);
+    
+    ## #--First delta DM settings are zero (for covariance calculation in Kalman filters or robust controllers)
+    mp.dm1.dV = np.zeros((mp.dm1.Nact,mp.dm1.Nact)); # delta voltage on DM1;
+    mp.dm2.dV = np.zeros((mp.dm2.Nact,mp.dm2.Nact)); # delta voltage on DM2;
+    mp.dm8.dV = np.zeros((mp.dm8.NactTotal,1)); # delta voltage on DM8;
+    mp.dm9.dV = np.zeros((mp.dm9.NactTotal,1)); # delta voltage on DM9;
+    
+    ## Array Sizes for Angular Spectrum Propagation with FFTs
+    
+    #--Compact Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
+    if np.any(mp.dm_ind==1) and np.any(mp.dm_ind==2):
+        NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.compact.NdmPad,mp.dm2.compact.NdmPad])));
+    elif np.any(mp.dm_ind==1):
+        NdmPad = 2**np.ceil(1 + np.log2(mp.dm1.compact.NdmPad));
+    elif np.any(mp.dm_ind==2):
+        NdmPad = 2**np.ceil(1 + np.log2(mp.dm2.compact.NdmPad));
+    else:
+        NdmPad = 2*mp.P1.compact.Nbeam;
+
+    while (NdmPad < np.min(mp.sbp_centers)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.sbp_centers)*np.abs(mp.d_P2_dm1)/mp.P2.compact.dx**2): 
+        #--Double the zero-padding until the angular spectrum sampling requirement is not violated
+        NdmPad = 2*NdmPad;
+
+    #SFF NOTE
+    if not hasattr(mp, 'compact'):
+        mp.compact = falco.config.EmptyObject()
+
+    mp.compact.NdmPad = NdmPad;
+    
+    #--Full Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
+    if np.any(mp.dm_ind==1) and np.any(mp.dm_ind==2):
+        NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.NdmPad,mp.dm2.NdmPad])));
+    elif np.any(mp.dm_ind==1):
+        NdmPad = 2**np.ceil(1 + np.log2(mp.dm1.NdmPad))
+    elif np.any(mp.dm_ind==2):
+        NdmPad = 2**np.ceil(1 + np.log2(mp.dm2.NdmPad))
+    else:
+        NdmPad = 2*mp.P1.full.Nbeam;
+    while (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): #--Double the zero-padding until the angular spectrum sampling requirement is not violated
+        NdmPad = 2*NdmPad;
+    mp.full.NdmPad = NdmPad;
+
+
+    # SFF NOTE
+    if not hasattr(mp.P1.full, 'Narr'):
+        mp.P1.full.Narr = 252
+
+    ## Initial Electric Fields for Star and Exoplanet
+    
+    if not hasattr(mp.P1.full,'E'):
+        mp.P1.full.E  = np.ones((mp.P1.full.Narr,mp.P1.full.Narr,mp.Nwpsbp,mp.Nsbp)); # Input E-field at entrance pupil
+    
+    mp.Eplanet = mp.P1.full.E; #--Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
+    
+    if not hasattr(mp.P1.compact,'E'):
+        mp.P1.compact.E = np.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp))
+    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E,2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
+    
+    ## Off-axis, incoherent point source (exoplanet)
+    
+    if not mp.flagFiber:
+        mp.c_planet = 1; # contrast of exoplanet
+        mp.x_planet = 6; # x position of exoplanet in lambda0/D
+        mp.y_planet = 0; # y position of exoplanet in lambda0/D
+    
+    #SFF NOTE
+    if not hasattr(mp.Fend, 'compact'):
+        mp.Fend.compact = falco.config.EmptyObject()
+
+    ## Field Stop at Fend.(as a software mask)
+    mp.Fend.compact.mask = np.ones((mp.Fend.Neta,mp.Fend.Nxi));
+    
+    ## Contrast to Normalized Intensity Map Calculation 
+    
+    ## Get the starlight normalization factor for the compact and full models (to convert images to normalized intensity)
+    falco.configs.falco_get_PSF_norm_factor(mp);
+
+    #--Check that the normalization of the coronagraphic PSF is correct
+    
+    #SFF NOTE
+    modvar = falco.config.EmptyObject()
+
+    modvar.ttIndex = 1;
+    modvar.sbpIndex = mp.si_ref;
+    modvar.wpsbpIndex = mp.wi_ref;
+    modvar.whichSource = 'star';
+    
+    #SFF NOTE:  Since we not plotting at the moment I will comment out
+    #E0c = model_compact(mp, modvar);
+    #I0c = np.abs(E0c)**2;
+    if mp.flagPlot:
+        #figure(501); imagesc(log10(I0c)); axis xy equal tight; colorbar;
+        #title('(Compact Model: Normalization Check Using Starting PSF)');
+        #drawnow;
+        pass
+    #E0f = model_full(mp, modvar);
+    #I0f = np.abs(E0f)**2;
+    if mp.flagPlot:
+        #figure(502); imagesc(log10(I0f)); axis xy equal tight; colorbar;
+        #title('(Full Model: Normalization Check Using Starting PSF)'); drawnow;
+        pass
+    
+    ## Intialize delta DM voltages. Needed for Kalman filters.
+    ##--Save the delta from the previous command
+    if np.any(mp.dm_ind==1):
+        mp.dm1.dV = 0
+    if np.any(mp.dm_ind==2):  
+        mp.dm2.dV = 0
+    if np.any(mp.dm_ind==3): 
+        mp.dm3.dV = 0
+    if np.any(mp.dm_ind==4): 
+        mp.dm4.dV = 0
+    if np.any(mp.dm_ind==5):  
+        mp.dm5.dV = 0
+    if np.any(mp.dm_ind==6):
+        mp.dm6.dV = 0
+    if np.any(mp.dm_ind==7): 
+        mp.dm7.dV = 0
+    if np.any(mp.dm_ind==8):  
+        mp.dm8.dV = 0
+    if np.any(mp.dm_ind==9):  
+        mp.dm9.dV = 0
+
+    ## Intialize tied actuator pairs if not already defined. 
+    # Dimensions of the pair list is [Npairs x 2]
+    ##--Save the delta from the previous command
+    if np.any(mp.dm_ind==1): 
+        if not hasattr(mp.dm1,'tied'): 
+            mp.dm1.tied = []
+    if np.any(mp.dm_ind==2): 
+        if not hasattr(mp.dm2,'tied'): 
+            mp.dm2.tied = []
+    if np.any(mp.dm_ind==3): 
+        if not hasattr(mp.dm3,'tied'): 
+            mp.dm3.tied = []
+    if np.any(mp.dm_ind==4): 
+        if not hasattr(mp.dm4,'tied'): 
+            mp.dm4.tied = []
+    if np.any(mp.dm_ind==5): 
+        if not hasattr(mp.dm5,'tied'): 
+            mp.dm5.tied = []
+    if np.any(mp.dm_ind==6): 
+        if not hasattr(mp.dm6,'tied'): 
+            mp.dm6.tied = []
+    if np.any(mp.dm_ind==7): 
+        if not hasattr(mp.dm7,'tied'): 
+            mp.dm7.tied = []
+    if np.any(mp.dm_ind==8): 
+        if not hasattr(mp.dm8,'tied'): 
+            mp.dm8.tied = []
+    if np.any(mp.dm_ind==9): 
+        if not hasattr(mp.dm9,'tied'): 
+            mp.dm9.tied = []
+
+    #SFF NOTE
+    out = falco.config.EmptyObject()
+    out.dm1 = falco.config.EmptyObject()
+    out.dm2 = falco.config.EmptyObject()
+    out.dm8 = falco.config.EmptyObject()
+    out.dm9 = falco.config.EmptyObject()
+
+    ## Storage Arrays for DM Metrics
+    #--EFC regularization history
+    out.log10regHist = np.zeros((mp.Nitr,1))
+    
+    #--Peak-to-Valley DM voltages
+    out.dm1.Vpv = np.zeros((mp.Nitr,1))
+    out.dm2.Vpv = np.zeros((mp.Nitr,1))
+    out.dm8.Vpv = np.zeros((mp.Nitr,1))
+    out.dm9.Vpv = np.zeros((mp.Nitr,1))
+    
+    #--Peak-to-Valley DM surfaces
+    out.dm1.Spv = np.zeros((mp.Nitr,1))
+    out.dm2.Spv = np.zeros((mp.Nitr,1))
+    out.dm8.Spv = np.zeros((mp.Nitr,1))
+    out.dm9.Spv = np.zeros((mp.Nitr,1))
+    
+    #--RMS DM surfaces
+    out.dm1.Srms = np.zeros((mp.Nitr,1))
+    out.dm2.Srms = np.zeros((mp.Nitr,1))
+    out.dm8.Srms = np.zeros((mp.Nitr,1))
+    out.dm9.Srms = np.zeros((mp.Nitr,1))
+    
+    #--Zernike sensitivities to 1nm RMS
+    if not hasattr(mp.eval,'Rsens'): 
+        mp.eval.Rsens = []
+    if not hasattr(mp.eval,'indsZnoll'):  
+        mp.eval.indsZnoll = [1,2]
+    Nannuli = mp.eval.Rsens.shape[0]
+    Nzern = len(mp.eval.indsZnoll)
+    out.Zsens = np.zeros((Nzern,Nannuli,mp.Nitr));
+
+    #--Store the DM commands at each iteration
+    if hasattr(mp,'dm1'): 
+        if hasattr(mp.dm1,'V'):  
+            out.dm1.Vall = np.zeros((mp.dm1.Nact,mp.dm1.Nact,mp.Nitr+1))
+    if hasattr(mp,'dm2'): 
+        if hasattr(mp.dm2,'V'):  
+            out.dm2.Vall = np.zeros((mp.dm2.Nact,mp.dm2.Nact,mp.Nitr+1))
+    if hasattr(mp,'dm8'): 
+        if hasattr(mp.dm8,'V'):  
+            out.dm8.Vall = np.zeros((mp.dm8.NactTotal,mp.Nitr+1))
+    if hasattr(mp,'dm9'): 
+        if hasattr(mp.dm9,'V'):  
+            out.dm9.Vall = np.zeros((mp.dm9.NactTotal,mp.Nitr+1))
+    
+    ## 
+    print('\nBeginning Trial %d of Series %d.\n'%(mp.TrialNum,mp.SeriesNum))
 
     pass
 
