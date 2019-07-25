@@ -782,6 +782,7 @@ def falco_init_ws(config):
     ## 
     print('\nBeginning Trial %d of Series %d.\n'%(mp.TrialNum,mp.SeriesNum))
 
+    return out
     pass
 
 def falco_wfsc_loop(mp):
@@ -835,9 +836,108 @@ def falco_wfsc_loop(mp):
     if not mp.flagSim:  
         bench = mp.bench #--Save the testbed structure "mp.bench" into "bench" so it isn't overwritten by falco_init_ws
 
-    falco_init_ws(fn_config)
-    #[mp,out] = falco_init_ws(fn_config);
-    #if(~mp.flagSim);  mp.bench = bench;  end
+    out = falco_init_ws(fn_config)
+    if not mp.flagSim:  
+        mp.bench = bench
+
+    ## Initializations of Arrays for Data Storage 
+    
+    #--Raw contrast (broadband)
+    
+    InormHist = np.zeros((mp.Nitr,1)); # Measured, mean raw contrast in scoring regino of dark hole.
+    
+    ## Plot the pupil masks
+    
+    # if(mp.flagPlot); figure(101); imagesc(mp.P1.full.mask);axis image; colorbar; title('pupil');drawnow; end
+    # if(mp.flagPlot && (length(mp.P4.full.mask)==length(mp.P1.full.mask))); figure(102); imagesc(mp.P4.full.mask);axis image; colorbar; title('Lyot stop');drawnow; end
+    # if(mp.flagPlot && isfield(mp,'P3.full.mask')); figure(103); imagesc(padOrCropEven(mp.P1.full.mask,mp.P3.full.Narr).*mp.P3.full.mask);axis image; colorbar; drawnow; end
+    
+    ## Take initial broadband image 
+    
+    Im = falco.imaging.falco_get_summed_image(mp);
+    
+    ##
+    ###########################################################################
+    #Begin the Correction Iterations
+    ###########################################################################
+    for Itr in range(mp.Nitr):
+    
+        #--Start of new estimation+control iteration
+        #print(['Iteration: ' num2str(Itr) '/' num2str(mp.Nitr) '\n' ]);
+        print('Iteration: %d / %d\n'%(Itr, mp.Nitr));
+    
+        #--Re-compute the starlight normalization factor for the compact and full models (to convert images to normalized intensity). No tip/tilt necessary.
+        falco.configs.falco_get_PSF_norm_factor(mp);
+       
+        ## Updated DM data
+        #--Change the selected DMs if using the scheduled EFC controller
+        if mp.controller.lower() in ['plannedefc']:
+            mp.dm_ind = mp.dm_ind_sched[Itr];
+
+        #--Report which DMs are used in this iteration
+        print('DMs to be used in this iteration = [')
+        for jj in range(len(mp.dm_ind)):
+            print(' %d'%(mp.dm_ind[jj]))
+        print(' ]\n');
+    
+        #--Fill in History of DM commands to Store
+        if hasattr(mp,'dm1'): 
+            if hasattr(mp.dm1,'V'):  
+                out.dm1.Vall[:,:,Itr] = mp.dm1.V  
+        if hasattr(mp,'dm2'): 
+            if hasattr(mp.dm2,'V'):  
+                out.dm2.Vall[:,:,Itr] = mp.dm2.V
+        if hasattr(mp,'dm5'): 
+            if hasattr(mp.dm5,'V'):  
+                out.dm5.Vall[:,:,Itr] = mp.dm5.V
+        if hasattr(mp,'dm8'): 
+            if hasattr(mp.dm8,'V'):  
+                out.dm8.Vallr[:,Itrr] = mp.dm8.V[:]
+        if hasattr(mp,'dm9'): 
+            if hasattr(mp.dm9,'V'):  
+                out.dm9.Vall[:,Itr] = mp.dm9.V[:]
+    
+        # SFF NOTE
+        if not hasattr(mp.dm1, 'compact'):
+            mp.dm1.compact = falco.config.EmptyObject()
+        if not hasattr(mp.dm1.compact, 'dx'):
+            mp.dm1.compact.dx = 1.8519e-04
+        if not hasattr(mp.dm1.compact, 'Ndm'):
+            mp.dm1.compact.Ndm = 304
+        if not hasattr(mp.dm2, 'compact'):
+            mp.dm2.compact = falco.config.EmptyObject()
+        if not hasattr(mp.dm2.compact, 'dx'):
+            mp.dm2.compact.dx = 1.8519e-04
+        if not hasattr(mp.dm2.compact, 'Ndm'):
+            mp.dm2.compact.Ndm = 304
+
+        #--Compute the DM surfaces
+        if np.any(mp.dm_ind==1): 
+            DM1surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+        else: 
+            DM1surf = np.zeros(mp.dm1.compact.Ndm)
+
+        if np.any(mp.dm_ind==2): 
+            DM2surf =  falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
+        else: 
+            DM2surf = np.zeros(mp.dm2.compact.Ndm)
+
+        if np.any(mp.dm_ind==5):
+            DM5surf =  falco.dms.falco_gen_dm_surf(mp.dm5, mp.dm5.compact.dx, mp.dm5.compact.Ndm);
+            #figure(325); imagesc(DM5surf); axis xy equal tight; colorbar; drawnow;
+            #figure(326); imagesc(mp.dm5.V); axis xy equal tight; colorbar; drawnow;
+    
+        if mp.coro.upper() in ['EHLC']:
+                mp.DM8surf = falco.dms.falco_gen_EHLC_FPM_surf_from_cube(mp.dm8,'compact'); #--Metal layer profile [m]
+                mp.DM9surf = falco.dms.falco_gen_EHLC_FPM_surf_from_cube(mp.dm9,'compact'); #--Dielectric layer profile [m]
+        elif mp.coro.upper() in ['HLC','APHLC','SPHLC']:
+            if mp.layout.lower() in ['fourier']:
+                mp.DM8surf = falco.dms.falco_gen_HLC_FPM_surf_from_cube(mp.dm8,'compact'); #--Metal layer profile [m]
+                mp.DM9surf = falco.dms.falco_gen_HLC_FPM_surf_from_cube(mp.dm9,'compact'); #--Dielectric layer profile [m]
+            elif mp.layout.lower() in ['FOHLC']:
+                mp.DM8amp = falco.dms.falco_gen_HLC_FPM_amplitude_from_cube(mp.dm8,'compact'); #--FPM amplitude transmission [amplitude]
+                mp.DM9surf = falco.dms.falco_gen_HLC_FPM_surf_from_cube(mp.dm9,'compact'); #--FPM phase shift in transmission [m]    
+
 
     
 
