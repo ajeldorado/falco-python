@@ -530,12 +530,12 @@ def falco_init_ws(config):
     if np.any(mp.dm_ind==1):
         mp.dm1.centering = mp.centering;
         mp.dm1.compact = mp.dm1;
-        mp.dm1 = falco.configs.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx,'NOCUBE');
-        mp.dm1.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx);
+        mp.dm1 = falco.dms.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx,'NOCUBE');
+        mp.dm1.compact = falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx);
     else:
         mp.dm1.compact = mp.dm1;
-        mp.dm1 = falco.configs.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx,'NOCUBE');
-        mp.dm1.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx,'NOCUBE');
+        mp.dm1 = falco.dms.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx,'NOCUBE');
+        mp.dm1.compact = falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx,'NOCUBE');
     
     if np.any(mp.dm_ind==2):
         mp.dm2.centering = mp.centering;
@@ -543,15 +543,15 @@ def falco_init_ws(config):
         mp.dm2.dx = mp.P2.full.dx;
         mp.dm2.compact.dx = mp.P2.compact.dx;
     
-        mp.dm2 = falco.configs.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, 'NOCUBE');
-        mp.dm2.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx);
+        mp.dm2 = falco.dms.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, 'NOCUBE');
+        mp.dm2.compact = falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx);
     else:
         mp.dm2.compact = mp.dm2;
         mp.dm2.dx = mp.P2.full.dx;
         mp.dm2.compact.dx = mp.P2.compact.dx;
     
-        mp.dm2 = falco.configs.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, 'NOCUBE');
-        mp.dm2.compact = falco.configs.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx,'NOCUBE');
+        mp.dm2 = falco.dms.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, 'NOCUBE');
+        mp.dm2.compact = falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx,'NOCUBE');
 
     #--Initial DM voltages
     if not hasattr(mp.dm1,'V'):
