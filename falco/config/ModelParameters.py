@@ -121,6 +121,23 @@ class ModelParameters:
             self.corr = _spec_arg("corr", kwargs, self._base_corr())
             self.sides = _spec_arg("sides", kwargs, "both")
 
+
+    def __repr__(self):
+        for k, v in self.__dict__:
+            print('%s: '%(k), v)
+        pass
+
+    def __str__(self):
+        retstr = ''
+        retstr += '--------------------------\n'
+        retstr += ('Number of keys: %d\n'%(len(self.__dict__.keys())))
+        #retsrt += '\n'
+        for k in self.__dict__:
+            retstr += ('%s: \ttype:%s value:\n'%(k, str(type(self.__dict__[k]))))
+        retstr += '--------------------------\n'
+        #retsrt += '\n'
+        return retstr
+
     def __init__(self, **kwargs):
         
 

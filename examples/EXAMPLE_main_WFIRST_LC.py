@@ -8,7 +8,7 @@ import EXAMPLE_defaults_WFIRST_LC as DEFAULTS
 
 mp = DEFAULTS.mp
 
-print(mp.__dict__)
+print(mp)
 
 mp.path = falco.config.EmptyObject()
 

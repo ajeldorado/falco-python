@@ -846,7 +846,7 @@ def falco_wfsc_loop(mp):
     
     #--Raw contrast (broadband)
     
-    InormHist = np.zeros((mp.Nitr,1)); # Measured, mean raw contrast in scoring regino of dark hole.
+    InormHist = np.zeros((mp.Nitr + 1,1)); # Measured, mean raw contrast in scoring regino of dark hole.
     
     ## Plot the pupil masks
     
@@ -924,171 +924,279 @@ def falco_wfsc_loop(mp):
         else: 
             DM2surf = np.zeros(mp.dm2.compact.Ndm)
 
-    ## Updated plot and reporting
+        ## Updated plot and reporting
+        #--Calculate the core throughput (at higher resolution to be more accurate)
+        thput = falco.utils.falco_compute_thput(mp);
+        if mp.flagFiber:
+            mp.thput_vec[Itr] = np.max(thput)
+        else:
+            mp.thput_vec[Itr] = thput; #--record keeping
+        
+        #--Compute the current contrast level
+        InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
+    
+        ## Updated selection of Zernike modes targeted by the controller
+        #--Decide with Zernike modes to include in the Jacobian
+        if Itr==0:
+            mp.jac.zerns0 = mp.jac.zerns;
+    
+        print('Zernike modes used in this Jacobian:\t'); 
+        print('%d '%(mp.jac.zerns))
+        print('\n')
+    
+        #--Re-compute the Jacobian weights
+        falco.configs.falco_config_jac_weights(mp);
+    
+        ## Actuator Culling: Initialization of Flag and Which Actuators
+    
+        #--If new actuators are added, perform a new cull of actuators.
+        cvar = falco.config.EmptyObject()
+        if Itr==0:
+            cvar.flagCullAct = True;
+        else:
+            if hasattr(mp,'dm_ind_sched'):
+                cvar.flagCullAct = np.not_equal(mp.dm_ind_sched[Itr], mp.dm_ind_sched[Itr-1]);
+            else:
+                cvar.flagCullAct = False;
+    
+        mp.flagCullActHist = np.zeros((Itr+1,1),dtype=np.bool)
+        mp.flagCullActHist[Itr] = cvar.flagCullAct;
+    
+        #--Before performing new cull, include all actuators again
+        if cvar.flagCullAct:
+            #--Re-include all actuators in the basis set.
+            if np.any(mp.dm_ind==0): 
+                mp.dm1.act_ele = list(range(mp.dm1.NactTotal)); 
+            if np.any(mp.dm_ind==1): 
+                mp.dm2.act_ele = list(range(mp.dm2.NactTotal)); 
+            if np.any(mp.dm_ind==4):
+                mp.dm5.act_ele = list(range(mp.dm5.NactTotal))
+            if np.any(mp.dm_ind==7): 
+                mp.dm8.act_ele = list(range(mp.dm8.NactTotal))
+            if np.any(mp.dm_ind==8): 
+                mp.dm9.act_ele = list(range(mp.dm9.NactTotal))
+            #--Update the number of elements used per DM
+            if np.any(mp.dm_ind==0): 
+                mp.dm1.Nele = len(mp.dm1.act_ele)
+            else: 
+                mp.dm1.Nele = 0; 
+            if np.any(mp.dm_ind==1): 
+                mp.dm2.Nele = len(mp.dm2.act_ele)
+            else: 
+                mp.dm2.Nele = 0; 
+            if np.any(mp.dm_ind==4): 
+                mp.dm5.Nele = len(mp.dm5.act_ele)
+            else: 
+                mp.dm5.Nele = 0; 
+            if np.any(mp.dm_ind==7): 
+                mp.dm8.Nele = len(mp.dm8.act_ele)
+            else: 
+                mp.dm8.Nele = 0; 
+            if np.any(mp.dm_ind==8): 
+                mp.dm9.Nele = len(mp.dm9.act_ele)
+            else: 
+                mp.dm9.Nele = 0; 
+    
+        ## Compute the control Jacobians for each DM
+    
+        #--Relinearize about the DMs only at the iteration numbers in mp.relinItrVec.
+        if np.any(mp.relinItrVec==Itr):
+            cvar.flagRelin=True;
+        else:
+            cvar.flagRelin=False;
+    
+        if  Itr==0 or cvar.flagRelin:
+            jacStruct =  falco.models.model_Jacobian(mp); #--Get structure containing Jacobians
+    
+        ## Cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
+        jacStruct = falco_ctrl_cull(mp,cvar,jacStruct);
+    
+        ## Load the improved Jacobian if using the E-M technique
+        if mp.flagUseLearnedJac:
+            jacStructLearned = load('jacStructLearned.mat');
+            if np.any(mp.dm_ind==1):  
+                jacStruct.G1 = jacStructLearned.G1
+            if np.any(mp.dm_ind==1):  
+                jacStruct.G2 = jacStructLearned.G2
+    
+        ## Wavefront Estimation
+        if mp.estimator.lower() in ['perfect']:
+            EfieldVec  = falco_est_perfect_Efield_with_Zernikes(mp);
+        elif mp.estimator.lower in ['pwp-bp','pwp-kf']:
+            if mp.est.flagUseJac: #--Send in the Jacobian if true
+                ev = falco_est_pairwise_probing(mp,jacStruct);
+            else: #--Otherwise don't pass the Jacobian
+                ev = falco_est_pairwise_probing(mp);
+    
+            EfieldVec = ev.Eest;
+            IincoVec = ev.IincoEst;
+    
+        ## Add spatially-dependent weighting to the control Jacobians
+    
+        if np.any(mp.dm_ind==0): 
+            #jacStruct.G1 = jacStruct.G1*repmat(mp.WspatialVec,[1,mp.dm1.Nele,mp.jac.Nmode])
+            jacStruct.G1 = jacStruct.G1*np.tile(mp.WspatialVec,[1,mp.dm1.Nele,mp.jac.Nmode])
+        if np.any(mp.dm_ind==1): 
+            #jacStruct.G2 = jacStruct.G2*repmat(mp.WspatialVec,[1,mp.dm2.Nele,mp.jac.Nmode])
+            jacStruct.G2 = jacStruct.G2*np.tile(mp.WspatialVec,[1,mp.dm2.Nele,mp.jac.Nmode])
+        if np.any(mp.dm_ind==4): 
+            #jacStruct.G5 = jacStruct.G5*repmat(mp.WspatialVec,[1,mp.dm5.Nele,mp.jac.Nmode])
+            jacStruct.G5 = jacStruct.G5*tile(mp.WspatialVec,[1,mp.dm5.Nele,mp.jac.Nmode])
+        if np.any(mp.dm_ind==7): 
+            #jacStruct.G8 = jacStruct.G8*repmat(mp.WspatialVec,[1,mp.dm8.Nele,mp.jac.Nmode])
+            jacStruct.G8 = jacStruct.G8*np.tile(mp.WspatialVec,[1,mp.dm8.Nele,mp.jac.Nmode])
+        if np.any(mp.dm_ind==8): 
+            #jacStruct.G9 = jacStruct.G9*repmat(mp.WspatialVec,[1,mp.dm9.Nele,mp.jac.Nmode])
+            jacStruct.G9 = jacStruct.G9*np.tile(mp.WspatialVec,[1,mp.dm9.Nele,mp.jac.Nmode])
+    
+        #fprintf('Total Jacobian Calcuation Time: #.2f\n',toc);
+    
+        #--Compute the number of total actuators for all DMs used. 
+        cvar.NeleAll = mp.dm1.Nele + mp.dm2.Nele + mp.dm3.Nele + mp.dm4.Nele + mp.dm5.Nele + mp.dm6.Nele + mp.dm7.Nele + mp.dm8.Nele + mp.dm9.Nele; #--Number of total actuators used 
+    
+        ## Wavefront Control
+    
+        cvar.Itr = Itr;
+        cvar.EfieldVec = EfieldVec;
+        cvar.InormHist = InormHist[Itr]
+        falco_ctrl(mp,cvar,jacStruct);
+    
+        #SFF NOTE
+        if not hasattr(cvar, "log10regUsed"):
+            cvar.log10regUsed = 10
+        #--Save out regularization used.
+        out.log10regHist[Itr] = cvar.log10regUsed;
+
+        #-----------------------------------------------------------------------------------------
+        ## DM Stats
+        #--Calculate and report updated P-V DM voltages.
+        if np.any(mp.dm_ind==1):
+            out.dm1.Vpv[Itr] = (np.max(np.max(mp.dm1.V))-np.min(np.min(mp.dm1.V)));
+            Nrail1 = len(np.where( (mp.dm1.V <= -mp.dm1.maxAbsV) | (mp.dm1.V >= mp.dm1.maxAbsV) )); 
+            print(' DM1 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm1.Vpv(Itr), Nrail1, mp.dm1.NactTotal, 100*Nrail1/mp.dm1.NactTotal))
+            if mp.dm1.tied.shape[0]>0:  
+                print(' DM1 has %d pairs of tied actuators.\n'%(mp.dm1.tied.shape[0]))
+        if np.any(mp.dm_ind==2):
+            out.dm2.Vpv[Itr] = np.max(np.max(mp.dm2.V))-np.min(np.min(mp.dm2.V))
+            Nrail2 = len(np.where( (mp.dm2.V <= -mp.dm2.maxAbsV) | (mp.dm2.V >= mp.dm2.maxAbsV) )); 
+            print(' DM2 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%( out.dm2.Vpv(Itr), Nrail2, mp.dm2.NactTotal, 100*Nrail2/mp.dm2.NactTotal))
+            if mp.dm2.tied.shape[0]>0:  
+                print(' DM2 has %d pairs of tied actuators.\n'%(mp.dm2.tied.shape[0]))
+        # if(any(mp.dm_ind==8))
+        #     out.dm8.Vpv(Itr) = (max(max(mp.dm8.V))-min(min(mp.dm8.V)));
+        #     Nrail8 = length(find( (mp.dm8.V <= mp.dm8.Vmin) | (mp.dm8.V >= mp.dm8.Vmax) ));
+        #     fprintf(' DM8 P-V in volts: #.3f\t\t#d/#d (#.2f##) railed actuators \n', out.dm8.Vpv(Itr), Nrail8,mp.dm8.NactTotal,100*Nrail8/mp.dm8.NactTotal); 
+        # end
+        if np.any(mp.dm_ind==9):
+            out.dm9.Vpv[Itr] = np.max(np.max(mp.dm9.V))-np.min(np.min(mp.dm9.V))
+            Nrail9 = len(np.where( (mp.dm9.V <= mp.dm9.Vmin) | (mp.dm9.V >= mp.dm9.Vmax) )); 
+            print(' DM9 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm9.Vpv(Itr), Nrail9,mp.dm9.NactTotal,100*Nrail9/mp.dm9.NactTotal))
+
+        # Take the next image to check the contrast level (in simulation only)
+        with falco.utils.TicToc('Getting updated summed image'):
+            #tic; fprintf('Getting updated summed image... ');
+            Im = falco.imaging.falco_get_summed_image(mp);
+            #print('done. Time = %.1f s\n',toc);
+        
+        #--REPORTING NORMALIZED INTENSITY
+        print('Itr: ', Itr)
+        InormHist[Itr+1] = np.mean(Im[mp.Fend.corr.maskBool]);
+        print('Prev and New Measured Contrast (LR):\t\t\t %.2e\t->\t%.2e\t (%.2f x smaller)  \n'%(InormHist[Itr], InormHist[Itr+1], InormHist[Itr]/InormHist[Itr+1]))
+            
+        print('\n\n');
+        print(mp)
+
+        # --END OF ESTIMATION + CONTROL LOOP
+    
+    Itr = Itr + 1;
+    
+    #--Data to store
+    if np.any(mp.dm_ind==1): 
+        out.dm1.Vall[:,:,Itr] = mp.dm1.V
+    if np.any(mp.dm_ind==2): 
+        out.dm2.Vall[:,:,Itr] = mp.dm2.V
+    # if(any(mp.dm_ind==5)); out.dm5.Vall(:,:,Itr) = mp.dm5.V; end
+    if np.any(mp.dm_ind==8): 
+        out.dm8.Vall[:,Itr] = mp.dm8.V
+    if np.any(mp.dm_ind==9): 
+        out.dm9.Vall[:,Itr] = mp.dm9.V
+    
     #--Calculate the core throughput (at higher resolution to be more accurate)
     thput = falco.utils.falco_compute_thput(mp);
     if mp.flagFiber:
-        mp.thput_vec[Itr] = np.max(thput)
+        mp.thput_vec[Itr] = np.max(thput);
     else:
         mp.thput_vec[Itr] = thput; #--record keeping
+
+    ## Optional output variable: mp
+    #SFF NOTE:  I don't think we need to set varargout
+    #varargout{1} = mp;
     
-    #--Compute the current contrast level
-    InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
+    ## Save the final DM commands separately for faster reference
+    if hasattr(mp,'dm1'): 
+        if hasattr(mp.dm1,'V'): 
+            out.DM1V = mp.dm1.V
+    if hasattr(mp,'dm2'): 
+        if hasattr(mp.dm2,'V'): 
+            out.DM2V = mp.dm2.V
+    if mp.coro.upper() in ['HLC','EHLC']:
+        if hasattr(mp.dm8,'V'): 
+            out.DM8V = mp.dm8.V
+        if hasattr(mp.dm9,'V'): 
+            out.DM9V = mp.dm9.V
+    
+    ## Save out an abridged workspace
+    
+    #--Variables to save out:
+    # contrast vs iter
+    # regularization history
+    #  DM1surf,DM1V, DM2surf,DM2V, DM8surf,DM9surf, fpm sampling, base pmgi thickness, base nickel thickness, dm_tilts, aoi, ...
+    # to reproduce your basic design results of NI, throughput, etc..
+    
+    out.thput = mp.thput_vec;
+    out.Nitr = mp.Nitr;
+    out.InormHist = InormHist;
+    
+    fnOut = mp.path.config + mp.runLabel + '_snippet.pkl'
+    
+    print('\nSaving abridged workspace to file:\n\t%s\n'%(fnOut))
+    #save(fnOut,'out');
+    with open(fnOut, 'wb') as f:
+        pickle.dump(out,f)
+    print('...done.\n\n')
 
-    ## Updated selection of Zernike modes targeted by the controller
-    #--Decide with Zernike modes to include in the Jacobian
-    if Itr==0:
-        mp.jac.zerns0 = mp.jac.zerns;
-
-    print('Zernike modes used in this Jacobian:\t'); 
-    print('%d '%(mp.jac.zerns))
-    print('\n')
-
-    #--Re-compute the Jacobian weights
-    falco.configs.falco_config_jac_weights(mp);
-
-    ## Actuator Culling: Initialization of Flag and Which Actuators
-
-    #--If new actuators are added, perform a new cull of actuators.
-    cvar = falco.config.EmptyObject()
-    if Itr==0:
-        cvar.flagCullAct = true;
+    ## Save out the data from the workspace
+    if mp.flagSaveWS:
+        #clear cvar G* h* jacStruct; # Save a ton of space when storing the workspace
+        del cvar; del G; del h; del jacStruct
+    
+        # Don't bother saving the large 2-D, floating point maps in the workspace (they take up too much space)
+        mp.P1.full.mask=1; mp.P1.compact.mask=1;
+        mp.P3.full.mask=1; mp.P3.compact.mask=1;
+        mp.P4.full.mask=1; mp.P4.compact.mask=1;
+        mp.F3.full.mask=1; mp.F3.compact.mask=1;
+    
+        mp.P1.full.E = 1; mp.P1.compact.E=1; mp.Eplanet=1;
+        mp.dm1.full.mask = 1; mp.dm1.compact.mask = 1; mp.dm2.full.mask = 1; mp.dm2.compact.mask = 1;
+        mp.complexTransFull = 1; mp.complexTransCompact = 1;
+    
+        mp.dm1.compact.inf_datacube = 0;
+        mp.dm2.compact.inf_datacube = 0;
+        mp.dm8.compact.inf_datacube = 0;
+        mp.dm9.compact.inf_datacube = 0;
+        mp.dm8.inf_datacube = 0;
+        mp.dm9.inf_datacube = 0;
+    
+        fnAll = mp.path.ws + mp.runLabel + '_all.mat'
+        print('Saving entire workspace to file ' + fnAll + '...')
+        #save(fnAll);
+        print('done.\n\n')
     else:
-        if hasattr(mp,'dm_ind_sched'):
-            cvar.flagCullAct = np.not_equal(mp.dm_ind_sched[Itr], mp.dm_ind_sched[Itr-1]);
-        else:
-            cvar.flagCullAct = False;
+        print('Entire workspace NOT saved because mp.flagSaveWS==false')
+    
+    #--END OF main FUNCTION
 
-    mp.flagCullActHist = np.zeros((Itr+1,1),dtype=np.bool)
-    mp.flagCullActHist[Itr] = cvar.flagCullAct;
-
-    #--Before performing new cull, include all actuators again
-    if cvar.flagCullAct:
-        #--Re-include all actuators in the basis set.
-        if np.any(mp.dm_ind==0): 
-            mp.dm1.act_ele = list(range(mp.dm1.NactTotal)); 
-        if np.any(mp.dm_ind==1): 
-            mp.dm2.act_ele = list(range(mp.dm2.NactTotal)); 
-        if np.any(mp.dm_ind==4):
-            mp.dm5.act_ele = list(range(mp.dm5.NactTotal))
-        if np.any(mp.dm_ind==7): 
-            mp.dm8.act_ele = list(range(mp.dm8.NactTotal))
-        if np.any(mp.dm_ind==8): 
-            mp.dm9.act_ele = list(range(mp.dm9.NactTotal))
-        #--Update the number of elements used per DM
-        if np.any(mp.dm_ind==0): 
-            mp.dm1.Nele = len(mp.dm1.act_ele)
-        else: 
-            mp.dm1.Nele = 0; 
-        if np.any(mp.dm_ind==1): 
-            mp.dm2.Nele = len(mp.dm2.act_ele)
-        else: 
-            mp.dm2.Nele = 0; 
-        if np.any(mp.dm_ind==4): 
-            mp.dm5.Nele = len(mp.dm5.act_ele)
-        else: 
-            mp.dm5.Nele = 0; 
-        if np.any(mp.dm_ind==7): 
-            mp.dm8.Nele = len(mp.dm8.act_ele)
-        else: 
-            mp.dm8.Nele = 0; 
-        if np.any(mp.dm_ind==8): 
-            mp.dm9.Nele = len(mp.dm9.act_ele)
-        else: 
-            mp.dm9.Nele = 0; 
-
-    ## Compute the control Jacobians for each DM
-
-    #--Relinearize about the DMs only at the iteration numbers in mp.relinItrVec.
-    if np.any(mp.relinItrVec==Itr):
-        cvar.flagRelin=True;
-    else:
-        cvar.flagRelin=False;
-
-    if  Itr==0 or cvar.flagRelin:
-        jacStruct =  falco.models.model_Jacobian(mp); #--Get structure containing Jacobians
-
-    ## Cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
-    jacStruct = falco_ctrl_cull(mp,cvar,jacStruct);
-
-    ## Load the improved Jacobian if using the E-M technique
-    if mp.flagUseLearnedJac:
-        jacStructLearned = load('jacStructLearned.mat');
-        if np.any(mp.dm_ind==1):  
-            jacStruct.G1 = jacStructLearned.G1
-        if np.any(mp.dm_ind==1):  
-            jacStruct.G2 = jacStructLearned.G2
-
-    ## Wavefront Estimation
-    if mp.estimator.lower() in ['perfect']:
-        EfieldVec  = falco_est_perfect_Efield_with_Zernikes(mp);
-    elif mp.estimator.lower in ['pwp-bp','pwp-kf']:
-        if mp.est.flagUseJac: #--Send in the Jacobian if true
-            ev = falco_est_pairwise_probing(mp,jacStruct);
-        else: #--Otherwise don't pass the Jacobian
-            ev = falco_est_pairwise_probing(mp);
-
-        EfieldVec = ev.Eest;
-        IincoVec = ev.IincoEst;
-
-    ## Compute and Plot the Singular Mode Spectrum of the Control Jacobian
-
-#    if mp.flagSVD:
-#
-#        if cvar.flagRelin:
-#
-#            ii=1;
-#            Gcomplex = [jacStruct.G1(:,:,ii), jacStruct.G2(:,:,ii), jacStruct.G3(:,:,ii), jacStruct.G4(:,:,ii), jacStruct.G5(:,:,ii), jacStruct.G6(:,:,ii), jacStruct.G7(:,:,ii), jacStruct.G8(:,:,ii), jacStruct.G9(:,:,ii)];
-#            Gall = zeros(mp.jac.Nmode*size(Gcomplex,1),size(Gcomplex,2));
-#            Eall = zeros(mp.jac.Nmode*size(EfieldVec,1),1);
-#
-#            for ii=1:mp.jac.Nmode
-#                N = size(Gcomplex,1);
-#                inds = (ii-1)*N+1:ii*N;
-#                Gcomplex = [jacStruct.G1(:,:,ii), jacStruct.G2(:,:,ii), jacStruct.G3(:,:,ii), jacStruct.G4(:,:,ii), jacStruct.G5(:,:,ii), jacStruct.G6(:,:,ii), jacStruct.G7(:,:,ii), jacStruct.G8(:,:,ii), jacStruct.G9(:,:,ii)];
-#                Gall(inds,:) = Gcomplex;
-#                Eall(inds) = EfieldVec(:,ii);
-#            end
-#
-#            Eri = [real(Eall); imag(Eall)];
-#            alpha2 = max(diag(real(Gall'*Gall)));
-#            Gri = [real(Gall); imag(Gall)];
-#            [U,S,~] = svd(Gri,'econ');
-#            s = diag(S);
-#        else
-#
-#            for ii=1:mp.jac.Nmode
-#                N = size(Gcomplex,1);
-#                inds = (ii-1)*N+1:ii*N;
-#                Eall(inds) = EfieldVec(:,ii);
-#            end
-#            Eri = [real(Eall); imag(Eall)];
-#
-#        end
-#
-#        EriPrime = U'*Eri;
-#        IriPrime = abs(EriPrime).^2;
-#
-#        #--Save out for later analysis
-#        out.EforSpectra{Itr} = EriPrime;
-#        out.smspectra{Itr} = IriPrime;
-#        out.sm{Itr} = s;
-#        out.alpha2{Itr} = alpha2;
-#
-#        if(mp.flagPlot)
-#            figure(401);
-#            loglog(out.sm{Itr}.^2/out.alpha2{Itr},smooth(out.smspectra{Itr},31),'Linewidth',3,'Color',[0.3, 1-(0.2+Itr/mp.Nitr)/(1.3),1 ]);
-#            set(gca,'Fontsize',20); grid on;
-#            set(gcf,'Color',[1 1 1]);
-#            title('Singular Mode Spectrum','Fontsize',20)
-#            xlim([1e-10, 2*max(s.^2/alpha2)])
-#            ylim([1e-12, 1e-0])
-#            drawnow;
-#            hold on;
-#        end
-#
-#    end
-
+    
 def falco_est_perfect_Efield_with_Zernikes(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
@@ -1103,6 +1211,13 @@ def falco_est_pairwise_probing(mp, **kwargs):
     pass
 
     return falco.config.EmptyObject()
+
+def falco_ctrl(mp,cvar,jacStruct):
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+
+    
 
 def falco_ctrl_cull(mp, cvar, jacStruct):
 
