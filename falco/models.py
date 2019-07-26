@@ -5,6 +5,9 @@ import logging
 
 log = logging.getLogger(__name__)
 
+def model_Jacobian(mp):
+
+    return falco.config.EmptyObject()
 
 def model_compact_LC(mp, DM, modvar):
     """

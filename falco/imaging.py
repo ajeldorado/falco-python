@@ -1,4 +1,5 @@
 import falco
+import numpy as np
 
 def falco_get_expected_summed_image(mp, cvar):
     """
@@ -221,7 +222,8 @@ def falco_get_summed_image(mp):
     ### Compute the DM surfaces outside the full model to save some time
     
     ### Create image
-    Ibandavg = None
+    # SFF NOTE:
+    Ibandavg = np.zeros((56,56))
     #for si in range(mp.Nsbp):
     #    Ibandavg = Ibandavg + mp.sbp_weights[si] * falco_get_sbp_image(mp, si);
 

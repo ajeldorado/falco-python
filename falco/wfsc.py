@@ -2,7 +2,6 @@ import numpy as np
 import falco
 import os
 import pickle
-import math
 import scipy
 from astropy.io import fits
 
@@ -48,6 +47,8 @@ def falco_init_ws(config):
 
     ## File Paths
     
+    print('FlagFiber = ', mp.flagFiber)
+
     #--Storage directories (data in these folders will not be synced via Git
     filesep = os.pathsep
     if not hasattr(mp.path,'ws'):
@@ -96,8 +97,8 @@ def falco_init_ws(config):
             mp.Nwpsbp = 1; # number of wavelengths per sub-bandpass. To approximate better each finite sub-bandpass in full model with an average of images at these values. Only >1 needed when each sub-bandpass is too large (say >3#).
     
     #--Center-ish wavelength indices (ref = reference)
-    mp.si_ref = math.ceil(mp.Nsbp/2);
-    mp.wi_ref = math.ceil(mp.Nwpsbp/2);
+    mp.si_ref = np.ceil(mp.Nsbp/2);
+    mp.wi_ref = np.ceil(mp.Nwpsbp/2);
 
     #--Wavelengths used for Compact Model (and Jacobian Model)
     mp.sbp_weights = np.ones((mp.Nsbp,1));
@@ -154,7 +155,7 @@ def falco_init_ws(config):
     falco.configs.falco_config_gen_chosen_apodizer(mp) #--apodizer mask
     falco.configs.falco_config_gen_chosen_LS(mp) #--Lyot stop
 
-    # SFF Stuff:  This stuff probably got defined in the functions above
+    # SFF NOTE:  This stuff probably got defined in the functions above
     if not hasattr(mp.P1.compact, 'Narr'):
         mp.P1.compact.Narr = 252
     if not hasattr(mp.P4.compact, 'mask'):
@@ -182,7 +183,7 @@ def falco_init_ws(config):
 
     ## DM Initialization
     
-    # SFF Stuff
+    # SFF NOTE
     mp.dm3 = falco.config.EmptyObject()   
     mp.dm4 = falco.config.EmptyObject()   
     mp.dm5 = falco.config.EmptyObject()   
@@ -209,8 +210,8 @@ def falco_init_ws(config):
         elif mp.coro.upper() == 'FOHLC':
             falco_setup_FPM_FOHLC(mp);
             falco.configs.falco_config_gen_FPM_FOHLC(mp);
-            mp.compact.Nfpm = max([mp.dm8.compact.NdmPad,mp.dm9.compact.NdmPad]); #--Width of the FPM array in the compact model.
-            mp.full.Nfpm = max([mp.dm8.NdmPad,mp.dm9.NdmPad]); #--Width of the FPM array in the full model.
+            mp.compact.Nfpm = np.max([mp.dm8.compact.NdmPad,mp.dm9.compact.NdmPad]); #--Width of the FPM array in the compact model.
+            mp.full.Nfpm = np.max([mp.dm8.NdmPad,mp.dm9.NdmPad]); #--Width of the FPM array in the full model.
         elif mp.coro.upper() == 'EHLC':
             falco_setup_FPM_EHLC(mp);
             falco.configs.falco_config_gen_FPM_EHLC(mp);
@@ -361,7 +362,7 @@ def falco_init_ws(config):
     
         V = 2*pi/mp.lambda0*mp.fiber.a*mp.fiber.NA;
         W = 1.1428*V - 0.996;
-        U = math.sqrt(V**2 - W**2);
+        U = np.sqrt(V**2 - W**2);
     
         maskFiberCore["pixresFP"] = mp.F5.res;
         maskFiberCore["rhoInner"] = 0;
@@ -381,7 +382,7 @@ def falco_init_ws(config):
     
         F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
     
-        mp.F5.RHOS = math.sqrt((F5XIS - mp.F5.fiberPos[0])**2 + (F5ETAS - mp.F5.fiberPos[1])**2);
+        mp.F5.RHOS = np.sqrt((F5XIS - mp.F5.fiberPos[0])**2 + (F5ETAS - mp.F5.fiberPos[1])**2);
         mp.F5.fiberCore.mode = mp.F5.fiberCore.mask*scipy.special.j0(U*mp.F5.RHOS/mp.fiber.a)/scipy.special.j0(0,U);
         mp.F5.fiberCladding.mode = mp.F5.fiberCladding.mask*scipy.special.k0(W*mp.F5.RHOS/mp.fiber.a)/scipy.special.k0(W);
         mp.F5.fiberCladding.mode[np.isnan(mp.F5.fiberCladding.mode)] = 0;
@@ -782,7 +783,7 @@ def falco_init_ws(config):
     ## 
     print('\nBeginning Trial %d of Series %d.\n'%(mp.TrialNum,mp.SeriesNum))
 
-    return out
+    return mp, out
     pass
 
 def falco_wfsc_loop(mp):
@@ -836,10 +837,11 @@ def falco_wfsc_loop(mp):
     if not mp.flagSim:  
         bench = mp.bench #--Save the testbed structure "mp.bench" into "bench" so it isn't overwritten by falco_init_ws
 
-    out = falco_init_ws(fn_config)
+    mp, out = falco_init_ws(fn_config)
     if not mp.flagSim:  
         mp.bench = bench
 
+    print('FlagFiber = ', mp.flagFiber)
     ## Initializations of Arrays for Data Storage 
     
     #--Raw contrast (broadband)
@@ -922,24 +924,193 @@ def falco_wfsc_loop(mp):
         else: 
             DM2surf = np.zeros(mp.dm2.compact.Ndm)
 
-        if np.any(mp.dm_ind==5):
-            DM5surf =  falco.dms.falco_gen_dm_surf(mp.dm5, mp.dm5.compact.dx, mp.dm5.compact.Ndm);
-            #figure(325); imagesc(DM5surf); axis xy equal tight; colorbar; drawnow;
-            #figure(326); imagesc(mp.dm5.V); axis xy equal tight; colorbar; drawnow;
+    ## Updated plot and reporting
+    #--Calculate the core throughput (at higher resolution to be more accurate)
+    thput = falco.utils.falco_compute_thput(mp);
+    if mp.flagFiber:
+        mp.thput_vec[Itr] = np.max(thput)
+    else:
+        mp.thput_vec[Itr] = thput; #--record keeping
     
-        if mp.coro.upper() in ['EHLC']:
-                mp.DM8surf = falco.dms.falco_gen_EHLC_FPM_surf_from_cube(mp.dm8,'compact'); #--Metal layer profile [m]
-                mp.DM9surf = falco.dms.falco_gen_EHLC_FPM_surf_from_cube(mp.dm9,'compact'); #--Dielectric layer profile [m]
-        elif mp.coro.upper() in ['HLC','APHLC','SPHLC']:
-            if mp.layout.lower() in ['fourier']:
-                mp.DM8surf = falco.dms.falco_gen_HLC_FPM_surf_from_cube(mp.dm8,'compact'); #--Metal layer profile [m]
-                mp.DM9surf = falco.dms.falco_gen_HLC_FPM_surf_from_cube(mp.dm9,'compact'); #--Dielectric layer profile [m]
-            elif mp.layout.lower() in ['FOHLC']:
-                mp.DM8amp = falco.dms.falco_gen_HLC_FPM_amplitude_from_cube(mp.dm8,'compact'); #--FPM amplitude transmission [amplitude]
-                mp.DM9surf = falco.dms.falco_gen_HLC_FPM_surf_from_cube(mp.dm9,'compact'); #--FPM phase shift in transmission [m]    
+    #--Compute the current contrast level
+    InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
 
+    ## Updated selection of Zernike modes targeted by the controller
+    #--Decide with Zernike modes to include in the Jacobian
+    if Itr==0:
+        mp.jac.zerns0 = mp.jac.zerns;
 
+    print('Zernike modes used in this Jacobian:\t'); 
+    print('%d '%(mp.jac.zerns))
+    print('\n')
+
+    #--Re-compute the Jacobian weights
+    falco.configs.falco_config_jac_weights(mp);
+
+    ## Actuator Culling: Initialization of Flag and Which Actuators
+
+    #--If new actuators are added, perform a new cull of actuators.
+    cvar = falco.config.EmptyObject()
+    if Itr==0:
+        cvar.flagCullAct = true;
+    else:
+        if hasattr(mp,'dm_ind_sched'):
+            cvar.flagCullAct = np.not_equal(mp.dm_ind_sched[Itr], mp.dm_ind_sched[Itr-1]);
+        else:
+            cvar.flagCullAct = False;
+
+    mp.flagCullActHist = np.zeros((Itr+1,1),dtype=np.bool)
+    mp.flagCullActHist[Itr] = cvar.flagCullAct;
+
+    #--Before performing new cull, include all actuators again
+    if cvar.flagCullAct:
+        #--Re-include all actuators in the basis set.
+        if np.any(mp.dm_ind==0): 
+            mp.dm1.act_ele = list(range(mp.dm1.NactTotal)); 
+        if np.any(mp.dm_ind==1): 
+            mp.dm2.act_ele = list(range(mp.dm2.NactTotal)); 
+        if np.any(mp.dm_ind==4):
+            mp.dm5.act_ele = list(range(mp.dm5.NactTotal))
+        if np.any(mp.dm_ind==7): 
+            mp.dm8.act_ele = list(range(mp.dm8.NactTotal))
+        if np.any(mp.dm_ind==8): 
+            mp.dm9.act_ele = list(range(mp.dm9.NactTotal))
+        #--Update the number of elements used per DM
+        if np.any(mp.dm_ind==0): 
+            mp.dm1.Nele = len(mp.dm1.act_ele)
+        else: 
+            mp.dm1.Nele = 0; 
+        if np.any(mp.dm_ind==1): 
+            mp.dm2.Nele = len(mp.dm2.act_ele)
+        else: 
+            mp.dm2.Nele = 0; 
+        if np.any(mp.dm_ind==4): 
+            mp.dm5.Nele = len(mp.dm5.act_ele)
+        else: 
+            mp.dm5.Nele = 0; 
+        if np.any(mp.dm_ind==7): 
+            mp.dm8.Nele = len(mp.dm8.act_ele)
+        else: 
+            mp.dm8.Nele = 0; 
+        if np.any(mp.dm_ind==8): 
+            mp.dm9.Nele = len(mp.dm9.act_ele)
+        else: 
+            mp.dm9.Nele = 0; 
+
+    ## Compute the control Jacobians for each DM
+
+    #--Relinearize about the DMs only at the iteration numbers in mp.relinItrVec.
+    if np.any(mp.relinItrVec==Itr):
+        cvar.flagRelin=True;
+    else:
+        cvar.flagRelin=False;
+
+    if  Itr==0 or cvar.flagRelin:
+        jacStruct =  falco.models.model_Jacobian(mp); #--Get structure containing Jacobians
+
+    ## Cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
+    jacStruct = falco_ctrl_cull(mp,cvar,jacStruct);
+
+    ## Load the improved Jacobian if using the E-M technique
+    if mp.flagUseLearnedJac:
+        jacStructLearned = load('jacStructLearned.mat');
+        if np.any(mp.dm_ind==1):  
+            jacStruct.G1 = jacStructLearned.G1
+        if np.any(mp.dm_ind==1):  
+            jacStruct.G2 = jacStructLearned.G2
+
+    ## Wavefront Estimation
+    if mp.estimator.lower() in ['perfect']:
+        EfieldVec  = falco_est_perfect_Efield_with_Zernikes(mp);
+    elif mp.estimator.lower in ['pwp-bp','pwp-kf']:
+        if mp.est.flagUseJac: #--Send in the Jacobian if true
+            ev = falco_est_pairwise_probing(mp,jacStruct);
+        else: #--Otherwise don't pass the Jacobian
+            ev = falco_est_pairwise_probing(mp);
+
+        EfieldVec = ev.Eest;
+        IincoVec = ev.IincoEst;
+
+    ## Compute and Plot the Singular Mode Spectrum of the Control Jacobian
+
+#    if mp.flagSVD:
+#
+#        if cvar.flagRelin:
+#
+#            ii=1;
+#            Gcomplex = [jacStruct.G1(:,:,ii), jacStruct.G2(:,:,ii), jacStruct.G3(:,:,ii), jacStruct.G4(:,:,ii), jacStruct.G5(:,:,ii), jacStruct.G6(:,:,ii), jacStruct.G7(:,:,ii), jacStruct.G8(:,:,ii), jacStruct.G9(:,:,ii)];
+#            Gall = zeros(mp.jac.Nmode*size(Gcomplex,1),size(Gcomplex,2));
+#            Eall = zeros(mp.jac.Nmode*size(EfieldVec,1),1);
+#
+#            for ii=1:mp.jac.Nmode
+#                N = size(Gcomplex,1);
+#                inds = (ii-1)*N+1:ii*N;
+#                Gcomplex = [jacStruct.G1(:,:,ii), jacStruct.G2(:,:,ii), jacStruct.G3(:,:,ii), jacStruct.G4(:,:,ii), jacStruct.G5(:,:,ii), jacStruct.G6(:,:,ii), jacStruct.G7(:,:,ii), jacStruct.G8(:,:,ii), jacStruct.G9(:,:,ii)];
+#                Gall(inds,:) = Gcomplex;
+#                Eall(inds) = EfieldVec(:,ii);
+#            end
+#
+#            Eri = [real(Eall); imag(Eall)];
+#            alpha2 = max(diag(real(Gall'*Gall)));
+#            Gri = [real(Gall); imag(Gall)];
+#            [U,S,~] = svd(Gri,'econ');
+#            s = diag(S);
+#        else
+#
+#            for ii=1:mp.jac.Nmode
+#                N = size(Gcomplex,1);
+#                inds = (ii-1)*N+1:ii*N;
+#                Eall(inds) = EfieldVec(:,ii);
+#            end
+#            Eri = [real(Eall); imag(Eall)];
+#
+#        end
+#
+#        EriPrime = U'*Eri;
+#        IriPrime = abs(EriPrime).^2;
+#
+#        #--Save out for later analysis
+#        out.EforSpectra{Itr} = EriPrime;
+#        out.smspectra{Itr} = IriPrime;
+#        out.sm{Itr} = s;
+#        out.alpha2{Itr} = alpha2;
+#
+#        if(mp.flagPlot)
+#            figure(401);
+#            loglog(out.sm{Itr}.^2/out.alpha2{Itr},smooth(out.smspectra{Itr},31),'Linewidth',3,'Color',[0.3, 1-(0.2+Itr/mp.Nitr)/(1.3),1 ]);
+#            set(gca,'Fontsize',20); grid on;
+#            set(gcf,'Color',[1 1 1]);
+#            title('Singular Mode Spectrum','Fontsize',20)
+#            xlim([1e-10, 2*max(s.^2/alpha2)])
+#            ylim([1e-12, 1e-0])
+#            drawnow;
+#            hold on;
+#        end
+#
+#    end
+
+def falco_est_perfect_Efield_with_Zernikes(mp):
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+
+    return falco.config.EmptyObject()
+
+def falco_est_pairwise_probing(mp, **kwargs):
     
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+
+    return falco.config.EmptyObject()
+
+def falco_ctrl_cull(mp, cvar, jacStruct):
+
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+
+    return falco.config.EmptyObject()
 
 def falco_est_perfect_Efield(mp, DM, which_model='full'):
     """

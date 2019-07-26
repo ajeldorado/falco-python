@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+import falco
 
 
 def ceil_even(x_in):
@@ -216,3 +217,10 @@ def create_axis(N, step, centering='pixel'):
         axis += 0.5 * step
 
     return axis
+
+def falco_compute_thput(mp):
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+    
+    return [0]
