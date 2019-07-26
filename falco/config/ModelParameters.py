@@ -130,10 +130,13 @@ class ModelParameters:
     def __str__(self):
         retstr = ''
         retstr += '--------------------------\n'
-        retstr += ('Number of keys: %d\n'%(len(self.__dict__.keys())))
+        retstr += ('Number of keys: %d\n\n'%(len(self.__dict__.keys())))
         #retsrt += '\n'
         for k in self.__dict__:
-            retstr += ('%s: \ttype:%s value:\n'%(k, str(type(self.__dict__[k]))))
+            if type(self.__dict__[k]) in [str, int, bool, float]:
+                retstr += ('%s: \ttype:%s value: %s\n'%(k, str(type(self.__dict__[k])), str(self.__dict__[k])))
+            else:
+                retstr += ('%s: \ttype:%s value:\n'%(k, str(type(self.__dict__[k]))))
         retstr += '--------------------------\n'
         #retsrt += '\n'
         return retstr
