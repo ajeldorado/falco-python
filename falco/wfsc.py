@@ -97,8 +97,8 @@ def falco_init_ws(config):
             mp.Nwpsbp = 1; # number of wavelengths per sub-bandpass. To approximate better each finite sub-bandpass in full model with an average of images at these values. Only >1 needed when each sub-bandpass is too large (say >3#).
     
     #--Center-ish wavelength indices (ref = reference)
-    mp.si_ref = np.ceil(mp.Nsbp/2);
-    mp.wi_ref = np.ceil(mp.Nwpsbp/2);
+    mp.si_ref = int(np.ceil(mp.Nsbp/2)-1);
+    mp.wi_ref = int(np.ceil(mp.Nwpsbp/2)-1);
 
     #--Wavelengths used for Compact Model (and Jacobian Model)
     mp.sbp_weights = np.ones((mp.Nsbp,1));
