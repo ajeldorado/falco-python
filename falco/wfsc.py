@@ -7,10 +7,11 @@ from astropy.io import fits
 
 #from falco import models
 
-def falco_init_ws(config):
+def falco_init_ws(mp, config=None):
 
-    with open(config, 'rb') as f:
-        mp = pickle.load(f)
+    if config:
+        with open(config, 'rb') as f:
+            mp = pickle.load(f)
 
     mainPath = mp.path.falco;
 
@@ -508,7 +509,7 @@ def falco_init_ws(config):
     if hasattr(mp.Fend,'shape'):  
         maskScore["shape"] = mp.Fend.shape
     #--Compact Model: Generate Software Mask for Scoring Contrast 
-    #SFF NOTE: Nxi not listed in falco_gen_SW_mask.  Conflicts
+    #SFF NOTE:  Per AJ, ok to comment out and not use
     #maskScore["Nxi"] = mp.Fend.Nxi; #--Set min dimension length to be same as for corr 
     maskScore["pixresFP"] = mp.Fend.res;
     mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskScore);
@@ -862,7 +863,8 @@ def falco_init_ws(config):
     ## 
     print('\nBeginning Trial %d of Series %d.\n'%(mp.TrialNum,mp.SeriesNum))
 
-    return mp, out
+    #return mp, out
+    return out
     pass
 
 def falco_wfsc_loop(mp):
@@ -916,12 +918,13 @@ def falco_wfsc_loop(mp):
     if not mp.flagSim:  
         bench = mp.bench #--Save the testbed structure "mp.bench" into "bench" so it isn't overwritten by falco_init_ws
 
-    mp, out = falco_init_ws(fn_config)
+    #mp, out = falco_init_ws(mp, fn_config)
+    out = falco_init_ws(mp)
     if not mp.flagSim:  
         mp.bench = bench
 
 
-    print(mp)
+    print('AFTER INIT: ', mp)
     print('FlagFiber = ', mp.flagFiber)
     ## Initializations of Arrays for Data Storage 
     
@@ -1001,12 +1004,12 @@ def falco_wfsc_loop(mp):
             mp.dm2.compact.Ndm = 304
     
         #--Compute the DM surfaces
-        if np.any(mp.dm_ind==1): 
+        if np.any(mp.dm_ind==0): 
             DM1surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
         else: 
             DM1surf = np.zeros(mp.dm1.compact.Ndm)
     
-        if np.any(mp.dm_ind==2): 
+        if np.any(mp.dm_ind==1): 
             DM2surf =  falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
         else: 
             DM2surf = np.zeros(mp.dm2.compact.Ndm)
@@ -1190,7 +1193,6 @@ def falco_wfsc_loop(mp):
         print('Prev and New Measured Contrast (LR):\t\t\t %.2e\t->\t%.2e\t (%.2f x smaller)  \n'%(InormHist[Itr], InormHist[Itr+1], InormHist[Itr]/InormHist[Itr+1]))
             
         print('\n\n');
-        print(mp)
     
         # --END OF ESTIMATION + CONTROL LOOP
     
@@ -1215,7 +1217,7 @@ def falco_wfsc_loop(mp):
         mp.thput_vec[Itr] = thput; #--record keeping
 
     ## Optional output variable: mp
-    #SFF NOTE:  I don't think we need to set varargout
+    #SFF NOTE: Per AJ, ok to not implement
     #varargout{1} = mp;
     
     ## Save the final DM commands separately for faster reference
@@ -1276,11 +1278,15 @@ def falco_wfsc_loop(mp):
         fnAll = mp.path.ws + mp.runLabel + '_all.pkl'
         print('Saving entire workspace to file ' + fnAll + '...')
         #save(fnAll);
+        with open(fnAll, 'wb') as f:
+            pickle.dump(mp,f)
+
         print('done.\n\n')
     else:
         print('Entire workspace NOT saved because mp.flagSaveWS==false')
     
     #--END OF main FUNCTION
+    print('END OF WFSC LOOP: ', mp)
 
     
 def falco_est_perfect_Efield_with_Zernikes(mp):

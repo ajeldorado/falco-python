@@ -8,7 +8,6 @@ import EXAMPLE_defaults_WFIRST_LC as DEFAULTS
 
 mp = DEFAULTS.mp
 
-print(mp)
 
 mp.path = falco.config.EmptyObject()
 
@@ -63,5 +62,5 @@ print('Series0001_Trial0001_LC_WFIRST180718_2DM48_z1_IWA2.7_OWA10_1lams575nm_BW1
 
 falco.falco_wfsc_loop(mp)
 
-
+print('END OF MAIN: ', mp)
 
