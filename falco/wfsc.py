@@ -144,9 +144,9 @@ def falco_init_ws(config):
 
     ## Zernike and Chromatic Weighting of the Control Jacobian
     if not hasattr(mp.jac,'zerns'):  
-        mp.jac.zerns = 1 #--Which Zernike modes to include in Jacobian [Noll index]. Always include 1 for piston term.
+        mp.jac.zerns = np.array([1]) #--Float array. Which Zernike modes to include in Jacobian [Noll index]. Always include 1 for piston term.
     if not hasattr(mp.jac,'Zcoef'):  
-        mp.jac.Zcoef = 1e-9*np.ones((10,1)); end #--meters RMS of Zernike aberrations. (piston value is reset to 1 later for correct normalization)
+        mp.jac.Zcoef = 1e-9*np.ones((10,1)); end #--Float array. meters RMS of Zernike aberrations. (piston value is reset to 1 later for correct normalization)
 
     falco.configs.falco_config_jac_weights(mp)
 

@@ -283,7 +283,10 @@ def falco_config_jac_weights(mp):
     nothing
         Values are added by reference into the mp structure.
     """
-        
+
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+                
     #--Initialize mp.jac if it doesn't exist
     if not hasattr(mp, 'jac'):
         mp.jac = falco.config.EmptyClass()
@@ -334,14 +337,15 @@ def falco_config_jac_weights(mp):
     tempMat = np.tile(mp.jac.zerns,(mp.Nsbp,1));
     mp.jac.zern_inds = tempMat[mp.jac.weightMat_ele];
 
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
     pass
+    
 def falco_config_spatial_weights(mp):
     """
-    Quick Description here
+    Set up spatially-based weighting of the dark hole intensity.
 
-    Detailed description here
+    Set up spatially-based weighting of the dark hole intensity in annular zones centered 
+    on the star. Zones are specified with rows of three values: zone inner radius [l/D],
+    zone outer radius [l/D], and intensity weight. As many rows can be used as desired.
 
     Parameters
     ----------
@@ -349,10 +353,21 @@ def falco_config_spatial_weights(mp):
         Structure of model parameters
     Returns
     -------
-    TBD
-        Return value descriptio here
+    nothing
+        Values are added by reference into the mp structure.
     """
 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
+
+    #--Define 2-D coordinate grid
+    [XISLAMD,ETASLAMD] = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
+    RHOS = np.sqrt(XISLAMD**2+ETASLAMD**2)
+    mp.Wspatial = mp.Fend.corr.mask #--Convert from boolean to float
+    if hasattr(mp, 'WspatialDef'): #--Do only if spatial weights are defined
+        if(np.size(mp.WspatialDef)>0): #--Do only if variable is not empty
+            for kk in range(0,mp.WspatialDef.shape[0]): #--Increment through the rows
+                Wannulus = 1. + (np.sqrt(mp.WspatialDef[kk,2])-1.)*((RHOS>=mp.WspatialDef[kk,0]) & (RHOS<mp.WspatialDef[kk,1]))
+                mp.Wspatial = mp.Wspatial*Wannulus
+
     pass

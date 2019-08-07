@@ -365,10 +365,10 @@ def falco_gen_SW_mask(pixresFP, rhoInner, rhoOuter, angDeg, whichSide, FOV=None,
 
     [XIS, ETAS] = np.meshgrid(xis, etas)
     RHOS = np.sqrt(XIS ** 2 + ETAS ** 2)
-    TAN = np.arctan(ETAS / XIS)
+    THETAS = np.arctan2(ETAS,XIS)
 
     # Generate the Software Mask
-    maskSW = 1.0 * (RHOS >= rhoInner) * (RHOS <= rhoOuter) * (TAN <= angRad/2) * (TAN >= -angRad/2)
+    maskSW = 1.0 * (RHOS >= rhoInner) * (RHOS <= rhoOuter) * (THETAS <= angRad/2) * (THETAS >= -angRad/2)
 
     # Determine if it is one-sided or not
     if whichSide in ("L", "left"):
