@@ -81,7 +81,7 @@ mp.logGmin = -6;  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobia
 ####### NEED TO DETERMINE
 ###--Zernikes to suppress with controller
 mp.jac = falco.config.EmptyObject()
-mp.jac.zerns = 1;  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
+mp.jac.zerns = np.array([1])  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
 mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
     
 ####### NEED TO DETERMINE
