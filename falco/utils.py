@@ -16,13 +16,13 @@ class TicToc(object):
         print('Elapsed: %s' % (time.time() - self.tstart))
 
 
-def nextpow2(p): 
+def nextpow2(N): 
     """
-    P = nextpow2(A) returns the exponents for the smallest powers of two that satisfy
-    2^p ≥ |A|
+    P = nextpow2(N) returns the exponents for the smallest powers of two that satisfy
+    2^p ≥ |N|
     """   
-    n = np.ceil(math.log2(abs(8191)))    
-    return n
+    p = np.ceil(np.log2(abs(N)))    
+    return p
 
 
 def ceil_even(x_in):
