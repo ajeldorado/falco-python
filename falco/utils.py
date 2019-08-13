@@ -20,11 +20,8 @@ def nextpow2(p):
     """
     P = nextpow2(A) returns the exponents for the smallest powers of two that satisfy
     2^p ≥ |A|
-    """
-    n = 2; 
-    while p < n: 
-        n *= 2; 
-        
+    """   
+    n = np.ceil(math.log2(abs(8191)))    
     return n
 
 
