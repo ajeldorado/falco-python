@@ -15,6 +15,19 @@ class TicToc(object):
             print('[%s]' % self.name,)
         print('Elapsed: %s' % (time.time() - self.tstart))
 
+
+def nextpow2(p): 
+    """
+    P = nextpow2(A) returns the exponents for the smallest powers of two that satisfy
+    2^p ≥ |A|
+    """
+    n = 2; 
+    while p < n: 
+        n *= 2; 
+        
+    return n
+
+
 def ceil_even(x_in):
     """
     Compute the next highest even integer above the input
