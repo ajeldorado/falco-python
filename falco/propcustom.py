@@ -8,6 +8,42 @@ _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
 
 
+def propcustom_relay(E_in, Nrelay,centering='pixel'):
+    """
+    Propagate a field using two successive Fourier transforms, without any intermediate mask
+    multiplications.   Used in a semi-analytical propagation to compute the component of the field
+    in the Lyot stop plane that was not diffracted by the occulter.
+
+    Parameters
+    ----------
+    E_in : array_like
+        Input electric field
+    Nrelay: scalar
+        Number of times to relay by 180 degrees
+    centering : string
+        Whether the input field is pixel-centered or inter-pixel-centered.  If
+        inter-pixel-centered, then the output is simply a scaled version of the input, flipped in
+        the vertical and horizontal directions.  If pixel-centered, the output is also shifted by 1
+        pixel in both directions after flipping, to ensure that the origin remains at the same
+        pixel as in the input array.
+
+    Returns
+    -------
+    array_like
+        The input array, after propagation with two Fourier transforms.
+
+    """
+    if centering not in _valid_centering:
+        raise ValueError(_CENTERING_ERR)
+
+    #--Only rotate if an odd number of 180-degree rotations. If even, no change.
+    if(np.mod(Nrelay,2)==1):
+        E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
+        if centering == 'pixel':
+            E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
+
+    return E_out
+    
 def propcustom_2FT(E_in, centering='pixel'):
     """
     Propagate a field using two successive Fourier transforms, without any intermediate mask
@@ -34,7 +70,7 @@ def propcustom_2FT(E_in, centering='pixel'):
     if centering not in _valid_centering:
         raise ValueError(_CENTERING_ERR)
 
-    E_out = (1 / 1j) ** 2 * E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
+    E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
 
     if centering == 'pixel':
         E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place

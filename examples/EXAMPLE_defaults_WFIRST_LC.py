@@ -123,7 +123,7 @@ mp.controller = 'gridsearchEFC';
 ###--WFSC Iterations and Control Matrix Relinearization
 mp.Nitr = 5; #--Number of estimation+control iterations to perform
 mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian
-mp.dm_ind = [1, 2]; #--Which DMs to use
+mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use
 
 ### # # PLANNED SEARCH EFC DEFAULTS     
 ### mp.dm_ind = [1 2 ]; # vector of DMs used in controller at ANY time (not necessarily all at once or all the time). 
