@@ -552,22 +552,22 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     dm.Nbox = Nbox
     #--Also compute their padded sizes for the angular spectrum (AS) propagation between P2 and DM1 or between DM1 and DM2
     #--Minimum number of points across for accurate angular spectrum propagation
-    Nmin = falco.utils.ceil_even( max(mp.sbp_centers)*max(abs(np.array([mp.d_P2_dm1, mp.d_dm1_dm2,(mp.d_P2_dm1+mp.d_dm1_dm2)])))/dx_dm**2 ) 
-    dm.NboxAS = max(np.array([Nbox,Nmin]))  #--Use a larger array if the max sampling criterion for angular spectrum propagation is violated
+    Nmin = falco.utils.ceil_even( np.max(mp.sbp_centers)*np.max(np.abs(np.array([mp.d_P2_dm1, mp.d_dm1_dm2,(mp.d_P2_dm1+mp.d_dm1_dm2)])))/dx_dm**2 ) 
+    dm.NboxAS = np.max(np.array([Nbox,Nmin]))  #--Use a larger array if the max sampling criterion for angular spectrum propagation is violated
 
     # Pad the pupil to at least the size of the DM(s) surface(s) to allow all actuators to be located outside the pupil.
     # (Same for both DMs)
 
     #--Find actuator farthest from center:
     dm.r_cent_act = np.sqrt(dm.xy_cent_act[0,:]**2 + dm.xy_cent_act[1,:]**2)
-    dm.rmax = max(abs(dm.r_cent_act))
+    dm.rmax = np.max(np.abs(dm.r_cent_act))
     NpixPerAct = dm.dm_spacing/dx_dm
     if(dm.flag_hex_array):
         dm.NdmPad = falco.utils.ceil_even((2.*(dm.rmax+2))*NpixPerAct + 1) # padded 2 actuators past the last actuator center to avoid trying to index outside the array 
     else: 
         # DM surface array padded by the width of the padded influence function to prevent indexing outside the array. 
         # The 1/2 term is because the farthest actuator center is still half an actuator away from the nominal array edge. 
-        dm.NdmPad = falco.utils.ceil_even( ( dm.NboxAS + 2.*(1+ (max(abs(dm.xy_cent_act.reshape(2*dm.NactTotal)))+0.5)*NpixPerAct)) ) 
+        dm.NdmPad = falco.utils.ceil_even( ( dm.NboxAS + 2.*(1+ (np.max(np.abs(dm.xy_cent_act.reshape(2*dm.NactTotal)))+0.5)*NpixPerAct)) ) 
 
     #--Compute coordinates (in meters) of the full DM array
     if(dm.centering=='pixel'): 

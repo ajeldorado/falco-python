@@ -1,11 +1,5 @@
 import falco
 import numpy as np
-
-def falco_get_PSF_norm_factor(mp):
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
-
     
 def falco_config_gen_FPM_FOHLC(mp):
     """

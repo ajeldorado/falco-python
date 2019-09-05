@@ -1,6 +1,68 @@
 import falco
 import numpy as np
 
+def falco_get_PSF_norm_factor(mp):
+    """
+    Function to get the normalization factor for each model at each sub-band.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+
+    Returns
+    -------
+    nothing
+        Changes are made by reference to the structure mp
+
+    """
+    
+    #AJER NOTE DEBUGGING mode only    
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    pass
+    
+    """
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+        
+    #--Initialize Model Normalizations
+    if not hasattr(mp.Fend,'compact'):
+         mp.Fend.compact = falco.config.EmptyObject() #--Initialize the new structure
+    if not hasattr(mp.Fend,'eval'):
+         mp.Fend.eval = falco.config.EmptyObject() #--Initialize the new structure
+    if not hasattr(mp.Fend,'full'):
+         mp.Fend.full = falco.config.EmptyObject() #--Initialize the new structure
+    mp.Fend.compact.I00 = np.ones(mp.Nsbp) # Initial input before computing
+    mp.Fend.eval.I00 =np.ones(mp.Nsbp) # Initial input before computing
+    mp.Fend.full.I00 = np.ones((mp.Nsbp,mp.Nwpsbp)) # Initial input before computing
+
+    modvar = falco.config.EmptyObject() #--Initialize the new structure
+    modvar.zernIndex = 1
+    modvar.whichSource = 'star'
+    
+    #--Compact Model Normalizations
+    for si in range(mp.Nsbp):
+        modvar.sbpIndex = si
+        Etemp = falco.models.model_compact(mp, modvar,GETNORM=True)
+        mp.Fend.compact.I00[si] = (np.abs(Etemp)**2).max()
+
+    #--Compact Evaluation Model Normalizations
+    for si in range(mp.Nsbp):
+        modvar.sbpIndex = si
+        Etemp = falco.models.model_compact(mp, modvar,GETNORM=True,EVAL=True)
+        mp.Fend.eval.I00[si] = (np.abs(Etemp)**2).max()
+
+    #--Full Model Normalizations (at points for entire-bandpass evaluation)
+    if(mp.flagSim):
+        for si in range(mp.Nsbp):
+            for wi in range(mp.Nwpsbp):
+                modvar.sbpIndex = si
+                modvar.wpsbpIndex = wi
+                Etemp = falco.models.model_full(mp, modvar,GETNORM=True)
+                mp.Fend.full.I00[si,wi] = (np.abs(Etemp)**2).max()
+    """
+
 def falco_get_expected_summed_image(mp, cvar):
     """
     Returns summed image.
