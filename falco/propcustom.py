@@ -33,7 +33,7 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
         The input array, after propagation with two Fourier transforms.
 
     """
-    if centering not in _valid_centering:
+    if centering not in _VALID_CENTERING:
         raise ValueError(_CENTERING_ERR)
 
     #--Only rotate if an odd number of 180-degree rotations. If even, no change.
@@ -41,7 +41,9 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
         E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
         if centering == 'pixel':
             E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
-
+    else:
+        E_out = E_in
+        
     return E_out
     
 def propcustom_2FT(E_in, centering='pixel'):
