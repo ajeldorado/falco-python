@@ -127,6 +127,15 @@ class ModelParameters:
             print('%s: '%(k), v)
         pass
 
+    def printInfo(self, level=1):
+        print('--------------------------\n')
+        print('Number of keys: %d\n\n'%(len(self.__dict__.keys())))
+        #for k in self.__dict__:
+        #    if type(self.__dict__[k]) in [str, int, bool, float] or type(self.__dict__[k]) not np.array:
+        #        print('%s: %s\n'%(k, str(type(self.__dict__[k])), str(self.__dict__[k])))
+        #    else:
+        #        print('%s: \ttype:%s value:\n'%(k, str(type(self.__dict__[k]))))
+        
     def __str__(self):
         retstr = ''
         retstr += '--------------------------\n'
@@ -135,14 +144,20 @@ class ModelParameters:
         for k in self.__dict__:
             if type(self.__dict__[k]) in [str, int, bool, float]:
                 retstr += ('%s: \ttype:%s value: %s\n'%(k, str(type(self.__dict__[k])), str(self.__dict__[k])))
+                #retstr += ('mp.%s\n'%(k))
             else:
                 retstr += ('%s: \ttype:%s value:\n'%(k, str(type(self.__dict__[k]))))
+                #retstr += ('mp.%s\n'%(k))
         retstr += '--------------------------\n'
         #retsrt += '\n'
         return retstr
 
     def __init__(self, **kwargs):
         
+
+        import os 
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        print(dir_path)
 
         self.Nitr = _spec_arg("Nitr", kwargs, 10)
         self.SPname = _spec_arg("SPname", kwargs, 0)
