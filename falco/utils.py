@@ -12,7 +12,7 @@ class TicToc(object):
 
     def __exit__(self, type, value, traceback):
         if self.name:
-            print('[%s]' % self.name,)
+            print('[%s]\t' % self.name,end='')
         print('Elapsed: %s' % (time.time() - self.tstart))
 
 

@@ -4,6 +4,8 @@ import falco
 import logging
 import matplotlib.pyplot as plt #DEBUGGING
 from astropy.io import fits #DEBUGGING
+from mpl_toolkits.axes_grid1 import make_axes_locatable # DEBUGGING
+import os #DEBUGGING
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +49,16 @@ def model_full(mp,modvar,**kwargs):
     if ("NORMOFF" in kwargs and kwargs["NORMOFF"]):
         normFac = 1.
         
+#    # AJER NOTE DEBUGGING: 
+#    ax = plt.subplot(111)
+#    im = ax.imshow(mp.dm1.V)
+#    # create an axes on the right side of ax. The width of cax will be 5%
+#    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+#    divider = make_axes_locatable(ax)
+#    cax = divider.append_axes("right", size="5%", pad=0.05)
+#    plt.colorbar(im, cax=cax)
+#    plt.pause(0.5)        
+        
     #AJER NOTE: This should be in falco_config_gen_chosen_pupil
     mp.P2.full.xsDL = np.linspace(-mp.P1.full.Narr/2,mp.P1.full.Narr/2-1,mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
     [mp.P2.full.XsDL,mp.P2.full.YsDL] = np.meshgrid(mp.P2.full.xsDL,mp.P2.full.xsDL)
@@ -56,11 +68,14 @@ def model_full(mp,modvar,**kwargs):
     mp.full.lambdasMat[0,0] = mp.lambda0
     mp.P4.full.Narr = 196
     mp.P4.full.dx = mp.P2.D/mp.P1.full.Nbeam
-    mp.P1.full.mask = np.ones((mp.P1.full.Nbeam,mp.P1.full.Nbeam),dtype=complex)
-    mp.P4.full.croppedMask = np.ones( (mp.P4.full.Narr,mp.P4.full.Narr),dtype=complex)
+    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "debug" )
+    mp.P4.full.croppedMask = fits.getdata(os.path.join(dir_path, 'mpP4fullcroppedMask.fits'),ext=0)
+    mp.P1.full.mask = fits.getdata(os.path.join(dir_path, 'mpP1fullmask.fits'),ext=0)
+    mp.F3.full.mask.amp = fits.getdata(os.path.join(dir_path, 'mpF3fullmaskamp.fits'),ext=0)
 #    mp.P4.full.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4fullcroppedMask.fits', ext=0)
 #    mp.P1.full.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1fullmask.fits', ext=0)    
-            
+#    mp.F3.full.mask.amp = fits.getdata('/Users/ajriggs/Downloads/mpF3fullmaskamp.fits', ext=0)
+        
     #--Set the wavelength
     if(hasattr(modvar,'wvl')): #--For FALCO or for standalone use of full model
         wvl = modvar.wvl;
@@ -146,18 +161,20 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
 
     """ Masks and DM surfaces """
     if any(mp.dm_ind == 1):
-        try:
-            DM1surf = falco.utils.padOrCropEven(mp.dm1.surfM, NdmPad)
-        except AttributeError:  # No surfM parameter exists, create DM surface
-            DM1surf = falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.dx, NdmPad)
+        DM1surf = falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.dx, NdmPad)
+#        try:
+#            DM1surf = falco.utils.padOrCropEven(mp.dm1.surfM, NdmPad)
+#        except AttributeError:  # No surfM parameter exists, create DM surface
+#            DM1surf = falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.dx, NdmPad)
     else:
         DM1surf = np.zeros((NdmPad,NdmPad))
 
     if any(mp.dm_ind == 2):
-        try:
-            DM2surf = falco.utils.padOrCropEven(mp.dm2.surfM, NdmPad)
-        except AttributeError:  # No surfM parameter exists, create DM surface
-            DM2surf = falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.dx, NdmPad)
+        DM2surf = falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.dx, NdmPad)
+#        try:
+#            DM2surf = falco.utils.padOrCropEven(mp.dm2.surfM, NdmPad)
+#        except AttributeError:  # No surfM parameter exists, create DM surface
+#            DM2surf = falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.dx, NdmPad)
     else:
         DM2surf = np.zeros((NdmPad,NdmPad))
 
@@ -247,11 +264,19 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
         Eout = EFend/np.sqrt(normFac) #--Apply normalization
 
 #    # NOTE: DEBUGGING
+#    hduFPM = fits.PrimaryHDU(mp.F3.full.mask.amp)
+#    hduFPM.writeto('/Users/ajriggs/Downloads/FPM_full.fits', overwrite=True)
+#
+#    hduEF3real = fits.PrimaryHDU(np.real(EF3inc))
+#    hduEF3imag = fits.PrimaryHDU(np.imag(EF3inc))
+#    hduEF3real.writeto('/Users/ajriggs/Downloads/EP3_real_full.fits', overwrite=True)
+#    hduEF3imag.writeto('/Users/ajriggs/Downloads/EP3_imag_full.fits', overwrite=True)
+#    
 #    hduEP4real = fits.PrimaryHDU(np.real(EP4))
 #    hduEP4imag = fits.PrimaryHDU(np.imag(EP4))
 #    hduEP4real.writeto('/Users/ajriggs/Downloads/EP4_real_full.fits', overwrite=True)
 #    hduEP4imag.writeto('/Users/ajriggs/Downloads/EP4_imag_full.fits', overwrite=True)
-
+#
 #    hduEP3real = fits.PrimaryHDU(np.real(EP3))
 #    hduEP3imag = fits.PrimaryHDU(np.imag(EP3))
 #    hduEP3real.writeto('/Users/ajriggs/Downloads/EP3_real_full.fits', overwrite=True)
@@ -415,9 +440,13 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
     #AJER NOTE DEBUGGING
     mp.P4.compact.Narr = 196
     mp.P4.compact.dx = mp.P2.D/mp.P1.compact.Nbeam
-    mp.P4.compact.croppedMask = np.ones((mp.P4.compact.Narr,mp.P4.compact.Narr),dtype=complex)
+    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "debug" )
+    mp.P4.compact.croppedMask = fits.getdata(os.path.join(dir_path, 'mpP4compactcroppedMask.fits'),ext=0)
+    mp.P1.compact.mask = fits.getdata(os.path.join(dir_path, 'mpP1compactmask.fits'),ext=0)
+    mp.F3.compact.mask.amp = fits.getdata(os.path.join(dir_path, 'mpF3compactmaskamp.fits'),ext=0)
 #    mp.P4.compact.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4compactcroppedMask.fits', ext=0)
 #    mp.P1.compact.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1compactmask.fits', ext=0)
+#    mp.F3.compact.mask.amp = fits.getdata('/Users/ajriggs/Downloads/mpF3compactmaskamp.fits', ext=0)
     
     mirrorFac = 2. # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
@@ -569,59 +598,22 @@ def model_Jacobian(mp):
         mp.dm2.compact.surfM = np.zeros((NdmPad,NdmPad)) #--Pre-compute the starting DM2 surface
 
     #--Initialize the Jacobians for each DM
-    if(any(mp.dm_ind==1)): 
-        jacStruct.G1 = np.zeros((mp.Fend.corr.Npix,mp.dm1.Nele,mp.jac.Nmode),dtype=np.complex)
-    else:  
-        jacStruct.G1 = np.zeros((0,0,mp.jac.Nmode))
-    if(any(mp.dm_ind==2)): 
-        jacStruct.G2 = np.zeros((mp.Fend.corr.Npix,mp.dm2.Nele,mp.jac.Nmode)).astype(np.complex)  
-    else:  
-        jacStruct.G2 = np.zeros((0,0,mp.jac.Nmode))
-    jacStruct.G3 = np.zeros((0,0,mp.jac.Nmode))
-    jacStruct.G4 = np.zeros((0,0,mp.jac.Nmode))
-    jacStruct.G5 = np.zeros((0,0,mp.jac.Nmode))
-    jacStruct.G6 = np.zeros((0,0,mp.jac.Nmode))
-    jacStruct.G7 = np.zeros((0,0,mp.jac.Nmode))   
-    if(any(mp.dm_ind==8)):
-        jacStruct.G8 = np.zeros((mp.Fend.corr.Npix,mp.dm8.Nele,mp.jac.Nmode)).astype(complex)  
-    else:
-        jacStruct.G8 = np.zeros((0,0,mp.jac.Nmode))
-    if(any(mp.dm_ind==9)): 
-        jacStruct.G9 = np.zeros((mp.Fend.corr.Npix,mp.dm9.Nele,mp.jac.Nmode)).astype(complex)  
-    else:  
-        jacStruct.G9 = np.zeros((0,0,mp.jac.Nmode))
+    if(any(mp.dm_ind==1)): jacStruct.G1 = np.zeros((mp.Fend.corr.Npix,mp.dm1.Nele,mp.jac.Nmode),dtype=np.complex)
+    if(any(mp.dm_ind==2)): jacStruct.G2 = np.zeros((mp.Fend.corr.Npix,mp.dm2.Nele,mp.jac.Nmode),dtype=np.complex)
+    if(any(mp.dm_ind==8)): jacStruct.G8 = np.zeros((mp.Fend.corr.Npix,mp.dm8.Nele,mp.jac.Nmode),dtype=np.complex)  
+    if(any(mp.dm_ind==9)): jacStruct.G9 = np.zeros((mp.Fend.corr.Npix,mp.dm9.Nele,mp.jac.Nmode),dtype=np.complex)
 
-    print('Computing control Jacobian matrices ... \n')
-    for im in range(mp.jac.Nmode):
-        if(any(mp.dm_ind==1)):
-            print('mode%ddm%d ' % (im,1))
-            jacStruct.G1[:,:,im] =  model_Jacobian_middle_layer(mp, im, 1)
-        if(any(mp.dm_ind==2)):
-            print('mode%ddm%d ' % (im,2))
-            jacStruct.G2[:,:,im] =  model_Jacobian_middle_layer(mp, im, 2)
-    print('\n')
-            
-        
-#    for ii in range(Nvals)
-#        im = vals_list(1,ii); %--index for tip-tilt-wavelength mode
-#        whichDM = vals_list(2,ii); %--number of the specified DM
-#        fprintf('mode%ddm%d ',im,whichDM)
-#                    
-#        if(whichDM==1); jacStruct.G1(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==2); jacStruct.G2(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==3); jacStruct.G3(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==4); jacStruct.G4(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==5); jacStruct.G5(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==6); jacStruct.G6(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==7); jacStruct.G7(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==8); jacStruct.G8(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#        if(whichDM==9); jacStruct.G9(:,:,im) =  model_Jacobian_middle_layer(mp, vals_list, ii);  end
-#    end
-#    fprintf('\n')
-            
-
-        
-    return jacStruct #falco.config.EmptyObject()
+    print('Computing control Jacobian matrices:\n  ',end='')
+    with falco.utils.TicToc():
+        for im in range(mp.jac.Nmode):
+            if(any(mp.dm_ind==1)):
+                print('mode%ddm%d...' % (im,1),end='')
+                jacStruct.G1[:,:,im] =  model_Jacobian_middle_layer(mp, im, 1)
+            if(any(mp.dm_ind==2)):
+                print('mode%ddm%d...' % (im,2),end='')
+                jacStruct.G2[:,:,im] =  model_Jacobian_middle_layer(mp, im, 2)
+            print('done.')
+    return jacStruct
 
 
 def model_Jacobian_middle_layer(mp,im,idm):
@@ -660,11 +652,17 @@ def model_Jacobian_LC(mp,im,idm):
 
     """
     
-    #AJER NOTE DEBUGGING
+    #AJER NOTE DEBUGGING: Hard-coded values until these inputs are initialized correctly
     mp.P4.compact.Narr = 196
     mp.P4.compact.dx = mp.P2.D/mp.P1.compact.Nbeam
-    #mp.P4.compact.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4compactcroppedMask.fits', ext=0)
-    #mp.P1.compact.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1compactmask.fits', ext=0)
+    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "debug" )
+    mp.P4.compact.croppedMask = fits.getdata(os.path.join(dir_path, 'mpP4compactcroppedMask.fits'),ext=0)
+    mp.P1.compact.mask = fits.getdata(os.path.join(dir_path, 'mpP1compactmask.fits'),ext=0)
+    mp.F3.compact.mask.amp = fits.getdata(os.path.join(dir_path, 'mpF3compactmaskamp.fits'),ext=0)
+#    mp.P4.compact.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4compactcroppedMask.fits', ext=0)
+#    mp.P1.compact.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1compactmask.fits', ext=0)
+#    mp.F3.compact.mask.amp = fits.getdata('/Users/ajriggs/Downloads/mpF3compactmaskamp.fits', ext=0)
+    
     
     modvar = falco.config.EmptyObject() #--Initialize the new structure
     modvar.sbpIndex = mp.jac.sbp_inds[im]
@@ -749,7 +747,7 @@ def model_Jacobian_LC(mp,im,idm):
 
     """ ---------- DM1 ---------- """
     if(idm==1):
-        Gzdl = np.zeros((mp.Fend.corr.Npix,mp.dm1.Nele)).astype(complex)
+        Gzdl = np.zeros((mp.Fend.corr.Npix,mp.dm1.Nele),dtype=np.complex)
         
         #--Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
         NboxPad1AS = int(mp.dm1.compact.NboxAS) #--array size for FFT-AS propagations from DM1->DM2->DM1
@@ -770,14 +768,12 @@ def model_Jacobian_LC(mp,im,idm):
     
         #--Propagate each actuator from DM1 through the optical system
         Gindex = 0 #1  initialize index counter
-        for iact in mp.dm1.act_ele:
-            if( np.sum(np.abs(mp.dm1.compact.inf_datacube[:,:,iact]))>1e-12 ):  #--Only compute for acutators specified for use or for influence functions that are not zeroed out
+        for iact in mp.dm1.act_ele: #np.array([23]): #
+            if( np.sum(np.abs(mp.dm1.compact.inf_datacube[:,:,iact]))>1e-12 ):  #--Compute only for influence functions that are not zeroed out
                 
                 #--x- and y- coordinate indices of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0,iact],mp.dm1.compact.xy_box_lowerLeft_AS[0,iact]+NboxPad1AS).astype(int) # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1,iact],mp.dm1.compact.xy_box_lowerLeft_AS[1,iact]+NboxPad1AS).astype(int) # y-indices in pupil arrays for the box
-#                x_box_AS_ind = mp.dm1.compact.xy_box_lowerLeft_AS[0,iact]:mp.dm1.compact.xy_box_lowerLeft_AS[0,iact]+NboxPad1AS-1 # x-indices in pupil arrays for the box
-#                y_box_AS_ind = mp.dm1.compact.xy_box_lowerLeft_AS[1,iact]:mp.dm1.compact.xy_box_lowerLeft_AS[1,iact]+NboxPad1AS-1 # y-indices in pupil arrays for the box
+                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0,iact],mp.dm1.compact.xy_box_lowerLeft_AS[0,iact]+NboxPad1AS,dtype=np.int) # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1,iact],mp.dm1.compact.xy_box_lowerLeft_AS[1,iact]+NboxPad1AS,dtype=np.int) # y-indices in pupil arrays for the box
                 #--x- and y- coordinates of the UN-padded influence function in the full padded pupil
                 x_box = mp.dm1.compact.x_pupPad[x_box_AS_ind] # full pupil x-coordinates of the box 
                 y_box = mp.dm1.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box
@@ -813,7 +809,7 @@ def model_Jacobian_LC(mp,im,idm):
                 
                 
                 #--Full Lyot plane pupil (for Babinet)
-                EP4noFPM = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad)).astype(np.complex)
+                EP4noFPM = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad),dtype=np.complex)
                 EP4noFPM[y_box_AS_ind[0]:y_box_AS_ind[0]+NboxPad1AS,x_box_AS_ind[0]:x_box_AS_ind[0]+NboxPad1AS] = dEP2box
                 #EP4noFPM[y_box_AS_ind,x_box_AS_ind] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field. 
                 EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the correct orientation 
@@ -823,15 +819,15 @@ def model_Jacobian_LC(mp,im,idm):
                 #--MFT to camera
                 EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
                 EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
-                                
+                
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
-            Gindex += Gindex
+            Gindex += 1
  
 
     """ ---------- DM2 ---------- """
     if(idm==2):
-        Gzdl = np.zeros((mp.Fend.corr.Npix,mp.dm2.Nele)).astype(np.complex)
+        Gzdl = np.zeros((mp.Fend.corr.Npix,mp.dm2.Nele),dtype=np.complex)
         
         #--Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
         NboxPad2AS = int(mp.dm2.compact.NboxAS)
@@ -852,8 +848,8 @@ def model_Jacobian_LC(mp,im,idm):
             if( np.sum(np.abs(mp.dm2.compact.inf_datacube[:,:,iact]))>1e-12 ):  #--Only compute for acutators specified for use or for influence functions that are not zeroed out
     
                 #--x- and y- coordinates of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0,iact],mp.dm2.compact.xy_box_lowerLeft_AS[0,iact]+NboxPad2AS).astype(int) # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1,iact],mp.dm2.compact.xy_box_lowerLeft_AS[1,iact]+NboxPad2AS).astype(int) # y-indices in pupil arrays for the box
+                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0,iact],mp.dm2.compact.xy_box_lowerLeft_AS[0,iact]+NboxPad2AS,dtype=np.int) # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1,iact],mp.dm2.compact.xy_box_lowerLeft_AS[1,iact]+NboxPad2AS,dtype=np.int) # y-indices in pupil arrays for the box
                 #--x- and y- coordinates of the UN-padded influence function in the full padded pupil
                 x_box = mp.dm2.compact.x_pupPad[x_box_AS_ind] # full pupil x-coordinates of the box 
                 y_box = mp.dm2.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box 
@@ -886,7 +882,7 @@ def model_Jacobian_LC(mp,im,idm):
                 EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) #--Subtrahend term for the Lyot plane E-field    
                 EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Get the correct orientation
                                 
-                EP4noFPM = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad)).astype(np.complex)
+                EP4noFPM = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad),dtype=np.complex)
                 EP4noFPM[y_box_AS_ind[0]:y_box_AS_ind[0]+NboxPad2AS,x_box_AS_ind[0]:x_box_AS_ind[0]+NboxPad2AS] = dEP2box
                 #EP4noFPM[y_box_AS_ind,x_box_AS_ind] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field.
                 EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the number or re-imaging relays between pupils P3 and P4. 
@@ -899,7 +895,7 @@ def model_Jacobian_LC(mp,im,idm):
                 
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
-            Gindex += Gindex
+            Gindex += 1
         
     
     return Gzdl

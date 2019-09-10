@@ -10,7 +10,7 @@ from scipy.interpolate import RectBivariateSpline
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
 
-# from astropy.io import fits #--NOTE: DEBUGGING
+from astropy.io import fits #--NOTE: DEBUGGING
 
 
 def falco_gen_dm_surf(dm,dx,N):
@@ -83,14 +83,6 @@ def falco_gen_dm_surf(dm,dx,N):
 def falco_discretize_dm_surf(dm, HminStepMethod):
     pass
 
-
-def falco_gen_dm_poke_cube(dm, mp, dx_dm, flagGenCube=True, **kwds):
-    # SFF NOTE:  This function exists in falco/lib/dm/falco_gen_dm_poke_cube.py but not sure if this is good
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
-
-    return mp.dm1.compact
     
 def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     """Simulate a deformable mirror of specified actuator spacing, including the
@@ -580,16 +572,16 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     ## Make NboxPad-sized postage stamps for each actuator's influence function
     if(flagGenCube):
         if not dm.flag_hex_array:
-            print("  Influence function padded from %d to %d points for A.S. propagation.",(Nbox,dm.NboxAS))
+            print("  Influence function padded from %d to %d points for A.S. propagation." % (Nbox,dm.NboxAS))
         #     tic
-        print('Computing datacube of DM influence functions... ')
+        print('Computing datacube of DM influence functions... ',end='')
 
         #--Find the locations of the postage stamps arrays in the larger pupilPad array
         dm.xy_cent_act_inPix = dm.xy_cent_act*(dm.dm_spacing/dx_dm) # Convert units to pupil-plane pixels
         dm.xy_cent_act_inPix = dm.xy_cent_act_inPix + 0.5 #--For the half-pixel offset if pixel centered. 
         dm.xy_cent_act_box = np.round(dm.xy_cent_act_inPix) # Center locations of the postage stamps (in between pixels), in actuator widths
         dm.xy_cent_act_box_inM = dm.xy_cent_act_box*dx_dm # now in meters 
-        dm.xy_box_lowerLeft = dm.xy_cent_act_box + (dm.NdmPad-Nbox)/2 + 0 # index of pixel in lower left of the postage stamp within the whole pupilPad array. +0 for Python, +1 for Matlab
+        dm.xy_box_lowerLeft = dm.xy_cent_act_box + (dm.NdmPad-Nbox)/2 - 0 # index of pixel in lower left of the postage stamp within the whole pupilPad array. +0 for Python, +1 for Matlab
 
         #--Starting coordinates (in actuator widths) for updated master influence function. 
         # This is interpixel centered, so do not translate!
@@ -617,10 +609,14 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
            inf_datacube[iact,:,:] = interp_spline(ybox,xbox)
 
         print('done.') # fprintf('done.  Time = %.1fs\n',toc);
+        
+#        # NOTE: DEBUGGING
+#        hdu = fits.PrimaryHDU(inf_datacube)
+#        hdu.writeto('/Users/ajriggs/Downloads/infCube_python.fits', overwrite=True)
+#        print('Hi')
 
     else:
         dm.act_ele = np.arange(dm.NactTotal)    
     
-#    # NOTE: DEBUGGING
-#    hdu = fits.PrimaryHDU(inf_datacube)
-#    hdu.writeto('/Users/ajriggs/Downloads/infCube_python.fits', overwrite=True)
+
+        

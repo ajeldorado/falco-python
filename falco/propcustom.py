@@ -40,7 +40,7 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
     if(np.mod(Nrelay,2)==1):
         E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
         if centering == 'pixel':
-            E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
+            E_out = np.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
     else:
         E_out = E_in
         
@@ -175,7 +175,7 @@ def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel')
     post = np.exp(-2 * np.pi * 1j * (xi * x) / (lambda_ * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_foc, post])
 
@@ -235,6 +235,6 @@ def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering=
     post = np.exp(-2 * np.pi * 1j * (x * xi) / (lambda_ * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_pup, post])

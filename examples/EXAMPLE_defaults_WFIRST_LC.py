@@ -97,7 +97,7 @@ mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.EmptyObject()
 mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
-mp.ctrl.dmfacVec = 1;            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1].
+mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1].
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
 ###--Spatial pixel weighting

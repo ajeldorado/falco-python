@@ -157,7 +157,7 @@ def falco_get_sim_sbp_image(mp, si):
         #--Optionally include the planet PSF
         if(mp.planetFlag):
             modvar.whichSource = 'exoplanet'
-            Eplanet = model_full(mp,modvar)
+            Eplanet = falco.models.model_full(mp,modvar)
             Iout = Iout + np.abs(Eplanet)**2 #--Apply spectral weighting outside this function
 
         #--Apply weight within the sub-bandpass. Assume polarizations are evenly weigted.

@@ -5,6 +5,8 @@ import pickle
 import scipy
 from astropy.io import fits
 
+import matplotlib.pyplot as plt # DEBUGGING
+from mpl_toolkits.axes_grid1 import make_axes_locatable # DEBUGGING
 #from falco import models
 
 def falco_init_ws(mp, config=None):
@@ -780,36 +782,36 @@ def falco_init_ws(mp, config=None):
     if np.any(mp.dm_ind==9):  
         mp.dm9.dV = 0
 
-    ## Intialize tied actuator pairs if not already defined. 
-    # Dimensions of the pair list is [Npairs x 2]
-    ##--Save the delta from the previous command
-    if np.any(mp.dm_ind==1): 
-        if not hasattr(mp.dm1,'tied'): 
-            mp.dm1.tied = []
-    if np.any(mp.dm_ind==2): 
-        if not hasattr(mp.dm2,'tied'): 
-            mp.dm2.tied = []
-    if np.any(mp.dm_ind==3): 
-        if not hasattr(mp.dm3,'tied'): 
-            mp.dm3.tied = []
-    if np.any(mp.dm_ind==4): 
-        if not hasattr(mp.dm4,'tied'): 
-            mp.dm4.tied = []
-    if np.any(mp.dm_ind==5): 
-        if not hasattr(mp.dm5,'tied'): 
-            mp.dm5.tied = []
-    if np.any(mp.dm_ind==6): 
-        if not hasattr(mp.dm6,'tied'): 
-            mp.dm6.tied = []
-    if np.any(mp.dm_ind==7): 
-        if not hasattr(mp.dm7,'tied'): 
-            mp.dm7.tied = []
-    if np.any(mp.dm_ind==8): 
-        if not hasattr(mp.dm8,'tied'): 
-            mp.dm8.tied = []
-    if np.any(mp.dm_ind==9): 
-        if not hasattr(mp.dm9,'tied'): 
-            mp.dm9.tied = []
+#    ## Intialize tied actuator pairs if not already defined. 
+#    # Dimensions of the pair list is [Npairs x 2]
+#    ##--Save the delta from the previous command
+#    if np.any(mp.dm_ind==1): 
+#        if not hasattr(mp.dm1,'tied'): 
+#            mp.dm1.tied = []
+#    if np.any(mp.dm_ind==2): 
+#        if not hasattr(mp.dm2,'tied'): 
+#            mp.dm2.tied = []
+#    if np.any(mp.dm_ind==3): 
+#        if not hasattr(mp.dm3,'tied'): 
+#            mp.dm3.tied = []
+#    if np.any(mp.dm_ind==4): 
+#        if not hasattr(mp.dm4,'tied'): 
+#            mp.dm4.tied = []
+#    if np.any(mp.dm_ind==5): 
+#        if not hasattr(mp.dm5,'tied'): 
+#            mp.dm5.tied = []
+#    if np.any(mp.dm_ind==6): 
+#        if not hasattr(mp.dm6,'tied'): 
+#            mp.dm6.tied = []
+#    if np.any(mp.dm_ind==7): 
+#        if not hasattr(mp.dm7,'tied'): 
+#            mp.dm7.tied = []
+#    if np.any(mp.dm_ind==8): 
+#        if not hasattr(mp.dm8,'tied'): 
+#            mp.dm8.tied = []
+#    if np.any(mp.dm_ind==9): 
+#        if not hasattr(mp.dm9,'tied'): 
+#            mp.dm9.tied = []
 
     #SFF NOTE
     out = falco.config.EmptyObject()
@@ -959,7 +961,7 @@ def falco_wfsc_loop(mp):
     
         #--Start of new estimation+control iteration
         #print(['Iteration: ' num2str(Itr) '/' num2str(mp.Nitr) '\n' ]);
-        print('Iteration: %d / %d\n'%(Itr, mp.Nitr));
+        print('Iteration: %d / %d\n'%(Itr, mp.Nitr),end='');
         
         #--Re-compute the starlight normalization factor for the compact and full models (to convert images to normalized intensity). No tip/tilt necessary.
         falco.imaging.falco_get_PSF_norm_factor(mp);
@@ -970,10 +972,10 @@ def falco_wfsc_loop(mp):
             mp.dm_ind = mp.dm_ind_sched[Itr];
     
         #--Report which DMs are used in this iteration
-        print('DMs to be used in this iteration = [')
+        print('DMs to be used in this iteration = [',end='')
         for jj in range(len(mp.dm_ind)):
-            print(' %d'%(mp.dm_ind[jj]))
-        print(' ]\n');
+            print(' %d'%(mp.dm_ind[jj]),end='')
+        print(' ]')
         
         #--Fill in History of DM commands to Store
         if hasattr(mp,'dm1'): 
@@ -1033,9 +1035,9 @@ def falco_wfsc_loop(mp):
         if Itr==0:
             mp.jac.zerns0 = mp.jac.zerns;
         
-        print('Zernike modes used in this Jacobian:\t'); 
-        print('%d '%(mp.jac.zerns))
-        print('\n')
+        print('Zernike modes (Noll indexing) used in this Jacobian:\t',end=''); 
+        print('%d '%(mp.jac.zerns),end='')
+        print('\n',end='')
         
         #--Re-compute the Jacobian weights
         falco.configs.falco_config_jac_weights(mp);
@@ -1058,9 +1060,9 @@ def falco_wfsc_loop(mp):
         if cvar.flagCullAct:
             #--Re-include all actuators in the basis set.
             if np.any(mp.dm_ind==1): 
-                mp.dm1.act_ele = list(range(mp.dm1.NactTotal)); 
+                mp.dm1.act_ele = list(range(mp.dm1.NactTotal)) 
             if np.any(mp.dm_ind==2): 
-                mp.dm2.act_ele = list(range(mp.dm2.NactTotal)); 
+                mp.dm2.act_ele = list(range(mp.dm2.NactTotal)) 
             if np.any(mp.dm_ind==5):
                 mp.dm5.act_ele = list(range(mp.dm5.NactTotal))
             if np.any(mp.dm_ind==8): 
@@ -1100,8 +1102,8 @@ def falco_wfsc_loop(mp):
         if  Itr==0 or cvar.flagRelin:
             jacStruct =  falco.models.model_Jacobian(mp); #--Get structure containing Jacobians
         
-        ## Cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
-        jacStruct = falco_ctrl_cull(mp,cvar,jacStruct);
+        ## Modiffy jacStruct to cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
+        falco_ctrl_cull(mp,cvar,jacStruct);
         
         ## Load the improved Jacobian if using the E-M technique
 #        if mp.flagUseLearnedJac:
@@ -1113,7 +1115,7 @@ def falco_wfsc_loop(mp):
         
         ## Wavefront Estimation
         if mp.estimator.lower() in ['perfect']:
-            EfieldVec  = falco_est_perfect_Efield_with_Zernikes(mp);
+            EfieldVec  = falco_est_perfect_Efield_with_Zernikes(mp)
         elif mp.estimator.lower in ['pwp-bp','pwp-kf']:
             if mp.est.flagUseJac: #--Send in the Jacobian if true
                 ev = falco_est_pairwise_probing(mp,jacStruct);
@@ -1150,10 +1152,10 @@ def falco_wfsc_loop(mp):
     
         ## Wavefront Control
     
-        cvar.Itr = Itr;
-        cvar.EfieldVec = EfieldVec;
+        cvar.Itr = Itr
+        cvar.EfieldVec = EfieldVec
         cvar.InormHist = InormHist[Itr]
-        falco_ctrl(mp,cvar,jacStruct);
+        falco_ctrl(mp,cvar,jacStruct)
     
         #SFF NOTE
         if not hasattr(cvar, "log10regUsed"):
@@ -1191,16 +1193,13 @@ def falco_wfsc_loop(mp):
         
         # Take the next image to check the contrast level (in simulation only)
         with falco.utils.TicToc('Getting updated summed image'):
-            #tic; fprintf('Getting updated summed image... ');
             Im = falco.imaging.falco_get_summed_image(mp);
-            #print('done. Time = %.1f s\n',toc);
         
         #--REPORTING NORMALIZED INTENSITY
         print('Itr: ', Itr)
         InormHist[Itr+1] = np.mean(Im[mp.Fend.corr.maskBool]);
-        print('Prev and New Measured Contrast (LR):\t\t\t %.2e\t->\t%.2e\t (%.2f x smaller)  \n'%(InormHist[Itr], InormHist[Itr+1], InormHist[Itr]/InormHist[Itr+1]))
-            
-        print('\n\n');
+        print('Prev and New Measured Contrast (LR):\t\t\t %.2e\t->\t%.2e\t (%.2f x smaller)  \n\n'%(InormHist[Itr], InormHist[Itr+1], InormHist[Itr]/InormHist[Itr+1]))
+
     
         # --END OF ESTIMATION + CONTROL LOOP
     
@@ -1255,11 +1254,11 @@ def falco_wfsc_loop(mp):
     
     fnOut = mp.path.config + mp.runLabel + '_snippet.pkl'
     
-    print('\nSaving abridged workspace to file:\n\t%s\n'%(fnOut))
+    print('\nSaving abridged workspace to file:\n\t%s\n'%(fnOut),end='')
     #save(fnOut,'out');
     with open(fnOut, 'wb') as f:
         pickle.dump(out,f)
-    print('...done.\n\n')
+    print('...done.\n')
 
     ## Save out the data from the workspace
     if mp.flagSaveWS:
@@ -1284,7 +1283,7 @@ def falco_wfsc_loop(mp):
         mp.dm9.inf_datacube = 0;
     
         fnAll = mp.path.ws + mp.runLabel + '_all.pkl'
-        print('Saving entire workspace to file ' + fnAll + '...')
+        print('Saving entire workspace to file ' + fnAll + '...',end='')
         #save(fnAll);
         with open(fnAll, 'wb') as f:
             pickle.dump(mp,f)
@@ -1300,9 +1299,27 @@ def falco_wfsc_loop(mp):
 def falco_est_perfect_Efield_with_Zernikes(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
-
-    return falco.config.EmptyObject()
+    
+    Emat = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode),dtype=complex)
+    modvar = falco.config.EmptyObject() #--Initialize
+    
+    for im in range(mp.jac.Nmode):
+        modvar.sbpIndex = mp.jac.sbp_inds[im]
+        modvar.zernIndex = mp.jac.zern_inds[im]
+        modvar.whichSource = 'star'
+        
+        #--Take the mean over the wavelengths within the sub-bandpass
+        EmatSbp = np.zeros((mp.Fend.corr.Npix, mp.Nwpsbp),dtype=complex)
+        for wi in range(mp.Nwpsbp):
+            modvar.wpsbpIndex = wi
+            E2D = falco.models.model_full(mp, modvar)
+            EmatSbp[:,wi] = mp.full.lambda_weights[wi]*E2D[mp.Fend.corr.maskBool] #--Actual field in estimation area. Apply spectral weight within the sub-bandpass
+        Emat[:,im] = np.sum(EmatSbp,axis=1)
+    
+    return Emat
+    
+    #pass
+    #return falco.config.EmptyObject()
 
 def falco_est_pairwise_probing(mp, **kwargs):
     
@@ -1312,11 +1329,78 @@ def falco_est_pairwise_probing(mp, **kwargs):
 
     return falco.config.EmptyObject()
 
-def falco_ctrl(mp,cvar,jacStruct):
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
 
+def falco_ctrl(mp,cvar,jacStruct):
+    
+#    if type(mp) is not falco.config.ModelParameters:
+#        raise TypeError('Input "mp" must be of type ModelParameters')
+#    pass
+
+    #with falco.utils.TicToc('Using the Jacobian to make other matrices'):
+    print('Using the Jacobian to make other matrices...',end='')
+    
+    #--Compute matrices for linear control with regular EFC
+    cvar.GstarG_wsum  = np.zeros((cvar.NeleAll,cvar.NeleAll)) 
+    cvar.RealGstarEab_wsum = np.zeros((cvar.NeleAll, 1))
+
+    for im in range(mp.jac.Nmode):
+
+        Gmode = np.zeros((mp.Fend.corr.Npix,1)) #--Initialize a row to concatenate onto
+        if(any(mp.dm_ind==1)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G1[:,:,im])))
+        if(any(mp.dm_ind==2)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G2[:,:,im])))
+        if(any(mp.dm_ind==8)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G8[:,:,im])))
+        if(any(mp.dm_ind==9)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G9[:,:,im])))
+        Gmode = Gmode[:,1:] #--Remove the zero column used for initialization
+        #Gstack = [jacStruct.G1[:,:,im], jacStruct.G2[:,:,im], jacStruct.G8[:,:,im], jacStruct.G9[:,:,im] ]
+
+        #--Square matrix part stays the same if no re-linearization has occurrred. 
+        cvar.GstarG_wsum += mp.jac.weights[im]*np.real(np.conj(Gmode).T @ Gmode) 
+
+        #--The G^*E part changes each iteration because the E-field changes.
+        Eweighted = mp.WspatialVec*cvar.EfieldVec[:,im] #--Apply 2-D spatial weighting to E-field in dark hole pixels.
+        cvar.RealGstarEab_wsum += mp.jac.weights[im]*np.real(np.conj(Gmode).T @ Eweighted.reshape(mp.Fend.corr.Npix,1)) #--Apply the Jacobian weights and add to the total.
+    
+    #--Make the regularization matrix. (Define only the diagonal here to save RAM.)
+    cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
+    cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
+#    #AJER NOTE DEBUGGING:
+#    hdu = fits.PrimaryHDU(np.abs(Gmode))
+#    hdu.writeto('/Users/ajriggs/Downloads/G_abs.fits', overwrite=True)
+    print('done.') #fprintf(' done. Time: %.3f\n',toc);
+
+    #--Call the Controller Function
+    print('Control beginning ...') # tic
+    #--Established, conventional controllers
+    if(mp.controller.lower()=='plannedefc'): #--EFC regularization is scheduled ahead of time
+        dDM = falco_ctrl_planned_EFC(mp,cvar)
+    elif(mp.controller.lower()=='gridsearchefc'):
+        dDM = falco_ctrl_grid_search_EFC(mp,cvar)
+
+    #--Experimental controllers
+    elif(mp.controller.lower()=='plannedefcts'): #--EFC regularization is scheduled ahead of time. total stroke also minimized
+        dDM = falco_ctrl_planned_EFC_TS(mp,cvar)   
+
+    elif(mp.controller.lower()=='plannedefccon'): #--Constrained-EFC regularization is scheduled ahead of time
+        dDM = falco_ctrl_planned_EFCcon(mp,cvar)          
+        
+#    print('done.\n') #print(' done. Time: %.3f sec\n',toc);
+    
+    #--Update the DM commands by adding the delta control signal
+    if(any(mp.dm_ind==1)):  mp.dm1.V += dDM.dDM1V
+    if(any(mp.dm_ind==2)):  mp.dm2.V += dDM.dDM2V
+    if(any(mp.dm_ind==8)):  mp.dm8.V += dDM.dDM8V
+    if(any(mp.dm_ind==9)):  mp.dm9.V += dDM.dDM9V
+
+    #--Save the delta from the previous command
+    if(any(mp.dm_ind==1)):  mp.dm1.dV = dDM.dDM1V 
+    if(any(mp.dm_ind==2)):  mp.dm2.dV = dDM.dDM2V
+    if(any(mp.dm_ind==8)):  mp.dm8.dV = dDM.dDM8V
+    if(any(mp.dm_ind==9)):  mp.dm9.dV = dDM.dDM9V
+    
+#    #--Update the tied actuator pairs
+#    if(any(mp.dm_ind==1)):  mp.dm1.tied = dDM.dm1tied
+#    if(any(mp.dm_ind==2)):  mp.dm2.tied = dDM.dm2tied    
+    
     
 
 def falco_ctrl_cull(mp, cvar, jacStruct):
@@ -1325,7 +1409,8 @@ def falco_ctrl_cull(mp, cvar, jacStruct):
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
-    return falco.config.EmptyObject()
+    #return jacStruct
+    #return falco.config.EmptyObject()
 
 def falco_est_perfect_Efield(mp, DM, which_model='full'):
     """
@@ -1380,3 +1465,246 @@ def falco_est_perfect_Efield(mp, DM, which_model='full'):
 
     Isum2D = Icube.sum(axis=2)
     return Emat, Isum2D
+
+
+def falco_ctrl_grid_search_EFC(mp,cvar):
+    
+    #--Initializations    
+    vals_list = [(x,y) for x in mp.ctrl.log10regVec for y in mp.ctrl.dmfacVec] #--Make all combinations of the values
+    Nvals = mp.ctrl.log10regVec.size*mp.ctrl.dmfacVec.size
+    InormVec = np.zeros(Nvals)
+
+    #--Temporarily store computed DM commands so that the best one does not have to be re-computed
+    if(any(mp.dm_ind==1)): dDM1V_store = np.zeros((mp.dm1.Nact,mp.dm1.Nact,Nvals))
+    if(any(mp.dm_ind==2)): dDM2V_store = np.zeros((mp.dm2.Nact,mp.dm2.Nact,Nvals))
+    if(any(mp.dm_ind==8)): dDM8V_store = np.zeros((mp.dm8.NactTotal,Nvals))
+    if(any(mp.dm_ind==9)): dDM9V_store = np.zeros((mp.dm9.NactTotal,Nvals))
+
+    ## Empirically find the regularization value giving the best contrast
+    
+    #--Loop over all the settings to check empirically
+    for ni in range(Nvals):
+        [InormVec[ni],dDM_temp] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar) 
+#        #--Tied actuators
+#        if(any(mp.dm_ind==1)): dm1tied{ni} = dDM_temp.dm1tied
+#        if(any(mp.dm_ind==2)): dm2tied{ni} = dDM_temp.dm2tied
+        #--delta voltage commands
+        if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = dDM_temp.dDM1V
+        if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = dDM_temp.dDM2V
+        if(any(mp.dm_ind==8)): dDM8V_store[:,ni] = dDM_temp.dDM8V
+        if(any(mp.dm_ind==9)): dDM9V_store[:,ni] = dDM_temp.dDM9V
+
+    #--Print out results to the command line
+    print('Scaling factor:\t',end='')
+    for ni in range(Nvals): print('%.2f\t\t' % (vals_list[ni][1]),end='')
+
+    print('\nlog10reg:\t',end='')
+    for ni in range(Nvals): print('%.1f\t\t' % (vals_list[ni][0]),end='')
+    
+    print('\nInorm:  \t',end='')
+    for ni in range(Nvals):  print('%.2e\t' % (InormVec[ni]),end='')
+    print('\n',end='')
+
+    #--Find the best scaling factor and Lagrange multiplier pair based on the best contrast.
+    #[cvar.cMin,indBest] = np.min(InormVec)
+    indBest = np.argmin(InormVec)
+    cvar.cMin = np.min(InormVec)
+    dDM = falco.config.EmptyObject()
+#    #--Tied actuators
+#    if(any(mp.dm_ind==1)): dDM.dm1tied = dm1tied{indBest}
+#    if(any(mp.dm_ind==2)): dDM.dm2tied = dm2tied{indBest}
+    #--delta voltage commands
+    if(any(mp.dm_ind==1)): dDM.dDM1V = np.squeeze(dDM1V_store[:,:,indBest])
+    if(any(mp.dm_ind==2)): dDM.dDM2V = np.squeeze(dDM2V_store[:,:,indBest])
+    if(any(mp.dm_ind==8)): dDM.dDM8V = np.squeeze(dDM8V_store[:,indBest])
+    if(any(mp.dm_ind==9)): dDM.dDM9V = np.squeeze(dDM9V_store[:,indBest])
+
+    cvar.log10regUsed = vals_list[indBest][0]
+    dmfacBest = vals_list[indBest][1]
+    if(mp.ctrl.flagUseModel):
+        print('Model-based grid search gives log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e contrast.' % (cvar.log10regUsed, dmfacBest, cvar.cMin) )
+    else:
+        print('Empirical grid search gives log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e contrast.' % (cvar.log10regUsed, dmfacBest, cvar.cMin) )
+    
+    return dDM
+
+
+def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
+    #function [InormAvg,dDM] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar)
+
+    if(any(mp.dm_ind==1)):
+        DM1V0 = mp.dm1.V.copy()
+#        dDM1V0 = mp.dm1.dV.copy()
+    if(any(mp.dm_ind==2)):
+        DM2V0 = mp.dm2.V.copy()
+        
+
+    #--Initializations
+    log10reg = vals_list[ni][0] #--log 10 of regularization value
+    dmfac = vals_list[ni][1] #--Scaling factor for entire DM command
+    
+    #--Save starting point for each delta command to be added to.
+    #--Get the indices of each DM's command vector within the single concatenated command vector
+    falco_ctrl_setup(mp,cvar) #--Modifies cvar
+    
+    #--Least-squares solution with regularization:
+    duVecNby1 = -dmfac*np.linalg.solve( (10**log10reg*np.diag(cvar.EyeGstarGdiag) + cvar.GstarG_wsum), cvar.RealGstarEab_wsum)
+    duVec = duVecNby1.reshape((-1,)) #--Convert to true 1-D array from an Nx1 array
+    
+#    plt.plot(duVec); plt.pause(0.1) # DEBUGGING
+ 
+    #--Parse the command vector by DM and assign the output commands
+#    dDM = falco.config.EmptyObject()
+#    [dDMtemp] = falco_ctrl_wrapup(mp,cvar,duVec)
+    mp,dDM = falco_ctrl_wrapup(mp,cvar,duVec)
+    
+#    plt.imshow(mp.dm1.V); plt.pause(1) # DEBUGGING
+    
+#    # AJER NOTE DEBUGGING: 
+#    ax = plt.subplot(111)
+#    im = ax.imshow(mp.dm2.V)
+#    # create an axes on the right side of ax. The width of cax will be 5%
+#    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+#    divider = make_axes_locatable(ax)
+#    cax = divider.append_axes("right", size="5%", pad=0.05)
+#    plt.colorbar(im, cax=cax)
+#    plt.pause(1)
+    
+    #--Take images and compute average intensity in dark hole
+    if(mp.ctrl.flagUseModel): #--Perform a model-based grid search using the compact model
+        Itotal = falco.imaging.falco_get_expected_summed_image(mp,cvar)
+        InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
+    else: #--Perform an empirical grid search with actual images from the testbed or full model
+        Itotal = falco.imaging.falco_get_summed_image(mp)
+        InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
+    
+#    plt.imshow(np.log10(Itotal)); plt.pause(1) # DEBUGGING
+    
+    #--Reset voltage commands in mp
+    if(any(mp.dm_ind==1)): mp.dm1.V = DM1V0
+    if(any(mp.dm_ind==2)): mp.dm2.V = DM2V0
+
+    return InormAvg,dDM #dDMtemp
+
+
+def falco_ctrl_setup(mp,cvar):
+
+    #--Save starting point for each delta command to be added to.
+    if(any(mp.dm_ind==1)): cvar.DM1Vnom = mp.dm1.V
+    if(any(mp.dm_ind==2)): cvar.DM2Vnom = mp.dm2.V
+    if(any(mp.dm_ind==8)): cvar.DM8Vnom = mp.dm8.V
+    if(any(mp.dm_ind==9)): cvar.DM9Vnom = mp.dm9.V
+    
+    #--Make the vector of total DM commands from before
+    u1 = mp.dm1.V.reshape(mp.dm1.NactTotal)[mp.dm1.act_ele] if(any(mp.dm_ind==1)) else np.array([])
+    u2 = mp.dm2.V.reshape(mp.dm2.NactTotal)[mp.dm2.act_ele] if(any(mp.dm_ind==2)) else np.array([])
+    u8 = mp.dm1.V.reshape(mp.dm8.NactTotal)[mp.dm8.act_ele] if(any(mp.dm_ind==8)) else np.array([])
+    u9 = mp.dm1.V.reshape(mp.dm9.NactTotal)[mp.dm9.act_ele] if(any(mp.dm_ind==9)) else np.array([])
+    cvar.uVec = np.concatenate((u1,u2,u8,u9))
+    cvar.NeleAll = cvar.uVec.size
+    
+    #--Get the indices of each DM's command within the full command
+    u1dummy = 1*np.ones(mp.dm1.Nele,dtype=int) if(any(mp.dm_ind==1)) else np.array([])
+    u2dummy = 2*np.ones(mp.dm2.Nele,dtype=int) if(any(mp.dm_ind==2)) else np.array([])
+    u8dummy = 8*np.ones(mp.dm8.Nele,dtype=int) if(any(mp.dm_ind==8)) else np.array([])
+    u9dummy = 9*np.ones(mp.dm9.Nele,dtype=int) if(any(mp.dm_ind==9)) else np.array([])
+    cvar.uLegend = np.concatenate((u1dummy, u2dummy, u8dummy, u9dummy))
+    
+
+def falco_ctrl_wrapup(mp,cvar,duVec):
+        
+    dDM = falco.config.EmptyObject()
+    
+    #--Parse the command vector by DM
+    if(any(mp.dm_ind==1)):
+        dDM1Vvec = np.zeros(mp.dm1.NactTotal)
+        dDM1Vvec[mp.dm1.act_ele]  = mp.dm1.weight*duVec[cvar.uLegend==1] # Parse the command vector to get component for DM and apply the DM's weight
+        dDM.dDM1V = dDM1Vvec.reshape((mp.dm1.Nact,mp.dm1.Nact))
+    if(any(mp.dm_ind==2)):  
+        dDM2Vvec = np.zeros(mp.dm2.NactTotal)
+        dDM2Vvec[mp.dm2.act_ele] = mp.dm2.weight*duVec[cvar.uLegend==2] # Parse the command vector to get component for DM and apply the DM's weight
+        dDM.dDM2V = dDM2Vvec.reshape((mp.dm2.Nact,mp.dm2.Nact))
+    if(any(mp.dm_ind==8)):  
+        dDM.dDM8V = np.zeros(mp.dm8.NactTotal)
+        dDM.dDM8V[mp.dm8.act_ele] = mp.dm8.weight*duVec[cvar.uLegend==8] # Parse the command vector to get component for DM and apply the DM's weight
+    if(any(mp.dm_ind==9)):  
+        dDM.dDM9V = np.zeros(mp.dm9.NactTotal)
+        dDM.dDM9V[mp.dm9.act_ele] = mp.dm9.weight*duVec[cvar.uLegend==9] # Parse the command vector to get component for DM and apply the DM's weight
+    
+#    %--Enforce tied actuator pair commands. Assign command of first actuator to
+#    %the second as well.
+#    if(any(mp.dm_ind==1))
+#        for ti=1:size(mp.dm1.tied,1)
+#            dDM.dDM1V(mp.dm1.tied(ti,2)) = dDM.dDM1V(mp.dm1.tied(ti,1));
+#        end
+#    end
+#    if(any(mp.dm_ind==2))
+#        for ti=1:size(mp.dm2.tied,1)
+#            dDM.dDM2V(mp.dm2.tied(ti,2)) = dDM.dDM2V(mp.dm2.tied(ti,1));
+#        end
+#    end
+#    if(any(mp.dm_ind==8))
+#        for ti=1:size(mp.dm8.tied,1)
+#            dDM.dDM8V(mp.dm8.tied(ti,2)) = dDM.dDM8V(mp.dm8.tied(ti,1));
+#        end
+#    end
+#    if(any(mp.dm_ind==9))
+#        for ti=1:size(mp.dm9.tied,1)
+#            dDM.dDM9V(mp.dm9.tied(ti,2)) = dDM.dDM9V(mp.dm9.tied(ti,1));
+#        end
+#    end
+    
+    #--Combine the delta command with the previous command
+    if(any(mp.dm_ind==1)):  mp.dm1.V = cvar.DM1Vnom + dDM.dDM1V
+    if(any(mp.dm_ind==2)):  mp.dm2.V = cvar.DM2Vnom + dDM.dDM2V
+    if(any(mp.dm_ind==8)):  mp.dm8.V = cvar.DM8Vnom + dDM.dDM8V
+    if(any(mp.dm_ind==9)):  mp.dm9.V = cvar.DM9Vnom + dDM.dDM9V
+    
+#    %--Enforce the DM neighbor rule. (This restricts the maximum voltage
+#    %  between an actuator and each of its 8 neighbors.
+#    if(any(mp.dm_ind==1))
+#        if(isfield(mp.dm1,'flagNbrRule'))
+#            if(mp.dm1.flagNbrRule)
+#                [mp.dm1.V, indPair1] = falco_dm_neighbor_rule(mp.dm1.V, mp.dm1.dVnbr, mp.dm1.Nact);
+#                mp.dm1.tied = [mp.dm1.tied; indPair1]; %--Tie together actuators violating the neighbor rule
+#                dDM.dm1tied = mp.dm1.tied; %--This is what gets passed out to falco_wfsc_loop
+#            else
+#                dDM.dm1tied = mp.dm1.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
+#            end
+#        else
+#            dDM.dm1tied = mp.dm1.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
+#        end
+#    end
+#    if(any(mp.dm_ind==2))
+#        if(isfield(mp.dm2,'flagNbrRule'))
+#            if(mp.dm2.flagNbrRule)
+#                [mp.dm2.V,indPair2] = falco_dm_neighbor_rule(mp.dm2.V, mp.dm2.dVnbr, mp.dm2.Nact);
+#                mp.dm2.tied = [mp.dm2.tied; indPair2]; %--Tie together actuators violating the neighbor rule. This is used only within the controller.
+#                dDM.dm2tied = mp.dm2.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
+#            else
+#                dDM.dm2tied = mp.dm2.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
+#            end
+#        else
+#            dDM.dm2tied = mp.dm2.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
+#        end
+#    end
+#        
+#    %--Re-enforce tied actuator pairs after applying the neighbor rule
+#    % [to be added later]
+    
+    #--Save the delta from the previous command
+    if(any(mp.dm_ind==1)):  
+        dDM.dDM1V = mp.dm1.V - cvar.DM1Vnom  
+        mp.dm1.dV = dDM.dDM1V
+    if(any(mp.dm_ind==2)):  
+        dDM.dDM2V = mp.dm2.V - cvar.DM2Vnom  
+        mp.dm2.dV = dDM.dDM2V
+    if(any(mp.dm_ind==8)):  
+        dDM.dDM8V = mp.dm8.V - cvar.DM8Vnom  
+        mp.dm8.dV = dDM.dDM8V
+    if(any(mp.dm_ind==9)):  
+        dDM.dDM9V = mp.dm9.V - cvar.DM9Vnom
+        mp.dm9.dV = dDM.dDM9V
+
+    return mp,dDM
+    
