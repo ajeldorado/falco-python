@@ -259,6 +259,26 @@ def create_axis(N, step, centering='pixel'):
 def falco_compute_thput(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
-    
-    return [0]
+
+    # AJER NOTE DEBUGGING
+    mp.sumPupil = np.sum(mp.P1.compact.mask)
+
+    ImTemp = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,EVAL=True)
+    #if(mp.flagPlot): figure(324); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,ImTemp); axis xy equal tight; title('Off-axis PSF for Throughput Calculation','Fontsize',20); set(gca,'Fontsize',20); colorbar; drawnow;  end
+
+    if(mp.thput_metric.lower()=='hmi'): #--Absolute energy within half-max isophote(s)
+        maskHM = np.zeros(mp.Fend.eval.RHOS.shape,dtype=bool)
+        maskHM[ImTemp>=0.5*np.max(ImTemp)] = True
+        # figure(325); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,maskHM); axis xy equal tight; drawnow;
+        thput = np.sum(ImTemp[maskHM==1])/mp.sumPupil*np.mean(mp.Fend.eval.I00);
+        print('Core throughput within the half-max isophote(s) = %.2f%% \tat separation = (%.1f, %.1f) lambda0/D.' % (100*thput,mp.thput_eval_x,mp.thput_eval_y))
+            
+    elif( (mp.thput_metric.lower()=='ee') or (mp.thput_metric.lower()=='e.e.') ): #--Absolute energy encircled within a given radius
+        # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
+        maskEE = np.zeros(mp.Fend.eval.RHOS.shape,dtype=bool)
+        maskEE[mp.Fend.eval.RHOS<=mp.thput_radius] = True
+        # figure(325); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,maskEE); axis xy equal tight; drawnow;
+        thput = np.sum(ImTemp[maskEE==1])/mp.sumPupil*np.mean(mp.Fend.eval.I00);
+        print('E.E. throughput within a %.2f lambda/D radius = %.2f%% \tat separation = (%.1f, %.1f) lambda/D.\n'%(mp.thput_radius,100*thput,mp.thput_eval_x,mp.thput_eval_y))
+            
+    return thput

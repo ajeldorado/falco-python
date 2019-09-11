@@ -1164,32 +1164,60 @@ def falco_wfsc_loop(mp):
         out.log10regHist[Itr] = cvar.log10regUsed;
     
         #-----------------------------------------------------------------------------------------
-        #AJER NOTE: Comment out until more variables defined. Otherwise crashes.
-        """
+        
         ## DM Stats
         #--Calculate and report updated P-V DM voltages.
         if np.any(mp.dm_ind==1):
-            out.dm1.Vpv[Itr] = (np.max(np.max(mp.dm1.V))-np.min(np.min(mp.dm1.V)));
-            Nrail1 = len(np.where( (mp.dm1.V <= -mp.dm1.maxAbsV) | (mp.dm1.V >= mp.dm1.maxAbsV) )); 
-            print(' DM1 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm1.Vpv(Itr), Nrail1, mp.dm1.NactTotal, 100*Nrail1/mp.dm1.NactTotal))
-            if mp.dm1.tied.shape[0]>0:  
-                print(' DM1 has %d pairs of tied actuators.\n'%(mp.dm1.tied.shape[0]))
+            out.dm1.Vpv[Itr] = np.max(mp.dm1.V) - np.min(mp.dm1.V)
+            print(' DM1 P-V in volts: %.3f'%(out.dm1.Vpv[Itr]))
+#            Nrail1 = len(np.where( (mp.dm1.V <= -mp.dm1.maxAbsV) | (mp.dm1.V >= mp.dm1.maxAbsV) )); 
+#            print(' DM1 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm1.Vpv(Itr), Nrail1, mp.dm1.NactTotal, 100*Nrail1/mp.dm1.NactTotal))
+#            if mp.dm1.tied.shape[0]>0:  
+#                print(' DM1 has %d pairs of tied actuators.\n'%(mp.dm1.tied.shape[0]))
         if np.any(mp.dm_ind==2):
-            out.dm2.Vpv[Itr] = np.max(np.max(mp.dm2.V))-np.min(np.min(mp.dm2.V))
-            Nrail2 = len(np.where( (mp.dm2.V <= -mp.dm2.maxAbsV) | (mp.dm2.V >= mp.dm2.maxAbsV) )); 
-            print(' DM2 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%( out.dm2.Vpv(Itr), Nrail2, mp.dm2.NactTotal, 100*Nrail2/mp.dm2.NactTotal))
-            if mp.dm2.tied.shape[0]>0:  
-                print(' DM2 has %d pairs of tied actuators.\n'%(mp.dm2.tied.shape[0]))
+            out.dm2.Vpv[Itr] = np.max(mp.dm2.V) - np.min(mp.dm2.V)
+            print(' DM2 P-V in volts: %.3f'%(out.dm2.Vpv[Itr]))
+#            Nrail2 = len(np.where( (mp.dm2.V <= -mp.dm2.maxAbsV) | (mp.dm2.V >= mp.dm2.maxAbsV) )); 
+#            print(' DM2 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%( out.dm2.Vpv(Itr), Nrail2, mp.dm2.NactTotal, 100*Nrail2/mp.dm2.NactTotal))
+#            if mp.dm2.tied.shape[0]>0:  
+#                print(' DM2 has %d pairs of tied actuators.\n'%(mp.dm2.tied.shape[0]))
         # if(any(mp.dm_ind==8))
         #     out.dm8.Vpv(Itr) = (max(max(mp.dm8.V))-min(min(mp.dm8.V)));
         #     Nrail8 = length(find( (mp.dm8.V <= mp.dm8.Vmin) | (mp.dm8.V >= mp.dm8.Vmax) ));
         #     fprintf(' DM8 P-V in volts: #.3f\t\t#d/#d (#.2f##) railed actuators \n', out.dm8.Vpv(Itr), Nrail8,mp.dm8.NactTotal,100*Nrail8/mp.dm8.NactTotal); 
         # end
-        if np.any(mp.dm_ind==9):
-            out.dm9.Vpv[Itr] = np.max(np.max(mp.dm9.V))-np.min(np.min(mp.dm9.V))
-            Nrail9 = len(np.where( (mp.dm9.V <= mp.dm9.Vmin) | (mp.dm9.V >= mp.dm9.Vmax) )); 
-            print(' DM9 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm9.Vpv(Itr), Nrail9,mp.dm9.NactTotal,100*Nrail9/mp.dm9.NactTotal))
-        """
+#        if np.any(mp.dm_ind==9):
+#            out.dm9.Vpv[Itr] = np.max(np.max(mp.dm9.V))-np.min(np.min(mp.dm9.V))
+#            Nrail9 = len(np.where( (mp.dm9.V <= mp.dm9.Vmin) | (mp.dm9.V >= mp.dm9.Vmax) )); 
+#            print(' DM9 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm9.Vpv(Itr), Nrail9,mp.dm9.NactTotal,100*Nrail9/mp.dm9.NactTotal))
+        
+        #--Calculate and report updated RMS DM surfaces.               
+        if(any(mp.dm_ind==1)):
+            # Pupil-plane coordinates
+            dx_dm = mp.P2.compact.dx/mp.P2.D #--Normalized dx [Units of pupil diameters]
+            xs = falco.utils.create_axis(mp.dm1.compact.Ndm, dx_dm, centering=mp.centering)
+            RS = falco.utils.radial_grid(xs)
+            rmsSurf_ele = np.logical_and(RS>=mp.P1.IDnorm/2., RS<=0.5)
+            
+            DM1surf = falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+            out.dm1.Spv[Itr] = np.max(DM1surf)-np.min(DM1surf)
+            out.dm1.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM1surf[rmsSurf_ele]) )**2))
+            print('RMS surface of DM1 = %.1f nm' % (1e9*out.dm1.Srms[Itr]))
+        if(any(mp.dm_ind==2)):
+            # Pupil-plane coordinates
+            dx_dm = mp.P2.compact.dx/mp.P2.D #--Normalized dx [Units of pupil diameters]
+            xs = falco.utils.create_axis(mp.dm2.compact.Ndm, dx_dm, centering=mp.centering)
+            RS = falco.utils.radial_grid(xs)
+            rmsSurf_ele = np.logical_and(RS>=mp.P1.IDnorm/2., RS<=0.5)
+            
+            DM2surf = falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm)
+            out.dm2.Spv[Itr] = np.max(DM2surf)-np.min(DM2surf)
+            out.dm2.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM2surf[rmsSurf_ele]) )**2))
+            print('RMS surface of DM2 = %.1f nm' % (1e9*out.dm2.Srms[Itr]))
+        
+#        #--Calculate sensitivities to 1nm RMS of Zernike phase aberrations at entrance pupil.
+#        if( isempty(mp.eval.Rsens)==False or isempty(mp.eval.indsZnoll)==False )
+#            out.Zsens[:,:,Itr] = falco_get_Zernike_sensitivities(mp)
         
         # Take the next image to check the contrast level (in simulation only)
         with falco.utils.TicToc('Getting updated summed image'):

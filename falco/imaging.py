@@ -187,7 +187,7 @@ def falco_get_expected_summed_image(mp, cvar):
         band-averaged image in units of normalized intensity
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
@@ -208,7 +208,7 @@ def falco_get_sbp_image_fiber(mp, si):
         Sub-bandpass image in units of normalized intensity
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     if mp.flagSim:
@@ -236,7 +236,7 @@ def falco_get_sim_sbp_image_fiber(mp, si):
 
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     pass
@@ -258,7 +258,7 @@ def falco_get_summed_image_fiber(mp):
     
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     pass
@@ -284,7 +284,7 @@ def falco_get_testbed_sbp_image(mp, si):
 
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     pass
@@ -311,10 +311,30 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
         Tuple with E-field and summed intensity for compact model
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    pass
+    #--Optional Keyword arguments
+    if( ("EVAL" in kwargs and kwargs["EVAL"]) or ("eval" in kwargs and kwargs["eval"]) ):
+        flagEval = True # flag to use a different (usually higher) resolution at final focal plane for evaluation
+    else:
+        flagEval = False 
+          
+    modvar = falco.config.EmptyObject()
+    modvar.whichSource = 'offaxis'
+    modvar.x_offset = x_offset # mp.thput_eval_x;
+    modvar.y_offset = y_offset # mp.thput_eval_y;
+      
+    Iout = 0. #--Initialize output
+    for si in range(mp.Nsbp):
+        modvar.sbpIndex = si
+        modvar.zernIndex = 1
+        modvar.wpsbpIndex = mp.wi_ref
+           
+        E2D = falco.models.model_compact(mp, modvar, EVAL=flagEval )            
+        Iout = Iout + (np.abs(E2D)**2)*mp.jac.weightMat[si,0]
+
+    return Iout
     
 def falco_get_gpct_sbp_image(mp, si):
     """
@@ -336,7 +356,7 @@ def falco_get_gpct_sbp_image(mp, si):
 
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
@@ -363,6 +383,6 @@ def falco_get_hcst_sbp_image(mp, si):
 
     """
 
-    if mp is not falco.config.ModelParameters:
+    if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
