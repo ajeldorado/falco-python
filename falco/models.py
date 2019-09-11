@@ -266,26 +266,6 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
 #    # NOTE: DEBUGGING
 #    hduFPM = fits.PrimaryHDU(mp.F3.full.mask.amp)
 #    hduFPM.writeto('/Users/ajriggs/Downloads/FPM_full.fits', overwrite=True)
-#
-#    hduEF3real = fits.PrimaryHDU(np.real(EF3inc))
-#    hduEF3imag = fits.PrimaryHDU(np.imag(EF3inc))
-#    hduEF3real.writeto('/Users/ajriggs/Downloads/EP3_real_full.fits', overwrite=True)
-#    hduEF3imag.writeto('/Users/ajriggs/Downloads/EP3_imag_full.fits', overwrite=True)
-#    
-#    hduEP4real = fits.PrimaryHDU(np.real(EP4))
-#    hduEP4imag = fits.PrimaryHDU(np.imag(EP4))
-#    hduEP4real.writeto('/Users/ajriggs/Downloads/EP4_real_full.fits', overwrite=True)
-#    hduEP4imag.writeto('/Users/ajriggs/Downloads/EP4_imag_full.fits', overwrite=True)
-#
-#    hduEP3real = fits.PrimaryHDU(np.real(EP3))
-#    hduEP3imag = fits.PrimaryHDU(np.imag(EP3))
-#    hduEP3real.writeto('/Users/ajriggs/Downloads/EP3_real_full.fits', overwrite=True)
-#    hduEP3imag.writeto('/Users/ajriggs/Downloads/EP3_imag_full.fits', overwrite=True)
-#    
-#    hduR = fits.PrimaryHDU(np.real(EFend))
-#    hduI = fits.PrimaryHDU(np.imag(EFend))
-#    hduR.writeto('/Users/ajriggs/Downloads/EFend_real_full.fits', overwrite=True)
-#    hduI.writeto('/Users/ajriggs/Downloads/EFend_imag_full.fits', overwrite=True)
 
     return Eout
     
@@ -768,7 +748,7 @@ def model_Jacobian_LC(mp,im,idm):
     
         #--Propagate each actuator from DM1 through the optical system
         Gindex = 0 #1  initialize index counter
-        for iact in mp.dm1.act_ele: #np.array([23]): #
+        for iact in mp.dm1.act_ele: # np.array([405]): # np.array([1665]): #
             if( np.sum(np.abs(mp.dm1.compact.inf_datacube[:,:,iact]))>1e-12 ):  #--Compute only for influence functions that are not zeroed out
                 
                 #--x- and y- coordinate indices of the padded influence function in the full padded pupil
@@ -780,15 +760,15 @@ def model_Jacobian_LC(mp,im,idm):
                 
                 #--Propagate from DM1 to DM2, and then back to P2
                 dEbox = (mirrorFac*2*np.pi*1j/wvl)*falco.utils.padOrCropEven((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:,:,iact]),NboxPad1AS) #--Pad influence function at DM1 for angular spectrum propagation.
-                dEbox = falco.propcustom.propcustom_PTP(dEbox*Edm1pad[y_box_AS_ind,x_box_AS_ind],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
-                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2WFEpad[y_box_AS_ind,x_box_AS_ind]*DM2stop[y_box_AS_ind,x_box_AS_ind]*np.exp(mirrorFac*2*np.pi*1j/wvl*DM2surf[y_box_AS_ind,x_box_AS_ind]),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
-#                dEbox = falco.propcustom.propcustom_PTP_inf_func(dEbox*Edm1pad[y_box_AS_ind,x_box_AS_ind],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2,mp.dm1.dm_spacing,mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
-#                dEP2box = falco.propcustom.propcustom_PTP_inf_func(dEbox.*Edm2WFEpad[y_box_AS_ind,x_box_AS_ind]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(mirrorFac*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm1.dm_spacing,mp.propMethodPTP ) # back-propagate to DM1
+                dEbox = falco.propcustom.propcustom_PTP(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
+                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(mirrorFac*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
+#                dEbox = falco.propcustom.propcustom_PTP_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2,mp.dm1.dm_spacing,mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
+#                dEP2box = falco.propcustom.propcustom_PTP_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(mirrorFac*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm1.dm_spacing,mp.propMethodPTP ) # back-propagate to DM1
 #                
                 #--To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
                 # Second, negate the coordinates of the box used.
-                dEP2box = apodReimaged[y_box_AS_ind,x_box_AS_ind]*dEP2box #--Apply 180deg-rotated SP mask.
+                dEP2box = apodReimaged[np.ix_(y_box_AS_ind,x_box_AS_ind)]*dEP2box #--Apply 180deg-rotated SP mask.
                 dEP3box = np.rot90(dEP2box,k=2*mp.Nrelay2to3) #--Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
                 #--Negate and reverse coordinate values to effectively rotate by 180 degrees. No change if 360 degree rotation.
                 if np.mod(mp.Nrelay2to3,2)==1: 
@@ -810,8 +790,7 @@ def model_Jacobian_LC(mp,im,idm):
                 
                 #--Full Lyot plane pupil (for Babinet)
                 EP4noFPM = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad),dtype=np.complex)
-                EP4noFPM[y_box_AS_ind[0]:y_box_AS_ind[0]+NboxPad1AS,x_box_AS_ind[0]:x_box_AS_ind[0]+NboxPad1AS] = dEP2box
-                #EP4noFPM[y_box_AS_ind,x_box_AS_ind] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field. 
+                EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field. 
                 EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the correct orientation 
                 EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
                 EP4 = mp.P4.compact.croppedMask*(EP4noFPM - EP4sub) #--Babinet's principle to get E-field at Lyot plane
@@ -823,7 +802,6 @@ def model_Jacobian_LC(mp,im,idm):
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
- 
 
     """ ---------- DM2 ---------- """
     if(idm==2):
@@ -855,13 +833,13 @@ def model_Jacobian_LC(mp,im,idm):
                 y_box = mp.dm2.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box 
                 
                 dEbox = (mp.dm2.VtoH.reshape(mp.dm2.Nact**2)[iact])*(mirrorFac*2*np.pi*1j/wvl)*falco.utils.padOrCropEven(np.squeeze(mp.dm2.compact.inf_datacube[:,:,iact]),NboxPad2AS) #--the padded influence function at DM2
-                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2[y_box_AS_ind,x_box_AS_ind],mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
+                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
 #                dEP2box = propcustom_PTP_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind),mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm2.dm_spacing,mp.propMethodPTP); # back-propagate to pupil P2
                 
                 #--To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
                 # Second, negate the coordinates of the box used.
-                dEP2box = apodReimaged[y_box_AS_ind,x_box_AS_ind]*dEP2box; #--Apply 180deg-rotated SP mask.
+                dEP2box = apodReimaged[np.ix_(y_box_AS_ind,x_box_AS_ind)]*dEP2box; #--Apply 180deg-rotated SP mask.
                 dEP3box = np.rot90(dEP2box,k=2*mp.Nrelay2to3) #--Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
                 #--Negate and rotate coordinates to effectively rotate by 180 degrees. No change if 360 degree rotation.
                 if np.mod(mp.Nrelay2to3,2)==1: 
@@ -883,8 +861,7 @@ def model_Jacobian_LC(mp,im,idm):
                 EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Get the correct orientation
                                 
                 EP4noFPM = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad),dtype=np.complex)
-                EP4noFPM[y_box_AS_ind[0]:y_box_AS_ind[0]+NboxPad2AS,x_box_AS_ind[0]:x_box_AS_ind[0]+NboxPad2AS] = dEP2box
-                #EP4noFPM[y_box_AS_ind,x_box_AS_ind] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field.
+                EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field.
                 EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the number or re-imaging relays between pupils P3 and P4. 
                 EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
                 EP4 = mp.P4.compact.croppedMask*(EP4noFPM - EP4sub) #--Babinet's principle to get E-field at Lyot plane

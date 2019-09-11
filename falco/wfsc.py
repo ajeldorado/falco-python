@@ -600,15 +600,15 @@ def falco_init_ws(mp, config=None):
             pass
 
     #--Create influence function datacubes for each DM
-    #SFF NOTE
+    #SFF NOTE DEBUGGING: Hard-coded dx values
     if not hasattr(mp.P2, 'full'):
         mp.P2.full = falco.config.EmptyObject()
     if not hasattr(mp.P2.full, 'dx'):
-        mp.P2.full.dx = 1.8519e-04
+        mp.P2.full.dx = 1.851948e-04
     if not hasattr(mp.P2, 'compact'):
         mp.P2.compact = falco.config.EmptyObject()
     if not hasattr(mp.P2.compact, 'dx'):
-        mp.P2.compact.dx = 1.8519e-04
+        mp.P2.compact.dx = 1.851948e-04
 
     mp.dm1.compact = falco.config.EmptyObject()
     mp.dm2.compact = falco.config.EmptyObject()
@@ -1363,9 +1363,6 @@ def falco_ctrl(mp,cvar,jacStruct):
     #--Make the regularization matrix. (Define only the diagonal here to save RAM.)
     cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
     cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
-#    #AJER NOTE DEBUGGING:
-#    hdu = fits.PrimaryHDU(np.abs(Gmode))
-#    hdu.writeto('/Users/ajriggs/Downloads/G_abs.fits', overwrite=True)
     print('done.') #fprintf(' done. Time: %.3f\n',toc);
 
     #--Call the Controller Function

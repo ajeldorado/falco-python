@@ -69,13 +69,13 @@ def propcustom_2FT(E_in, centering='pixel'):
         The input array, after propagation with two Fourier transforms.
 
     """
-    if centering not in _valid_centering:
+    if centering not in _VALID_CENTERING:
         raise ValueError(_CENTERING_ERR)
 
     E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
 
     if centering == 'pixel':
-        E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
+        E_out = np.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
 
     return E_out
 
