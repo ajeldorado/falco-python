@@ -1102,7 +1102,7 @@ def falco_wfsc_loop(mp):
         if  Itr==0 or cvar.flagRelin:
             jacStruct =  falco.models.model_Jacobian(mp); #--Get structure containing Jacobians
         
-        ## Modiffy jacStruct to cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
+        ## Modify jacStruct to cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
         falco_ctrl_cull(mp,cvar,jacStruct);
         
         ## Load the improved Jacobian if using the E-M technique
@@ -1404,7 +1404,79 @@ def falco_ctrl_cull(mp, cvar, jacStruct):
 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
+    
+    #--Reduce the number of actuators used based on their relative strength in the Jacobian
+    if(cvar.flagCullAct and cvar.flagRelin):
+        
+        print('Weeding out weak actuators from the control Jacobian...'); 
+        if(any(mp.dm_ind==1)):
+            G1intNorm = np.sum( np.mean(np.abs(jacStruct.G1)**2,axis=2), axis=0)
+            G1intNorm = G1intNorm/np.max(G1intNorm)
+            mp.dm1.act_ele = np.nonzero(G1intNorm>=10**(mp.logGmin))[0]
+            del G1intNorm
+        if(any(mp.dm_ind==2)):
+            G2intNorm = np.sum( np.mean(np.abs(jacStruct.G2)**2,axis=2), axis=0)
+            G2intNorm = G2intNorm/np.max(G2intNorm)
+            mp.dm2.act_ele = np.nonzero(G2intNorm>=10**(mp.logGmin))[0]
+            del G2intNorm
+        if(any(mp.dm_ind==8)):
+            G8intNorm = np.sum( np.mean(np.abs(jacStruct.G8)**2,axis=2), axis=0)
+            G8intNorm = G8intNorm/np.max(G8intNorm)
+            mp.dm8.act_ele = np.nonzero(G8intNorm>=10**(mp.logGmin))[0]
+            del G8intNorm
+        if(any(mp.dm_ind==9)):
+            G9intNorm = np.sum( np.mean(np.abs(jacStruct.G9)**2,axis=2), axis=0)
+            G9intNorm = G9intNorm/np.max(G9intNorm)
+            mp.dm9.act_ele = np.nonzero(G9intNorm>=10**(mp.logGmin))[0]
+            del G9intNorm
+
+#            #--Add back in all actuators that are tied (to make the tied actuator logic easier)
+#            if(any(mp.dm_ind==1))
+#                for ti=1:size(mp.dm1.tied,1)
+#                    if(any(mp.dm1.act_ele==mp.dm1.tied(ti,1))==false);  mp.dm1.act_ele = [mp.dm1.act_ele; mp.dm1.tied(ti,1)];  end
+#                    if(any(mp.dm1.act_ele==mp.dm1.tied(ti,2))==false);  mp.dm1.act_ele = [mp.dm1.act_ele; mp.dm1.tied(ti,2)];  end
+#                end
+#                mp.dm1.act_ele = sort(mp.dm1.act_ele); %--Need to sort for the logic in model_Jacobian.m
+#            end
+#            if(any(mp.dm_ind==2))
+#                for ti=1:size(mp.dm2.tied,1)
+#                    if(any(mp.dm2.act_ele==mp.dm2.tied(ti,1))==false);  mp.dm2.act_ele = [mp.dm2.act_ele; mp.dm2.tied(ti,1)];  end
+#                    if(any(mp.dm2.act_ele==mp.dm2.tied(ti,2))==false);  mp.dm2.act_ele = [mp.dm2.act_ele; mp.dm2.tied(ti,2)];  end
+#                end
+#                mp.dm2.act_ele = sort(mp.dm2.act_ele);
+#            end
+#            if(any(mp.dm_ind==8))
+#                for ti=1:size(mp.dm8.tied,1)
+#                    if(any(mp.dm8.act_ele==mp.dm8.tied(ti,1))==false);  mp.dm8.act_ele = [mp.dm8.act_ele; mp.dm8.tied(ti,1)];  end
+#                    if(any(mp.dm8.act_ele==mp.dm8.tied(ti,2))==false);  mp.dm8.act_ele = [mp.dm8.act_ele; mp.dm8.tied(ti,2)];  end
+#                end
+#                mp.dm8.act_ele = sort(mp.dm8.act_ele);
+#            end
+#            if(any(mp.dm_ind==9))
+#                for ti=1:size(mp.dm9.tied,1)
+#                    if(any(mp.dm9.act_ele==mp.dm9.tied(ti,1))==false);  mp.dm9.act_ele = [mp.dm9.act_ele; mp.dm9.tied(ti,1)];  end
+#                    if(any(mp.dm9.act_ele==mp.dm9.tied(ti,2))==false);  mp.dm9.act_ele = [mp.dm9.act_ele; mp.dm9.tied(ti,2)];  end
+#                end
+#                mp.dm9.act_ele = sort(mp.dm9.act_ele);
+#            end
+            
+        #--Update the number of elements used per DM
+        if(any(mp.dm_ind==1)): mp.dm1.Nele = mp.dm1.act_ele.size
+        if(any(mp.dm_ind==2)): mp.dm2.Nele = mp.dm2.act_ele.size
+        if(any(mp.dm_ind==8)): mp.dm8.Nele = mp.dm8.act_ele.size
+        if(any(mp.dm_ind==9)): mp.dm9.Nele = mp.dm9.act_ele.size
+
+        if(any(mp.dm_ind==1)): print('  DM1: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm1.Nele, mp.dm1.NactTotal,100*mp.dm1.Nele/mp.dm1.NactTotal))
+        if(any(mp.dm_ind==2)): print('  DM2: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm2.Nele, mp.dm2.NactTotal,100*mp.dm2.Nele/mp.dm2.NactTotal))
+        if(any(mp.dm_ind==8)): print('  DM8: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm8.Nele, mp.dm8.NactTotal,100*mp.dm8.Nele/mp.dm8.NactTotal))
+        if(any(mp.dm_ind==9)): print('  DM9: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm9.Nele, mp.dm9.NactTotal,100*mp.dm9.Nele/mp.dm9.NactTotal))
+        
+        #--Crop out unused actuators from the control Jacobian
+        if(any(mp.dm_ind==1)): jacStruct.G1 = jacStruct.G1[:,mp.dm1.act_ele,:]
+        if(any(mp.dm_ind==2)): jacStruct.G2 = jacStruct.G2[:,mp.dm2.act_ele,:]
+        if(any(mp.dm_ind==8)): jacStruct.G8 = jacStruct.G8[:,mp.dm8.act_ele,:]
+        if(any(mp.dm_ind==9)): jacStruct.G9 = jacStruct.G9[:,mp.dm9.act_ele,:]
+
 
     #return jacStruct
     #return falco.config.EmptyObject()
