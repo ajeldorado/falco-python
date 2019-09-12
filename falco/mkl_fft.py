@@ -24,6 +24,8 @@ def load_libmkl():
     if os.name == 'posix':
         try:
             lib_mkl = os.getenv('LIBMKL')
+            if lib_mkl is None:
+                raise ValueError('LIBMKL environment variable not found')
             return _ctypes.cdll.LoadLibrary(lib_mkl)
         except:
             pass
@@ -748,7 +750,9 @@ def ifft2(a, norm=None, out=None):
 
     """
 
-    return mkl_fft2(a, norm=norm, direction='backward', out=out)
+    proper_fft2(a, norm=norm, direction='backward')
+    return fftshift(a)
+    #return mkl_fft2(a, norm=norm, direction='backward', out=out)
 
 
 def rfft2(a, norm=None, out=None):
