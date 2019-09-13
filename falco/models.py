@@ -113,7 +113,7 @@ def model_full(mp,modvar,**kwargs):
     if not (hasattr(modvar,'zernIndex')): modvar.zernIndex = 1
     if not modvar.zernIndex==1:
         indsZnoll = modvar.zernIndex #--Just send in 1 Zernike mode
-        zernMat = falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        zernMat = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
         zernMat = falco.utils.padOrCropEven(zernMat,mp.P1.full.Narr)
         Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[modvar.zernIndex]
 
@@ -375,7 +375,7 @@ def model_compact(mp,modvar,**kwargs):
     # E-field of the differential Zernike term.
     if not (modvar.zernIndex==1):
         indsZnoll = modvar.zernIndex #--Just send in 1 Zernike mode
-        zernMat = falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        zernMat = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
         zernMat = falco.utils.padOrCropEven(zernMat,mp.P1.compact.Narr)
         indArr = mp.jac.zerns==modvar.zernIndex
         ind = indArr[0].item()
@@ -659,7 +659,7 @@ def model_Jacobian_LC(mp,im,idm):
     # E-field of the differential Zernike term.
     if not (modvar.zernIndex==1):
         indsZnoll = modvar.zernIndex #--Just send in 1 Zernike mode
-        zernMat = falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        zernMat = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
         zernMat = falco.utils.padOrCropEven(zernMat,mp.P1.compact.Narr)
         Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef(mp.jac.zerns==modvar.zernIndex)
     

@@ -87,21 +87,21 @@ mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)); #--meters RMS of Zernike abe
 ####### NEED TO DETERMINE
 ###--Zernikes to compute sensitivities for
 mp.eval = falco.config.EmptyObject()
-mp.eval.indsZnoll = list(range(1,5)) #--Noll indices of Zernikes to compute values for
+mp.eval.indsZnoll = np.array([2,3,4,5,6]) #--Noll indices of Zernikes to compute values for [1-D ndarray]
 
 ####### NEED TO DETERMINE
 ###--Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
-mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  
+mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  # [2-D ndarray]
 
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.EmptyObject()
 mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
-mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1].
+mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
 ###--Spatial pixel weighting
-mp.WspatialDef = [];# [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)]
+mp.WspatialDef = [];# [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)] [ndarray]
 
 ###--DM weighting
 mp.dm1.weight = 1.;
@@ -122,8 +122,8 @@ mp.controller = 'gridsearchEFC';
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
 mp.Nitr = 5; #--Number of estimation+control iterations to perform
-mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian
-mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use
+mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
+mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 
 ### # # PLANNED SEARCH EFC DEFAULTS     
 ### mp.dm_ind = [1 2 ]; # vector of DMs used in controller at ANY time (not necessarily all at once or all the time). 

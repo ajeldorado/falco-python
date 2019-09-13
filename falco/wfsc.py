@@ -3,7 +3,7 @@ import falco
 import os
 import pickle
 import scipy
-from astropy.io import fits
+from astropy.io import fits # DEBUGGING
 
 import matplotlib.pyplot as plt # DEBUGGING
 from mpl_toolkits.axes_grid1 import make_axes_locatable # DEBUGGING
@@ -88,7 +88,7 @@ def falco_init_ws(mp, config=None):
     if not hasattr(mp.full,'ZrmsVal'): 
         mp.full.ZrmsVal = 1e-9 #--Amount of RMS Zernike mode used to calculate aberration sensitivities [meters]. WFIRST CGI uses 1e-9, and LUVOIR and HabEx use 1e-10. 
     if not hasattr(mp.full,'pol_conds'):  
-        mp.full.pol_conds = 0  #--Vector of which polarization state(s) to use when creating images from the full model. Currently only used with PROPER full models from John Krist.
+        mp.full.pol_conds = np.array([0])  #--Vector of which polarization state(s) to use when creating images from the full model. Currently only used with PROPER full models from John Krist.
     if not hasattr(mp,'propMethodPTP'):
         mp.propMethodPTP = 'fft' #--Propagation method for postage stamps around the influence functions. 'mft' or 'fft'
     if not hasattr(mp,'apodType'):  
@@ -176,7 +176,7 @@ def falco_init_ws(mp, config=None):
     lambdas = np.zeros((mp.Nsbp*mp.Nwpsbp,1))
     lambda_weights_all = np.zeros((mp.Nsbp*mp.Nwpsbp,1))
     mp.full.lambdasMat = np.zeros((mp.Nsbp,mp.Nwpsbp))
-    mp.full.indsLambdaMat = np.zeros((mp.Nsbp*mp.Nwpsbp,2))
+    mp.full.indsLambdaMat = np.zeros((mp.Nsbp*mp.Nwpsbp,2),dtype=int)
     counter = 0;
     for si in range(mp.Nsbp):
         #mp.full.lambdasMat[si,:] = np.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp-1)/2)*mp.full.dlam + mp.sbp_centers[si];
@@ -184,10 +184,10 @@ def falco_init_ws(mp, config=None):
         for wi in range(mp.Nwpsbp):
             lambdas[counter] = mp.full.lambdasMat[si,wi];
             lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi];
-            mp.full.indsLambdaMat[counter,:] = [si,wi];
+            mp.full.indsLambdaMat[counter,:] = [si,wi]
             counter = counter+1;
             print('counter=', counter)
-    
+            
     #--Get rid of redundant wavelengths in the complete list, and sum weights for repeated wavelengths
     # indices of unique wavelengths
     unused_1, inds_unique = np.unique(np.round(1e12*lambdas), return_index=True); #--Check equality at the picometer level for wavelength
@@ -709,12 +709,12 @@ def falco_init_ws(mp, config=None):
     ## Initial Electric Fields for Star and Exoplanet
     
     if not hasattr(mp.P1.full,'E'):
-        mp.P1.full.E  = np.ones((mp.P1.full.Narr,mp.P1.full.Narr,mp.Nwpsbp,mp.Nsbp)); # Input E-field at entrance pupil
+        mp.P1.full.E  = np.ones((mp.P1.full.Narr,mp.P1.full.Narr,mp.Nwpsbp,mp.Nsbp),dtype=complex); # Input E-field at entrance pupil
     
     mp.Eplanet = mp.P1.full.E; #--Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
     
     if not hasattr(mp.P1.compact,'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp))
+        mp.P1.compact.E = np.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp),dtype=complex)
     mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E,2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
     
     ## Off-axis, incoherent point source (exoplanet)
@@ -1124,27 +1124,17 @@ def falco_wfsc_loop(mp):
         
             EfieldVec = ev.Eest;
             IincoVec = ev.IincoEst;
-        
-        #AJER NOTE: Comment out until more variables defined. Otherwise crashes.
-        """
+                
         ## Add spatially-dependent weighting to the control Jacobians
         if np.any(mp.dm_ind==1): 
-            #jacStruct.G1 = jacStruct.G1*repmat(mp.WspatialVec,[1,mp.dm1.Nele,mp.jac.Nmode])
-            jacStruct.G1 = jacStruct.G1*np.tile(mp.WspatialVec,[1,mp.dm1.Nele,mp.jac.Nmode])
+            jacStruct.G1 = jacStruct.G1*np.moveaxis(np.tile(mp.WspatialVec[:,None],[mp.jac.Nmode,1,mp.dm1.Nele]),0,-1)
         if np.any(mp.dm_ind==2): 
-            #jacStruct.G2 = jacStruct.G2*repmat(mp.WspatialVec,[1,mp.dm2.Nele,mp.jac.Nmode])
-            jacStruct.G2 = jacStruct.G2*np.tile(mp.WspatialVec,[1,mp.dm2.Nele,mp.jac.Nmode])
-        if np.any(mp.dm_ind==5): 
-            #jacStruct.G5 = jacStruct.G5*repmat(mp.WspatialVec,[1,mp.dm5.Nele,mp.jac.Nmode])
-            jacStruct.G5 = jacStruct.G5*np.tile(mp.WspatialVec,[1,mp.dm5.Nele,mp.jac.Nmode])
+            jacStruct.G2 = jacStruct.G2*np.moveaxis(np.tile(mp.WspatialVec[:,None],[mp.jac.Nmode,1,mp.dm2.Nele]),0,-1)
         if np.any(mp.dm_ind==8): 
-            #jacStruct.G8 = jacStruct.G8*repmat(mp.WspatialVec,[1,mp.dm8.Nele,mp.jac.Nmode])
-            jacStruct.G8 = jacStruct.G8*np.tile(mp.WspatialVec,[1,mp.dm8.Nele,mp.jac.Nmode])
+            jacStruct.G8 = jacStruct.G8*np.moveaxis(np.tile(mp.WspatialVec[:,None],[mp.jac.Nmode,1,mp.dm8.Nele]),0,-1)
         if np.any(mp.dm_ind==9): 
-            #jacStruct.G9 = jacStruct.G9*repmat(mp.WspatialVec,[1,mp.dm9.Nele,mp.jac.Nmode])
-            jacStruct.G9 = jacStruct.G9*np.tile(mp.WspatialVec,[1,mp.dm9.Nele,mp.jac.Nmode])
-        """
-    
+            jacStruct.G9 = jacStruct.G9*np.moveaxis(np.tile(mp.WspatialVec[:,None],[mp.jac.Nmode,1,mp.dm9.Nele]),0,-1)
+            
         #fprintf('Total Jacobian Calcuation Time: #.2f\n',toc);
     
         #--Compute the number of total actuators for all DMs used. 
@@ -1215,9 +1205,9 @@ def falco_wfsc_loop(mp):
             out.dm2.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM2surf[rmsSurf_ele]) )**2))
             print('RMS surface of DM2 = %.1f nm' % (1e9*out.dm2.Srms[Itr]))
         
-#        #--Calculate sensitivities to 1nm RMS of Zernike phase aberrations at entrance pupil.
-#        if( isempty(mp.eval.Rsens)==False or isempty(mp.eval.indsZnoll)==False )
-#            out.Zsens[:,:,Itr] = falco_get_Zernike_sensitivities(mp)
+        #--Calculate sensitivities to 1nm RMS of Zernike phase aberrations at entrance pupil.
+        if( (mp.eval.Rsens.size>0) and (mp.eval.indsZnoll.size>0) ):
+            out.Zsens[:,:,Itr] = falco.zernikes.falco_get_Zernike_sensitivities(mp)
         
         # Take the next image to check the contrast level (in simulation only)
         with falco.utils.TicToc('Getting updated summed image'):

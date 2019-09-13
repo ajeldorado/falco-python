@@ -6,3 +6,4 @@ from .imaging import *
 from .dms import *
 from .setups import *
 from .propcustom import *
+from .zernikes import *
