@@ -3,7 +3,7 @@ import numpy as np
 
 def falco_get_PSF_norm_factor(mp):
     """
-    Function to get the normalization factor for each model at each sub-band.
+    Function to get the intensity normalization factor for each model at each sub-band.
 
     Parameters
     ----------
@@ -12,7 +12,7 @@ def falco_get_PSF_norm_factor(mp):
 
     Returns
     -------
-    nothing
+    None
         Changes are made by reference to the structure mp
 
     """
@@ -56,11 +56,12 @@ def falco_get_PSF_norm_factor(mp):
                 mp.Fend.full.I00[si,wi] = (np.abs(Etemp)**2).max()
 
 
-
 def falco_get_summed_image(mp):
     """
-    Function to get a broadband image over the entire bandpass by summing the
-    sub-bandpass images.
+    Function to get the broadband image over the entire bandpass.
+    
+    Function to get a broadband image over the entire bandpass by getting the sub-bandpass 
+    images and doing a weighted sum.
 
     Parameters
     ----------
@@ -69,7 +70,7 @@ def falco_get_summed_image(mp):
 
     Returns
     -------
-    Imean
+    Imean : numpy ndarray
         band-averaged image in units of normalized intensity
 
     """
@@ -84,20 +85,15 @@ def falco_get_summed_image(mp):
     for si in range(0,mp.Nsbp):
         Imean += mp.sbp_weights[si]*falco_get_sbp_image(mp,si)
 
-    #--AJER Bypass:
-    #Imean = np.zeros((56,56))
-    
-    ### Create image
-    # SFF NOTE:
-    # Imean = np.zeros((56,56))
-    #for si in range(mp.Nsbp):
-    #    Ibandavg = Ibandavg + mp.sbp_weights[si] * falco_get_sbp_image(mp, si);
-
     return Imean
+
 
 def falco_get_sbp_image(mp, si):
     """
     Function to get an image in the specified sub-bandpass.
+    
+    Function to get an image in the specified sub-bandpass. Wrapper for functions to get a 
+    simulated image or a testbed image.
 
     Parameters
     ----------
@@ -108,7 +104,7 @@ def falco_get_sbp_image(mp, si):
 
     Returns
     -------
-    TBD
+    Isbp : numpy ndarray
         Sub-bandpass image in units of normalized intensity
 
     """
@@ -117,15 +113,16 @@ def falco_get_sbp_image(mp, si):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     if mp.flagSim:
-        ImNI = falco_get_sim_sbp_image(mp, si)
+        Isbp = falco_get_sim_sbp_image(mp, si)
     else:
-        ImNI = falco_get_testbed_sbp_image(mp, si)
+        Isbp = falco_get_testbed_sbp_image(mp, si)
 
-    return ImNI
+    return Isbp
+
 
 def falco_get_sim_sbp_image(mp, si):
     """
-    Function to get an image in the specified sub-bandpass.
+    Function to get a simulated image in the specified sub-bandpass.
 
     Parameters
     ----------
@@ -137,7 +134,7 @@ def falco_get_sim_sbp_image(mp, si):
     Returns
     -------
     Isbp
-        Sub-bandpass image in units of normalized intensity
+        Simulated sub-bandpass image in units of normalized intensity
     """
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
@@ -166,25 +163,27 @@ def falco_get_sim_sbp_image(mp, si):
         
     return Isbp  
     
+    
+    
 def falco_get_expected_summed_image(mp, cvar):
     """
-    Returns summed image.
-
-    Function to generate the expected broadband image over the entire
-    bandpass by adding the model-based delta electric field on top of the
-    current E-field estimate in each sub-bandpass.
+    Function to generate the expected broadband image after a new control command.
+    
+    Function to generate the expected broadband image over the entire bandpass by adding 
+    the model-based delta electric field on top of the current E-field estimate in each 
+    sub-bandpass.
 
     Parameters
     ----------
     mp: falco.config.ModelParameters
         Structure of model parameters
-    cvar: TBD
-        TBD
+    cvar: ModelParameters
+        Structure of controller variables
 
     Returns
     -------
-    TBD
-        band-averaged image in units of normalized intensity
+    TBD : numpy ndarray
+        Expected band-averaged image in units of normalized intensity
     """
 
     if type(mp) is not falco.config.ModelParameters:
@@ -291,24 +290,27 @@ def falco_get_testbed_sbp_image(mp, si):
 
 def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
     """
-    Function to return the perfect-knowledge E-field and summed intensity for
-    the compact model.
+    Function to return the broadband intensity for the compact model.
 
     Parameters
     ----------
     mp: falco.config.ModelParameters
         Structure of model parameters
     x_offset: int
-        TBD
+        lateral offset (in xi) of the stellar PSF in the focal plane. [lambda0/D]
     y_offset: int
-        TBD
-    kwargs: TBD
-        TBD
+        vertical offset (in eta) of the stellar PSF in the focal plane. [lambda0/D]
+
+    Other Parameters
+    ----------------
+    EVAL : bool
+       Switch that tells function to run at a higher final focal plane resolution when 
+       evaluating throughput.
 
     Returns
     -------
-    TBD
-        Tuple with E-field and summed intensity for compact model
+    Iout : numpy ndarray
+        Simulated bandpass-averaged intensity from the compact model
     """
 
     if type(mp) is not falco.config.ModelParameters:
@@ -322,15 +324,14 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
           
     modvar = falco.config.EmptyObject()
     modvar.whichSource = 'offaxis'
-    modvar.x_offset = x_offset # mp.thput_eval_x;
-    modvar.y_offset = y_offset # mp.thput_eval_y;
-      
+    modvar.x_offset = x_offset
+    modvar.y_offset = y_offset
+    modvar.zernIndex = 1
+    modvar.wpsbpIndex = mp.wi_ref
+    
     Iout = 0. #--Initialize output
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        modvar.zernIndex = 1
-        modvar.wpsbpIndex = mp.wi_ref
-           
         E2D = falco.models.model_compact(mp, modvar, EVAL=flagEval )            
         Iout = Iout + (np.abs(E2D)**2)*mp.jac.weightMat[si,0]
 

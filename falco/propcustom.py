@@ -10,22 +10,20 @@ _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CE
 
 def propcustom_relay(E_in, Nrelay,centering='pixel'):
     """
-    Propagate a field using two successive Fourier transforms, without any intermediate mask
-    multiplications.   Used in a semi-analytical propagation to compute the component of the field
-    in the Lyot stop plane that was not diffracted by the occulter.
+    Propagate a field using two successive Fourier transforms Nrelay times, without any 
+    intermediate mask multiplications. This results in a 180-degree rotation of the array 
+    for each optical relay. Correct centering of the array must be maintained.
 
     Parameters
     ----------
     E_in : array_like
         Input electric field
-    Nrelay: scalar
-        Number of times to relay by 180 degrees
+    Nrelay: int
+        Number of times to relay (and rotate by 180 degrees)
     centering : string
-        Whether the input field is pixel-centered or inter-pixel-centered.  If
-        inter-pixel-centered, then the output is simply a scaled version of the input, flipped in
-        the vertical and horizontal directions.  If pixel-centered, the output is also shifted by 1
-        pixel in both directions after flipping, to ensure that the origin remains at the same
-        pixel as in the input array.
+        Whether the input field is pixel-centered or inter-pixel-centered. If the array is 
+        pixel-centered, the output is shifted by 1 pixel in both axes after an odd number 
+        of relays to ensure that the origin remains at the same pixel as in the input array.
 
     Returns
     -------
@@ -49,12 +47,11 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
 def propcustom_2FT(E_in, centering='pixel'):
     """
     Propagate a field using two successive Fourier transforms, without any intermediate mask
-    multiplications.   Used in a semi-analytical propagation to compute the component of the field
-    in the Lyot stop plane that was not diffracted by the occulter.
+    multiplications.
 
     Parameters
     ----------
-    E_in : array_like
+    E_in : numpy ndarray
         Input electric field
     centering : string
         Whether the input field is pixel-centered or inter-pixel-centered.  If

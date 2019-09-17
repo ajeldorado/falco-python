@@ -22,10 +22,11 @@ def falco_gen_dm_surf(dm,dx,N):
     ----------
     dm : ModelParameters
         Structure containing parameter values for the DM
-    dx : scalar
+    dx : float
         Pixel width [meters] at the DM plane
-    N : scalar
+    N : int
         Number of points across the array to return at the DM plane
+
     Returns
     -------
     DMsurf : array_like
@@ -354,18 +355,17 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
         Structure containing parameter values for the DM
     mp: falco.config.ModelParameters
         Structure of model parameters
-    dx_dm : scalar
+    dx_dm : float
         Pixel width [meters] at the DM plane
 
     Other Parameters
     ----------------
     NOCUBE : bool
-       Switch that tells function not to compute the datacube of influence 
-       functions.
+       Switch that tells function not to compute the datacube of influence functions.
 
     Returns
     -------
-    nothing 
+    None 
         modifies structure "dm" by reference
 
     """

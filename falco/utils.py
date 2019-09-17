@@ -257,6 +257,19 @@ def create_axis(N, step, centering='pixel'):
     return axis
 
 def falco_compute_thput(mp):
+    """
+    Function to compute the off-axis throughput of the coronagraph
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    thput : float
+        The off-axis throughput of the coronagraph at the specified field location
+    """
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 

@@ -11,7 +11,19 @@ _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
 
 def falco_get_Zernike_sensitivities(mp):
+    """
+    Function to compute the Zernike aberration sensitivities of the coronagraph
 
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    dE2mat : numpy ndarray
+        A 2-D array of Zernike sensitivities for different radial zones and Zernike modes.
+    """
     indsZnoll = mp.eval.indsZnoll
     Rsens = mp.eval.Rsens #--Radii ranges for the zernike sensitivity calcuations. They are allowed to overlap
     Nannuli = Rsens.shape[0]
@@ -117,6 +129,24 @@ def falco_get_Zernike_sensitivities(mp):
     return dE2mat
 
 def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
+    """
+    Function used only by falco_get_Zernike_sensitivities to get the E-field for a given 
+    wavelength and polarization state. 
+
+    Parameters
+    ----------
+    ni : int
+        index for the set of possible combinations of wavelengths and polarization states
+    inds_list : list
+        the set of possible index combinations for wavelengths and polarization states
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    Estar : numpy ndarray
+        2-D array of the stellar E-field for the given wavelength and polarization state.
+    """
     # This function is used only by falco_get_Zernike_sensitivities
     
     ilam = inds_list[ni][0]
@@ -133,6 +163,27 @@ def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
     return Estar
 
 def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
+    """
+    Function used only by falco_get_Zernike_sensitivities to get the E-field for a given 
+    wavelength, polarization state, and Zernike mode. 
+
+    Parameters
+    ----------
+    ni : int
+        index for the set of possible combinations of wavelengths, polarization states, 
+        and Zernike modes
+    inds_list : list
+        the set of possible index combinations for wavelengths, polarization states, and
+        Zernike modes
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    Estar : numpy ndarray
+        2-D array of the stellar E-field for the given wavelength, polarization state, and 
+        Zernike mode.
+    """
     # This function is used only by falco_get_Zernike_sensitivities
     
     ilam = inds_list_zern[ni][0]
@@ -184,27 +235,23 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
 
 def falco_gen_norm_zernike_maps(Nbeam,centering,indsZnoll):
     """
-    Description goes here
+    Function to compute normalized 2-D maps of the specified Zernike modes.
 
     Parameters
     ----------
-    E_in : array_like
-        Input electric field
-    Nrelay: scalar
-        Number of times to relay by 180 degrees
-    centering : string
-        Whether the input field is pixel-centered or inter-pixel-centered.  If
-        inter-pixel-centered, then the output is simply a scaled version of the input, flipped in
-        the vertical and horizontal directions.  If pixel-centered, the output is also shifted by 1
-        pixel in both directions after flipping, to ensure that the origin remains at the same
-        pixel as in the input array.
+    Nbeam : int
+        The number of pixels across the circle over which to compute the Zernike
+    centering : str
+        The centering of the array. Either 'pixel' or 'interpixel'.
+    indsZnoll : numpy ndarray
+        The iterable set of Zernike modes for which to compute maps.
+    
 
     Returns
     -------
-    array_like
-        The input array, after propagation with two Fourier transforms.
-
-    """    
+    ZmapCube : numpy ndarray
+        A datacube in which each slice is a normalized Zernike mode.
+    """   
     if centering not in _VALID_CENTERING:
         raise ValueError(_CENTERING_ERR)
         

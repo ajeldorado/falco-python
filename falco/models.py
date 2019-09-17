@@ -11,9 +11,11 @@ log = logging.getLogger(__name__)
 
 def model_full(mp,modvar,**kwargs):
     """
-    Truth model used to generate images. Can include aberrations/errors that are unknown 
-    to the estimator and controller. This function is the wrapper for full models of any 
-    coronagraph type.
+    Truth model used to generate images in simulation.
+    
+    Truth model used to generate images in simulation. Can include aberrations/errors that 
+    are unknown to the estimator and controller. This function is the wrapper for full 
+    models of any coronagraph type.
 
     Parameters
     ----------
@@ -24,7 +26,7 @@ def model_full(mp,modvar,**kwargs):
 
     Returns
     -------
-    Eout : array_like
+    Eout : numpy ndarray
         2-D electric field in final focal plane
         
     Other Parameters
@@ -123,7 +125,6 @@ def model_full(mp,modvar,**kwargs):
     elif mp.layout.lower() == 'fpm_scale':
         pass
     
-    
     #--Select which optical layout's full model to use.
     if mp.layout.lower() == 'fourier':
         Eout = model_full_Fourier(mp, wvl, Ein, normFac)
@@ -134,9 +135,11 @@ def model_full(mp,modvar,**kwargs):
  
 def model_full_Fourier(mp, wvl, Ein, normFac):
     """
-    Truth model used to generate images. Can include aberrations/errors that are unknown 
-    to the estimator and controller. This function uses the simplest model (FTs except 
-    for angular spectrum between DMs) for several coronagraph types.
+    Truth model with a simple layout used to generate images in simulation. 
+    
+    Truth model used to generate images in simulation. Can include aberrations/errors that 
+    are unknown to the estimator and controller. This function uses the simplest model 
+    (FTs except for angular spectrum between DMs) for several coronagraph types.
 
     Parameters
     ----------
@@ -147,11 +150,11 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
     Ein : Electric field input
         2-D electric field in the input pupil
     normFac : Normalization factor
-        Value of the PSF peak normalization factor to apply to the whole image
+        Scalar value of the PSF peak normalization factor to apply to the whole image
 
     Returns
     -------
-    Eout : array_like
+    Eout : numpy ndarray
         2-D electric field in final focal plane
 
     """
@@ -276,7 +279,9 @@ def model_full_scale(mp, wvl, Ein, normFac):
         
 def model_compact(mp,modvar,**kwargs):
     """
-    Simplified (aka compact) mdoel used by estimator and controller. Does not include 
+    Simplified (aka compact) model used by estimator and controller.
+    
+    Simplified (aka compact) model used by estimator and controller. Does not include 
     unknown aberrations of the full, "truth" model. This function is the wrapper for 
     compact models of any coronagraph type.
 
@@ -393,7 +398,9 @@ def model_compact(mp,modvar,**kwargs):
 
 def model_compact_general(mp, wvl, Ein, normFac, flagEval):
     """
-    Simplified (aka compact) mdoel used by estimator and controller. Does not 
+    Compact model with a general-purpose optical layout used by estimator and controller.
+    
+    Simplified (aka compact) model used by estimator and controller. Does not 
     include unknown aberrations of the full, "truth" model. This has a general 
     optical layout that should work for most applications
 
@@ -403,7 +410,7 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
         Structure containing optical model parameters
     wvl : float
         Wavelength of light [meters]
-    Ein : array_like
+    Ein : numpy ndarray
         2-D input electric field
     normFac : float
         Intensity normalization factor
@@ -412,7 +419,7 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
 
     Returns
     -------
-    Eout : array_like
+    Eout : numpy ndarray
         2-D electric field in final focal plane
 
     """
@@ -464,9 +471,6 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
         DM2stop = falco.utils.padOrCropEven(mp.dm2.compact.mask, NdmPad) 
     else: 
         DM2stop = np.ones((NdmPad,NdmPad))
-
-#     DM1stop = falco.utils.padOrCropEven(mp.dm1.compact.mask, NdmPad) if(mp.flagDM1stop) else DM1stop = ones((NdmPad,NdmPad))
-#     DM2stop = falco.utils.padOrCropEven(mp.dm2.compact.mask, NdmPad) if(mp.flagDM2stop) else DM2stop = ones((NdmPad,NdmPad))
 
     if(mp.useGPU):
         log.warning('GPU support not yet implemented. Proceeding without GPU.')
@@ -563,6 +567,23 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
 
 
 def model_Jacobian(mp):
+    """
+    Outermost wrapper function to compute the control Jacobian.
+    
+    Wrapper function for the function model_Jacobian_middle_layer, which gets the DM 
+    response matrix, aka the control Jacobian for each specified DM.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    jacStruct : ModelParameters
+        Structure containing the Jacobians for each specified DM.
+
+    """
     
     jacStruct = falco.config.EmptyObject() #--Initialize the new structure
     
@@ -597,7 +618,21 @@ def model_Jacobian(mp):
 
 
 def model_Jacobian_middle_layer(mp,im,idm):
-    
+    """
+    Middle-layer wrapper function for computing the control Jacobian.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    jacMode : numpy ndarray
+        Complex-valued, 2-D array containing the Jacobian for the specified DM.
+
+    """
+        
     #%--Select which optical layout's Jacobian model to use and get the output E-field
     if(mp.layout.lower()=='fourier'):
         if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'): #--DMs, optional apodizer, occulting spot FPM, and LS.
@@ -608,27 +643,23 @@ def model_Jacobian_middle_layer(mp,im,idm):
 
 def model_Jacobian_LC(mp,im,idm):
     """
-    Simplified (aka compact) mdoel used by estimator and controller. Does not 
-    include unknown aberrations of the full, "truth" model. This has a general 
-    optical layout that should work for most applications
+    Special compact model used to compute the control Jacobian for the Lyot coronagraph.
+    
+    Specialized compact model used to compute the DM response matrix, aka the control 
+    Jacobian for a Lyot coronagraph. Can include an apodizer, making it an apodized pupil 
+    Lyot coronagraph (APLC).Does not include unknown aberrations of the full, "truth" 
+    model. This model propagates the first-order Taylor expansion of the phase from the 
+    poke of each actuator of the deformable mirror.
 
     Parameters
     ----------
     mp : ModelParameters
         Structure containing optical model parameters
-    wvl : float
-        Wavelength of light [meters]
-    Ein : array_like
-        2-D input electric field
-    normFac : float
-        Intensity normalization factor
-    flagEval : bool
-        Flag whether to use a higher resolution in final image plane for evaluation
 
     Returns
     -------
-    Eout : array_like
-        2-D electric field in final focal plane
+    Gzdl : numpy ndarray
+        Complex-valued, 2-D array containing the Jacobian for the specified DM.
 
     """
     
@@ -874,5 +905,4 @@ def model_Jacobian_LC(mp,im,idm):
 
             Gindex += 1
         
-    
     return Gzdl

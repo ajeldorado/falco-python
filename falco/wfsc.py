@@ -141,7 +141,7 @@ def falco_init_ws(mp, config=None):
         if mp.Nsbp==1:
             mp.sbp_centers = np.array([mp.lambda0])
         else:
-            mp.sbp_centers = mp.lambda0*linspace(1-mp.fracBW/2,1+mp.fracBW/2,mp.Nsbp);
+            mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBW/2,1+mp.fracBW/2,mp.Nsbp);
     else:#--For cases with multiple sub-bands: Choose wavelengths to be at subbandpass centers since the wavelength samples will span to the full extent of the sub-bands.
         mp.fracBWcent2cent = mp.fracBW*(1-1/mp.Nsbp); #--Bandwidth between centers of endpoint subbandpasses.
         mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2,1+mp.fracBWcent2cent/2,mp.Nsbp); #--Space evenly at the centers of the subbandpasses.
@@ -1315,6 +1315,21 @@ def falco_wfsc_loop(mp):
 
     
 def falco_est_perfect_Efield_with_Zernikes(mp):
+    """
+   Function to return the perfect-knowledge E-field from the full model. Can include 
+   Zernike aberrations at the input pupil.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+        
+    Returns
+    -------
+    Emat : numpy ndarray
+        2-D array with the vectorized, complex E-field of the dark hole pixels for each 
+        mode included in the control Jacobian.
+    """  
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
@@ -1349,7 +1364,23 @@ def falco_est_pairwise_probing(mp, **kwargs):
 
 
 def falco_ctrl(mp,cvar,jacStruct):
-    
+    """
+    Outermost wrapper function for all the controller functions.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+    jacStruct : ModelParameters
+        Structure containing control Jacobians for each specified DM.
+
+    Returns
+    -------
+    None
+        Changes are made by reference to mp.
+    """     
 #    if type(mp) is not falco.config.ModelParameters:
 #        raise TypeError('Input "mp" must be of type ModelParameters')
 #    pass
@@ -1419,7 +1450,23 @@ def falco_ctrl(mp,cvar,jacStruct):
     
 
 def falco_ctrl_cull(mp, cvar, jacStruct):
+    """
+    Function that removes weak actuators from the controlled set.
 
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+    jacStruct : ModelParameters
+        Structure containing control Jacobians for each specified DM.
+
+    Returns
+    -------
+    None
+        Changes are made by reference to mp and jacStruct.
+    """ 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
@@ -1555,7 +1602,21 @@ def falco_est_perfect_Efield(mp, DM, which_model='full'):
 
 
 def falco_ctrl_grid_search_EFC(mp,cvar):
-    
+    """
+    Wrapper controller function that performs a grid search over specified variables.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+
+    Returns
+    -------
+    dDM : ModelParameters
+        Structure containing the delta DM commands for each DM
+    """    
     #--Initializations    
     vals_list = [(x,y) for x in mp.ctrl.log10regVec for y in mp.ctrl.dmfacVec] #--Make all combinations of the values
     Nvals = mp.ctrl.log10regVec.size*mp.ctrl.dmfacVec.size
@@ -1617,6 +1678,27 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
 
 
 def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
+    """
+    Function that computes the main EFC equation. Called by a wrapper controller function. 
+
+    Parameters
+    ----------
+    ni : int
+        index for the set of possible combinations of variables to do a grid search over
+    vals_list : list
+        the set of possible combinations of values to do a grid search over
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+
+    Returns
+    -------
+    InormAvg : float
+        Normalized intensity averaged over wavelength and over the entire dark hole
+    dDM : ModelParameters
+        Structure containing the delta DM commands for each DM
+    """
     #function [InormAvg,dDM] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar)
 
     if(any(mp.dm_ind==1)):
@@ -1675,7 +1757,21 @@ def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
 
 
 def falco_ctrl_setup(mp,cvar):
+    """
+    Function to vectorize DM commands and otherwise prepare variables for the controller. 
 
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+
+    Returns
+    -------
+    None
+        Changes are made by reference to structures mp and cvar.
+    """
     #--Save starting point for each delta command to be added to.
     if(any(mp.dm_ind==1)): cvar.DM1Vnom = mp.dm1.V
     if(any(mp.dm_ind==2)): cvar.DM2Vnom = mp.dm2.V
@@ -1699,7 +1795,25 @@ def falco_ctrl_setup(mp,cvar):
     
 
 def falco_ctrl_wrapup(mp,cvar,duVec):
-        
+    """
+    Function to take the controller commands and apply them to the DMs. 
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+    duVec : numpy ndarray
+        Vector of delta control commands computed by the controller.
+
+    Returns
+    -------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    dDM : ModelParameters
+        Structure containing the delta DM commands for each DM
+    """        
     dDM = falco.config.EmptyObject()
     
     #--Parse the command vector by DM
