@@ -521,7 +521,7 @@ def model_Jacobian(mp):
 
     """
     
-    jacStruct = falco.config.EmptyObject() #--Initialize the new structure
+    jacStruct = falco.config.Object() #--Initialize the new structure
     
     #--Pre-compute the DM surfaces to save time
     NdmPad = int(mp.compact.NdmPad)
@@ -599,7 +599,7 @@ def model_Jacobian_LC(mp,im,idm):
 
     """
 
-    modvar = falco.config.EmptyObject() #--Initialize the new structure
+    modvar = falco.config.Object() #--Initialize the new structure
     modvar.sbpIndex = mp.jac.sbp_inds[im]
     modvar.zernIndex = mp.jac.zern_inds[im]
     

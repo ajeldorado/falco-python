@@ -55,7 +55,7 @@ def falco_get_Zernike_sensitivities(mp):
 
     #--Number of polarization states used
     if not hasattr(mp,'full'):
-        mp.full = falco.config.EmptyObject() #--Initialize if this doesn't exist
+        mp.full = falco.config.Object() #--Initialize if this doesn't exist
     if hasattr(mp.full,'pol_conds'): 
         Npol = mp.full.pol_conds.size  
     else:
@@ -149,7 +149,7 @@ def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
     ipol = inds_list[ni][1]
     
     #--Get the stellar E-field
-    modvar = falco.config.EmptyObject()
+    modvar = falco.config.Object()
     modvar.sbpIndex   = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],0]
     modvar.wpsbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],1]
     mp.full.polaxis = mp.full.pol_conds[ipol]
@@ -191,7 +191,7 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
     #--Get the stellar E-field
     si = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],0]
     wi = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],1]
-    modvar = falco.config.EmptyObject()
+    modvar = falco.config.Object()
     modvar.sbpIndex   = si
     modvar.wpsbpIndex = wi
     mp.full.polaxis = mp.full.pol_conds[ipol]

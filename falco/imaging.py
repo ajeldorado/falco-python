@@ -21,16 +21,16 @@ def falco_get_PSF_norm_factor(mp):
         
     #--Initialize Model Normalizations
     if not hasattr(mp.Fend,'compact'):
-         mp.Fend.compact = falco.config.EmptyObject() #--Initialize the new structure
+         mp.Fend.compact = falco.config.Object() #--Initialize the new structure
     if not hasattr(mp.Fend,'eval'):
-         mp.Fend.eval = falco.config.EmptyObject() #--Initialize the new structure
+         mp.Fend.eval = falco.config.Object() #--Initialize the new structure
     if not hasattr(mp.Fend,'full'):
-         mp.Fend.full = falco.config.EmptyObject() #--Initialize the new structure
+         mp.Fend.full = falco.config.Object() #--Initialize the new structure
     mp.Fend.compact.I00 = np.ones(mp.Nsbp) # Initial input before computing
     mp.Fend.eval.I00 =np.ones(mp.Nsbp) # Initial input before computing
     mp.Fend.full.I00 = np.ones((mp.Nsbp,mp.Nwpsbp)) # Initial input before computing
 
-    modvar = falco.config.EmptyObject() #--Initialize the new structure
+    modvar = falco.config.Object() #--Initialize the new structure
     modvar.zernIndex = 1
     modvar.whichSource = 'star'
     
@@ -143,7 +143,7 @@ def falco_get_sim_sbp_image(mp, si):
 
     #--Loop over all wavelengths to get the starlight image
     Isbp = 0 #--Initialize the image sum in the sub-bandpass
-    modvar = falco.config.EmptyObject() #--Initialize the new structure
+    modvar = falco.config.Object() #--Initialize the new structure
     for wi in range(mp.Nwpsbp):
         modvar.sbpIndex   = si
         modvar.wpsbpIndex = wi
@@ -322,7 +322,7 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
     else:
         flagEval = False 
           
-    modvar = falco.config.EmptyObject()
+    modvar = falco.config.Object()
     modvar.whichSource = 'offaxis'
     modvar.x_offset = x_offset
     modvar.y_offset = y_offset

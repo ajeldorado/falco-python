@@ -8,7 +8,7 @@ from falco.config import DeformableMirrorParameters
 import collections
 from falco import models
 
-class EmptyObject(object):
+class Object(object):
     pass
 
 class ModelParameters:

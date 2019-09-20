@@ -74,7 +74,7 @@ def falco_config_gen_FPM_LC(mp):
     kwargs = FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.full,'mask'):
-        mp.F3.full.mask = falco.config.EmptyObject()
+        mp.F3.full.mask = falco.config.Object()
         
     mp.F3.full.mask.amp = falco.masks.falco_gen_annular_FPM(**kwargs)
 
@@ -101,7 +101,7 @@ def falco_config_gen_FPM_LC(mp):
     kwargs=FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.compact,'mask'):
-        mp.F3.compact.mask = falco.config.EmptyObject()
+        mp.F3.compact.mask = falco.config.Object()
         
     mp.F3.compact.mask.amp = falco.masks.falco_gen_annular_FPM(**kwargs)
     
@@ -453,10 +453,10 @@ def falco_config_gen_chosen_apodizer(mp):
     pass
 
     if not hasattr(mp.P3,'full'):
-        mp.P3.full = falco.config.EmptyObject()
+        mp.P3.full = falco.config.Object()
         
     if not hasattr(mp.P3,'compact'):
-        mp.P3.compact = falco.config.EmptyObject()   
+        mp.P3.compact = falco.config.Object()   
 
     """
     if mp.flagApod:
@@ -574,12 +574,12 @@ def falco_config_gen_chosen_pupil(mp):
     # Input pupil plane resolution, masks, and coordinates
     #--Resolution at input pupil and DM1 and DM2
     if not hasattr(mp.P2,'full'):
-        mp.P2.full = falco.config.EmptyObject()
+        mp.P2.full = falco.config.Object()
         
     mp.P2.full.dx = mp.P2.D/mp.P1.full.Nbeam
     
     if not hasattr(mp.P2,'compact'):
-        mp.P2.compact = falco.config.EmptyObject()
+        mp.P2.compact = falco.config.Object()
         
     mp.P2.compact.dx = mp.P2.D/mp.P1.compact.Nbeam
 

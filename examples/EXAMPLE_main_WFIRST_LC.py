@@ -9,7 +9,7 @@ import EXAMPLE_defaults_WFIRST_LC as DEFAULTS
 mp = DEFAULTS.mp
 
 
-mp.path = falco.config.EmptyObject()
+mp.path = falco.config.Object()
 
 mp.path.falco = './'  #--Location of FALCO
 mp.path.proper = './' #--Location of the MATLAB PROPER library

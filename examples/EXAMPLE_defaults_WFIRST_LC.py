@@ -54,8 +54,8 @@ mp.estimator = 'perfect';
 
 ####### NEED TO DETERMINE
 ###--New variables for pairwise probing estimation:
-mp.est = falco.config.EmptyObject()
-mp.est.probe = falco.config.EmptyObject()
+mp.est = falco.config.Object()
+mp.est.probe = falco.config.Object()
 mp.est.probe.Npairs = 3;#2;     # Number of pair-wise probe PAIRS to use.
 mp.est.probe.whichDM = 1;    # Which DM # to use for probing. 1 or 2. Default is 1
 mp.est.probe.radius = 12;#20;    # Max x/y extent of probed region [actuators].
@@ -80,13 +80,13 @@ mp.logGmin = -6;  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobia
 
 ####### NEED TO DETERMINE
 ###--Zernikes to suppress with controller
-mp.jac = falco.config.EmptyObject()
+mp.jac = falco.config.Object()
 mp.jac.zerns = np.array([1])  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
 mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
     
 ####### NEED TO DETERMINE
 ###--Zernikes to compute sensitivities for
-mp.eval = falco.config.EmptyObject()
+mp.eval = falco.config.Object()
 mp.eval.indsZnoll = np.array([2,3,4,5,6]) #--Noll indices of Zernikes to compute values for [1-D ndarray]
 
 ####### NEED TO DETERMINE
@@ -95,7 +95,7 @@ mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  # [2-D ndarray]
 
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
-mp.ctrl = falco.config.EmptyObject()
+mp.ctrl = falco.config.Object()
 mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
@@ -206,7 +206,7 @@ mp.coro = 'LC';#'HLC';
 mp.flagApod = False;    #--Whether to use an apodizer or not
 
 ####### NEED TO DETERMINE
-mp.Fend = falco.config.EmptyObject()
+mp.Fend = falco.config.Object()
 
 ##--Final Focal Plane Properties
 mp.Fend.res = 2.5;#3; #--Sampling [ pixels per lambda0/D]
@@ -214,12 +214,12 @@ mp.Fend.FOV = 11.; #--half-width of the field of view in both dimensions [lambda
 
 ####### NEED TO DETERMINE
 ##--Correction and scoring region definition
-mp.Fend.corr = falco.config.EmptyObject()
+mp.Fend.corr = falco.config.Object()
 mp.Fend.corr.Rin = 2.7;   # inner radius of dark hole correction region [lambda0/D]
 mp.Fend.corr.Rout  = 10;  # outer radius of dark hole correction region [lambda0/D]
 mp.Fend.corr.ang  = 180;  # angular opening of dark hole correction region [degrees]
 #
-mp.Fend.score = falco.config.EmptyObject()
+mp.Fend.score = falco.config.Object()
 mp.Fend.score.Rin = 2.7;  # inner radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.Rout = 10;  # outer radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.ang = 180;  # angular opening of dark hole scoring region [degrees]

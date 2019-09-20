@@ -18,9 +18,9 @@ def falco_init_ws(mp, config=None):
 
     #SFF NOTE
     if not hasattr(mp, "compact"):
-        mp.compact = falco.config.EmptyObject()
+        mp.compact = falco.config.Object()
     if not hasattr(mp, "full"):
-        mp.full = falco.config.EmptyObject()
+        mp.full = falco.config.Object()
 
     ## Intializations of structures (if they don't exist yet)
     mp.jac.dummy = 1;
@@ -234,13 +234,13 @@ def falco_init_ws(mp, config=None):
                 #figure(302); imagesc(P1andP3); axis xy equal tight; colorbar; set(gca,'Fontsize',20); title('Pupil and Apod Superimposed','Fontsize',16');
 
     ## DM Initialization
-    mp.dm3 = falco.config.EmptyObject()   
-    mp.dm4 = falco.config.EmptyObject()   
-    mp.dm5 = falco.config.EmptyObject()   
-    mp.dm6 = falco.config.EmptyObject()   
-    mp.dm7 = falco.config.EmptyObject()   
-    mp.dm8 = falco.config.EmptyObject()   
-    mp.dm9 = falco.config.EmptyObject()   
+    mp.dm3 = falco.config.Object()   
+    mp.dm4 = falco.config.Object()   
+    mp.dm5 = falco.config.Object()   
+    mp.dm6 = falco.config.Object()   
+    mp.dm7 = falco.config.Object()   
+    mp.dm8 = falco.config.Object()   
+    mp.dm9 = falco.config.Object()   
 
     #--Initialize the number of actuators (NactTotal) and actuators used (Nele).
     mp.dm1.NactTotal=0; mp.dm2.NactTotal=0; mp.dm3.NactTotal=0; mp.dm4.NactTotal=0; mp.dm5.NactTotal=0; mp.dm6.NactTotal=0; mp.dm7.NactTotal=0; mp.dm8.NactTotal=0; mp.dm9.NactTotal=0; #--Initialize for bookkeeping later.
@@ -429,7 +429,7 @@ def falco_init_ws(mp, config=None):
     #--Evaluation Model for Computing Throughput (same as Compact Model but
     # with different Fend.resolution)
     if not hasattr(mp.Fend, 'eval'): #--Initialize the structure if it doesn't exist.
-        mp.Fend.eval = falco.config.EmptyObject()
+        mp.Fend.eval = falco.config.Object()
     if not hasattr(mp.Fend.eval,'res'):  
         mp.Fend.eval.res = 10
     maskCorr["pixresFP"] = mp.Fend.eval.res; #--Assign the resolution
@@ -541,8 +541,8 @@ def falco_init_ws(mp, config=None):
             #--Leave coefficient as +1
             pass
 
-    mp.dm1.compact = falco.config.EmptyObject()
-    mp.dm2.compact = falco.config.EmptyObject()
+    mp.dm1.compact = falco.config.Object()
+    mp.dm2.compact = falco.config.Object()
     if np.any(mp.dm_ind==1):
         mp.dm1.centering = mp.centering;
         mp.dm1.compact = mp.dm1;
@@ -580,9 +580,9 @@ def falco_init_ws(mp, config=None):
     
     #SFF NOTE
     if not hasattr(mp.dm2, 'full'):
-        mp.dm2.full = falco.config.EmptyObject()
+        mp.dm2.full = falco.config.Object()
     if not hasattr(mp.dm2, 'compact'):
-        mp.dm2.compact = falco.config.EmptyObject()
+        mp.dm2.compact = falco.config.Object()
 
     if mp.flagDM1stop:
         mp.dm1.full.mask = falco.masks.falco_gen_DM_stop(mp.P2.full.dx,mp.dm1.Dstop,mp.centering);
@@ -652,7 +652,7 @@ def falco_init_ws(mp, config=None):
 
     #--Check that the normalization of the coronagraphic PSF is correct
     
-    modvar = falco.config.EmptyObject()
+    modvar = falco.config.Object()
     modvar.ttIndex = 1;
     modvar.sbpIndex = mp.si_ref;
     modvar.wpsbpIndex = mp.wi_ref;
@@ -725,11 +725,11 @@ def falco_init_ws(mp, config=None):
 #        if not hasattr(mp.dm9,'tied'): 
 #            mp.dm9.tied = []
 
-    out = falco.config.EmptyObject()
-    out.dm1 = falco.config.EmptyObject()
-    out.dm2 = falco.config.EmptyObject()
-    out.dm8 = falco.config.EmptyObject()
-    out.dm9 = falco.config.EmptyObject()
+    out = falco.config.Object()
+    out.dm1 = falco.config.Object()
+    out.dm2 = falco.config.Object()
+    out.dm8 = falco.config.Object()
+    out.dm9 = falco.config.Object()
 
     ## Storage Arrays for DM Metrics
     #--EFC regularization history
@@ -907,16 +907,16 @@ def falco_wfsc_loop(mp):
         if np.any(mp.dm_ind==1): 
             DM1surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
         else: 
-            DM1surf = np.zeros(mp.dm1.compact.Ndm)
+            DM1surf = np.zeros((mp.dm1.compact.Ndm,mp.dm1.compact.Ndm))
     
         if np.any(mp.dm_ind==2): 
             DM2surf =  falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
         else: 
-            DM2surf = np.zeros(mp.dm2.compact.Ndm)
+            DM2surf = np.zeros((mp.dm2.compact.Ndm,mp.dm2.compact.Ndm))
     
         ## Updated plot and reporting
         #--Calculate the core throughput (at higher resolution to be more accurate)
-        thput = falco.utils.falco_compute_thput(mp);
+        thput,ImSimOffaxis = falco.utils.falco_compute_thput(mp);
         if mp.flagFiber:
             mp.thput_vec[Itr] = np.max(thput)
         else:
@@ -925,6 +925,40 @@ def falco_wfsc_loop(mp):
         #--Compute the current contrast level
         InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
         
+        #--Plotting
+        if(mp.flagPlot):
+            
+#            if(Itr==1):
+#                plt.ion()
+#                plt.show()
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
+            fig.subplots_adjust(hspace=0.4, wspace=0.0)
+            fig.suptitle(mp.coro+': Iteration %d'%Itr)
+            
+            im1=ax1.imshow(np.log10(Im),cmap='magma',interpolation='none',extent=[np.min(mp.Fend.xisDL),np.max(mp.Fend.xisDL),np.min(mp.Fend.xisDL),np.max(mp.Fend.xisDL)])
+            ax1.set_title('Stellar PSF: NI=%.2e'%InormHist[Itr])
+            ax1.tick_params(labelbottom=False)
+            cbar1 = fig.colorbar(im1, ax = ax1)#,shrink=0.95)
+
+            im3 = ax3.imshow(ImSimOffaxis/np.max(ImSimOffaxis),cmap=plt.cm.get_cmap('Blues'),interpolation='none',extent=[np.min(mp.Fend.xisDL),np.max(mp.Fend.xisDL),np.min(mp.Fend.xisDL),np.max(mp.Fend.xisDL)])            
+#            im3 = ax3.imshow(ImSimOffaxis/np.max(ImSimOffaxis),cmap=plt.cm.get_cmap('Blues', 4),interpolation='none',extent=[np.min(mp.Fend.xisDL),np.max(mp.Fend.xisDL),np.min(mp.Fend.xisDL),np.max(mp.Fend.xisDL)])
+            ax3.set_title('Off-axis Thput = %.2f%%'%(100*thput))
+            cbar3 = fig.colorbar(im3, ax = ax3)
+            cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
+            cbar3.set_ticklabels(['0', '0.5', '1'])
+            
+            im2 = ax2.imshow(1e9*DM1surf,cmap='viridis')
+            ax2.set_title('DM1 Surface (nm)')
+            ax2.tick_params(labelbottom=False,labelleft=False,bottom=False,left=False)
+            cbar2 = fig.colorbar(im2, ax = ax2)
+            
+            im4 = ax4.imshow(1e9*DM2surf,cmap='viridis')
+            ax4.set_title('DM2 Surface (nm)')
+            ax4.tick_params(labelbottom=False,labelleft=False,bottom=False,left=False)
+            cbar4 = fig.colorbar(im4, ax = ax4)
+            
+            plt.pause(0.1)
+            
         ## Updated selection of Zernike modes targeted by the controller
         #--Decide with Zernike modes to include in the Jacobian
         if Itr==0:
@@ -939,7 +973,7 @@ def falco_wfsc_loop(mp):
         ## Actuator Culling: Initialization of Flag and Which Actuators
         
         #--If new actuators are added, perform a new cull of actuators.
-        cvar = falco.config.EmptyObject()
+        cvar = falco.config.Object()
         if Itr==0:
             cvar.flagCullAct = True;
         else:
@@ -1222,7 +1256,7 @@ def falco_est_perfect_Efield_with_Zernikes(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
     
     Emat = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode),dtype=complex)
-    modvar = falco.config.EmptyObject() #--Initialize
+    modvar = falco.config.Object() #--Initialize
     
     for im in range(mp.jac.Nmode):
         modvar.sbpIndex = mp.jac.sbp_inds[im]
@@ -1240,7 +1274,7 @@ def falco_est_perfect_Efield_with_Zernikes(mp):
     return Emat
     
     #pass
-    #return falco.config.EmptyObject()
+    #return falco.config.Object()
 
 def falco_est_pairwise_probing(mp, **kwargs):
     
@@ -1248,7 +1282,7 @@ def falco_est_pairwise_probing(mp, **kwargs):
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
 
-    return falco.config.EmptyObject()
+    return falco.config.Object()
 
 
 def falco_ctrl(mp,cvar,jacStruct):
@@ -1432,7 +1466,7 @@ def falco_ctrl_cull(mp, cvar, jacStruct):
 
 
     #return jacStruct
-    #return falco.config.EmptyObject()
+    #return falco.config.Object()
 
 def falco_est_perfect_Efield(mp, DM, which_model='full'):
     """
@@ -1545,7 +1579,7 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
     #[cvar.cMin,indBest] = np.min(InormVec)
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
-    dDM = falco.config.EmptyObject()
+    dDM = falco.config.Object()
 #    #--Tied actuators
 #    if(any(mp.dm_ind==1)): dDM.dm1tied = dm1tied{indBest}
 #    if(any(mp.dm_ind==2)): dDM.dm2tied = dm2tied{indBest}
@@ -1684,7 +1718,7 @@ def falco_ctrl_wrapup(mp,cvar,duVec):
     dDM : ModelParameters
         Structure containing the delta DM commands for each DM
     """        
-    dDM = falco.config.EmptyObject()
+    dDM = falco.config.Object()
     
     #--Parse the command vector by DM
     if(any(mp.dm_ind==1)):
