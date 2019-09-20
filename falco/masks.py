@@ -6,7 +6,7 @@ import scipy.interpolate
 import scipy.ndimage
 import math
 from . import utils
-
+import falco
 
 def annular_fpm(pixres_fpm, rho_inner, rho_outer, fpm_amp_factor=0.0,
                 rot180=False, centering='pixel', **kwargs):
@@ -533,7 +533,7 @@ def falco_gen_SW_mask(**kwargs):
 
 
 def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering, rot180deg=False):
-        """
+    """
     Quick Description here
 
     Detailed description here
