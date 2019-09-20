@@ -3,11 +3,8 @@ import falco
 import os
 import pickle
 import scipy
-from astropy.io import fits # DEBUGGING
-
-import matplotlib.pyplot as plt # DEBUGGING
-from mpl_toolkits.axes_grid1 import make_axes_locatable # DEBUGGING
-#from falco import models
+from astropy.io import fits 
+import matplotlib.pyplot as plt 
 
 def falco_init_ws(mp, config=None):
 
@@ -133,7 +130,7 @@ def falco_init_ws(mp, config=None):
 
     #--Center-ish wavelength indices (ref = reference)(Only the center if
     #  an odd number of wavelengths is used.)
-    mp.si_ref = np.ceil(mp.Nsbp/2);
+    mp.si_ref = np.floor(mp.Nsbp/2).astype(int)
 
     #--Wavelengths used for Compact Model (and Jacobian Model)
     mp.sbp_weights = np.ones((mp.Nsbp,1));
@@ -148,14 +145,14 @@ def falco_init_ws(mp, config=None):
     mp.sbp_weights = mp.sbp_weights/np.sum(mp.sbp_weights); #--Normalize the sum of the weights
     
     print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f# total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
-    print('Sub-bandpasses are centered at wavelengths [nm]:\t ')
-    print('%.2f  '%(1e9*mp.sbp_centers))
-    print('\n\n');
+    print('Sub-bandpasses are centered at wavelengths [nm]:\t ',end='')
+    print(1e9*mp.sbp_centers)
+ 
 
     ## Bandwidth and Wavelength Specs: Full Model
     
     #--Center(-ish) wavelength indices (ref = reference). (Only the center if an odd number of wavelengths is used.)
-    mp.wi_ref = np.ceil(mp.Nwpsbp/2);
+    mp.wi_ref = np.floor(mp.Nwpsbp/2).astype(int)
 
     #--Wavelength factors/weights within sub-bandpasses in the full model
     mp.full.lambda_weights = np.ones((mp.Nwpsbp,1)); #--Initialize as all ones. Weights within a single sub-bandpass
@@ -173,74 +170,50 @@ def falco_init_ws(mp, config=None):
     mp.full.lambda_weights = mp.full.lambda_weights/np.sum(mp.full.lambda_weights); #--Normalize sum of the weights (within the sub-bandpass)
 
     #--Make vector of all wavelengths and weights used in the full model
-    lambdas = np.zeros((mp.Nsbp*mp.Nwpsbp,1))
-    lambda_weights_all = np.zeros((mp.Nsbp*mp.Nwpsbp,1))
+    lambdas = np.zeros((mp.Nsbp*mp.Nwpsbp,))
+    lambda_weights_all = np.zeros((mp.Nsbp*mp.Nwpsbp,))
     mp.full.lambdasMat = np.zeros((mp.Nsbp,mp.Nwpsbp))
     mp.full.indsLambdaMat = np.zeros((mp.Nsbp*mp.Nwpsbp,2),dtype=int)
     counter = 0;
     for si in range(mp.Nsbp):
-        #mp.full.lambdasMat[si,:] = np.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp-1)/2)*mp.full.dlam + mp.sbp_centers[si];
+        if(mp.Nwpsbp==1):
+            mp.full.lambdasMat[si,0] = mp.sbp_centers[si]
+        else:
+            mp.full.lambdasMat[si,:] = np.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp+1)/2)*mp.full.dlam + mp.sbp_centers[si]
         np.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp-1)/2)*mp.full.dlam# + mp.sbp_centers[si];
         for wi in range(mp.Nwpsbp):
             lambdas[counter] = mp.full.lambdasMat[si,wi];
             lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi];
             mp.full.indsLambdaMat[counter,:] = [si,wi]
             counter = counter+1;
-            print('counter=', counter)
             
     #--Get rid of redundant wavelengths in the complete list, and sum weights for repeated wavelengths
     # indices of unique wavelengths
     unused_1, inds_unique = np.unique(np.round(1e12*lambdas), return_index=True); #--Check equality at the picometer level for wavelength
-    print('inds_unique=', inds_unique)
     mp.full.indsLambdaUnique = inds_unique;
     # indices of duplicate wavelengths
-    duplicate_inds = np.setdiff1d( np.array(len(lambdas)) , inds_unique);
+    duplicate_inds = np.setdiff1d( np.arange(len(lambdas),dtype=int) , inds_unique);
     # duplicate weight values
-    print('duplicate_inds=', duplicate_inds)
-    print('lambda_weights_all=',lambda_weights_all)
+    duplicate_values = lambda_weights_all[duplicate_inds]
 
-    # SFF NOTE:  passing in 'duplicate_inds' fails
-    #duplicate_values = lambda_weights_all[duplicate_inds];
-    duplicate_values = lambda_weights_all[0];
-    
     #--Shorten the vectors to contain only unique values. Combine weights for repeated wavelengths.
     mp.full.lambdas = lambdas[inds_unique];
     mp.full.lambda_weights_all = lambda_weights_all[inds_unique];
     for idup in range(len(duplicate_inds)):
-        _lambda = lambdas[idup];
-        weight = lambda_weights_all[idup];
-        ind = np.where(mp.full.lambdas==_lambda);
+        wvl = lambdas[duplicate_inds[idup]];
+        weight = lambda_weights_all[duplicate_inds[idup]];
+        ind = np.where(np.abs(mp.full.lambdas-wvl)<=1e-11)
+        print(ind)
         mp.full.lambda_weights_all[ind] = mp.full.lambda_weights_all[ind] + weight;
     mp.full.NlamUnique = len(inds_unique);
 
-
-
-
-
-
-
-
-
-    ## Zernike and Chromatic Weighting of the Control Jacobian
-    if not hasattr(mp.jac,'zerns'):  
-        mp.jac.zerns = np.array([1]) #--Float array. Which Zernike modes to include in Jacobian [Noll index]. Always include 1 for piston term.
-    if not hasattr(mp.jac,'Zcoef'):  
-        mp.jac.Zcoef = 1e-9*np.ones((10,1)); end #--Float array. meters RMS of Zernike aberrations. (piston value is reset to 1 later for correct normalization)
-
+    # Set the relative weights of the Jacobian modes
     falco.configs.falco_config_jac_weights(mp)
 
     ## Pupil Masks
     falco.configs.falco_config_gen_chosen_pupil(mp) #--input pupil mask
     falco.configs.falco_config_gen_chosen_apodizer(mp) #--apodizer mask
     falco.configs.falco_config_gen_chosen_LS(mp) #--Lyot stop
-
-    # SFF NOTE:  This stuff probably got defined in the functions above
-    if not hasattr(mp.P1.compact, 'Narr'):
-        mp.P1.compact.Narr = 252
-    if not hasattr(mp.P4.compact, 'mask'):
-        mp.P4.compact.mask = np.zeros((mp.P1.compact.Narr,mp.P1.compact.Narr))
-    if not hasattr(mp.P1.compact, 'mask'):
-        mp.P1.compact.mask = np.zeros((mp.P1.compact.Narr,mp.P1.compact.Narr))
 
     ## Plot the pupil and Lyot stop on top of each other to make sure they are aligned correctly
     #--Only for coronagraphs using Babinet's principle, for which the input
@@ -257,12 +230,10 @@ def falco_init_ws(mp, config=None):
             #figure(301); imagesc(P1andP4); axis xy equal tight; colorbar; set(gca,'Fontsize',20); title('Pupil and LS Superimposed','Fontsize',16');
 
             if mp.flagApod:
-                P1andP3 = mp.P1.compact.mask + padOrCropEven(mp.P3.compact.mask,len(mp.P1.compact.mask));
+                P1andP3 = mp.P1.compact.mask + falco.utils.padOrCropEven(mp.P3.compact.mask,len(mp.P1.compact.mask));
                 #figure(302); imagesc(P1andP3); axis xy equal tight; colorbar; set(gca,'Fontsize',20); title('Pupil and Apod Superimposed','Fontsize',16');
 
     ## DM Initialization
-    
-    # SFF NOTE
     mp.dm3 = falco.config.EmptyObject()   
     mp.dm4 = falco.config.EmptyObject()   
     mp.dm5 = falco.config.EmptyObject()   
@@ -308,25 +279,6 @@ def falco_init_ws(mp, config=None):
         falco.configs.falco_config_gen_FPM_SPLC(mp);
     elif mp.coro.upper() == 'RODDIER':
         falco.configs.falco_config_gen_FPM_Roddier(mp);
-
-    # SFF Stuff
-    if not hasattr(mp.F3.compact, 'Nxi'):
-        mp.F3.compact.Nxi = 24
-    if not hasattr(mp.F3.compact, 'Neta'):
-        mp.F3.compact.Neta = 24
-    if not hasattr(mp.F3.compact, 'mask'):
-        mp.F3.compact.mask = falco.config.EmptyObject() 
-    if not hasattr(mp.F3.compact.mask, 'amp'):
-        mp.F3.compact.mask.amp = np.zeros((24,24))
-
-    if not hasattr(mp.F3.full, 'Nxi'):
-        mp.F3.full.Nxi = 24
-    if not hasattr(mp.F3.full, 'Neta'):
-        mp.F3.full.Neta = 24
-    if not hasattr(mp.F3.full, 'mask'):
-        mp.F3.full.mask = falco.config.EmptyObject() 
-    if not hasattr(mp.F3.full.mask, 'amp'):
-        mp.F3.full.mask.amp = np.zeros((24,24))
 
     ## FPM coordinates, [meters] and [dimensionless]
     
@@ -386,7 +338,7 @@ def falco_init_ws(mp, config=None):
     
     ## Software Mask for Correction (corr) and Scoring (score)
     
-    #--Set Inputs:  SFF NOTE:  The use of dictionary of maskCorr was done in ModelParameters.py so I went along with it
+    #--Set Inputs:
     maskCorr = {}
     maskCorr["pixresFP"] = mp.Fend.res;
     maskCorr["rhoInner"] = mp.Fend.corr.Rin #--lambda0/D
@@ -473,14 +425,11 @@ def falco_init_ws(mp, config=None):
         mp.F5.fiberMode = mp.F5.fiberMode/fiberModeNorm;
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    
-    # SFF NOTE
-    if not hasattr(mp.Fend, 'eval'):
-        mp.Fend.eval = falco.config.EmptyObject()
 
     #--Evaluation Model for Computing Throughput (same as Compact Model but
     # with different Fend.resolution)
-    mp.Fend.eval.dummy = 1; #--Initialize the structure if it doesn't exist.
+    if not hasattr(mp.Fend, 'eval'): #--Initialize the structure if it doesn't exist.
+        mp.Fend.eval = falco.config.EmptyObject()
     if not hasattr(mp.Fend.eval,'res'):  
         mp.Fend.eval.res = 10
     maskCorr["pixresFP"] = mp.Fend.eval.res; #--Assign the resolution
@@ -511,8 +460,6 @@ def falco_init_ws(mp, config=None):
     if hasattr(mp.Fend,'shape'):  
         maskScore["shape"] = mp.Fend.shape
     #--Compact Model: Generate Software Mask for Scoring Contrast 
-    #SFF NOTE:  Per AJ, ok to comment out and not use
-    #maskScore["Nxi"] = mp.Fend.Nxi; #--Set min dimension length to be same as for corr 
     maskScore["pixresFP"] = mp.Fend.res;
     mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskScore);
     mp.Fend.score.settings = maskScore; #--Store values for future reference
@@ -526,7 +473,7 @@ def falco_init_ws(mp, config=None):
         #mp.Fend.corr.inds = find(np.sum(mp.Fend.lenslet.mask,3)~=0);
         #mp.Fend.corr.maskBool = logical(mp.Fend.corr.mask);
         mp.Fend.corr.inds = np.where(np.sum(mp.Fend.lenslet.mask,3)!=0);
-        mp.Fend.corr.maskBool = numpy.array(mp.Fend.corr.mask, dtype=bool)
+        mp.Fend.corr.maskBool = np.array(mp.Fend.corr.mask, dtype=bool)
     else:
         #mp.Fend.corr.inds = find(mp.Fend.corr.mask~=0);
         #mp.Fend.corr.maskBool = logical(mp.Fend.corr.mask);
@@ -547,17 +494,12 @@ def falco_init_ws(mp, config=None):
         mp.WspatialVec = np.ones((mp.Fend.Nlens,1));
     else:
         falco.configs.falco_config_spatial_weights(mp);
-        #SFF NOTE
-        if not hasattr(mp, 'Wspatial'):
-            mp.Wspatial = np.zeros((56,56))
         #--Extract the vector of weights at the pixel locations of the dark hole pixels.
-        mp.WspatialVec = mp.Wspatial[mp.Fend.corr.inds];
+        mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool];
     
     ## Deformable Mirror (DM) 1 and 2 Parameters
     
     if hasattr(mp,'dm1'):
-
-        #SFF NOTE
         # Read the influence function header data from the FITS file
         dx1 = None
         pitch1 = None
@@ -598,17 +540,6 @@ def falco_init_ws(mp, config=None):
         else:
             #--Leave coefficient as +1
             pass
-
-    #--Create influence function datacubes for each DM
-    #SFF NOTE DEBUGGING: Hard-coded dx values
-    if not hasattr(mp.P2, 'full'):
-        mp.P2.full = falco.config.EmptyObject()
-    if not hasattr(mp.P2.full, 'dx'):
-        mp.P2.full.dx = 1.851948e-04
-    if not hasattr(mp.P2, 'compact'):
-        mp.P2.compact = falco.config.EmptyObject()
-    if not hasattr(mp.P2.compact, 'dx'):
-        mp.P2.compact.dx = 1.851948e-04
 
     mp.dm1.compact = falco.config.EmptyObject()
     mp.dm2.compact = falco.config.EmptyObject()
@@ -681,11 +612,6 @@ def falco_init_ws(mp, config=None):
     while (NdmPad < np.min(mp.sbp_centers)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.sbp_centers)*np.abs(mp.d_P2_dm1)/mp.P2.compact.dx**2): 
         #--Double the zero-padding until the angular spectrum sampling requirement is not violated
         NdmPad = 2*NdmPad;
-
-    #SFF NOTE
-    if not hasattr(mp, 'compact'):
-        mp.compact = falco.config.EmptyObject()
-
     mp.compact.NdmPad = NdmPad;
     
     #--Full Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
@@ -700,11 +626,6 @@ def falco_init_ws(mp, config=None):
     while (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): #--Double the zero-padding until the angular spectrum sampling requirement is not violated
         NdmPad = 2*NdmPad;
     mp.full.NdmPad = NdmPad;
-
-
-    # SFF NOTE
-    if not hasattr(mp.P1.full, 'Narr'):
-        mp.P1.full.Narr = 252
 
     ## Initial Electric Fields for Star and Exoplanet
     
@@ -724,13 +645,6 @@ def falco_init_ws(mp, config=None):
         mp.x_planet = 6; # x position of exoplanet in lambda0/D
         mp.y_planet = 0; # y position of exoplanet in lambda0/D
     
-    #SFF NOTE
-    if not hasattr(mp.Fend, 'compact'):
-        mp.Fend.compact = falco.config.EmptyObject()
-
-    ## Field Stop at Fend.(as a software mask)
-    mp.Fend.compact.mask = np.ones((mp.Fend.Neta,mp.Fend.Nxi));
-    
     ## Contrast to Normalized Intensity Map Calculation 
     
     ## Get the starlight normalization factor for the compact and full models (to convert images to normalized intensity)
@@ -738,9 +652,7 @@ def falco_init_ws(mp, config=None):
 
     #--Check that the normalization of the coronagraphic PSF is correct
     
-    #SFF NOTE
     modvar = falco.config.EmptyObject()
-
     modvar.ttIndex = 1;
     modvar.sbpIndex = mp.si_ref;
     modvar.wpsbpIndex = mp.wi_ref;
@@ -813,7 +725,6 @@ def falco_init_ws(mp, config=None):
 #        if not hasattr(mp.dm9,'tied'): 
 #            mp.dm9.tied = []
 
-    #SFF NOTE
     out = falco.config.EmptyObject()
     out.dm1 = falco.config.EmptyObject()
     out.dm2 = falco.config.EmptyObject()
@@ -935,8 +846,7 @@ def falco_wfsc_loop(mp):
     
     #--Raw contrast (broadband)
     
-    # SFF NOTE: I added 1 to the mp.Nitr so code in for loop won't crash.
-    InormHist = np.zeros((mp.Nitr + 1,1)); # Measured, mean raw contrast in scoring regino of dark hole.
+    InormHist = np.zeros((mp.Nitr+1,)); # Measured, mean raw contrast in scoring regino of dark hole.
     
     ## Plot the pupil masks
     
@@ -946,7 +856,7 @@ def falco_wfsc_loop(mp):
     
     ## Take initial broadband image 
     
-    Im = falco.imaging.falco_get_summed_image(mp);
+    Im = falco.imaging.falco_get_summed_image(mp)
     
 
     ##
@@ -954,8 +864,7 @@ def falco_wfsc_loop(mp):
     #Begin the Correction Iterations
     ###########################################################################
 
-    #SFF NOTE:  Needed to declare this array before using.  Added extra 1 to Itr
-    mp.flagCullActHist = np.zeros((mp.Nitr+1,1),dtype=np.bool)
+    mp.flagCullActHist = np.zeros((mp.Nitr+1,),dtype=np.bool)
 
     for Itr in range(mp.Nitr):
     
@@ -989,24 +898,10 @@ def falco_wfsc_loop(mp):
                 out.dm5.Vall[:,:,Itr] = mp.dm5.V
         if hasattr(mp,'dm8'): 
             if hasattr(mp.dm8,'V'):  
-                out.dm8.Vallr[:,Itrr] = mp.dm8.V[:]
+                out.dm8.Vallr[:,Itr] = mp.dm8.V[:]
         if hasattr(mp,'dm9'): 
             if hasattr(mp.dm9,'V'):  
                 out.dm9.Vall[:,Itr] = mp.dm9.V[:]
-        
-        # SFF NOTE
-        if not hasattr(mp.dm1, 'compact'):
-            mp.dm1.compact = falco.config.EmptyObject()
-        if not hasattr(mp.dm1.compact, 'dx'):
-            mp.dm1.compact.dx = 1.8519e-04
-        if not hasattr(mp.dm1.compact, 'Ndm'):
-            mp.dm1.compact.Ndm = 304
-        if not hasattr(mp.dm2, 'compact'):
-            mp.dm2.compact = falco.config.EmptyObject()
-        if not hasattr(mp.dm2.compact, 'dx'):
-            mp.dm2.compact.dx = 1.8519e-04
-        if not hasattr(mp.dm2.compact, 'Ndm'):
-            mp.dm2.compact.Ndm = 304
     
         #--Compute the DM surfaces
         if np.any(mp.dm_ind==1): 
@@ -1036,8 +931,7 @@ def falco_wfsc_loop(mp):
             mp.jac.zerns0 = mp.jac.zerns;
         
         print('Zernike modes (Noll indexing) used in this Jacobian:\t',end=''); 
-        print('%d '%(mp.jac.zerns),end='')
-        print('\n',end='')
+        print(mp.jac.zerns)
         
         #--Re-compute the Jacobian weights
         falco.configs.falco_config_jac_weights(mp);
@@ -1147,11 +1041,9 @@ def falco_wfsc_loop(mp):
         cvar.InormHist = InormHist[Itr]
         falco_ctrl(mp,cvar,jacStruct)
     
-        #SFF NOTE
-        if not hasattr(cvar, "log10regUsed"):
-            cvar.log10regUsed = 10
         #--Save out regularization used.
-        out.log10regHist[Itr] = cvar.log10regUsed;
+        if hasattr(cvar, "log10regUsed"):
+            out.log10regHist[Itr] = cvar.log10regUsed;
     
         #-----------------------------------------------------------------------------------------
         
@@ -1240,10 +1132,6 @@ def falco_wfsc_loop(mp):
         mp.thput_vec[Itr] = np.max(thput);
     else:
         mp.thput_vec[Itr] = thput; #--record keeping
-
-    ## Optional output variable: mp
-    #SFF NOTE: Per AJ, ok to not implement
-    #varargout{1} = mp;
     
     ## Save the final DM commands separately for faster reference
     if hasattr(mp,'dm1'): 
@@ -1719,25 +1607,9 @@ def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
     #--Least-squares solution with regularization:
     duVecNby1 = -dmfac*np.linalg.solve( (10**log10reg*np.diag(cvar.EyeGstarGdiag) + cvar.GstarG_wsum), cvar.RealGstarEab_wsum)
     duVec = duVecNby1.reshape((-1,)) #--Convert to true 1-D array from an Nx1 array
-    
-#    plt.plot(duVec); plt.pause(0.1) # DEBUGGING
- 
+     
     #--Parse the command vector by DM and assign the output commands
-#    dDM = falco.config.EmptyObject()
-#    [dDMtemp] = falco_ctrl_wrapup(mp,cvar,duVec)
     mp,dDM = falco_ctrl_wrapup(mp,cvar,duVec)
-    
-#    plt.imshow(mp.dm1.V); plt.pause(1) # DEBUGGING
-    
-#    # AJER NOTE DEBUGGING: 
-#    ax = plt.subplot(111)
-#    im = ax.imshow(mp.dm2.V)
-#    # create an axes on the right side of ax. The width of cax will be 5%
-#    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
-#    divider = make_axes_locatable(ax)
-#    cax = divider.append_axes("right", size="5%", pad=0.05)
-#    plt.colorbar(im, cax=cax)
-#    plt.pause(1)
     
     #--Take images and compute average intensity in dark hole
     if(mp.ctrl.flagUseModel): #--Perform a model-based grid search using the compact model
@@ -1746,9 +1618,7 @@ def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
     else: #--Perform an empirical grid search with actual images from the testbed or full model
         Itotal = falco.imaging.falco_get_summed_image(mp)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
-    
-#    plt.imshow(np.log10(Itotal)); plt.pause(1) # DEBUGGING
-    
+        
     #--Reset voltage commands in mp
     if(any(mp.dm_ind==1)): mp.dm1.V = DM1V0
     if(any(mp.dm_ind==2)): mp.dm2.V = DM2V0

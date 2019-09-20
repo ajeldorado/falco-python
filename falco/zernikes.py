@@ -3,10 +3,6 @@ import numpy as np
 import math
 import proper
 
-#from astropy.io import fits # DEBUGGING
-#import matplotlib.pyplot as plt # DEBUGGING
-#from mpl_toolkits.axes_grid1 import make_axes_locatable # DEBUGGING
-
 _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
 
@@ -33,7 +29,7 @@ def falco_get_Zernike_sensitivities(mp):
     maskCube = np.zeros((mp.Fend.Neta,mp.Fend.Nxi, Nannuli)) 
     for ni in range(Nannuli):
         #--Make scoring masks for the annular regions
-        #--Set Inputs:  SFF NOTE:  The use of dictionary of maskCorr was done in ModelParameters.py so I went along with it
+        #--Set Inputs:
         maskDict = {}
         maskDict["pixresFP"] = mp.Fend.res;
         maskDict["rhoInner"] = Rsens[ni,0] # [lambda0/D]
@@ -256,7 +252,7 @@ def falco_gen_norm_zernike_maps(Nbeam,centering,indsZnoll):
         raise ValueError(_CENTERING_ERR)
         
     #--If a scalar integer, convert indsZnoll to an array so that it is indexable
-    if(type(indsZnoll)==int):
+    if not (type(indsZnoll)==np.ndarray):
         indsZnoll = np.array([indsZnoll])
 
     #--Set array size as minimum width to contain the beam.
@@ -279,7 +275,8 @@ def falco_gen_norm_zernike_maps(Nbeam,centering,indsZnoll):
     
     bm.centering = centering;
     for iz in range(Nzern):
-        ZmapCube[:,:,iz] = falco.zernikes.propcustom_zernikes(bm,np.array([indsZnoll[iz]]),np.array([1.]),NO_APPLY=True,CENTERING=centering)
+        ZmapCube[:,:,iz] = propcustom_zernikes(bm, np.array([indsZnoll[iz]]),
+                np.array([1.]),NO_APPLY=True,CENTERING=centering)
         
     return ZmapCube
 

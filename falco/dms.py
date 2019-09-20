@@ -10,9 +10,6 @@ from scipy.interpolate import RectBivariateSpline
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
 
-from astropy.io import fits #--NOTE: DEBUGGING
-
-
 def falco_gen_dm_surf(dm,dx,N):
 
     """
@@ -432,7 +429,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
 #     end       
     else: #--Square grid
         [dm.Xact,dm.Yact] = np.meshgrid( np.arange(dm.Nact)-dm.xc,np.arange(dm.Nact)-dm.yc) # in actuator widths
-#        # NOTE: DEBUGGING: Use to compare the final datacube to Matlab's output. Otherwise, use C ordering for Python FALCO.
+#        #--Use order='F' to compare the final datacube to Matlab's output. Otherwise, use C ordering for Python FALCO.
 #        x_vec = dm.Xact.reshape(dm.Nact*dm.Nact,order='F')
 #        y_vec = dm.Yact.reshape(dm.Nact*dm.Nact,order='F')
         x_vec = dm.Xact.reshape(dm.Nact*dm.Nact)
@@ -465,10 +462,6 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
                 [ca * sg + sa * sb * cg, ca * cg - sa * sb * sg, -sa * cb, 0.0],
                 [sa * sg - ca * sb * cg, sa * cg + ca * sb * sg,  ca * cb, 0.0],
                                    [0.0,                    0.0,      0.0, 1.0] ])
-    	
-#    # NOTE: DEBUGGING
-#    hdu = fits.PrimaryHDU(Mrot)
-#    hdu.writeto('/Users/ajriggs/Downloads/Mrot_python.fits', overwrite=True)
     
 	#--Compute the actuator center coordinates in units of actuator spacings
     for iact in range(dm.NactTotal):
@@ -504,17 +497,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     
     #--Calculate the interpolated DM grid at the new resolution (set extrapolated values to 0.0)
     dm.infMaster = griddata( (xsNewVec,ysNewVec), inf0pad.reshape(Npad*Npad), (Xs0, Ys0), method='cubic',fill_value=0.)
-    # NOTE: Backwards implementation:
-    #xsNew = xsNewVec.reshape(xdim,xdim)
-    #ysNew = ysNewVec.reshape(ydim,ydim)
-    #dm.infMaster = griddata( (Xs0.reshape(xdim*xdim),Ys0.reshape(ydim*ydim)), inf0pad.reshape(Npad*Npad), (xsNew, ysNew), method='cubic',fill_value=0.)
 
-#    # NOTE: DEBUGGING
-#    hdu0 = fits.PrimaryHDU(inf0pad)
-#    hdu0.writeto('/Users/ajriggs/Downloads/inf0pad_python.fits', overwrite=True)
-#    hdu = fits.PrimaryHDU(dm.infMaster)
-#    hdu.writeto('/Users/ajriggs/Downloads/infMaster_python.fits', overwrite=True)
-    
     #--Crop down the influence function until it has no zero padding left
     infSum = np.sum(dm.infMaster)
     infDiff = 0. 
@@ -609,11 +592,6 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
            inf_datacube[iact,:,:] = interp_spline(ybox,xbox)
 
         print('done.') # fprintf('done.  Time = %.1fs\n',toc);
-        
-#        # NOTE: DEBUGGING
-#        hdu = fits.PrimaryHDU(inf_datacube)
-#        hdu.writeto('/Users/ajriggs/Downloads/infCube_python.fits', overwrite=True)
-#        print('Hi')
 
     else:
         dm.act_ele = np.arange(dm.NactTotal)    

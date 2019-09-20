@@ -632,7 +632,7 @@ def falco_config_gen_chosen_pupil(mp):
     mp.P1.compact.Narr = len(mp.P1.compact.mask) #--Number of pixels across the array containing the input pupil in the compact model
     
     ##--NORMALIZED (in pupil diameter) coordinate grids in the input pupil for making the tip/tilted input wavefront within the compact model
-    if mp.centering.lower() in ('interpixel'):
+    if mp.centering.lower() == ('interpixel'):
         mp.P2.compact.xsDL = np.linspace(-(mp.P1.compact.Narr-1)/2, (mp.P1.compact.Narr-1)/2,mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
     else:
         mp.P2.compact.xsDL = np.linspace(-mp.P1.compact.Narr/2, (mp.P1.compact.Narr/2-1),mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
@@ -641,7 +641,7 @@ def falco_config_gen_chosen_pupil(mp):
     [mp.P2.compact.XsDL,mp.P2.compact.YsDL] = np.meshgrid(mp.P2.compact.xsDL,mp.P2.compact.xsDL)
     
     if(mp.full.flagPROPER):
-        if centering.lower() in ('interpixel'):
+        if mp.centering.lower() == ('interpixel'):
             mp.P1.full.Narr = falco.utils.ceil_even(mp.P1.full.Nbeam)
         else:
             mp.P1.full.Narr = falco.utils.ceil_even(mp.P1.full.Nbeam+1)
@@ -650,7 +650,7 @@ def falco_config_gen_chosen_pupil(mp):
 
 
     #--NORMALIZED (in pupil diameter) coordinate grids in the input pupil for making the tip/tilted input wavefront within the full model
-    if mp.centering.lower() in ('interpixel'):
+    if mp.centering.lower() == ('interpixel'):
         mp.P2.full.xsDL = np.linspace(-(mp.P1.full.Narr-1)/2, (mp.P1.full.Narr-1)/2,mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
     else:
         mp.P2.full.xsDL = np.linspace(-mp.P1.full.Narr/2, (mp.P1.full.Narr/2-1),mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D

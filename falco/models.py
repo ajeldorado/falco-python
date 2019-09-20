@@ -1,11 +1,7 @@
-from falco.config import ModelParameters, ModelVariables, DeformableMirrorParameters
+#from falco.config import ModelParameters, ModelVariables, DeformableMirrorParameters
 import numpy as np
 import falco
 import logging
-import matplotlib.pyplot as plt #DEBUGGING
-from astropy.io import fits #DEBUGGING
-from mpl_toolkits.axes_grid1 import make_axes_locatable # DEBUGGING
-import os #DEBUGGING
 
 log = logging.getLogger(__name__)
 
@@ -51,33 +47,6 @@ def model_full(mp,modvar,**kwargs):
     if ("NORMOFF" in kwargs and kwargs["NORMOFF"]):
         normFac = 1.
         
-#    # AJER NOTE DEBUGGING: 
-#    ax = plt.subplot(111)
-#    im = ax.imshow(mp.dm1.V)
-#    # create an axes on the right side of ax. The width of cax will be 5%
-#    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
-#    divider = make_axes_locatable(ax)
-#    cax = divider.append_axes("right", size="5%", pad=0.05)
-#    plt.colorbar(im, cax=cax)
-#    plt.pause(0.5)        
-        
-    #AJER NOTE: This should be in falco_config_gen_chosen_pupil
-    mp.P2.full.xsDL = np.linspace(-mp.P1.full.Narr/2,mp.P1.full.Narr/2-1,mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
-    [mp.P2.full.XsDL,mp.P2.full.YsDL] = np.meshgrid(mp.P2.full.xsDL,mp.P2.full.xsDL)
-    
-    #AJER NOTE DEBUGGING
-    mp.full.lambdasMat = np.zeros((1,1))
-    mp.full.lambdasMat[0,0] = mp.lambda0
-    mp.P4.full.Narr = 196
-    mp.P4.full.dx = mp.P2.D/mp.P1.full.Nbeam
-    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "debug" )
-    mp.P4.full.croppedMask = fits.getdata(os.path.join(dir_path, 'mpP4fullcroppedMask.fits'),ext=0)
-    mp.P1.full.mask = fits.getdata(os.path.join(dir_path, 'mpP1fullmask.fits'),ext=0)
-    mp.F3.full.mask.amp = fits.getdata(os.path.join(dir_path, 'mpF3fullmaskamp.fits'),ext=0)
-#    mp.P4.full.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4fullcroppedMask.fits', ext=0)
-#    mp.P1.full.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1fullmask.fits', ext=0)    
-#    mp.F3.full.mask.amp = fits.getdata('/Users/ajriggs/Downloads/mpF3fullmaskamp.fits', ext=0)
-        
     #--Set the wavelength
     if(hasattr(modvar,'wvl')): #--For FALCO or for standalone use of full model
         wvl = modvar.wvl;
@@ -109,15 +78,15 @@ def model_full(mp,modvar,**kwargs):
         source_y_offset = mp.source_y_offset_norm #--source offset in lambda0/D for normalization
         TTphase = (-1)*(2*np.pi*(source_x_offset*mp.P2.full.XsDL + source_y_offset*mp.P2.full.YsDL));
         Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        Ein = Ett*np.squeeze(mp.P1.full.E[:,:,modvar.sbpIndex]) 
+        Ein = Ett*np.squeeze(mp.P1.full.E[:,:,modvar.wpsbpIndex,modvar.sbpIndex]) 
 
     #--Apply a Zernike (in amplitude) at input pupil if specified
     if not (hasattr(modvar,'zernIndex')): modvar.zernIndex = 1
     if not modvar.zernIndex==1:
         indsZnoll = modvar.zernIndex #--Just send in 1 Zernike mode
-        zernMat = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        zernMat = np.squeeze(falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll)) #--Cube of normalized (RMS = 1) Zernike modes.
         zernMat = falco.utils.padOrCropEven(zernMat,mp.P1.full.Narr)
-        Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[modvar.zernIndex]
+        Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[mp.jac.zerns==modvar.zernIndex]
 
     #--Pre-compute the FPM first for HLC as mp.FPM.mask
     if mp.layout.lower() == 'fourier':
@@ -266,10 +235,6 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
     else:
         Eout = EFend/np.sqrt(normFac) #--Apply normalization
 
-#    # NOTE: DEBUGGING
-#    hduFPM = fits.PrimaryHDU(mp.F3.full.mask.amp)
-#    hduFPM.writeto('/Users/ajriggs/Downloads/FPM_full.fits', overwrite=True)
-
     return Eout
     
      
@@ -355,12 +320,6 @@ def model_compact(mp,modvar,**kwargs):
         Ein = Ett*mp.P1.compact.E[:,:,modvar.sbpIndex]
     else: #--Backward compatible with code without tip/tilt offsets in the Jacobian
         Ein = mp.P1.compact.E[:,:,modvar.sbpIndex]  
-        
-    #AJER NOTE: This should be in falco_config_gen_chosen_pupil
-    mp.P2.compact.xsDL = np.linspace(-mp.P1.compact.Narr/2,mp.P1.compact.Narr/2-1,mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
-    [mp.P2.compact.XsDL,mp.P2.compact.YsDL] = np.meshgrid(mp.P2.compact.xsDL,mp.P2.compact.xsDL)
-    #mp.P2.compact.xsDL = (-mp.P1.compact.Narr/2:(mp.P1.compact.Narr/2-1))*mp.P2.compact.dx/mp.P2.D;
-    #[mp.P2.compact.XsDL,mp.P2.compact.YsDL] = meshgrid(mp.P2.compact.xsDL)
 
     #--Shift the source off-axis to compute the intensity normalization value.
     #  This replaces the previous way of taking the FPM out in the optical model.
@@ -380,11 +339,9 @@ def model_compact(mp,modvar,**kwargs):
     # E-field of the differential Zernike term.
     if not (modvar.zernIndex==1):
         indsZnoll = modvar.zernIndex #--Just send in 1 Zernike mode
-        zernMat = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        zernMat = np.squeeze(falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll)) #--Cube of normalized (RMS = 1) Zernike modes.
         zernMat = falco.utils.padOrCropEven(zernMat,mp.P1.compact.Narr)
-        indArr = mp.jac.zerns==modvar.zernIndex
-        ind = indArr[0].item()
-        Ein = Ein*zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[ind]
+        Ein = Ein*zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns==modvar.zernIndex]
       
     #--Select which optical layout's compact model to use and get the output E-field
     if mp.layout.lower()=='fourier':
@@ -423,18 +380,7 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
         2-D electric field in final focal plane
 
     """
-    
-    #AJER NOTE DEBUGGING
-    mp.P4.compact.Narr = 196
-    mp.P4.compact.dx = mp.P2.D/mp.P1.compact.Nbeam
-    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "debug" )
-    mp.P4.compact.croppedMask = fits.getdata(os.path.join(dir_path, 'mpP4compactcroppedMask.fits'),ext=0)
-    mp.P1.compact.mask = fits.getdata(os.path.join(dir_path, 'mpP1compactmask.fits'),ext=0)
-    mp.F3.compact.mask.amp = fits.getdata(os.path.join(dir_path, 'mpF3compactmaskamp.fits'),ext=0)
-#    mp.P4.compact.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4compactcroppedMask.fits', ext=0)
-#    mp.P1.compact.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1compactmask.fits', ext=0)
-#    mp.F3.compact.mask.amp = fits.getdata('/Users/ajriggs/Downloads/mpF3compactmaskamp.fits', ext=0)
-    
+  
     mirrorFac = 2. # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
 
@@ -552,16 +498,6 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
         Eout = EFend #--Don't normalize if normalization value is being found
     else:
         Eout = EFend/np.sqrt(normFac) #--Apply normalization
-
-#    # NOTE: DEBUGGING
-#    hduR = fits.PrimaryHDU(np.real(EFend))
-#    hduI = fits.PrimaryHDU(np.imag(EFend))
-#    hduR.writeto('/Users/ajriggs/Downloads/EFend_real_compact.fits', overwrite=True)
-#    hduI.writeto('/Users/ajriggs/Downloads/EFend_imag_compact.fits', overwrite=True)
-    
-#    # NOTE: DEBUGGING
-#    hdu = fits.PrimaryHDU(Mrot)
-#    hdu.writeto('/Users/ajriggs/Downloads/Mrot_python.fits', overwrite=True)
     
     return Eout
 
@@ -613,7 +549,7 @@ def model_Jacobian(mp):
             if(any(mp.dm_ind==2)):
                 print('mode%ddm%d...' % (im,2),end='')
                 jacStruct.G2[:,:,im] =  model_Jacobian_middle_layer(mp, im, 2)
-            print('done.')
+        print('done.')
     return jacStruct
 
 
@@ -662,19 +598,7 @@ def model_Jacobian_LC(mp,im,idm):
         Complex-valued, 2-D array containing the Jacobian for the specified DM.
 
     """
-    
-    #AJER NOTE DEBUGGING: Hard-coded values until these inputs are initialized correctly
-    mp.P4.compact.Narr = 196
-    mp.P4.compact.dx = mp.P2.D/mp.P1.compact.Nbeam
-    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "debug" )
-    mp.P4.compact.croppedMask = fits.getdata(os.path.join(dir_path, 'mpP4compactcroppedMask.fits'),ext=0)
-    mp.P1.compact.mask = fits.getdata(os.path.join(dir_path, 'mpP1compactmask.fits'),ext=0)
-    mp.F3.compact.mask.amp = fits.getdata(os.path.join(dir_path, 'mpF3compactmaskamp.fits'),ext=0)
-#    mp.P4.compact.croppedMask = fits.getdata('/Users/ajriggs/Downloads/mpP4compactcroppedMask.fits', ext=0)
-#    mp.P1.compact.mask = fits.getdata('/Users/ajriggs/Downloads/mpP1compactmask.fits', ext=0)
-#    mp.F3.compact.mask.amp = fits.getdata('/Users/ajriggs/Downloads/mpF3compactmaskamp.fits', ext=0)
-    
-    
+
     modvar = falco.config.EmptyObject() #--Initialize the new structure
     modvar.sbpIndex = mp.jac.sbp_inds[im]
     modvar.zernIndex = mp.jac.zern_inds[im]
@@ -690,9 +614,9 @@ def model_Jacobian_LC(mp,im,idm):
     # E-field of the differential Zernike term.
     if not (modvar.zernIndex==1):
         indsZnoll = modvar.zernIndex #--Just send in 1 Zernike mode
-        zernMat = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        zernMat = np.squeeze(falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.compact.Nbeam,mp.centering,indsZnoll)) #--2-D normalized (RMS = 1) Zernike mode
         zernMat = falco.utils.padOrCropEven(zernMat,mp.P1.compact.Narr)
-        Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef(mp.jac.zerns==modvar.zernIndex)
+        Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[mp.jac.zerns==modvar.zernIndex]
     
     """ Masks and DM surfaces """
     pupil = falco.utils.padOrCropEven(mp.P1.compact.mask,NdmPad)
