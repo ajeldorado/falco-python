@@ -3,6 +3,7 @@ import falco
 import os
 import pickle
 import scipy
+import psutil # For checking number of cores available
 from astropy.io import fits 
 import matplotlib.pyplot as plt 
 
@@ -27,6 +28,10 @@ def falco_init_ws(mp, config=None):
     mp.est.dummy = 1
     mp.compact.dummy = 1
     mp.full.dummy = 1
+    
+    ## Number of threads to use if doing multiprocessing
+    if not hasattr(mp, "Nthreads"):
+        mp.Nthreads = psutil.cpu_count(logical=False) 
     
     ## Optional/Hidden flags
     #--Saving data
@@ -1161,7 +1166,7 @@ def falco_wfsc_loop(mp):
         out.dm9.Vall[:,Itr] = mp.dm9.V
     
     #--Calculate the core throughput (at higher resolution to be more accurate)
-    thput = falco.utils.falco_compute_thput(mp);
+    thput,ImSimOffaxis = falco.utils.falco_compute_thput(mp);
     if mp.flagFiber:
         mp.thput_vec[Itr] = np.max(thput);
     else:

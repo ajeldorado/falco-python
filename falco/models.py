@@ -2,6 +2,7 @@
 import numpy as np
 import falco
 import logging
+import multiprocessing
 
 log = logging.getLogger(__name__)
 
@@ -540,18 +541,50 @@ def model_Jacobian(mp):
     if(any(mp.dm_ind==8)): jacStruct.G8 = np.zeros((mp.Fend.corr.Npix,mp.dm8.Nele,mp.jac.Nmode),dtype=np.complex)  
     if(any(mp.dm_ind==9)): jacStruct.G9 = np.zeros((mp.Fend.corr.Npix,mp.dm9.Nele,mp.jac.Nmode),dtype=np.complex)
 
-    print('Computing control Jacobian matrices:\n  ',end='')
-    with falco.utils.TicToc():
-        for im in range(mp.jac.Nmode):
-            if(any(mp.dm_ind==1)):
-                print('mode%ddm%d...' % (im,1),end='')
-                jacStruct.G1[:,:,im] =  model_Jacobian_middle_layer(mp, im, 1)
-            if(any(mp.dm_ind==2)):
-                print('mode%ddm%d...' % (im,2),end='')
-                jacStruct.G2[:,:,im] =  model_Jacobian_middle_layer(mp, im, 2)
-        print('done.')
+    #--Calculate the Jacobian in parallel or serial
+    if(mp.flagMultiproc):
+        print('Computing control Jacobian matrices in parallel...',end='')
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+
+        with falco.utils.TicToc():
+            results_order = [pool.apply(func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]        
+#            results_Jac = [pool.apply(model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
+            results = [pool.apply_async(model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
+            results_Jac = [p.get() for p in results]
+            
+            #--Reorder Jacobian
+            for ii in range(mp.jac.Nmode*mp.dm_ind.size):
+                im = results_order[ii][0]
+                idm = results_order[ii][1]
+                if(idm==1):
+                    jacStruct.G1[:,:,im] = results_Jac[ii]
+                if(idm==2):
+                    jacStruct.G2[:,:,im] = results_Jac[ii]
+                    
+            print('done.')
+
+        # for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(3),np.array([1,2]))))    
+        
+    else:
+        print('Computing control Jacobian matrices in serial:\n  ',end='')
+        with falco.utils.TicToc():
+            for im in range(mp.jac.Nmode):
+                if(any(mp.dm_ind==1)):
+                    print('mode%ddm%d...' % (im,1),end='')
+                    jacStruct.G1[:,:,im] =  model_Jacobian_middle_layer(mp, im, 1)
+                if(any(mp.dm_ind==2)):
+                    print('mode%ddm%d...' % (im,2),end='')
+                    jacStruct.G2[:,:,im] =  model_Jacobian_middle_layer(mp, im, 2)
+            print('done.')
+
+
     return jacStruct
 
+def func_Jac_ordering(im,idm):
+    """
+    Simple function for getting ordering of parallelized Jacobian calculation
+    """     
+    return (im,idm)
 
 def model_Jacobian_middle_layer(mp,im,idm):
     """

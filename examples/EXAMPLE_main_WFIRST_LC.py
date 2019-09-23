@@ -22,8 +22,9 @@ mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [m
 ## Step 3: Overwrite default values as desired
 
 # ##--Special Computational Settings
-mp.flagParfor = False; #--whether to use parfor for Jacobian calculation
 mp.flagPlot = True;
+mp.flagMultiproc = False; #--whether to use multiprocessing to parallelize some large computations
+#mp.Nthreads = 2         #--Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
 mp.propMethodPTP = 'mft';
 
