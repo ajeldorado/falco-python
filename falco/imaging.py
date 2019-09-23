@@ -77,8 +77,20 @@ def falco_get_summed_image(mp):
 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-
-    ### Compute the DM surfaces outside the full model to save some time
+   
+    ## Do not use this function in parallel yet because the controller could be 
+    #    running in parallel when calling this function.
+#    if(mp.flagMultiproc and mp.flagSim):
+#        #--Compute the simulated images in parallel
+#        pool = multiprocessing.Pool(processes=mp.Nthreads)
+#        results = [pool.apply_async(falco_get_sbp_image, args=(mp,si)) for si in np.arange(mp.Nsbp,dtype=int) ]
+#        results_img = [p.get() for p in results] #--All the sub-band images in a list
+#        
+#        Imean = 0
+#        for si in range(mp.Nsbp):
+#            Imean += mp.sbp_weights[si]*results_img[si]
+#            
+#    else:
     
     #--Loop over the function that gets the sbp images
     Imean = 0 # Initialize image

@@ -547,12 +547,12 @@ def model_Jacobian(mp):
         pool = multiprocessing.Pool(processes=mp.Nthreads)
 
         with falco.utils.TicToc():
-            results_order = [pool.apply(func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]        
-#            results_Jac = [pool.apply(model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
+#            results_order = [pool.apply(func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]        
+            results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] #--Use for assigning parts of the Jacobian list to the correct DM and mode
             results = [pool.apply_async(model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
-            results_Jac = [p.get() for p in results]
+            results_Jac = [p.get() for p in results] #--All the Jacobians in a list
             
-            #--Reorder Jacobian
+            #--Reorder Jacobian by mode and DM from the list
             for ii in range(mp.jac.Nmode*mp.dm_ind.size):
                 im = results_order[ii][0]
                 idm = results_order[ii][1]
@@ -562,8 +562,6 @@ def model_Jacobian(mp):
                     jacStruct.G2[:,:,im] = results_Jac[ii]
                     
             print('done.')
-
-        # for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(3),np.array([1,2]))))    
         
     else:
         print('Computing control Jacobian matrices in serial:\n  ',end='')

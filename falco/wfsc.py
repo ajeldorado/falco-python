@@ -4,6 +4,7 @@ import os
 import pickle
 import scipy
 import psutil # For checking number of cores available
+import multiprocessing
 from astropy.io import fits 
 import matplotlib.pyplot as plt 
 
@@ -1545,7 +1546,7 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
         Structure containing the delta DM commands for each DM
     """    
     #--Initializations    
-    vals_list = [(x,y) for x in mp.ctrl.log10regVec for y in mp.ctrl.dmfacVec] #--Make all combinations of the values
+    vals_list = [(x,y) for y in mp.ctrl.dmfacVec for x in mp.ctrl.log10regVec ] #--Make all combinations of the values
     Nvals = mp.ctrl.log10regVec.size*mp.ctrl.dmfacVec.size
     InormVec = np.zeros(Nvals)
 
@@ -1556,18 +1557,28 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
     if(any(mp.dm_ind==9)): dDM9V_store = np.zeros((mp.dm9.NactTotal,Nvals))
 
     ## Empirically find the regularization value giving the best contrast
-    
-    #--Loop over all the settings to check empirically
-    for ni in range(Nvals):
-        [InormVec[ni],dDM_temp] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar) 
-#        #--Tied actuators
-#        if(any(mp.dm_ind==1)): dm1tied{ni} = dDM_temp.dm1tied
-#        if(any(mp.dm_ind==2)): dm2tied{ni} = dDM_temp.dm2tied
-        #--delta voltage commands
-        if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = dDM_temp.dDM1V
-        if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = dDM_temp.dDM2V
-        if(any(mp.dm_ind==8)): dDM8V_store[:,ni] = dDM_temp.dDM8V
-        if(any(mp.dm_ind==9)): dDM9V_store[:,ni] = dDM_temp.dDM9V
+    if(mp.flagMultiproc):
+        #--Run the controller in parallel
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        results = [pool.apply_async(falco_ctrl_EFC_base, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
+        results_ctrl = [p.get() for p in results] #--All the Jacobians in a list
+        
+        #--Convert from a list to arrays:
+        for ni in range(Nvals):
+            InormVec[ni] = results_ctrl[ni][0]
+            if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = results_ctrl[ni][1].dDM1V
+            if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = results_ctrl[ni][1].dDM2V
+    else:
+        for ni in range(Nvals):
+            [InormVec[ni],dDM_temp] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar) 
+    #        #--Tied actuators
+    #        if(any(mp.dm_ind==1)): dm1tied{ni} = dDM_temp.dm1tied
+    #        if(any(mp.dm_ind==2)): dm2tied{ni} = dDM_temp.dm2tied
+            #--delta voltage commands
+            if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = dDM_temp.dDM1V
+            if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = dDM_temp.dDM2V
+            if(any(mp.dm_ind==8)): dDM8V_store[:,ni] = dDM_temp.dDM8V
+            if(any(mp.dm_ind==9)): dDM9V_store[:,ni] = dDM_temp.dDM9V
 
     #--Print out results to the command line
     print('Scaling factor:\t',end='')
