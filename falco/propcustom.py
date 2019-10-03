@@ -10,22 +10,20 @@ _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CE
 
 def propcustom_relay(E_in, Nrelay,centering='pixel'):
     """
-    Propagate a field using two successive Fourier transforms, without any intermediate mask
-    multiplications.   Used in a semi-analytical propagation to compute the component of the field
-    in the Lyot stop plane that was not diffracted by the occulter.
+    Propagate a field using two successive Fourier transforms Nrelay times, without any 
+    intermediate mask multiplications. This results in a 180-degree rotation of the array 
+    for each optical relay. Correct centering of the array must be maintained.
 
     Parameters
     ----------
     E_in : array_like
         Input electric field
-    Nrelay: scalar
-        Number of times to relay by 180 degrees
+    Nrelay: int
+        Number of times to relay (and rotate by 180 degrees)
     centering : string
-        Whether the input field is pixel-centered or inter-pixel-centered.  If
-        inter-pixel-centered, then the output is simply a scaled version of the input, flipped in
-        the vertical and horizontal directions.  If pixel-centered, the output is also shifted by 1
-        pixel in both directions after flipping, to ensure that the origin remains at the same
-        pixel as in the input array.
+        Whether the input field is pixel-centered or inter-pixel-centered. If the array is 
+        pixel-centered, the output is shifted by 1 pixel in both axes after an odd number 
+        of relays to ensure that the origin remains at the same pixel as in the input array.
 
     Returns
     -------
@@ -33,26 +31,27 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
         The input array, after propagation with two Fourier transforms.
 
     """
-    if centering not in _valid_centering:
+    if centering not in _VALID_CENTERING:
         raise ValueError(_CENTERING_ERR)
 
     #--Only rotate if an odd number of 180-degree rotations. If even, no change.
     if(np.mod(Nrelay,2)==1):
         E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
         if centering == 'pixel':
-            E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
-
+            E_out = np.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
+    else:
+        E_out = E_in
+        
     return E_out
     
 def propcustom_2FT(E_in, centering='pixel'):
     """
     Propagate a field using two successive Fourier transforms, without any intermediate mask
-    multiplications.   Used in a semi-analytical propagation to compute the component of the field
-    in the Lyot stop plane that was not diffracted by the occulter.
+    multiplications.
 
     Parameters
     ----------
-    E_in : array_like
+    E_in : numpy ndarray
         Input electric field
     centering : string
         Whether the input field is pixel-centered or inter-pixel-centered.  If
@@ -67,13 +66,13 @@ def propcustom_2FT(E_in, centering='pixel'):
         The input array, after propagation with two Fourier transforms.
 
     """
-    if centering not in _valid_centering:
+    if centering not in _VALID_CENTERING:
         raise ValueError(_CENTERING_ERR)
 
     E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
 
     if centering == 'pixel':
-        E_out = np.roll(E_in, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
+        E_out = np.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
 
     return E_out
 
@@ -173,7 +172,7 @@ def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel')
     post = np.exp(-2 * np.pi * 1j * (xi * x) / (lambda_ * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_foc, post])
 
@@ -233,6 +232,6 @@ def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering=
     post = np.exp(-2 * np.pi * 1j * (x * xi) / (lambda_ * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1j * lambda_ * fl)
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_pup, post])

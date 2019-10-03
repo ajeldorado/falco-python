@@ -10,9 +10,6 @@ from scipy.interpolate import RectBivariateSpline
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
 
-# from astropy.io import fits #--NOTE: DEBUGGING
-
-
 def falco_gen_dm_surf(dm,dx,N):
 
     """
@@ -22,10 +19,11 @@ def falco_gen_dm_surf(dm,dx,N):
     ----------
     dm : ModelParameters
         Structure containing parameter values for the DM
-    dx : scalar
+    dx : float
         Pixel width [meters] at the DM plane
-    N : scalar
+    N : int
         Number of points across the array to return at the DM plane
+
     Returns
     -------
     DMsurf : array_like
@@ -59,6 +57,9 @@ def falco_gen_dm_surf(dm,dx,N):
 
     bm = proper.prop_begin(N*dx, wl_dummy, N, pupil_ratio)
 
+    #--Apply various constraints to DM commands
+    dm = falco_enforce_dm_constraints(dm)
+
     #--Quantization of DM actuation steps based on least significant bit of the
     # DAC (digital-analog converter). In height, so called HminStep
     # If HminStep (minimum step in H) is defined, then quantize the DM voltages
@@ -73,6 +74,9 @@ def falco_gen_dm_surf(dm,dx,N):
 
     H = dm.VtoH*dm.V
     
+
+    
+    #--Generate the DM surface
     DMsurf = falco.dms.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, 
     dm.dm_spacing,XTILT=dm.xtilt,YTILT=dm.ytilt,ZTILT=dm.zrot,XYZ=flagXYZ,
     inf_sign=dm.inf_sign,inf_fn=dm.inf_fn);    
@@ -83,14 +87,6 @@ def falco_gen_dm_surf(dm,dx,N):
 def falco_discretize_dm_surf(dm, HminStepMethod):
     pass
 
-
-def falco_gen_dm_poke_cube(dm, mp, dx_dm, flagGenCube=True, **kwds):
-    # SFF NOTE:  This function exists in falco/lib/dm/falco_gen_dm_poke_cube.py but not sure if this is good
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
-
-    return mp.dm1.compact
     
 def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     """Simulate a deformable mirror of specified actuator spacing, including the
@@ -362,18 +358,17 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
         Structure containing parameter values for the DM
     mp: falco.config.ModelParameters
         Structure of model parameters
-    dx_dm : scalar
+    dx_dm : float
         Pixel width [meters] at the DM plane
 
     Other Parameters
     ----------------
     NOCUBE : bool
-       Switch that tells function not to compute the datacube of influence 
-       functions.
+       Switch that tells function not to compute the datacube of influence functions.
 
     Returns
     -------
-    nothing 
+    None 
         modifies structure "dm" by reference
 
     """
@@ -440,7 +435,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
 #     end       
     else: #--Square grid
         [dm.Xact,dm.Yact] = np.meshgrid( np.arange(dm.Nact)-dm.xc,np.arange(dm.Nact)-dm.yc) # in actuator widths
-#        # NOTE: DEBUGGING: Use to compare the final datacube to Matlab's output. Otherwise, use C ordering for Python FALCO.
+#        #--Use order='F' to compare the final datacube to Matlab's output. Otherwise, use C ordering for Python FALCO.
 #        x_vec = dm.Xact.reshape(dm.Nact*dm.Nact,order='F')
 #        y_vec = dm.Yact.reshape(dm.Nact*dm.Nact,order='F')
         x_vec = dm.Xact.reshape(dm.Nact*dm.Nact)
@@ -473,10 +468,6 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
                 [ca * sg + sa * sb * cg, ca * cg - sa * sb * sg, -sa * cb, 0.0],
                 [sa * sg - ca * sb * cg, sa * cg + ca * sb * sg,  ca * cb, 0.0],
                                    [0.0,                    0.0,      0.0, 1.0] ])
-    	
-#    # NOTE: DEBUGGING
-#    hdu = fits.PrimaryHDU(Mrot)
-#    hdu.writeto('/Users/ajriggs/Downloads/Mrot_python.fits', overwrite=True)
     
 	#--Compute the actuator center coordinates in units of actuator spacings
     for iact in range(dm.NactTotal):
@@ -512,17 +503,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     
     #--Calculate the interpolated DM grid at the new resolution (set extrapolated values to 0.0)
     dm.infMaster = griddata( (xsNewVec,ysNewVec), inf0pad.reshape(Npad*Npad), (Xs0, Ys0), method='cubic',fill_value=0.)
-    # NOTE: Backwards implementation:
-    #xsNew = xsNewVec.reshape(xdim,xdim)
-    #ysNew = ysNewVec.reshape(ydim,ydim)
-    #dm.infMaster = griddata( (Xs0.reshape(xdim*xdim),Ys0.reshape(ydim*ydim)), inf0pad.reshape(Npad*Npad), (xsNew, ysNew), method='cubic',fill_value=0.)
 
-#    # NOTE: DEBUGGING
-#    hdu0 = fits.PrimaryHDU(inf0pad)
-#    hdu0.writeto('/Users/ajriggs/Downloads/inf0pad_python.fits', overwrite=True)
-#    hdu = fits.PrimaryHDU(dm.infMaster)
-#    hdu.writeto('/Users/ajriggs/Downloads/infMaster_python.fits', overwrite=True)
-    
     #--Crop down the influence function until it has no zero padding left
     infSum = np.sum(dm.infMaster)
     infDiff = 0. 
@@ -580,16 +561,16 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     ## Make NboxPad-sized postage stamps for each actuator's influence function
     if(flagGenCube):
         if not dm.flag_hex_array:
-            print("  Influence function padded from %d to %d points for A.S. propagation.",(Nbox,dm.NboxAS))
+            print("  Influence function padded from %d to %d points for A.S. propagation." % (Nbox,dm.NboxAS))
         #     tic
-        print('Computing datacube of DM influence functions... ')
+        print('Computing datacube of DM influence functions... ',end='')
 
         #--Find the locations of the postage stamps arrays in the larger pupilPad array
         dm.xy_cent_act_inPix = dm.xy_cent_act*(dm.dm_spacing/dx_dm) # Convert units to pupil-plane pixels
         dm.xy_cent_act_inPix = dm.xy_cent_act_inPix + 0.5 #--For the half-pixel offset if pixel centered. 
         dm.xy_cent_act_box = np.round(dm.xy_cent_act_inPix) # Center locations of the postage stamps (in between pixels), in actuator widths
         dm.xy_cent_act_box_inM = dm.xy_cent_act_box*dx_dm # now in meters 
-        dm.xy_box_lowerLeft = dm.xy_cent_act_box + (dm.NdmPad-Nbox)/2 + 0 # index of pixel in lower left of the postage stamp within the whole pupilPad array. +0 for Python, +1 for Matlab
+        dm.xy_box_lowerLeft = dm.xy_cent_act_box + (dm.NdmPad-Nbox)/2 - 0 # index of pixel in lower left of the postage stamp within the whole pupilPad array. +0 for Python, +1 for Matlab
 
         #--Starting coordinates (in actuator widths) for updated master influence function. 
         # This is interpixel centered, so do not translate!
@@ -621,6 +602,139 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     else:
         dm.act_ele = np.arange(dm.NactTotal)    
     
-#    # NOTE: DEBUGGING
-#    hdu = fits.PrimaryHDU(inf_datacube)
-#    hdu.writeto('/Users/ajriggs/Downloads/infCube_python.fits', overwrite=True)
+def falco_dm_neighbor_rule(Vin, Vlim, Nact):
+    """
+    Function to find neighboring actuators that exceed a specified difference
+    in voltage and to scale down those voltages until the rule is met.
+
+    Parameters
+    ----------
+    Vin : numpy ndarray
+        2-D array of DM voltage commands
+    Vlim : float
+        maximum difference in command values between neighboring actuators    
+
+    Returns
+    -------
+    Vout : numpy ndarray
+        2-D array of DM voltage commands
+    indPair : numpy ndarray
+        [nPairs x 2] array of tied actuator linear indices
+
+    """
+
+    Vout   = Vin #--Initialize output voltage map
+    indPair  = np.zeros((0,2)) #--Initialize the paired indices list. [nPairs x 2]
+    
+    kx1 = np.array([ [0, 1], [1, 1], [1, 0] ])              # R1-C1
+    kx2 = np.array([ [0,1], [1,1], [1,0], [1,-1] ])         # R1, C2 - C47
+    kx3 = np.array([ [1,0], [1,-1] ])                       # R1, C48
+    kx4 = np.array([ [-1,1], [0,1], [1,1], [1,0] ])         # R2-R47, C1
+    kx5 = np.array([ [-1,1], [0,1], [1,1], [1,0], [1,-1] ]) # R2-47, C2-47
+    kx6 = np.array([ [1,0], [1,-1] ])                       # R2-47, C8
+    kx7 = np.array([ [-1,1], [0,1] ])                       # R48, C1 - C47
+    kx8 = np.array([ [-1,-1] ])                             # R48, C48
+    
+    for jj in range(Nact):            # Row
+        for ii in range(Nact):        # Col
+                    
+            if jj == 0: 
+                if ii == 0:
+                    kx = kx1
+                elif ii < Nact-1:
+                    kx = kx2
+                else:
+                    kx = kx3
+            elif jj < Nact-1:
+                if ii == 0:
+                    kx = kx4
+                elif ii < Nact-1:
+                    kx = kx5
+                else:
+                    kx = kx6
+            else:
+                if ii < Nact-1:
+                    kx = kx7
+                else:
+                    kx = kx8
+                
+            kr = jj + kx[:,0]
+            kc = ii + kx[:,1]
+            nNbr = kr.size #length(kr); #--Number of neighbors
+                    
+            if nNbr >= 1:
+                for iNbr in range(nNbr):
+                    
+                    a1 = Vout[jj,ii] - Vout[kr[iNbr],kc[iNbr]] #--Compute the delta voltage
+                    
+                    if (np.abs(a1) > Vlim): #--If neighbor rule is violated
+                        
+                        indLinCtr = (ii-1)*Nact + jj; #--linear index of center actuator
+                        indLinNbr = (kc[iNbr]-1)*Nact + kr[iNbr]; #--linear index of neigboring actuator
+                        indPair = np.array([ indPair, np.array([indLinCtr,indLinNbr]).reshape(1,2) ])
+                        indPair = np.vstack( [indPair, np.array([indLinCtr,indLinNbr]).reshape(1,2) ] )
+    
+                        fx = (np.abs(a1) - Vlim) / 2.
+                        Vout[jj,ii] = Vout[jj,ii] - np.sign(a1)*fx
+                        Vout[kr[iNbr],kc[iNbr]] = Vout[kr[iNbr],kc[iNbr]] + np.sign(a1)*fx
+
+    return Vout,indPair
+    
+
+def falco_enforce_dm_constraints(dm):
+    """
+    Function to enforce various constraints on DM actuator commands.
+    
+    1) Apply min/max bounds.
+    2) Set commands for pinned, railed, or dead actuators.
+    3) Determine which actuators violate the neighbor rule.
+    4) Set voltages for tied actuators
+
+    Parameters
+    ----------
+    dm : ModelParameters
+        Structure containing parameter values for the DM
+
+    Returns
+    -------
+    None
+        The dm object is changed by reference.
+
+    """
+
+    #--1) Find actuators that exceed min and max values. Any actuators reaching 
+    # those limits are added to the pinned actuator list.
+    #--Min voltage limit
+    new_inds = np.nonzero(dm.V.flatten()<dm.Vmin)[0] #--linear indices of new actuators breaking their bounds
+    new_vals = dm.Vmin*np.ones(new_inds.size)
+    dm.pinned = np.hstack([dm.pinned,new_inds])     #--Augment the vector of pinned actuator linear indices          
+    dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  #--Augment the vector of pinned actuator values
+    #--Max voltage limit
+    new_inds = np.nonzero(dm.V.flatten()>dm.Vmax)[0] #--linear indices of new actuators breaking their bounds
+    new_vals = dm.Vmax*np.ones(new_inds.size)
+    dm.pinned = np.hstack([dm.pinned,new_inds])     #--Augment the vector of pinned actuator linear indices          
+    dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  #--Augment the vector of pinned actuator values
+    
+    #--2) Enforce pinned (or railed or dead) actuator values
+    if(dm.pinned.size>0):
+        Vflat = dm.V.flatten()
+        Vflat[dm.pinned.astype(int)] = dm.Vpinned
+        dm.V = Vflat.reshape(dm.V.shape)
+    
+    #--3) Find which actuators violate the DM neighbor rule. (This restricts 
+    # the maximum voltage between an actuator and each of its 8 neighbors.) 
+    # Add those actuator pairs to the list of tied actuators.
+    if(dm.flagNbrRule):
+        dm.V, indPair1 = falco_dm_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
+        dm.tied = np.vstack([dm.tied, indPair1]) #--Tie together actuators violating the neighbor rule
+        
+    #--4) Enforce tied actuator pairs
+    #--In each pair of tied actuators, assign the command for the first actuator to that of the 2nd actuator
+    if (dm.tied.size > 0):
+        Vflat = dm.V.flatten()
+        Vflat[dm.tied[:,1]] = Vflat[dm.tied[:,0]]
+        dm.V = Vflat.reshape(dm.V.shape)
+
+    return dm
+
+        
