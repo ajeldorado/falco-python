@@ -575,6 +575,29 @@ def model_Jacobian(mp):
                     jacStruct.G2[:,:,im] =  model_Jacobian_middle_layer(mp, im, 2)
             print('done.')
 
+    ## TIED ACTUATORS
+    
+    #--Handle tied actuators by adding the 2nd actuator's Jacobian column to
+    #the first actuator's column, and then zeroing out the 2nd actuator's column.
+    if(any(mp.dm_ind==1)):
+        mp.dm1 = falco.dms.falco_enforce_dm_constraints(mp.dm1) #--Update the sets of tied actuators
+        for ti in range(mp.dm1.tied.shape[0]):
+            Index1all = mp.dm1.tied[ti,0] #--Index of first tied actuator in whole actuator set. 
+            Index2all = mp.dm1.tied[ti,1] #--Index of second tied actuator in whole actuator set. 
+            Index1subset = np.nonzero(mp.dm1.act_ele==Index1all)[0] #--Index of first tied actuator in subset of used actuators. 
+            Index2subset = np.nonzero(mp.dm1.act_ele==Index2all)[0] #--Index of second tied actuator in subset of used actuators. 
+            jacStruct.G1[:,Index1subset,:] += jacStruct.G1[:,Index2subset,:] # adding the 2nd actuators Jacobian column to the first actuator's column
+            jacStruct.G1[:,Index2subset,:] = 0*jacStruct.G1[:,Index2subset,:] # zero out the 2nd actuator's column.
+
+    if(any(mp.dm_ind==2)):
+        mp.dm2 = falco.dms.falco_enforce_dm_constraints(mp.dm2) #--Update the sets of tied actuators
+        for ti in range(mp.dm2.tied.shape[0]):
+            Index1all = mp.dm2.tied[ti,0] #--Index of first tied actuator in whole actuator set. 
+            Index2all = mp.dm2.tied[ti,1] #--Index of second tied actuator in whole actuator set. 
+            Index1subset = np.nonzero(mp.dm2.act_ele==Index1all)[0] #--Index of first tied actuator in subset of used actuators. 
+            Index2subset = np.nonzero(mp.dm2.act_ele==Index2all)[0] #--Index of second tied actuator in subset of used actuators. 
+            jacStruct.G2[:,Index1subset,:] += jacStruct.G2[:,Index2subset,:] # adding the 2nd actuators Jacobian column to the first actuator's column
+            jacStruct.G2[:,Index2subset,:] = 0*jacStruct.G2[:,Index2subset,:] # zero out the 2nd actuator's column.
 
     return jacStruct
 
@@ -600,7 +623,7 @@ def model_Jacobian_middle_layer(mp,im,idm):
 
     """
         
-    #%--Select which optical layout's Jacobian model to use and get the output E-field
+    #--Select which optical layout's Jacobian model to use and get the output E-field
     if(mp.layout.lower()=='fourier'):
         if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'): #--DMs, optional apodizer, occulting spot FPM, and LS.
             jacMode = model_Jacobian_LC(mp, im, idm) 

@@ -37,7 +37,7 @@ def falco_init_ws(mp, config=None):
     ## Optional/Hidden flags
     #--Saving data
     if not hasattr(mp,'flagSaveWS'):  
-        mp.flagSaveWS = False  #--Whehter to save otu the entire workspace at the end of the trial. Can take up lots of space.
+        mp.flagSaveWS = False  #--Whehter to save out the entire workspace at the end of the trial. Can take up lots of space.
     if not hasattr(mp,'flagSaveEachItr'):  
         mp.flagSaveEachItr = False  #--Whether to save out the performance at each iteration. Useful for long trials in case it crashes or is stopped early.
     if not hasattr(mp,'flagSVD'):
@@ -50,13 +50,39 @@ def falco_init_ws(mp, config=None):
         mp.est.flagUseJac = False   #--Whether to use the Jacobian or not for estimation. (If not using Jacobian, model is called and differenced.)
     if not hasattr(mp.ctrl,'flagUseModel'):  
         mp.ctrl.flagUseModel = False #--Whether to perform a model-based (vs empirical) grid search for the controller
-    #--Neighbor rule
-    if not hasattr(mp.dm1,'flagNbrRule'):  
+    
+    #--Deformable mirror actuator constraints or bounds
+    if not hasattr(mp.dm1,'Vmin'):  
+        mp.dm1.Vmin = -1000. #--Min allowed voltage command
+    if not hasattr(mp.dm1,'Vmax'):  
+        mp.dm1.Vmax = 1000. #--Max allowed voltage command
+    if not hasattr(mp.dm1,'pinned'):  
+        mp.dm1.pinned = np.array([]) #--Indices of pinned actuators
+    if not hasattr(mp.dm1,'Vpinned'):  
+        mp.dm1.Vpinned = np.array([]) #--(Fixed) voltage commands of pinned actuators
+    if not hasattr(mp.dm1,'tied'):  
+        mp.dm1.tied = np.zeros((0,2)) #--Indices of paired actuators. Two indices per row       
+    if not hasattr(mp.dm1,'flagNbrRule'):
         mp.dm1.flagNbrRule = False #--Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm1.dVnbr
+
+    if not hasattr(mp.dm2,'Vmin'):  
+        mp.dm2.Vmin = -1000. #--Min allowed voltage command
+    if not hasattr(mp.dm2,'Vmax'):  
+        mp.dm2.Vmax = 1000. #--Max allowed voltage command
+    if not hasattr(mp.dm2,'pinned'):  
+        mp.dm2.pinned = np.array([]) #--Indices of pinned actuators
+    if not hasattr(mp.dm2,'Vpinned'):  
+        mp.dm2.Vpinned = np.array([]) #--(Fixed) voltage commands of pinned actuators
+    if not hasattr(mp.dm2,'tied'):  
+        mp.dm2.tied = np.zeros((0,2)) #--Indices of paired actuators. Two indices per row       
     if not hasattr(mp.dm2,'flagNbrRule'):  
-        mp.dm2.flagNbrRule = False;  #--Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm1.dVnbr
+        mp.dm2.flagNbrRule = False;  #--Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm2.dVnbr
+
+    #--Model options (Very specialized cases--not for the average user)
     if not hasattr(mp,'flagFiber'):
         mp.flagFiber = False  #--Whether to couple the final image through lenslets and a single mode fiber.
+    if not hasattr(mp,'flagLenslet'):
+        mp.flagLenslet = False    #--Whether to propagate through a lenslet array placed in Fend before coupling light into fibers
     if not hasattr(mp,'flagDMwfe'):  
         mp.flagDMwfe = False  #--Temporary for BMC quilting study
     
@@ -490,11 +516,6 @@ def falco_init_ws(mp, config=None):
     #mp.Fend.score.maskBool = logical(mp.Fend.score.mask);
     mp.Fend.score.inds = np.where(mp.Fend.score.mask!=0)
     mp.Fend.score.maskBool = np.array(mp.Fend.score.mask, dtype=bool)
-
-    ## Spatial weighting of pixel intensity. 
-    # NOTE: For real instruments and testbeds, only the compact model should be 
-    # used. The full model spatial weighting is included too if in simulation 
-    # the full model has a different detector resolution than the compact model.
     
     if mp.flagFiber:
         mp.WspatialVec = np.ones((mp.Fend.Nlens,1));
@@ -700,37 +721,6 @@ def falco_init_ws(mp, config=None):
     if np.any(mp.dm_ind==9):  
         mp.dm9.dV = 0
 
-#    ## Intialize tied actuator pairs if not already defined. 
-#    # Dimensions of the pair list is [Npairs x 2]
-#    ##--Save the delta from the previous command
-#    if np.any(mp.dm_ind==1): 
-#        if not hasattr(mp.dm1,'tied'): 
-#            mp.dm1.tied = []
-#    if np.any(mp.dm_ind==2): 
-#        if not hasattr(mp.dm2,'tied'): 
-#            mp.dm2.tied = []
-#    if np.any(mp.dm_ind==3): 
-#        if not hasattr(mp.dm3,'tied'): 
-#            mp.dm3.tied = []
-#    if np.any(mp.dm_ind==4): 
-#        if not hasattr(mp.dm4,'tied'): 
-#            mp.dm4.tied = []
-#    if np.any(mp.dm_ind==5): 
-#        if not hasattr(mp.dm5,'tied'): 
-#            mp.dm5.tied = []
-#    if np.any(mp.dm_ind==6): 
-#        if not hasattr(mp.dm6,'tied'): 
-#            mp.dm6.tied = []
-#    if np.any(mp.dm_ind==7): 
-#        if not hasattr(mp.dm7,'tied'): 
-#            mp.dm7.tied = []
-#    if np.any(mp.dm_ind==8): 
-#        if not hasattr(mp.dm8,'tied'): 
-#            mp.dm8.tied = []
-#    if np.any(mp.dm_ind==9): 
-#        if not hasattr(mp.dm9,'tied'): 
-#            mp.dm9.tied = []
-
     out = falco.config.Object()
     out.dm1 = falco.config.Object()
     out.dm2 = falco.config.Object()
@@ -931,6 +921,11 @@ def falco_wfsc_loop(mp):
         #--Compute the current contrast level
         InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
         
+        if(any(mp.dm_ind==1)):
+            mp.dm1 = falco.dms.falco_enforce_dm_constraints(mp.dm1)
+        if(any(mp.dm_ind==2)):
+            mp.dm2 = falco.dms.falco_enforce_dm_constraints(mp.dm2)
+        
         #--Plotting
         if(mp.flagPlot):
             
@@ -1092,6 +1087,8 @@ def falco_wfsc_loop(mp):
         if np.any(mp.dm_ind==1):
             out.dm1.Vpv[Itr] = np.max(mp.dm1.V) - np.min(mp.dm1.V)
             print(' DM1 P-V in volts: %.3f'%(out.dm1.Vpv[Itr]))
+            if(mp.dm1.tied.size>0):  
+                print(' DM1 has %d pairs of tied actuators.' % (mp.dm1.tied.shape[0]) )
 #            Nrail1 = len(np.where( (mp.dm1.V <= -mp.dm1.maxAbsV) | (mp.dm1.V >= mp.dm1.maxAbsV) )); 
 #            print(' DM1 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%(out.dm1.Vpv(Itr), Nrail1, mp.dm1.NactTotal, 100*Nrail1/mp.dm1.NactTotal))
 #            if mp.dm1.tied.shape[0]>0:  
@@ -1099,6 +1096,9 @@ def falco_wfsc_loop(mp):
         if np.any(mp.dm_ind==2):
             out.dm2.Vpv[Itr] = np.max(mp.dm2.V) - np.min(mp.dm2.V)
             print(' DM2 P-V in volts: %.3f'%(out.dm2.Vpv[Itr]))
+            if(mp.dm2.tied.size>0):  
+                print(' DM2 has %d pairs of tied actuators.' % (mp.dm2.tied.shape[0]) )
+
 #            Nrail2 = len(np.where( (mp.dm2.V <= -mp.dm2.maxAbsV) | (mp.dm2.V >= mp.dm2.maxAbsV) )); 
 #            print(' DM2 P-V in volts: %.3f\t\t%d/%d (%.2f%%) railed actuators \n'%( out.dm2.Vpv(Itr), Nrail2, mp.dm2.NactTotal, 100*Nrail2/mp.dm2.NactTotal))
 #            if mp.dm2.tied.shape[0]>0:  
@@ -1369,12 +1369,7 @@ def falco_ctrl(mp,cvar,jacStruct):
     if(any(mp.dm_ind==1)):  mp.dm1.dV = dDM.dDM1V 
     if(any(mp.dm_ind==2)):  mp.dm2.dV = dDM.dDM2V
     if(any(mp.dm_ind==8)):  mp.dm8.dV = dDM.dDM8V
-    if(any(mp.dm_ind==9)):  mp.dm9.dV = dDM.dDM9V
-    
-#    #--Update the tied actuator pairs
-#    if(any(mp.dm_ind==1)):  mp.dm1.tied = dDM.dm1tied
-#    if(any(mp.dm_ind==2)):  mp.dm2.tied = dDM.dm2tied    
-    
+    if(any(mp.dm_ind==9)):  mp.dm9.dV = dDM.dDM9V    
     
 
 def falco_ctrl_cull(mp, cvar, jacStruct):
@@ -1423,21 +1418,18 @@ def falco_ctrl_cull(mp, cvar, jacStruct):
             mp.dm9.act_ele = np.nonzero(G9intNorm>=10**(mp.logGmin))[0]
             del G9intNorm
 
-#            #--Add back in all actuators that are tied (to make the tied actuator logic easier)
-#            if(any(mp.dm_ind==1))
-#                for ti=1:size(mp.dm1.tied,1)
-#                    if(any(mp.dm1.act_ele==mp.dm1.tied(ti,1))==false);  mp.dm1.act_ele = [mp.dm1.act_ele; mp.dm1.tied(ti,1)];  end
-#                    if(any(mp.dm1.act_ele==mp.dm1.tied(ti,2))==false);  mp.dm1.act_ele = [mp.dm1.act_ele; mp.dm1.tied(ti,2)];  end
-#                end
-#                mp.dm1.act_ele = sort(mp.dm1.act_ele); %--Need to sort for the logic in model_Jacobian.m
-#            end
-#            if(any(mp.dm_ind==2))
-#                for ti=1:size(mp.dm2.tied,1)
-#                    if(any(mp.dm2.act_ele==mp.dm2.tied(ti,1))==false);  mp.dm2.act_ele = [mp.dm2.act_ele; mp.dm2.tied(ti,1)];  end
-#                    if(any(mp.dm2.act_ele==mp.dm2.tied(ti,2))==false);  mp.dm2.act_ele = [mp.dm2.act_ele; mp.dm2.tied(ti,2)];  end
-#                end
-#                mp.dm2.act_ele = sort(mp.dm2.act_ele);
-#            end
+        #--Add back in all actuators that are tied (to make the tied actuator logic easier)
+        if(any(mp.dm_ind==1)):
+            for ti in range(mp.dm1.tied.shape[0]):
+                if not (any(mp.dm1.act_ele==mp.dm1.tied[ti,0])):  mp.dm1.act_ele = np.hstack([mp.dm1.act_ele, mp.dm1.tied[ti,0]])
+                if not (any(mp.dm1.act_ele==mp.dm1.tied[ti,1])):  mp.dm1.act_ele = np.hstack([mp.dm1.act_ele, mp.dm1.tied[ti,1]])
+            mp.dm1.act_ele = np.sort(mp.dm1.act_ele) #--Need to sort for the logic in model_Jacobian.m
+
+        if(any(mp.dm_ind==2)):
+            for ti in range(mp.dm2.tied.shape[0]):
+                if not any(mp.dm2.act_ele==mp.dm2.tied[ti,0]):  mp.dm2.act_ele = np.hstack([mp.dm2.act_ele, mp.dm2.tied[ti,0]])
+                if not any(mp.dm2.act_ele==mp.dm2.tied[ti,1]):  mp.dm2.act_ele = np.hstack([mp.dm2.act_ele, mp.dm2.tied[ti,1]])
+            mp.dm2.act_ele = np.sort(mp.dm2.act_ele) #--Need to sort for the logic in model_Jacobian.m
 #            if(any(mp.dm_ind==8))
 #                for ti=1:size(mp.dm8.tied,1)
 #                    if(any(mp.dm8.act_ele==mp.dm8.tied(ti,1))==false);  mp.dm8.act_ele = [mp.dm8.act_ele; mp.dm8.tied(ti,1)];  end
@@ -1571,9 +1563,6 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
     else:
         for ni in range(Nvals):
             [InormVec[ni],dDM_temp] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar) 
-    #        #--Tied actuators
-    #        if(any(mp.dm_ind==1)): dm1tied{ni} = dDM_temp.dm1tied
-    #        if(any(mp.dm_ind==2)): dm2tied{ni} = dDM_temp.dm2tied
             #--delta voltage commands
             if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = dDM_temp.dDM1V
             if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = dDM_temp.dDM2V
@@ -1596,9 +1585,6 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
     dDM = falco.config.Object()
-#    #--Tied actuators
-#    if(any(mp.dm_ind==1)): dDM.dm1tied = dm1tied{indBest}
-#    if(any(mp.dm_ind==2)): dDM.dm2tied = dm2tied{indBest}
     #--delta voltage commands
     if(any(mp.dm_ind==1)): dDM.dDM1V = np.squeeze(dDM1V_store[:,:,indBest])
     if(any(mp.dm_ind==2)): dDM.dDM2V = np.squeeze(dDM2V_store[:,:,indBest])
@@ -1752,80 +1738,23 @@ def falco_ctrl_wrapup(mp,cvar,duVec):
         dDM.dDM9V = np.zeros(mp.dm9.NactTotal)
         dDM.dDM9V[mp.dm9.act_ele] = mp.dm9.weight*duVec[cvar.uLegend==9] # Parse the command vector to get component for DM and apply the DM's weight
     
-#    %--Enforce tied actuator pair commands. Assign command of first actuator to
-#    %the second as well.
-#    if(any(mp.dm_ind==1))
-#        for ti=1:size(mp.dm1.tied,1)
-#            dDM.dDM1V(mp.dm1.tied(ti,2)) = dDM.dDM1V(mp.dm1.tied(ti,1));
-#        end
-#    end
-#    if(any(mp.dm_ind==2))
-#        for ti=1:size(mp.dm2.tied,1)
-#            dDM.dDM2V(mp.dm2.tied(ti,2)) = dDM.dDM2V(mp.dm2.tied(ti,1));
-#        end
-#    end
-#    if(any(mp.dm_ind==8))
+    #--Enforce tied actuator pair commands. 
+    #   Assign command of first actuator to the second as well.
+#    if(any(mp.dm_ind==8)):
 #        for ti=1:size(mp.dm8.tied,1)
 #            dDM.dDM8V(mp.dm8.tied(ti,2)) = dDM.dDM8V(mp.dm8.tied(ti,1));
-#        end
-#    end
-#    if(any(mp.dm_ind==9))
+#
+#    if(any(mp.dm_ind==9)):
 #        for ti=1:size(mp.dm9.tied,1)
 #            dDM.dDM9V(mp.dm9.tied(ti,2)) = dDM.dDM9V(mp.dm9.tied(ti,1));
-#        end
-#    end
+
     
     #--Combine the delta command with the previous command
     if(any(mp.dm_ind==1)):  mp.dm1.V = cvar.DM1Vnom + dDM.dDM1V
     if(any(mp.dm_ind==2)):  mp.dm2.V = cvar.DM2Vnom + dDM.dDM2V
     if(any(mp.dm_ind==8)):  mp.dm8.V = cvar.DM8Vnom + dDM.dDM8V
     if(any(mp.dm_ind==9)):  mp.dm9.V = cvar.DM9Vnom + dDM.dDM9V
-    
-#    %--Enforce the DM neighbor rule. (This restricts the maximum voltage
-#    %  between an actuator and each of its 8 neighbors.
-#    if(any(mp.dm_ind==1))
-#        if(isfield(mp.dm1,'flagNbrRule'))
-#            if(mp.dm1.flagNbrRule)
-#                [mp.dm1.V, indPair1] = falco_dm_neighbor_rule(mp.dm1.V, mp.dm1.dVnbr, mp.dm1.Nact);
-#                mp.dm1.tied = [mp.dm1.tied; indPair1]; %--Tie together actuators violating the neighbor rule
-#                dDM.dm1tied = mp.dm1.tied; %--This is what gets passed out to falco_wfsc_loop
-#            else
-#                dDM.dm1tied = mp.dm1.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
-#            end
-#        else
-#            dDM.dm1tied = mp.dm1.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
-#        end
-#    end
-#    if(any(mp.dm_ind==2))
-#        if(isfield(mp.dm2,'flagNbrRule'))
-#            if(mp.dm2.flagNbrRule)
-#                [mp.dm2.V,indPair2] = falco_dm_neighbor_rule(mp.dm2.V, mp.dm2.dVnbr, mp.dm2.Nact);
-#                mp.dm2.tied = [mp.dm2.tied; indPair2]; %--Tie together actuators violating the neighbor rule. This is used only within the controller.
-#                dDM.dm2tied = mp.dm2.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
-#            else
-#                dDM.dm2tied = mp.dm2.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
-#            end
-#        else
-#            dDM.dm2tied = mp.dm2.tied; %--Leave the same. This is what gets passed out to falco_wfsc_loop
-#        end
-#    end
-#        
-#    %--Re-enforce tied actuator pairs after applying the neighbor rule
-#    % [to be added later]
-    
-    #--Save the delta from the previous command
-    if(any(mp.dm_ind==1)):  
-        dDM.dDM1V = mp.dm1.V - cvar.DM1Vnom  
-        mp.dm1.dV = dDM.dDM1V
-    if(any(mp.dm_ind==2)):  
-        dDM.dDM2V = mp.dm2.V - cvar.DM2Vnom  
-        mp.dm2.dV = dDM.dDM2V
-    if(any(mp.dm_ind==8)):  
-        dDM.dDM8V = mp.dm8.V - cvar.DM8Vnom  
-        mp.dm8.dV = dDM.dDM8V
-    if(any(mp.dm_ind==9)):  
-        dDM.dDM9V = mp.dm9.V - cvar.DM9Vnom
-        mp.dm9.dV = dDM.dDM9V
+
 
     return mp,dDM
     
