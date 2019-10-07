@@ -136,18 +136,21 @@ def falco_gen_DM_stop(dx, Dmask, centering):
 
 def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     """
-    Quick Description here
+    Function to generate WFIRST pupil CGI-180718.
 
-    Detailed description here
+    Function to generate WFIRST pupil CGI-180718. Options to change the x- or y-shear, 
+    clocking, or magnification via the keyword argument changes.
 
     Parameters
     ----------
     mp: falco.config.ModelParameters
         Structure of model parameters
+    centering : string
+        String specifying the centering of the output array
     Returns
     -------
-    TBD
-        Return value descriptio here
+    pupil : numpy ndarray
+        2-D amplitude map of the WFIRST pupil CGI-180718
     """    
     
     OD = 1.000130208333333
@@ -295,8 +298,8 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     cx_OD = magFac*xcOD
     cy_OD = magFac*ycOD
     cxy = np.matmul(rotMat, np.array([[cx_OD],[cy_OD]]))
-    cx_OD = cxy[0]-xShear
-    cy_OD = cxy[1]-yShear
+    cx_OD = cxy[0]+xShear
+    cy_OD = cxy[1]+yShear
     proper.prop_circular_aperture(bm, ra_OD, cx_OD+cshift, cy_OD+cshift)
     #bm = proper.prop_circular_aperture(bm, ra_OD, cx_OD+cshift, cy_OD+cshift)
 
@@ -306,21 +309,21 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     cx_ID = magFac*xcCOBS
     cy_ID = magFac*ycCOBS
     cxy = np.matmul(rotMat,np.array([[cx_ID],[cy_ID]]))
-    cx_ID = cxy[0]-xShear
-    cy_ID = cxy[1]-yShear
+    cx_ID = cxy[0]+xShear
+    cy_ID = cxy[1]+yShear
     proper.prop_circular_obscuration(bm, ra_ID, cx_ID+cshift, cy_ID+cshift)
     #bm = proper.prop_circular_obscuration(bm, ra_ID, cx_ID+cshift, cy_ID+cshift)
 
     ## Struts
     for istrut in range(6):
         angDeg = angStrutVec[istrut] + clock_deg # degrees
-        wStrut = magFac*(wStrutVec[istrut]+pad_strut)
+        wStrut = magFac*(wStrutVec[istrut] + 2*pad_strut)
         lStrutIn = magFac*lStrut
         xc = magFac*(xcStrutVec[istrut])
         yc = magFac*(ycStrutVec[istrut])
         cxy = np.matmul(rotMat, np.array([[xc], [yc]]))
-        xc = cxy[0]-xShear;
-        yc = cxy[1]-yShear;
+        xc = cxy[0]+xShear;
+        yc = cxy[1]+yShear;
         proper.prop_rectangular_obscuration(bm, lStrutIn, wStrut, xc+cshift, yc+cshift, ROTATION=angDeg)
     
     wf1=bm.wfarr #assign for later use
@@ -330,8 +333,8 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     #the pupil.
     
     #--SOFTWARE MASK:
-    XSnew = (1/1*XS+xcCOBStabs)+xShear
-    YSnew = (1/1*YS+ycCOBStabs)+yShear
+    XSnew = (1/1*XS+xcCOBStabs)-xShear
+    YSnew = (1/1*YS+ycCOBStabs)-yShear
     
     overSizeFac = 1.3
     cobsTabsMask = np.zeros([Narray,Narray])
@@ -362,8 +365,8 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     cx_tabs = magFac*(xcCOBStabs)
     cy_tabs = magFac*(ycCOBStabs)
     cxy = np.matmul(rotMat,np.array([[cx_tabs],[cy_tabs]]))
-    cx_tabs = cxy[0]-xShear
-    cy_tabs = cxy[1]-yShear
+    cx_tabs = cxy[0]+xShear
+    cy_tabs = cxy[1]+yShear
     
     #bm2 = prop_circular_obscuration(bm, ra_tabs,'XC',cx_tabs+cshift,'YC',cy_tabs+cshift)
     proper.prop_circular_obscuration(bm, ra_tabs,cx_tabs+cshift,cy_tabs+cshift)
