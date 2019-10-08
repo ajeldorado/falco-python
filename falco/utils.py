@@ -2,6 +2,7 @@ import time
 import numpy as np
 import itertools
 import falco
+import math
 
 class TicToc(object):
     def __init__(self, name=None):
@@ -14,6 +15,41 @@ class TicToc(object):
         if self.name:
             print('[%s]\t' % self.name,end='')
         print('Elapsed: %s' % (time.time() - self.tstart))
+
+
+def sind(thetaDeg):
+    """
+    Compute the sine of the input given in degrees.
+
+    Parameters
+    ----------
+    thetaDeg : float or numpy.ndarray
+        Angle in degrees
+
+    Returns
+    --------
+    x : float or numpy.ndarray
+        sine of the input value
+    """
+
+    return math.sin(math.radians(thetaDeg))
+
+def cosd(thetaDeg):
+    """
+    Compute the cosine of the input given in degrees.
+
+    Parameters
+    ----------
+    thetaDeg : float or numpy.ndarray
+        Angle in degrees
+
+    Returns
+    --------
+    x : float or numpy.ndarray
+        cosine of the input value
+    """
+
+    return math.cos(math.radians(thetaDeg))
 
 
 def nextpow2(N): 

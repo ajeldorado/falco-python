@@ -136,18 +136,21 @@ def falco_gen_DM_stop(dx, Dmask, centering):
 
 def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     """
-    Quick Description here
+    Function to generate WFIRST pupil CGI-180718.
 
-    Detailed description here
+    Function to generate WFIRST pupil CGI-180718. Options to change the x- or y-shear, 
+    clocking, or magnification via the keyword argument changes.
 
     Parameters
     ----------
     mp: falco.config.ModelParameters
         Structure of model parameters
+    centering : string
+        String specifying the centering of the output array
     Returns
     -------
-    TBD
-        Return value descriptio here
+    pupil : numpy ndarray
+        2-D amplitude map of the WFIRST pupil CGI-180718
     """    
     
     OD = 1.000130208333333
@@ -295,8 +298,8 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     cx_OD = magFac*xcOD
     cy_OD = magFac*ycOD
     cxy = np.matmul(rotMat, np.array([[cx_OD],[cy_OD]]))
-    cx_OD = cxy[0]-xShear
-    cy_OD = cxy[1]-yShear
+    cx_OD = cxy[0]+xShear
+    cy_OD = cxy[1]+yShear
     proper.prop_circular_aperture(bm, ra_OD, cx_OD+cshift, cy_OD+cshift)
     #bm = proper.prop_circular_aperture(bm, ra_OD, cx_OD+cshift, cy_OD+cshift)
 
@@ -306,21 +309,21 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     cx_ID = magFac*xcCOBS
     cy_ID = magFac*ycCOBS
     cxy = np.matmul(rotMat,np.array([[cx_ID],[cy_ID]]))
-    cx_ID = cxy[0]-xShear
-    cy_ID = cxy[1]-yShear
+    cx_ID = cxy[0]+xShear
+    cy_ID = cxy[1]+yShear
     proper.prop_circular_obscuration(bm, ra_ID, cx_ID+cshift, cy_ID+cshift)
     #bm = proper.prop_circular_obscuration(bm, ra_ID, cx_ID+cshift, cy_ID+cshift)
 
     ## Struts
     for istrut in range(6):
         angDeg = angStrutVec[istrut] + clock_deg # degrees
-        wStrut = magFac*(wStrutVec[istrut]+pad_strut)
+        wStrut = magFac*(wStrutVec[istrut] + 2*pad_strut)
         lStrutIn = magFac*lStrut
         xc = magFac*(xcStrutVec[istrut])
         yc = magFac*(ycStrutVec[istrut])
         cxy = np.matmul(rotMat, np.array([[xc], [yc]]))
-        xc = cxy[0]-xShear;
-        yc = cxy[1]-yShear;
+        xc = cxy[0]+xShear;
+        yc = cxy[1]+yShear;
         proper.prop_rectangular_obscuration(bm, lStrutIn, wStrut, xc+cshift, yc+cshift, ROTATION=angDeg)
     
     wf1=bm.wfarr #assign for later use
@@ -330,8 +333,8 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     #the pupil.
     
     #--SOFTWARE MASK:
-    XSnew = (1/1*XS+xcCOBStabs)+xShear
-    YSnew = (1/1*YS+ycCOBStabs)+yShear
+    XSnew = (1/1*XS+xcCOBStabs)-xShear
+    YSnew = (1/1*YS+ycCOBStabs)-yShear
     
     overSizeFac = 1.3
     cobsTabsMask = np.zeros([Narray,Narray])
@@ -362,8 +365,8 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
     cx_tabs = magFac*(xcCOBStabs)
     cy_tabs = magFac*(ycCOBStabs)
     cxy = np.matmul(rotMat,np.array([[cx_tabs],[cy_tabs]]))
-    cx_tabs = cxy[0]-xShear
-    cy_tabs = cxy[1]-yShear
+    cx_tabs = cxy[0]+xShear
+    cy_tabs = cxy[1]+yShear
     
     #bm2 = prop_circular_obscuration(bm, ra_tabs,'XC',cx_tabs+cshift,'YC',cy_tabs+cshift)
     proper.prop_circular_obscuration(bm, ra_tabs,cx_tabs+cshift,cy_tabs+cshift)
@@ -519,7 +522,7 @@ def falco_gen_SW_mask(**kwargs):
         else:
             clockAng = 0
     else:
-        clockAng = clockAngDeg*np.pi/180    
+        clockAng = inputs.clockAngDeg*np.pi/180    
 
 
     maskSW = np.logical_and(maskSW0,np.abs(np.angle(np.exp(1j*(THETAS-clockAng))))<=angRad/2)
@@ -723,7 +726,6 @@ def falco_gen_annular_FPM(**kwargs):
         proper.prop_circular_aperture(wf, rhoOuter, cx_OD, cy_OD)
 
     # Inner spot of FPM (Amplitude transmission can be nonzero)
-    ra_ID = (rhoInner)
     cx_ID = 0 + cshift + xshift
     cy_ID = 0 + cshift + yshift
     innerSpot = proper.prop_ellipse(wf, rhoInner, rhoInner, cx_ID,
@@ -731,3 +733,89 @@ def falco_gen_annular_FPM(**kwargs):
 
     mask = np.fft.ifftshift(np.abs(wf.wfarr))  # undo PROPER's fftshift
     return mask * innerSpot  # Include the inner FPM spot
+
+
+def falco_gen_bowtie_LS(inputs):
+
+    Nbeam   = inputs["Nbeam"] # number of points across the incoming beam           
+    ID = inputs["ID"]   # inner diameter of mask (in pupil diameters)
+    OD = inputs["OD"]   # outer diameter of mask (in pupil diameters)
+    ang = inputs["ang"] # opening angle of the upper and lower bowtie wedges [degrees]
+
+    Dbeam = 1. #inputs.Dbeam; #--diameter of the beam at the mask [pupil diameters]
+    dx = Dbeam/Nbeam
+    Dmask = Dbeam # width of the beam (so can have zero padding if LS is undersized) [meters]
+
+    #--Optional inputs and their defaults
+    centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
+    xShear = inputs['xShear'] if 'xShear' in inputs.keys() else  0. #--x-axis shear of mask [pupil diameters]
+    yShear = inputs['yShear'] if 'yShear' in inputs.keys() else  0. #--y-axis shear of mask [pupil diameters]
+    clocking = inputs['clocking'] if 'clocking' in inputs.keys() else 0. #--Clocking of the mask [degrees]
+    magfac = inputs['magfac'] if 'magfac' in inputs.keys() else 1. #--magnification factor of the pupil diameter
+
+    if(centering=='pixel'):
+        Narray = falco.utils.ceil_even(magfac*Nbeam + 1 + 2*Nbeam*np.max(np.abs(np.array([xShear,yShear]))))  #--number of points across output array. Sometimes requires two more pixels when pixel centered.
+    else:
+        Narray = falco.utils.ceil_even(magfac*Nbeam + 2*Nbeam*np.max(np.abs(np.array([xShear,yShear]))))    #--number of points across output array. Same size as width when interpixel centered.
+
+    Darray = Narray*dx  #--width of the output array [meters]
+    bdf = Dmask/Darray  #--beam diameter factor in output array
+    wl_dummy   = 1e-6   # wavelength (m); Dummy value--no propagation here, so not used.
+
+    # No shift for pixel-centered pupil, or -Dbeam/Narray/2 shift for inter-pixel centering
+    cshift = -dx/2 if 'interpixel' in centering else 0.
+
+    # % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+
+    #--INITIALIZE PROPER
+    bm = proper.prop_begin(Dmask, wl_dummy, Narray,bdf)
+    
+    #--PRIMARY MIRROR (OUTER DIAMETER)
+    ra_OD = (Dbeam*OD/2.)*magfac
+    cx_OD = cshift + xShear
+    cy_OD = cshift + yShear
+    proper.prop_circular_aperture(bm, ra_OD,cx_OD,cy_OD)
+
+    #--SECONDARY MIRROR (INNER DIAMETER)
+    ra_ID = (Dbeam*ID/2.)*magfac
+    cx_ID = cshift + xShear
+    cy_ID = cshift + yShear
+    proper.prop_circular_obscuration(bm, ra_ID,cx_ID,cy_ID)
+
+    mask = np.fft.ifftshift(np.abs(bm.wfarr))
+
+    #--Create the bowtie region
+    if(ang<180.):
+        ang2 = 90.-ang/2.
+        bm2 = bm
+        Lside = 1.1*ra_OD # Have the triangle go a little past the edge of the circle
+
+        yvert0 = np.array([0., Lside*falco.utils.sind(ang2), Lside*falco.utils.sind(ang2), -Lside*falco.utils.sind(ang2), -Lside*falco.utils.sind(ang2), 0.])
+
+        #--Right triangular obscuration
+        xvert0 = np.array([0., Lside*falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.cosd(ang2), 0.])
+        xvert = xvert0.copy()
+        yvert = yvert0.copy()
+        for ii in range(len(xvert0)):
+            xy = np.array([[falco.utils.cosd(clocking),falco.utils.sind(clocking)],[ -falco.utils.sind(clocking),falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
+            xvert[ii] = xy[0]
+            yvert[ii] = xy[1]
+            pass
+        bowtieRight = proper.prop_irregular_polygon( bm, cshift+xShear+xvert, cshift+yShear+yvert,DARK=True)
+   
+        #--Left triangular obscuration
+        xvert0 = -np.array([0., Lside*falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.cosd(ang2), 0.])
+        xvert = xvert0.copy()
+        yvert = yvert0.copy()
+        for ii in range(len(xvert0)):
+            xy = np.array([[falco.utils.cosd(clocking),falco.utils.sind(clocking)], [-falco.utils.sind(clocking),falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
+            xvert[ii] = xy[0]
+            yvert[ii] = xy[1]
+            pass
+        bowtieLeft = proper.prop_irregular_polygon( bm2, cshift+xShear+xvert, cshift+yShear+yvert,DARK=True)
+        
+
+        mask = mask*bowtieRight*bowtieLeft
+        pass
+    
+    return mask
