@@ -1554,6 +1554,8 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
         pool = multiprocessing.Pool(processes=mp.Nthreads)
         results = [pool.apply_async(falco_ctrl_EFC_base, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
         results_ctrl = [p.get() for p in results] #--All the Jacobians in a list
+        pool.close()
+        pool.join()
         
         #--Convert from a list to arrays:
         for ni in range(Nvals):

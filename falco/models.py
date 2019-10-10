@@ -551,6 +551,8 @@ def model_Jacobian(mp):
             results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] #--Use for assigning parts of the Jacobian list to the correct DM and mode
             results = [pool.apply_async(model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
             results_Jac = [p.get() for p in results] #--All the Jacobians in a list
+            pool.close()
+            pool.join()
             
             #--Reorder Jacobian by mode and DM from the list
             for ii in range(mp.jac.Nmode*mp.dm_ind.size):
