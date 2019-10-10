@@ -85,6 +85,8 @@ def falco_get_summed_image(mp):
 #        pool = multiprocessing.Pool(processes=mp.Nthreads)
 #        results = [pool.apply_async(falco_get_sbp_image, args=(mp,si)) for si in np.arange(mp.Nsbp,dtype=int) ]
 #        results_img = [p.get() for p in results] #--All the sub-band images in a list
+#        pool.close()
+#        pool.join()
 #        
 #        Imean = 0
 #        for si in range(mp.Nsbp):
