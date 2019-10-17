@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0,"../")
 import falco
 
-class TestClass:
+class TestModelParametersClass:
 
     @classmethod
     def setup_class(cls):
