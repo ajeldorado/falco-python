@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import sys
 sys.path.insert(0,"../")
@@ -15,8 +16,19 @@ class TestModelParametersClass:
         print("Teardown TestClass!")
 
 
-    def test_CanImportModelParameters(cls):
-        pass
+    def setup_method(self, method):
+        if method == self.test_CanCreateMpObject:
+            print("\nSetting up for test_CanCreateMpObject...")
+        else:
+            print("\nSetting up Unknown test!")
+
+
+    def teardown_method(self, method):
+        if method == self.test_CanCreateMpObject:
+            print("\nTearing down for test_CanCreateMpObject...")
+        else:
+            print("\nTearing down Unknown test!")
+
 
     def test_CanCreateMpObject(cls):
    
@@ -24,4 +36,66 @@ class TestModelParametersClass:
         mp = falco.config.ModelParameters()
         assert mp is not None
 
+class TestUtils:
+    @classmethod
+    def setup_class(cls):
         pass
+
+
+    @classmethod
+    def teardown_class(cls):
+        pass
+
+
+    def test_sind(cls):
+        ret = falco.utils.sind(0)
+        assert ret == pytest.approx(0)
+        ret = falco.utils.sind(90)
+        assert ret == pytest.approx(1)
+        ret = falco.utils.sind(180)
+        assert ret == pytest.approx(0)
+        ret = falco.utils.sind(270)
+        assert ret == pytest.approx(-1) 
+        ret = falco.utils.sind(360)
+        assert ret == pytest.approx(0)
+        ret = falco.utils.sind(45)
+        assert ret != pytest.approx(0)
+
+
+    @pytest.mark.parametrize("test_input, expected", [(0, 1), (90, 0), (180, -1), (270, 0), (360, 1)])
+    def test_cosd(cls, test_input, expected):
+        ret = falco.utils.cosd(test_input)
+        assert ret == pytest.approx(expected)
+
+    @pytest.mark.parametrize("test_input, expected", [(2, 1.0), (100, 7.0), (-2, 1.0), (-100, 7.0), (0, -np.inf)])
+    def test_nextpow2(cls, test_input, expected):
+        ret = falco.utils.nextpow2(test_input)
+        assert ret == expected
+
+    @pytest.mark.parametrize("test_input, expected", [(0, 0.0), (5, 6.0), (-2, -2), (-1, 0.0)])
+    def test_ceil_even(cls, test_input, expected):
+        ret = falco.utils.ceil_even(test_input)
+        assert ret % 2 == 0
+        assert ret == expected;
+
+    @pytest.mark.parametrize("test_input, expected", [(6, 7.0), (5, 5.0), (-2, -1), (-1, -1.0)])
+    def test_ceil_odd(cls, test_input, expected):
+        ret = falco.utils.ceil_odd(test_input)
+        assert ret % 2 != 0
+        assert ret == expected;
+
+    def test_padOrCropEven(cls):
+        test_input = np.zeros((10,10))
+        ret = falco.utils.padOrCropEven(test_input, 20)
+        assert ret.shape[0] == 20
+
+        test_input = np.zeros((5, 6))
+        with pytest.raises(ValueError):
+            ret = falco.utils.padOrCropEven(test_input, 20)
+        test_input = np.zeros((8, 6))
+        with pytest.raises(ValueError):
+            ret = falco.utils.padOrCropEven(test_input, 20)
+
+def test_test1Example():
+    pass
+
