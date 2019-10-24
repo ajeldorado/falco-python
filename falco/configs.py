@@ -40,24 +40,24 @@ def falco_config_gen_FPM_LC(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
     
 
-    class FPMgenIn(object):
-        pass
+#    class FPMgenIn(object):
+#        pass
     
-    FPMgenInputs = FPMgenIn()
+    FPMgenInputs = {} #FPMgenIn()
     
     #--Make or read in focal plane mask (FPM) amplitude for the full model
     #FPMgenInputs.flagRot180deg
-    FPMgenInputs.pixresFPM = mp.F3.full.res #--pixels per lambda_c/D
-    FPMgenInputs.rhoInner = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs.rhoOuter = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
-    FPMgenInputs.FPMampFac = mp.FPMampFac # amplitude transmission of inner FPM spot
-    FPMgenInputs.centering = mp.centering
-    kwargs = FPMgenInputs.__dict__
+    FPMgenInputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
+    FPMgenInputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
+    FPMgenInputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
+    FPMgenInputs["FPMampFac"] = mp.FPMampFac # amplitude transmission of inner FPM spot
+    FPMgenInputs["centering"] = mp.centering
+    #kwargs = FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.full,'mask'):
         mp.F3.full.mask = falco.config.Object()
         
-    mp.F3.full.mask.amp = falco.masks.falco_gen_annular_FPM(**kwargs)
+    mp.F3.full.mask.amp = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
 
     mp.F3.full.Nxi = mp.F3.full.mask.amp.shape[1]
     mp.F3.full.Neta= mp.F3.full.mask.amp.shape[0]  
@@ -78,13 +78,13 @@ def falco_config_gen_FPM_LC(mp):
     mp.F3.compact.Neta = mp.F3.compact.Nxi
     
     #--Make or read in focal plane mask (FPM) amplitude for the compact model
-    FPMgenInputs.pixresFPM = mp.F3.compact.res #--pixels per lambda_c/D
-    kwargs=FPMgenInputs.__dict__
+    FPMgenInputs["pixresFPM"] = mp.F3.compact.res #--pixels per lambda_c/D
+    #kwargs=FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.compact,'mask'):
         mp.F3.compact.mask = falco.config.Object()
         
-    mp.F3.compact.mask.amp = falco.masks.falco_gen_annular_FPM(**kwargs)
+    mp.F3.compact.mask.amp = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
     
 def falco_config_gen_FPM_Roddier(mp):
     """
@@ -153,10 +153,11 @@ def falco_config_gen_chosen_LS(mp):
 
 
     ### Changes to the pupil
-    class Changes(object):
-        pass
-    
-    changes = Changes()
+    changes = {}
+#    class Changes(object):
+#        pass
+#    
+#    changes = Changes()
     
     
     """
@@ -194,18 +195,18 @@ def falco_config_gen_chosen_LS(mp):
     elif whichPupil == 'WFIRST180718':
         #--Define Lyot stop generator function inputs for the 'full' optical model
         if mp.compact.flagGenLS or mp.full.flagGenLS:
-            changes.ID = mp.P4.IDnorm
-            changes.OD = mp.P4.ODnorm
-            changes.wStrut = mp.P4.wStrut
-            changes.flagRot180 = True
+            changes["ID"] = mp.P4.IDnorm
+            changes["OD"] = mp.P4.ODnorm
+            changes["wStrut"] = mp.P4.wStrut
+            changes["flagRot180"] = True
         
-        kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
+        #kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.full.Nbeam,mp.centering,**kwargs)
+            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.full.Nbeam,mp.centering,changes)
         
         ##--Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.compact.Nbeam,mp.centering,**kwargs)
+            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.compact.Nbeam,mp.centering,changes)
         
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()

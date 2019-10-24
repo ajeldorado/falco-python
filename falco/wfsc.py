@@ -383,7 +383,7 @@ def falco_init_ws(mp, config=None):
         maskCorr.shape = mp.Fend.shape
     
     #--Compact Model: Generate Software Mask for Correction 
-    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);
+    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.masks.falco_gen_SW_mask(maskCorr);
     mp.Fend.corr.settings = maskCorr; #--Store values for future reference
     #--Size of the output image 
     #--Need the sizes to be the same for the correction and scoring masks
@@ -418,7 +418,7 @@ def falco_init_ws(mp, config=None):
         maskF5["centering"] = mp.centering;
         maskF5["FOV"] = mp.F5.FOV;
         maskF5["whichSide"] = mp.Fend.sides;
-        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.masks.falco_gen_SW_mask(**maskF5);
+        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.masks.falco_gen_SW_mask(maskF5);
     
         #--Size of the output image in F5
         mp.F5.Nxi = mp.F5.mask.shape[1] #size(mp.F5.mask, 2);
@@ -436,7 +436,7 @@ def falco_init_ws(mp, config=None):
         maskFiberCore["angDeg"] = 180;
         maskFiberCore["FOV"] = mp.F5.FOV;
         maskFiberCore["whichSide"] = mp.Fend.sides;
-        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskFiberCore);
+        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCore);
     
         maskFiberCladding["pixresFP"] = mp.F5.res;
         maskFiberCladding["rhoInner"] = mp.fiber.a;
@@ -444,7 +444,7 @@ def falco_init_ws(mp, config=None):
         maskFiberCladding["angDeg"] = 180;
         maskFiberCladding["FOV"] = mp.F5.FOV;
         maskFiberCladding["whichSide"] = mp.Fend.sides;
-        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskFiberCladding);
+        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCladding);
     
         F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
     
@@ -465,7 +465,7 @@ def falco_init_ws(mp, config=None):
     if not hasattr(mp.Fend.eval,'res'):  
         mp.Fend.eval.res = 10
     maskCorr["pixresFP"] = mp.Fend.eval.res; #--Assign the resolution
-    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);  #--Generate the mask
+    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(maskCorr);  #--Generate the mask
     mp.Fend.eval.Nxi  = mp.Fend.eval.mask.shape[1]
     mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
     mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res; # higher sampling at Fend.for evaulation [meters]
@@ -493,7 +493,7 @@ def falco_init_ws(mp, config=None):
         maskScore["shape"] = mp.Fend.shape
     #--Compact Model: Generate Software Mask for Scoring Contrast 
     maskScore["pixresFP"] = mp.Fend.res;
-    mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskScore);
+    mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskScore);
     mp.Fend.score.settings = maskScore; #--Store values for future reference
     
     #--Number of pixels used in the dark hole
@@ -1651,7 +1651,7 @@ def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
     
     #--Take images and compute average intensity in dark hole
     if(mp.ctrl.flagUseModel): #--Perform a model-based grid search using the compact model
-        Itotal = falco.imaging.falco_get_expected_summed_image(mp,cvar)
+        Itotal = falco.imaging.falco_get_expected_summed_image(mp,cvar,dDM)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
     else: #--Perform an empirical grid search with actual images from the testbed or full model
         Itotal = falco.imaging.falco_get_summed_image(mp)

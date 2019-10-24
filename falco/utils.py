@@ -17,6 +17,33 @@ class TicToc(object):
         print('Elapsed: %s' % (time.time() - self.tstart))
 
 
+def cart2pol(x, y):
+    """
+    Convert Cartesian coordinate(s) into polar coordinate(s).
+
+    Parameters
+    ----------
+    x : float or numpy.ndarray
+        x-axis coordinate(s)
+    y : float or numpy.ndarray
+        y-axis coordinate(s)
+
+    Returns
+    --------
+    rho : float or numpy.ndarray
+        radial coordinate(s)
+    theta : float or numpy.ndarray
+        azimuthal coordinate(s)    
+    """
+    if(type(x)==np.ndarray and type(y)==np.ndarray):
+        if not x.shape==y.shape:
+            raise ValueError('The two inputs must have the same shape.')
+    
+    rho = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y,x)
+    
+    return(rho,theta)
+
 def sind(thetaDeg):
     """
     Compute the sine of the input given in degrees.

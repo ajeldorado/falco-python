@@ -2,23 +2,30 @@
 {\fonttbl\f0\fswiss\fcharset0 Helvetica-Bold;\f1\fswiss\fcharset0 Helvetica;\f2\fnil\fcharset0 Menlo-Regular;
 \f3\fnil\fcharset0 Menlo-Bold;}
 {\colortbl;\red255\green255\blue255;\red33\green255\blue6;\red0\green0\blue255;\red0\green0\blue0;
-\red0\green0\blue255;\red0\green0\blue0;\red33\green255\blue6;\red23\green186\blue251;\red33\green255\blue255;
-}
+\red0\green0\blue0;\red251\green2\blue7;\red23\green186\blue251;\red33\green255\blue255;\red251\green2\blue7;
+\red0\green0\blue255;}
 {\*\expandedcolortbl;;\cssrgb\c0\c97680\c0;\cssrgb\c1680\c19835\c100000;\csgray\c0;
-\cssrgb\c1680\c19835\c100000;\cssrgb\c0\c0\c0;\cssrgb\c0\c97680\c0;\cssrgb\c0\c77905\c98860;\cssrgb\c0\c99144\c100000;
-}
-\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\cssrgb\c0\c0\c0;\cssrgb\c100000\c14913\c0;\cssrgb\c0\c77905\c98860;\cssrgb\c0\c99144\c100000;\cssrgb\c100000\c14913\c0;
+\cssrgb\c1680\c19835\c100000;}
+\margl1440\margr1440\vieww11740\viewh9640\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\b\fs24 \cf0 * Top Priorities *
 \f1\b0 \
-- Inputs as dictionaries for pupil generator\
-- LUVOIR pupil\
+X - Inputs as dictionaries for pupil generator\
+X- LUVOIR A pupil\
+X - LUVOIR B pupil \
+  - (should make a PROPER version)\
 - Planned EFC\
 - Intel MKL library\
-- Vortex model\
+- Vortex mode\
+  X- propagators\
+  X- masks\
+    X- vortex\
+    X- simple pupil\
+  - models\
 - HLC model\
-- Thin film equations\
+X- Thin film equations\
 \
 \
 
@@ -30,14 +37,14 @@
 \cf3 EXAMPLE_defaults_try_running_FALCO.m\cf4 \
 \cf3 EXAMPLE_defaults_LUVOIRB_VC_design.m\cf4 \
 \cf3 EXAMPLE_defaults_VC_simple.m\cf4 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf5 EXAMPLE_defaults_DST_FLC_design.m\cf4 \
-\cf5 EXAMPLE_defaults_WFIRST_HLC_design.m\
+\cf3 EXAMPLE_defaults_DST_FLC_design.m\cf4 \
+\cf3 EXAMPLE_defaults_WFIRST_HLC_design.m\
 EXAMPLE_defaults_WFIRST_PhaseB_SPC_Spec_simple.m\
 \cf4 EXAMPLE_defaults_DST_LC_design.m\
 EXAMPLE_defaults_LUVOIRB_VC_design_fibers.m\
 EXAMPLE_defaults_WFIRST_FOHLC.m\
-\cf6 EXAMPLE_defaults_WFIRST_HLC_BMC_WFE.m\cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf5 EXAMPLE_defaults_WFIRST_HLC_BMC_WFE.m\cf2 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -47,9 +54,10 @@ EXAMPLE_defaults_WFIRST_FOHLC.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
 \f2\b0\fs22 \cf4 \CocoaLigature0 falco_3fold_symmetry_Zernikes.m\
-\cf7 falco_gen_norm_zernike_maps.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_gen_norm_zernike_maps.m\
 falco_get_Zernike_sensitivities.m\
-propcustom_zernikes.m\cf2 \
+propcustom_zernikes.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf3 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
@@ -57,24 +65,31 @@ propcustom_zernikes.m\cf2 \
 \f0\b\fs24 \cf0 \CocoaLigature1 lib/
 \f3\fs22 \cf4 \CocoaLigature0 dm -> dms.py
 \f0\fs24 \cf0 \CocoaLigature1 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\tx7262\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf5 \CocoaLigature0 falco_discretize_FPM_surf.m\cf4 \
-\cf5 falco_discretize_dm_surf.m\cf4 \
-\cf7 falco_dm_neighbor_rule.m\cf4 \
-\cf5 falco_dm_surf_from_cube.m\cf4 \
-\cf7 falco_enforce_dm_constraints.m\cf4 \
-\cf5 falco_fit_dm_surf.m\cf4 \
-\cf8 falco_fpm_inf_cube.m\
+\f2\b0\fs22 \cf6 \CocoaLigature0 falco_discretize_FPM_surf.m \cf5 -> (moved to thinfilms.py)\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6 falco_discretize_dm_surf.m\cf2 \
+falco_dm_neighbor_rule.m\cf4 \
+\cf6 falco_dm_surf_from_cube.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_enforce_dm_constraints.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6 falco_fit_dm_surf.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf7 falco_fpm_inf_cube.m\
 falco_fpm_inf_cube_3x3.m\cf4 \
 falco_gen_HLC_FPM_amplitude_from_cube.m\
-\cf5 falco_gen_HLC_FPM_complex_trans_cube.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 falco_gen_HLC_FPM_complex_trans_cube.m\
 falco_gen_HLC_FPM_complex_trans_mat.m\cf4 \
-\cf5 falco_gen_HLC_FPM_surf_from_cube.m\cf4 \
-\cf7 falco_gen_dm_poke_cube.m\
+\cf3 falco_gen_HLC_FPM_surf_from_cube.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_gen_dm_poke_cube.m\
 falco_gen_dm_surf.m\
 propcustom_dm.m\cf4 \
-\cf6 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -83,7 +98,7 @@ propcustom_dm.m\cf4 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf6 \CocoaLigature0 - - -\cf3 \
+\f2\b0\fs22 \cf5 \CocoaLigature0 - - -\cf3 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -92,79 +107,107 @@ propcustom_dm.m\cf4 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf7 \CocoaLigature0 falco_get_PSF_norm_factor.m\cf4 \
-\cf5 falco_get_expected_summed_image.m\cf4 \
+\f2\b0\fs22 \cf2 \CocoaLigature0 falco_get_PSF_norm_factor.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 falco_get_expected_summed_image.m\cf4 \
 falco_get_gpct_sbp_image.m\
 falco_get_hcst_sbp_image.m\
-\cf5 falco_get_sbp_image.m\cf4 \
+\cf3 falco_get_sbp_image.m\cf4 \
 falco_get_sbp_image_fiber.m\
-\cf5 falco_get_sim_sbp_image.m\cf4 \
+\cf3 falco_get_sim_sbp_image.m\cf4 \
 falco_get_sim_sbp_image_fiber.m\
-\cf8 falco_get_single_sim_image.m\cf4 \
-\cf7 falco_get_summed_image.m\cf4 \
-\cf9 falco_get_summed_image_TipTiltPol.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf7 falco_get_single_sim_image.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_get_summed_image.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf8 falco_get_summed_image_TipTiltPol.m\cf4 \
 falco_get_summed_image_fiber.m\
-\cf5 falco_get_testbed_sbp_image.m\cf4 \
-\cf7 falco_sim_image_compact_offaxis.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 falco_get_testbed_sbp_image.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_sim_image_compact_offaxis.m\cf4 \
 falco_sim_image_full_offaxis.m (not used)\cf3 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\b\fs24 \cf0 \CocoaLigature1 lib/
 \f3\fs22 \cf4 \CocoaLigature0 masks
-\f0\fs24 \cf0 \CocoaLigature1  -> masks.py
+\f0\fs24 \cf0 \CocoaLigature1  -> examples/
 \f2\b0\fs22 \cf4 \CocoaLigature0 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf5 demo_gen_SW_mask.m\cf4 \
+\cf3 demo_gen_SW_mask.m\cf4 \
 demo_gen_pupil_HabEx_B_PROPER.m\
 demo_gen_pupil_LUVOIR_A_0.m\
 demo_gen_pupil_LUVOIR_A_5.m\
-demo_gen_pupil_LUVOIR_A_final.m\
-\cf5 demo_gen_pupil_LUVOIR_B_offaxis.m\cf4 \
-\cf5 demo_gen_pupil_Simple.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6 demo_gen_pupil_LUVOIR_A_final.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf9 demo_gen_pupil_LUVOIR_B_offaxis.m\cf4 \
+\cf3 demo_gen_pupil_Simple.m\
 demo_gen_pupil_customHex.m\cf4 \
 demo_gen_pupil_dst_LUVOIR_B.m\
-\cf5 demo_gen_pupil_iSAT.m\cf4 \
-dst_LUVB_seg100um.fits.zip\
-\cf5 falco_gen_DM_stop.m\cf4 \
+\cf3 demo_gen_pupil_iSAT.m\cf4 \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\b\fs24 \cf0 \CocoaLigature1 lib/
+\f3\fs22 \cf4 \CocoaLigature0 masks
+\f0\fs24 \cf0 \CocoaLigature1  -> masks.py\
+
+\f1\b0 \cf10 falco_gen_pupil_LUVOIR_B      (new in Python version)
+\f2\fs22 \cf4 \CocoaLigature0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 falco_gen_DM_stop.m\cf4 \
 falco_gen_SCDA_LS.m\
-\cf7 falco_gen_SW_mask.m\cf4 \
-\cf5 falco_gen_Tukey4vortex.m\cf4 \
-\cf5 falco_gen_annular_FPM.m. (currently uses POPPY instead of PROPER)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_gen_SW_mask.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf9 falco_gen_Tukey4vortex.m\cf4 \
+\cf9 falco_gen_annular_FPM.m\cf3 \
 falco_gen_bowtie_FPM.m\
 falco_gen_bowtie_LS.m\cf4 \
-\cf5 falco_gen_multi_ring_SP.m\cf4 \
-\cf9 falco_gen_pupil_HabEx_B.m\cf4 \
+\cf3 falco_gen_multi_ring_SP.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf8 falco_gen_pupil_HabEx_B.m\cf4 \
 falco_gen_pupil_HabEx_B_PROPER.m\
 falco_gen_pupil_Keck.m\
 falco_gen_pupil_LUVOIR_A_0.m\
 falco_gen_pupil_LUVOIR_A_5_Lyot_struts.m\
 falco_gen_pupil_LUVOIR_A_5_mag_trans.m\
-\cf5 falco_gen_pupil_LUVOIR_A_final.m\
-falco_gen_pupil_LUVOIR_A_final_Lyot.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6 falco_gen_pupil_LUVOIR_A_final.m\cf3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf9 falco_gen_pupil_LUVOIR_A_final_Lyot.m\cf4 \
 falco_gen_pupil_SCDA.m\
-\cf5 falco_gen_pupil_Simple.m\
-falco_gen_pupil_Simple_PROPER.m\cf4 \
+\cf9 falco_gen_pupil_Simple.m\
+    \cf5 falco_gen_pupil_Simple_PROPER.m (embedded into the Simple generator)\cf4 \
 falco_gen_pupil_WFIRST_20180103.m\
-\cf7 falco_gen_pupil_WFIRST_CGI_180718.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_gen_pupil_WFIRST_CGI_180718.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf4 falco_gen_pupil_WFIRSTcycle6_LS.m\
 falco_gen_pupil_WFIRSTcycle6_mag_rot_trans.m\
-\cf5 falco_gen_pupil_customHex.m\
+\cf9 falco_gen_pupil_customHex.m\cf3 \
 \cf4 falco_gen_pupil_dst_LUVOIR_B.m\
-\cf5 falco_gen_pupil_iSAT.m\cf4 \
+\cf3 falco_gen_pupil_iSAT.m\cf4 \
 falco_gen_tradApodizer.m\
-\cf5 falco_gen_vortex_mask.m\cf4 \
-falco_hex_aperture_LUVOIR_A_5.m\
+\cf9 falco_gen_vortex_mask.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6 falco_hex_aperture_LUVOIR_A.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f3\b segMirrorFunctions
+\f3\b \cf4 segMirrorFunctions
 \f2\b0 \
-\cf5   hexSegMirror_addHexSegment.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6   hexSegMirror_addHexSegment.m. (need to correct the and(and()) logic for HEXphz)\
   hexSegMirror_addHexagon.m\
-  hexSegMirror_getField.m\
-  hexSegMirror_getSupport.m\
-  hexSegMirror_getSurfHeight.m\
-  hexSegMirror_numSegments.m\cf4 \
-test_falco_gen_tradApodizer.m\cf6 \
+  hexSegMirror_getField.m\cf3 \
+  \cf6 hexSegMirror_getSupport.m\cf3 \
+  \cf5 hexSegMirror_getSurfHeight.m\cf3 \
+\cf6   hexSegMirror_numSegments.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf4 test_falco_gen_tradApodizer.m\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -173,8 +216,10 @@ test_falco_gen_tradApodizer.m\cf6 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf5 \CocoaLigature0 falco_plot_pairwise_probes.m\cf4 \
-\cf7 falco_plot_progress.m\cf4  \cf5 (move to separate function)\
+\f2\b0\fs22 \cf3 \CocoaLigature0 falco_plot_pairwise_probes.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_plot_progress.m\cf4  \cf3 (move to separate function)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf4 		\
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -183,13 +228,14 @@ test_falco_gen_tradApodizer.m\cf6 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf7 \CocoaLigature0 propcustom_2FT.m\
+\f2\b0\fs22 \cf2 \CocoaLigature0 propcustom_2FT.m\
 propcustom_PTP.m\
-\cf5 propcustom_PTP_inf_func.m\cf7 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 propcustom_PTP_inf_func.m\cf2 \
 propcustom_mft_FtoP.m\
 propcustom_mft_PtoF.m\
-\cf5 propcustom_mft_Pup2Vortex2Pup.m\cf7 \
-propcustom_relay.m\cf6 \
+\cf9 propcustom_mft_Pup2Vortex2Pup.m\cf2 \
+propcustom_relay.m\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -198,9 +244,9 @@ propcustom_relay.m\cf6 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf5 \CocoaLigature0 falco_gen_complex_trans_table.m\
-falco_thin_film_material_def.m\
-falco_thin_film_solver.m\cf6 \
+\f2\b0\fs22 \cf6 \CocoaLigature0 falco_gen_complex_trans_table.m\cf3 \
+\cf6 falco_thin_film_material_def.m\cf3 \
+\cf6 falco_thin_film_solver.m\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -209,7 +255,7 @@ falco_thin_film_solver.m\cf6 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf7 \CocoaLigature0 ceil_even.m\
+\f2\b0\fs22 \cf2 \CocoaLigature0 ceil_even.m\
 ceil_odd.m\
 falco_compute_thput.m\cf4 \
 falco_erode_aperture.m\
@@ -217,13 +263,15 @@ falco_gen_RMS_TipTilt.m (used only in falco_get_summed_image_TipTiltPol.m)\
 falco_rms.m\
 falco_sim_image_fiber.m\
 falco_sim_image_fiber_eval.m\
-\cf7 padOrCropEven.m\cf4 \
-\cf5 padOrCropOdd.m\cf4 \
+\cf2 padOrCropEven.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 padOrCropOdd.m\cf4 \
 propcustom_getZernCoefAndMat.m\
 propcustom_getZernCoefAndMat_masked.m\
 propcustom_zernfun.m\
-\cf7 sinc.m \cf4 -> numpy .sinc\
-\cf7 tukeywindow.m\cf4  -> scipy.signal.tukey\cf6 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 sinc.m \cf4 -> numpy .sinc\
+\cf2 tukeywindow.m\cf4  -> scipy.signal.tukey\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -232,28 +280,34 @@ propcustom_zernfun.m\
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf6 \CocoaLigature0 Asdf\
+\f2\b0\fs22 \cf5 \CocoaLigature0 Asdf\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf4 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\b\fs24 \cf0 \CocoaLigature1 models\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf7 \CocoaLigature0 model_Jacobian.m\cf4 \
-\cf5 model_Jacobian_HLC.m\cf4 \
+\f2\b0\fs22 \cf2 \CocoaLigature0 model_Jacobian.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 model_Jacobian_HLC.m\cf4 \
 model_Jacobian_HLC_scale.m\
-\cf7 model_Jacobian_LC.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 model_Jacobian_LC.m\cf4 \
 model_Jacobian_Roddier.m\
-\cf5 model_Jacobian_SPLC.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 model_Jacobian_SPLC.m\
 model_Jacobian_VC.m\cf4 \
-\cf5 model_ZWFS.m\cf4 \
-\cf7 model_compact.m\
-model_compact_general.m \cf5 (need to enable Roddier mode)\cf4 \
+\cf3 model_ZWFS.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 model_compact.m\
+model_compact_general.m \cf3 (need to enable Roddier mode)\cf4 \
 model_compact_scale.m\
-\cf7 model_full.m\
+\cf2 model_full.m\
 model_full_Fourier.m\cf4 \
 model_full_scale.m\
-\cf6 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -261,36 +315,39 @@ model_full_scale.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
 \f2\b0\fs22 \cf3 \CocoaLigature0 falco_setup_FPM_HLC.m\cf4 \
+\cf3 falco_config_gen_FPM_HLC.m\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf5 falco_config_gen_FPM_HLC.m\cf4 \
-\cf7 falco_config_gen_FPM_LC.m\cf4 \
-\cf5 falco_config_gen_FPM_Roddier.m\
+\cf2 falco_config_gen_FPM_LC.m\cf4 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 falco_config_gen_FPM_Roddier.m\
 falco_config_gen_FPM_SPLC.m\cf4 \
-\cf5 falco_config_gen_chosen_LS.m\
+\cf3 falco_config_gen_chosen_LS.m\
 falco_config_gen_chosen_apodizer.m (low priority)\
 falco_config_gen_chosen_pupil.m\cf4 \
-\cf7 falco_config_jac_weights.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 falco_config_jac_weights.m\
 falco_config_spatial_weights.m\cf4 \
-\cf7 falco_init_ws.m\
+\cf2 falco_init_ws.m\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf4 falco_config_gen_FPM_FOHLC.m\
 falco_setup_FPM_EHLC.m\
 falco_setup_FPM_FOHLC.m\
 falco_setup_FPM_HLC_3foldZern.m\
-falco_setup_FPM_HLC_cosine.m  \'97> Get updated from Jorge\cf6 \
+falco_setup_FPM_HLC_cosine.m  \'97> Get updated from Jorge\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\b\fs24 \cf0 \CocoaLigature1 testing\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf5 \CocoaLigature0 EXAMPLE_func_validate_Jacobian_with_compact_model.m\cf4 \
-EXAMPLE_script_validate_HLC_Jacobian.m\cf6 \
+\f2\b0\fs22 \cf3 \CocoaLigature0 EXAMPLE_func_validate_Jacobian_with_compact_model.m\cf4 \
+EXAMPLE_script_validate_HLC_Jacobian.m\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\b\fs24 \cf0 \CocoaLigature1 wfirst_modeling\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf6 \CocoaLigature0 (leave empty for now)\cf4 \
+\f2\b0\fs22 \cf5 \CocoaLigature0 (leave empty for now)\cf4 \
 \
 }

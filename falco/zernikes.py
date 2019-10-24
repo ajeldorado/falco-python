@@ -40,7 +40,7 @@ def falco_get_Zernike_sensitivities(mp):
         maskDict["whichSide"] = mp.Fend.sides; #--which sides the dark hole exists in
         if hasattr(mp.Fend,'shape'):
             maskDict.shape = mp.Fend.shape
-        maskCube[:,:,ni], xisDL, etasDL = falco.masks.falco_gen_SW_mask(**maskDict)
+        maskCube[:,:,ni], xisDL, etasDL = falco.masks.falco_gen_SW_mask(maskDict)
 
     if not mp.full.flagPROPER:  #--When using full models completely made with PROPER
         #--Generate Zernike map datacube
