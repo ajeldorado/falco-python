@@ -198,8 +198,8 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
         
     Returns
     -------
-    TBD : numpy ndarray
-        Expected band-averaged image in units of normalized intensity
+    Ibandavg : numpy ndarray
+        Expected bandpass-averaged image in units of normalized intensity
     """
 
     if type(mp) is not falco.config.ModelParameters:
