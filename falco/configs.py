@@ -395,8 +395,7 @@ def falco_config_gen_chosen_LS(mp):
 
 
     ## Crop down the Lyot stop(s) to get rid of extra zero padding for the full model
-    coro=mp.coro.upper()
-    if coro in ('VORTEX','VC','AVC'):
+    if(False): # mp.coro.upper() in ('VORTEX','VC','AVC'):
         mp.P4.full.Narr = mp.P4.full.mask.shape[0]
         mp.P4.full.croppedMask = mp.P4.full.mask
         mp.P4.compact.Narr = mp.P4.compact.mask.shape[0]

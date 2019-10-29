@@ -92,7 +92,7 @@ mp.eval.Rsens = np.array([[2., 3.],[3., 4.],[4., 5.]]);  # [2-D ndarray]
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.Object()
-mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
+mp.ctrl.log10regVec = np.arange(-6,-2+0.5,0.5) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
@@ -204,8 +204,8 @@ mp.coro = 'vortex'
 mp.Fend = falco.config.Object()
 
 ##--Final Focal Plane Properties
-mp.Fend.res = 2.5 #--Sampling [ pixels per lambda0/D]
-mp.Fend.FOV = 11. #--half-width of the field of view in both dimensions [lambda0/D]
+mp.Fend.res = 3 #--Sampling [ pixels per lambda0/D]
+mp.Fend.FOV = 15. #--half-width of the field of view in both dimensions [lambda0/D]
 
 ####### NEED TO DETERMINE
 ##--Correction and scoring region definition

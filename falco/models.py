@@ -239,14 +239,21 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
             raise TypeError("mp.F3.VortexCharge must be an int, float or numpy ndarray.")
             pass
         EP4 = falco.propcustom.propcustom_mft_Pup2Vortex2Pup( EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
-        EP40 = EP4
         EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr);
         
     else:
         log.warning('The chosen coronagraph type is not included yet.')
         raise ValueError("Value of mp.coro not recognized.")
         pass
-                         
+                     
+    #--Remove the FPM completely if normalization value is being found for the vortex
+    if(normFac==0):
+        if(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
+            EP4 = falco.propcustom.propcustom_relay(EP3, mp.Nrelay3to4, mp.centering)
+            EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr)
+            pass
+        pass
+
     """ Back to common propagation any coronagraph type """
     #--Apply the (cropped-down) Lyot stop
     EP4 *= mp.P4.full.croppedMask
@@ -254,15 +261,6 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
     #--MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
     EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
     EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.full.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta)
-
-#    plt.imshow(np.abs(EP3)); plt.colorbar(); plt.pause(0.1)
-#    plt.imshow(np.abs(EP40)); plt.colorbar(); plt.pause(0.1)
-#    plt.imshow(np.angle(EP40)); plt.colorbar(); plt.pause(0.1)
-#    plt.imshow(np.abs(mp.P4.full.croppedMask)); plt.colorbar(); plt.pause(0.1)
-#
-#    plt.imshow(np.abs(EP4)); plt.colorbar(); plt.pause(0.1)
-#
-#    plt.imshow(np.abs(EFend)); plt.colorbar(); plt.pause(0.1)
 
     #--Don't apply FPM if normalization value is being found
     if(normFac==0):
@@ -540,6 +538,14 @@ def model_compact_general(mp, wvl, Ein, normFac, flagEval):
 
     else:     
         raise ValueError("Value of mp.coro not recognized.")
+        pass
+
+    #--Remove the FPM completely if normalization value is being found for the vortex
+    if(normFac==0):
+        if(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
+            EP4 = falco.propcustom.propcustom_relay(EP3, mp.Nrelay3to4, mp.centering)
+            EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr)
+            pass
         pass
 
     """  Back to common propagation any coronagraph type   """
