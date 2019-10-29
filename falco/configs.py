@@ -297,7 +297,27 @@ def falco_config_gen_chosen_LS(mp):
         inputs.Nbeam = mp.P4.compact.Nbeam;     % number of points across incoming beam           
         mp.P4.compact.mask = falco_gen_pupil_LUVOIR_A_5_Lyot_struts(inputs,'ROT180');
         """
-    elif whichPupil ('LUVOIR_B_OFFAXIS','HABEX_B_OFFAXIS'):
+    elif whichPupil in ('LUVOIR_B_OFFAXIS','HABEX_B_OFFAXIS'):
+        
+        inputs = {} # initialize
+        inputs["ID"] = mp.P4.IDnorm #- Outer diameter (fraction of Nbeam)
+        inputs["OD"] = mp.P4.ODnorm#- Inner diameter (fraction of Nbeam)
+#        inputs["Nstrut"] = 0 #- Number of struts
+#        inputs["angStrut"] = np.array([])#- Array of struct angles (deg)
+#        inputs["wStrut"] = np.array([]) #- Strut widths (fraction of Nbeam)
+#        inputs["stretch"] = 1.#- Create an elliptical aperture by changing Nbeam along
+        #                  the horizontal direction by a factor of stretch (PROPER
+        #                  version isn't implemented as of March 2019).
+
+        inputs["Nbeam"] = mp.P4.compact.Nbeam #- Number of samples across the beam 
+        inputs["Npad"] = int(2**falco.utils.nextpow2( falco.utils.ceil_even(mp.P4.compact.Nbeam )))
+        mp.P4.compact.mask = falco.masks.falco_gen_pupil_Simple( inputs )
+
+        inputs["Nbeam"] = mp.P4.full.Nbeam #- Number of samples across the beam 
+        inputs["Npad"] = int(2**falco.utils.nextpow2( falco.utils.ceil_even(mp.P4.full.Nbeam )))
+        mp.P4.full.mask = falco.masks.falco_gen_pupil_Simple( inputs )
+
+
         pass
         """  
         #--Full model
@@ -377,9 +397,9 @@ def falco_config_gen_chosen_LS(mp):
     ## Crop down the Lyot stop(s) to get rid of extra zero padding for the full model
     coro=mp.coro.upper()
     if coro in ('VORTEX','VC','AVC'):
-        mp.P4.full.Narr = length(mp.P4.full.mask)
+        mp.P4.full.Narr = mp.P4.full.mask.shape[0]
         mp.P4.full.croppedMask = mp.P4.full.mask
-        mp.P4.compact.Narr = length(mp.P4.compact.mask)
+        mp.P4.compact.Narr = mp.P4.compact.mask.shape[0]
         mp.P4.compact.croppedMask = mp.P4.compact.mask
     else:
         if(mp.full.flagPROPER==False):
@@ -440,35 +460,39 @@ def falco_config_gen_chosen_apodizer(mp):
     if not hasattr(mp.P3,'compact'):
         mp.P3.compact = falco.config.Object()   
 
-    """
+    
     if mp.flagApod:
-            #--mp.apodType is used only when generating certain types of analytical apodizers
-            if mp.apodType.lower() in ('simple'): #--A simple, circular aperture stop
-                #--Inputs common to both the compact and full models
-                inputs.OD = mp.P3.ODnorm;
-                inputs.ID = mp.P3.IDnorm;
-                inputs.Nstrut = 0;
-                inputs.angStrut = []; %Angles of the struts 
-                inputs.wStrut = 0; % spider width (fraction of the pupil diameter)
+        #--mp.apodType is used only when generating certain types of analytical apodizers
+        if mp.apodType.lower() in ('simple'): #--A simple, circular aperture stop
+            #--Inputs common to both the compact and full models
+            inputs = {}
+            inputs["ID"] = mp.P3.IDnorm
+            inputs["OD"] = mp.P3.ODnorm
 
-                #--Full model only
-                inputs.Nbeam = mp.P1.full.Nbeam; % number of points across incoming beam 
-                inputs.Npad = 2^(nextpow2(mp.P1.full.Nbeam)); 
-                
-                if(mp.full.flagGenApod):
-                    .P3.full.mask= falco_gen_pupil_Simple( inputs );
-                else
-                    disp('*** Simple aperture stop to be loaded instead of generated for full model. ***')
+            inputs["Nstrut"] = mp.P3.Nstrut
+            inputs["angStrut"] = mp.P3.angStrut # Angles of the struts 
+            inputs["wStrut"] = mp.P3.wStrut # spider width (fraction of the pupil diameter)
+            inputs["stretch"] = mp.P3.stretch
+
+            #--Full model only
+            inputs["Nbeam"] = mp.P1.full.Nbeam # number of points across incoming beam 
+            inputs["Npad"] = 2**(falco.utils.nextpow2(mp.P1.full.Nbeam)) 
             
-                # Compact model only 
-                inputs.Nbeam = mp.P1.compact.Nbeam; %--Number of pixels across the aperture or beam (independent of beam centering)
-                inputs.Npad = 2^(nextpow2(mp.P1.compact.Nbeam))
-                
-                if(mp.compact.flagGenApod):
-                    mp.P3.compact.mask= falco_gen_pupil_Simple( inputs );
-                else:
-                    disp('*** Simple aperture stop to be loaded instead of generated for compact model. ***')
+            if(mp.full.flagGenApod):
+                mp.P3.full.mask = falco.masks.falco_gen_pupil_Simple( inputs );
+            else:
+                disp('*** Simple aperture stop to be loaded instead of generated for full model. ***')
+        
+            # Compact model only 
+            inputs["Nbeam"] = mp.P1.compact.Nbeam #--Number of pixels across the aperture or beam (independent of beam centering)
+            inputs["Npad"] = 2**(falco.utils.nextpow2(mp.P1.compact.Nbeam))
             
+            if(mp.compact.flagGenApod):
+                mp.P3.compact.mask = falco.masks.falco_gen_pupil_Simple( inputs );
+            else:
+                disp('*** Simple aperture stop to be loaded instead of generated for compact model. ***')
+            
+            """
             if mp.apodType.lower() in ('ring') #--Concentric ring apodizer
                 #--Full model
                 if(mp.full.flagGenApod):
@@ -515,21 +539,21 @@ def falco_config_gen_chosen_apodizer(mp):
             else:
                 disp('No apodizer type specified for generation.')
 
-
+"""
     mp.P3.full.dummy = 1
     if hasattr(mp.P3.full,'mask'):   #==false || isfield(mp.P3.compact,'mask')==false)
-        mp.P3.full.Narr = len(mp.P3.full.mask)
+        mp.P3.full.Narr = mp.P3.full.mask.shape[0]
     else:
-        fprintf('*** If not generated or loaded in a PROPER model, the apodizer must be loaded \n    in the main script or config file into the variable mp.P3.full.mask ***\n')
+        print('*** If not generated or loaded in a PROPER model, the apodizer must be loaded \n    in the main script or config file into the variable mp.P3.full.mask ***')
 
     
     mp.P3.compact.dummy = 1
     if hasattr(mp.P3.compact,'mask'):    #    ==false || isfield(mp.P3.compact,'mask')==false)
-        mp.P3.compact.Narr = length(mp.P3.compact.mask)
+        mp.P3.compact.Narr = mp.P3.compact.mask.shape[0]
     else:
-        fprintf('*** If not generated, the apodizer must be loaded in the main script or config \n    file into the variable mp.P3.compact.mask ***\n')
+        print('*** If not generated, the apodizer must be loaded in the main script or config \n    file into the variable mp.P3.compact.mask ***')
     
-"""    
+   
     ##--Set the pixel width [meters]
     mp.P3.full.dx = mp.P2.full.dx
     mp.P3.compact.dx = mp.P2.compact.dx
@@ -597,6 +621,12 @@ def falco_config_gen_chosen_pupil(mp):
         pass
     elif whichPupil == 'LUVOIR_B_OFFAXIS':
 #        print('whichPupil = %s'%(whichPupil))
+        if mp.full.flagGenPupil:
+            mp.P1.full.mask = falco.masks.falco_gen_pupil_LUVOIR_B(mp.P1.full.Nbeam)
+
+        if mp.compact.flagGenPupil:
+            mp.P1.compact.mask = falco.masks.falco_gen_pupil_LUVOIR_B(mp.P1.compact.Nbeam)
+    
         pass
     elif whichPupil == 'DST_LUVOIRB':
 #        print('whichPupil = %s'%(whichPupil))

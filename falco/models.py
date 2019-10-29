@@ -3,6 +3,7 @@ import numpy as np
 import falco
 import logging
 import multiprocessing
+import matplotlib.pyplot as plt
 
 log = logging.getLogger(__name__)
 
@@ -238,7 +239,9 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
             raise TypeError("mp.F3.VortexCharge must be an int, float or numpy ndarray.")
             pass
         EP4 = falco.propcustom.propcustom_mft_Pup2Vortex2Pup( EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
+        EP40 = EP4
         EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr);
+        
     else:
         log.warning('The chosen coronagraph type is not included yet.')
         raise ValueError("Value of mp.coro not recognized.")
@@ -251,6 +254,15 @@ def model_full_Fourier(mp, wvl, Ein, normFac):
     #--MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
     EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
     EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.full.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta)
+
+#    plt.imshow(np.abs(EP3)); plt.colorbar(); plt.pause(0.1)
+#    plt.imshow(np.abs(EP40)); plt.colorbar(); plt.pause(0.1)
+#    plt.imshow(np.angle(EP40)); plt.colorbar(); plt.pause(0.1)
+#    plt.imshow(np.abs(mp.P4.full.croppedMask)); plt.colorbar(); plt.pause(0.1)
+#
+#    plt.imshow(np.abs(EP4)); plt.colorbar(); plt.pause(0.1)
+#
+#    plt.imshow(np.abs(EFend)); plt.colorbar(); plt.pause(0.1)
 
     #--Don't apply FPM if normalization value is being found
     if(normFac==0):
@@ -672,7 +684,10 @@ def model_Jacobian_middle_layer(mp,im,idm):
     #--Select which optical layout's Jacobian model to use and get the output E-field
     if(mp.layout.lower()=='fourier'):
         if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'): #--DMs, optional apodizer, occulting spot FPM, and LS.
-            jacMode = model_Jacobian_LC(mp, im, idm) 
+            jacMode = model_Jacobian_LC(mp, im, idm)
+            
+        elif (mp.coro.upper()=='VC') or (mp.coro.upper()=='AVC') or (mp.coro.upper()=='VORTEX'): #--DMs, optional apodizer, occulting spot FPM, and LS.
+            jacMode = model_Jacobian_VC(mp, im, idm)
             
     return jacMode
 
@@ -795,7 +810,7 @@ def model_Jacobian_LC(mp,im,idm):
         if(mp.flagDM2stop):
             DM2stop = falco.utils.padOrCropEven(DM2stop,mp.dm1.compact.NdmPad) 
         else:
-            DM2stop = np.ones((mp.dm1.compact.NdmPad))
+            DM2stop = np.ones((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad))
         apodReimaged = falco.utils.padOrCropEven( apodReimaged, mp.dm1.compact.NdmPad)
     
         Edm1pad = falco.utils.padOrCropEven(Edm1b,mp.dm1.compact.NdmPad) #--Pad or crop for expected sub-array indexing
@@ -1056,7 +1071,7 @@ def model_Jacobian_VC(mp,im,idm):
         Gzdl = np.zeros((mp.Fend.corr.Npix,mp.dm1.Nele),dtype=np.complex)
         
         #--Array size for planes P3, F3, and P4
-        Nfft1 = falco.utils.nextpow2(np.max(np.array([mp.dm1.compact.NdmPad, minPadFacVortex*mp.dm1.compact.Nbox]))) #--Don't crop--but do pad if necessary.
+        Nfft1 = int(2**falco.utils.nextpow2(np.max(np.array([mp.dm1.compact.NdmPad, minPadFacVortex*mp.dm1.compact.Nbox])))) #--Don't crop--but do pad if necessary.
         
         #--Generate vortex FPM with fftshift already applied
         fftshiftVortex = np.fft.fftshift( falco.masks.falco_gen_vortex_mask( charge, Nfft1) )
@@ -1072,7 +1087,7 @@ def model_Jacobian_VC(mp,im,idm):
         if(mp.flagDM2stop):
             DM2stop = falco.utils.padOrCropEven(DM2stop,mp.dm1.compact.NdmPad) 
         else:
-            DM2stop = np.ones((mp.dm1.compact.NdmPad))
+            DM2stop = np.ones((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad))
         apodReimaged = falco.utils.padOrCropEven( apodReimaged, mp.dm1.compact.NdmPad)
     
         Edm1pad = falco.utils.padOrCropEven(Edm1b,mp.dm1.compact.NdmPad) #--Pad or crop for expected sub-array indexing
@@ -1105,7 +1120,7 @@ def model_Jacobian_VC(mp,im,idm):
                 # #--Negate and reverse coordinate values to effectively rotate by 180 degrees. No change if 360 degree rotation.
 
                 #--Re-insert the window around the influence function back into the full beam array.
-                EP2eff = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad))
+                EP2eff = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad),dtype=complex)
                 EP2eff[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2boxEff
                 
                 #--Forward propagate from P2 (effective) to P3
@@ -1139,7 +1154,7 @@ def model_Jacobian_VC(mp,im,idm):
         Gzdl = np.zeros((mp.Fend.corr.Npix,mp.dm2.Nele),dtype=np.complex)
         
         #--Array size for planes P3, F3, and P4
-        Nfft2 = falco.utils.nextpow2(np.max(np.array([mp.dm2.compact.NdmPad, minPadFacVortex*mp.dm2.compact.Nbox]))) #--Don't crop--but do pad if necessary.
+        Nfft2 = int(2**falco.utils.nextpow2(np.max(np.array([mp.dm2.compact.NdmPad, minPadFacVortex*mp.dm2.compact.Nbox])))) #--Don't crop--but do pad if necessary.
         
         #--Generate vortex FPM with fftshift already applied
         fftshiftVortex = np.fft.fftshift( falco.masks.falco_gen_vortex_mask( charge, Nfft2) )
@@ -1183,7 +1198,7 @@ def model_Jacobian_VC(mp,im,idm):
 #                    x_box = -1*x_box[::-1]
 #                    y_box = -1*y_box[::-1]
                 
-                EP2eff = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad))
+                EP2eff = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad),dtype=complex)
                 EP2eff[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2boxEff;
 
 

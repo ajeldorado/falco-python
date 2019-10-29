@@ -1163,50 +1163,43 @@ def falco_gen_vortex_mask( charge, N ):
     return V
 
 def falco_gen_pupil_Simple( input ):
-#% Copyright 2018, by the California Institute of Technology. ALL RIGHTS
-#% RESERVED. United States Government Sponsorship acknowledged. Any
-#% commercial use must be negotiated with the Office of Technology Transfer
-#% at the California Institute of Technology.
-#% -------------------------------------------------------------------------
-#%
 #% Inputs: 
-#% inputs.Nbeam - Number of samples across the beam 
-#% inputs.OD - Outer diameter (fraction of Nbeam)
-#% inputs.ID - Inner diameter (fraction of Nbeam)
-#% inputs.Nstrut - Number of struts
-#% inputs.angStrut - Array of struct angles (deg)
-#% inputs.wStrut - Strut widths (fraction of Nbeam)
-#% inputs.stretch - Create an elliptical aperture by changing Nbeam along
+#% inputs["Npad"] #Number of samples in the padded array
+#% inputs["Nbeam"] - Number of samples across the beam 
+#% inputs["OD"] - Outer diameter (fraction of Nbeam)
+#% inputs["ID"] - Inner diameter (fraction of Nbeam)
+#% inputs["Nstrut"] - Number of struts
+#% inputs["angStrut"] - Array of struct angles (deg)
+#% inputs["wStrut"] - Strut widths (fraction of Nbeam)
+#% inputs["stretch"] - Create an elliptical aperture by changing Nbeam along
 #%                   the horizontal direction by a factor of stretch (PROPER
 #%                   version isn't implemented as of March 2019).
-#
-#function PUPIL = falco_gen_pupil_Simple( input )
+
 #%falco_gen_pupil_SCDA Generates a simple pupil.
 #%   Function may be used to generate circular, annular, and simple on-axis 
 #%   telescopes with radial struts. 
-    pass
 
-    hg_expon = 1000 #hyper-gaussian exponent for anti-aliasing 
+    hg_expon = 1000 # hyper-gaussian exponent for anti-aliasing 
     hg_expon_spider = 100 # hyper-gaussian exponent for anti-aliasing 
 
-    if('centering' in input.keys()):
-        centering = input["centering"]
-    else:
-        centering = 'pixel'
-    
+    # Optional dictionary keys
+    centering = input["centering"] if('centering' in input.keys()) else 'pixel'
+    Nstrut = input["Nstrut"] if('Nstrut' in input.keys()) else 0
+    b = input["stretch"] if('stretch' in input.keys()) else 1.0
+
+    # Required dictionary keys
     N = input["Npad"] #Number of samples in NxN grid 
     OD = input["OD"] # pupil outer diameter, can be < 1
     ID = input["ID"] # central obscuration radius 
     apRad = input["Nbeam"]/2 # aperture radius in samples 
-    b = input["stretch"] if('stretch' in input.keys()) else 1.0
     
     # Create coordinates
     if centering == 'pixel':
-        [X,Y] = np.meshgrid( np.arange(-N/2,N/2) )
-    elif centering == 'pixel':
-        [X,Y] = np.meshgrid( np.arange(-(N-1)/2,(N-1)/2+1) )
+        [X,Y] = np.meshgrid( np.arange(-N/2,N/2), np.arange(-N/2,N/2) )
+    elif centering == 'interpixel':
+        [X,Y] = np.meshgrid( np.arange(-(N-1)/2,(N-1)/2+1), np.arange(-(N-1)/2,(N-1)/2+1) )
             
-    [THETA,RHO] = utils.cart2pol(X/b,Y)
+    [RHO,THETA] = utils.cart2pol(X/b,Y)
     
     # Make sure the inputs make sense
     if(ID > OD):
@@ -1223,7 +1216,7 @@ def falco_gen_pupil_Simple( input ):
         if(input["flagPROPER"]==True):
 
             # Create inner and outer circles in PROPER
-
+        
             #--INITIALIZE PROPER
             Dbeam = 1 #--diameter of beam (normalized to itself)
             dx = Dbeam/input["Nbeam"]
@@ -1234,40 +1227,39 @@ def falco_gen_pupil_Simple( input ):
             xshift = 0 #--x-shear of pupil
             yshift = 0 #--y-shear of pupil
             bm = proper.prop_begin(Dbeam, wl_dummy, Narray,bdf);
-
+        
             if(centering=='pixel'):
                 cshift = 0
             elif(centering=='interpixel'):
                 cshift = -dx/2.
-
+        
             #--PRIMARY MIRROR (OUTER DIAMETER)
             ra_OD = OD/2
             cx_OD = 0 + cshift + xshift
             cy_OD = 0 + cshift + yshift
             proper.prop_circular_aperture(bm, ra_OD,cx_OD,cy_OD)
-
+        
             if(ID > 0):
                 #--SECONDARY MIRROR (INNER DIAMETER)
                 ra_ID = ID/2.
                 cx_ID = 0 + cshift + xshift
                 cy_ID = 0 + cshift + yshift
                 proper.prop_circular_obscuration(bm, ra_ID,cx_ID,cy_ID)
-
+        
             PUPIL = np.fft.ifftshift(np.abs(bm.wfarr))           
 
 
     # Create spiders 
-    if(input["wStrut"] > 0):
-        
-        numSpiders = input["Nstrut"]
-        angs = input["angStrut"]
-        
-        if not (numSpiders==angs.size):
-            raise ValueError('Pupil generation error: angStrut should be an array of length Nstrut');
-        
-        halfwidth = input["wStrut"]*2*apRad
-        for ang in angs:
-           PUPIL = PUPIL*(1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider)*
-                          (RHO*np.cos(THETA-ang*np.pi/180)>0));
+    if(Nstrut > 0):
+        if(input["wStrut"] > 0):
+            
+            angs = input["angStrut"]
+            
+            if not (Nstrut==angs.size):
+                raise ValueError('Pupil generation error: angStrut should be an array of length Nstrut');
+            
+            halfwidth = input["wStrut"]*2*apRad
+            for ang in angs:
+                PUPIL *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider)*(RHO*np.cos(THETA-ang*np.pi/180)>0))
 
     return PUPIL

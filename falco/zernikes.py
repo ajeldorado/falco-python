@@ -47,9 +47,9 @@ def falco_get_Zernike_sensitivities(mp):
         ZmapCube = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
         #--Make sure ZmapCube is padded or cropped to the right array size
         if not ZmapCube.shape[0]==mp.P1.full.Narr:
-            ZmapCubeTemp = np.zeros((mp.P1.full.Narr,mp.P1.full.Narr))
+            ZmapCubeTemp = np.zeros((mp.P1.full.Narr,mp.P1.full.Narr,Nzern))
             for zi in range(Nzern):
-                ZmapCubeTemp[:,:,zi] = falco.utils.padOrCropEven(ZmapCube[:,:,zi],mp.P1.full.Narr)
+                ZmapCubeTemp[:,:,zi] = falco.utils.padOrCropEven(np.squeeze(ZmapCube[:,:,zi]),mp.P1.full.Narr)
             ZmapCube = ZmapCubeTemp 
             del ZmapCubeTemp
 

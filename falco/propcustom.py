@@ -272,19 +272,18 @@ def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
 
     ## Low-sampled DFT of entire region
 
-    FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*u1.reshape(u1.size,1)
-    @ x.reshape(1,x.size))*IN*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size)) 
+    FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size)) @ IN @ np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size))
     #if showPlots2debug; figure;imagesc(log10(abs(FP1).^2));axis image;colorbar; title('Large scale DFT'); end;
 
-    LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*x*u1)*(FP1*FPM*(1-windowMASK1))*np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size))
+    LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size)) @ (FP1*FPM*(1-windowMASK1)) @ np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size))
     #if showPlots2debug; figure;imagesc(abs(FP1.*(1-windowMASK1)));axis image;colorbar; title('Large scale DFT (windowed)'); end;
     
     ## Fine sampled DFT of innter region
     FP2 = 2*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*u2.reshape(u2.size,1)
-    @ x.reshape(1,x.size))*IN*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size)); 
+    @ x.reshape(1,x.size)) @ IN @ np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size))
     #if showPlots2debug; figure;imagesc(log10(abs(FP2).^2));axis image;colorbar; title('Fine sampled DFT'); end;
     FPM = falco_gen_vortex_mask(charge, NB)
-    LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size))*(FP2*FPM*windowMASK2)*np.exp(-1j*2*np.pi*u2.reshape(u2.size,1) @ x.reshape(1,x.size))       
+    LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size)) @ (FP2*FPM*windowMASK2) @ np.exp(-1j*2*np.pi*u2.reshape(u2.size,1) @ x.reshape(1,x.size))       
     #if showPlots2debug; figure;imagesc(abs(FP2.*windowMASK2));axis image;colorbar; title('Fine sampled DFT (windowed)'); end;
     OUT = LP1 + LP2;
     #if showPlots2debug; figure;imagesc(abs(OUT));axis image;colorbar; title('Lyot plane'); end;
@@ -305,9 +304,9 @@ def falco_gen_Tukey4vortex( Nwindow, RHO, alpha ):
 #
 #function w = falco_gen_Tukey4vortex( Nwindow, RHO, alpha )
 
-    Nlut = np.round(10*Nwindow)
+    Nlut = int(10*Nwindow)
     rhos0 = np.linspace(-Nwindow/2,Nwindow/2,Nlut)
-    lut = tukey(Nlut,alpha,left=0,right=0)
+    lut = tukey(Nlut,alpha)#,left=0,right=0)
     
     w = np.interp(RHO,rhos0,lut)
 

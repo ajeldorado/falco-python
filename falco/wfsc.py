@@ -538,7 +538,7 @@ def falco_init_ws(mp, config=None):
             dx1 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
             pitch1 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
     
-            mp.dm1.inf0 = hdul[0].data[0,:,:]
+            mp.dm1.inf0 = np.squeeze(hdul[0].data) #hdul[0].data[0,:,:]
         mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1);
     
         if mp.dm1.inf_sign[0] in ['-','n','m']:
@@ -559,7 +559,7 @@ def falco_init_ws(mp, config=None):
             dx2 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
             pitch2 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
     
-            mp.dm2.inf0 = hdul[0].data[0,:,:]
+            mp.dm2.inf0 = np.squeeze(hdul[0].data)
         mp.dm2.dx_inf0 = mp.dm2.dm_spacing*(dx2/pitch2);
     
         if mp.dm2.inf_sign[0] in ['-','n','m']:
