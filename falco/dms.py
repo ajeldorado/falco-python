@@ -63,17 +63,14 @@ def falco_gen_dm_surf(dm,dx,N):
     #--Quantization of DM actuation steps based on least significant bit of the
     # DAC (digital-analog converter). In height, so called HminStep
     # If HminStep (minimum step in H) is defined, then quantize the DM voltages
-#     if(hasattr(dm,'HminStep') and not np.any(isnan(dm.HminStep[:])))): # If desired method is not defined, set it to the default. 
-#         if not(hasattr(dm,'HminStepMethod'))
-#             dm.HminStepMethod = 'round'
-#         # Discretize/Quantize the DM voltages (creates dm.Vquantized)
-#         dm = falco_discretize_dm_surf(dm, dm.HminStepMethod);
-#         H = dm.VtoH.*dm.Vquantized
-#     else: # Quantization not desired; send raw, continuous voltages
-#         H = dm.VtoH.*dm.V;
-
-    H = dm.VtoH*dm.V
-    
+    if(hasattr(dm,'HminStep')): # and not np.any(isnan(dm.HminStep[:])))): # If desired method is not defined, set it to the default. 
+        if not(hasattr(dm,'HminStepMethod')):
+            dm.HminStepMethod = 'round'
+         # Discretize/Quantize the DM voltages (creates dm.Vquantized)
+        dm = falco_discretize_dm_surf(dm, dm.HminStepMethod);
+        H = dm.VtoH*dm.Vquantized
+    else: # Quantization not desired; send raw, continuous voltages
+        H = dm.VtoH*dm.V
 
     
     #--Generate the DM surface
@@ -85,7 +82,51 @@ def falco_gen_dm_surf(dm,dx,N):
 
 
 def falco_discretize_dm_surf(dm, HminStepMethod):
-    pass
+
+#function dm = falco_discretize_dm_surf(dm,flagMethod,varargin)
+#
+# % optional flag to use testbed instead of simulation  
+# % if(nargin>0)
+# %     flag_tb = varargin{1}; % The first variable argument defines which testbed type
+# % 
+# %     switch flag_tb
+# %         case 'tb'
+# %             HminStep = dm.HminStep_tb;
+# %         otherwise
+# %             HminStep = dm.HminStep;
+# %             disp('Silent error: HminStep_tb not defined. Using HminStep for testbed.');
+# %     end
+# % else
+#     % Use HminStep for dm model 
+#     HminStep = dm.HminStep;
+# % end
+
+    #Use HminStep for dm model 
+    HminStep = dm.HminStep
+
+    # Calculate surface heights to maximum precision
+    h_cont = dm.VtoH*dm.V
+
+    # Calculate number of (fractional) steps required to represent the surface
+    nSteps = h_cont/HminStep
+
+    # Discretize by removing fractional step
+    if 'round' in HminStepMethod:
+        nSteps = np.round(nSteps)
+    elif 'floor' in HminStepMethod:
+        nSteps = np.floor(nSteps)
+    elif 'ceil' in HminStepMethod:
+        nSteps = np.ceil(nSteps)
+    elif 'fix' in HminStepMethod:
+        nSteps = np.fix(nSteps)
+    else:
+        #error([mfilename, ': method for rounding must be one of - round, floor, ceil, or fix'])
+        pass
+
+    # Calculate discretized surface
+    dm.Vquantized = nSteps*HminStep/dm.VtoH
+
+    return dm
 
     
 def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
@@ -737,4 +778,84 @@ def falco_enforce_dm_constraints(dm):
 
     return dm
 
+
+def falco_fit_dm_surf(dm,Vin):
+    """
+    Function to fit a surface to a deformable mirror (DM) commands using PROPER.
+
+    Parameters
+    ----------
+    Vin : numpy ndarray
+        2-D array of DM voltage commands
+    dm : ModelParameters
+        Structure containing parameter values for the DM
+
+    Returns
+    -------
+    Vout : numpy ndarray
+        2-D array of DM voltage commands
+    """
+
+    #--Starting influence function (must be square)
+    inf1 = dm.inf0
+    N1 = inf1.shape[0]
+    actres1 = dm.dm_spacing/dm.dx_inf0
+    x = np.arange(-(N1-1.)/2.,(N1-1.)/2.+1,N1)/actres1
+    [X,Y] = np.meshgrid(x,x)
+
+    #--Influence function resampled to actuator map resolution
+    actres2 = 1. #--pixels per actuator width
+    N2 = falco.utils.ceil_even(N1*actres2/actres1)+1 #--Make odd to have peak of 1
+    xq = np.aranage(-(N2-1)/2,(N2-1)/2+1,N2)/actres2;
+    [Xq,Yq] = np.meshgrid(xq)
+    #inf2 = interp2(X,Y,inf1,Xq,Yq,'cubic',0);
+    
+    interp_spline = RectBivariateSpline(x, x, inf1) # RectBivariateSpline is faster in 2-D than interp2d
+    inf2 = interp_spline(xq,xq)
+    
+    #--Perform the fit
+    Vout = proper.prop_fit_dm(Vin, inf2)
+    
+    return Vout
+
         
+def falco_dm_surf_from_cube(dm,dmFullOrCompact):
+    """
+    Function to produce a DM surface (in meters). Uses linear superposition of 
+    a datacube of influence functions.
+    
+    Parameters
+    ----------
+    dm : numpy ndarray
+        2-D array of DM voltage commands
+    dmFullOrCompact : ModelParameters
+        Structure containing parameter values for the DM in either the full or compact model
+
+    Returns
+    -------
+    DMsurf : numpy ndarray
+        2-D array of DM surface map
+    """
+
+    DMsurf = np.zeros((dmFullOrCompact.NdmPad,dmFullOrCompact.NdmPad)) # Initialize the empty array
+    for iact in range(dm.NactTotal):
+        if( any(any(dmFullOrCompact.inf_datacube[:,:,iact])) and any(dm.VtoH(iact)) ):
+            y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0,iact],dmFullOrCompact.xy_box_lowerLeft[0,iact]+dmFullOrCompact.Nbox-1,dtype=np.int) # x-indices in pupil arrays for the box
+            x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[1,iact],dmFullOrCompact.xy_box_lowerLeft[1,iact]+dmFullOrCompact.Nbox-1,dtype=np.int) # y-indices in pupil arrays for the box
+            DMsurf[x_box_ind,y_box_ind] +=  dm.V.flatten()[iact]*dm.VtoH.flatten()[iact]*dmFullOrCompact.inf_datacube[:,:,iact]
+
+    
+    #--Adjust the orientation if specified
+    if(hasattr(dm,'fliplr')):
+        if(dm.fliplr):
+            DMsurf = np.fliplr(DMsurf)
+            pass
+        pass
+    
+    if(hasattr(dm,'flipud')):
+        if(dm.flipud):
+            DMsurf = np.flipud(DMsurf)
+            pass
+        pass
+
+    return DMsurf

@@ -1,6 +1,6 @@
 import numpy as np
 import os
-import poppy
+#import poppy
 import proper
 import scipy.interpolate
 import scipy.ndimage
@@ -8,81 +8,81 @@ import math
 from . import utils
 import falco
 
-def annular_fpm(pixres_fpm, rho_inner, rho_outer, fpm_amp_factor=0.0,
-                rot180=False, centering='pixel', **kwargs):
-    """
-    Generate an annular FPM using POPPY.
-
-    Outside the outer ring is opaque. If rho_outer = infinity, the outer
-    mask is omitted and the mask is cropped down to the size of the inner spot.
-    The inner spot has a specifyable amplitude value.
-    The output array is the smallest size that fully contains the mask.
-
-    Parameters
-    ----------
-    pixres_fpm : float
-        resolution in pixels per lambda_c/D
-    rho_inner : float
-        radius of inner FPM amplitude spot (in lambda_c/D)
-    rho_outer : float
-        radius of outer opaque FPM ring (in lambda_c/D). Set to
-        infinity for an occulting-spot-only FPM.
-    fpm_amp_factor : float
-        amplitude transmission of inner FPM spot. Default is 0.0.
-    rot180 : bool
-        Optional, flag to rotate
-    centering : string
-        Either 'pixel' or 'interpixel'
-
-    Returns
-    -------
-    mask: ndarray
-        cropped-down, 2-D FPM representation. amplitude only
-    """
-
-    dxi_ul = 1 / pixres_fpm  # lambda_c/D per pixel. "UL" for unitless
-
-    offset = 1/2 if centering == 'interpixel' else 0
-
-    if not np.isfinite(rho_outer):
-        # number of points across the inner diameter of the FPM.
-        narray = utils.ceil_even(2 * (rho_inner / dxi_ul + offset))
-    else:
-        # number of points across the outer diameter of the FPM.
-        narray = utils.ceil_even(2 * (rho_outer / dxi_ul + offset))
-
-    xshift = 0
-    yshift = 0
-    darray = narray * dxi_ul  # width of array in lambda_c/D
-
-    # 0 for pixel-centered FPM, or -diam/Narray for inter-pixel centering
-    if centering == 'interpixel':
-        cshift = -dxi_ul / 2
-    elif centering == 'pixel':
-        cshift = -dxi_ul if rot180 else 0
-
-    else:
-        raise ValueError("Invalid value for centering parameter")
-
-    # Method note: The algorithm in falco-matlab works in units of lambda/D.
-    # Everything in POPPY works natively in arcseconds or meters. We can
-    # make a shortcut here and just substitute coordinates in arcsec for lambda/D.
-    # That's fine to do for the present purposes of just drawing a circle.
-
-    fpm = poppy.AnnularFieldStop(radius_inner=rho_inner,
-                                 radius_outer=rho_outer,
-                                 shift_x=cshift + xshift,
-                                 shift_y=cshift + yshift)
-    mask = fpm.sample(npix=narray, grid_size=darray)
-
-    if fpm_amp_factor != 0:
-        # poppy doesn't support gray circular occulting masks, but we can
-        # simulate that by just adding back some of the intensity.
-        fpm.radius_inner = 0
-        mask_no_inner = fpm.sample(npix=narray, grid_size=darray)
-        mask = mask * fpm_amp_factor + mask_no_inner * (1 - fpm_amp_factor)
-
-    return mask
+#def annular_fpm(pixres_fpm, rho_inner, rho_outer, fpm_amp_factor=0.0,
+#                rot180=False, centering='pixel', **kwargs):
+#    """
+#    Generate an annular FPM using POPPY.
+#
+#    Outside the outer ring is opaque. If rho_outer = infinity, the outer
+#    mask is omitted and the mask is cropped down to the size of the inner spot.
+#    The inner spot has a specifyable amplitude value.
+#    The output array is the smallest size that fully contains the mask.
+#
+#    Parameters
+#    ----------
+#    pixres_fpm : float
+#        resolution in pixels per lambda_c/D
+#    rho_inner : float
+#        radius of inner FPM amplitude spot (in lambda_c/D)
+#    rho_outer : float
+#        radius of outer opaque FPM ring (in lambda_c/D). Set to
+#        infinity for an occulting-spot-only FPM.
+#    fpm_amp_factor : float
+#        amplitude transmission of inner FPM spot. Default is 0.0.
+#    rot180 : bool
+#        Optional, flag to rotate
+#    centering : string
+#        Either 'pixel' or 'interpixel'
+#
+#    Returns
+#    -------
+#    mask: ndarray
+#        cropped-down, 2-D FPM representation. amplitude only
+#    """
+#
+#    dxi_ul = 1 / pixres_fpm  # lambda_c/D per pixel. "UL" for unitless
+#
+#    offset = 1/2 if centering == 'interpixel' else 0
+#
+#    if not np.isfinite(rho_outer):
+#        # number of points across the inner diameter of the FPM.
+#        narray = utils.ceil_even(2 * (rho_inner / dxi_ul + offset))
+#    else:
+#        # number of points across the outer diameter of the FPM.
+#        narray = utils.ceil_even(2 * (rho_outer / dxi_ul + offset))
+#
+#    xshift = 0
+#    yshift = 0
+#    darray = narray * dxi_ul  # width of array in lambda_c/D
+#
+#    # 0 for pixel-centered FPM, or -diam/Narray for inter-pixel centering
+#    if centering == 'interpixel':
+#        cshift = -dxi_ul / 2
+#    elif centering == 'pixel':
+#        cshift = -dxi_ul if rot180 else 0
+#
+#    else:
+#        raise ValueError("Invalid value for centering parameter")
+#
+#    # Method note: The algorithm in falco-matlab works in units of lambda/D.
+#    # Everything in POPPY works natively in arcseconds or meters. We can
+#    # make a shortcut here and just substitute coordinates in arcsec for lambda/D.
+#    # That's fine to do for the present purposes of just drawing a circle.
+#
+#    fpm = poppy.AnnularFieldStop(radius_inner=rho_inner,
+#                                 radius_outer=rho_outer,
+#                                 shift_x=cshift + xshift,
+#                                 shift_y=cshift + yshift)
+#    mask = fpm.sample(npix=narray, grid_size=darray)
+#
+#    if fpm_amp_factor != 0:
+#        # poppy doesn't support gray circular occulting masks, but we can
+#        # simulate that by just adding back some of the intensity.
+#        fpm.radius_inner = 0
+#        mask_no_inner = fpm.sample(npix=narray, grid_size=darray)
+#        mask = mask * fpm_amp_factor + mask_no_inner * (1 - fpm_amp_factor)
+#
+#    return mask
 
 
 def _init_proper(Dmask, dx, centering):
@@ -134,7 +134,7 @@ def falco_gen_DM_stop(dx, Dmask, centering):
     return np.fft.ifftshift(np.abs(wf.wfarr))
 
 
-def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
+def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     """
     Function to generate WFIRST pupil CGI-180718.
 
@@ -207,59 +207,64 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, **kwargs):
      -2.822938064533701e+00,
     ])
 
-    ### Changes to the pupil
-    class Changes(object):
-        pass
-    
-    class Struct(object):
-        def __init__(self, **entries):
-            self.__dict__.update(entries)
-
-    if len(kwargs) > 0:
-        #raise ValueError('falco_gen_pupil_WFIRST_CGI_180718.m: Too many inputs')
-        changes=Struct(**kwargs)
-    else:
-        changes = Changes()
-        changes.dummy = 1
+#    ### Changes to the pupil
+#    class Changes(object):
+#        pass
+#    
+#    class Struct(object):
+#        def __init__(self, **entries):
+#            self.__dict__.update(entries)
+#
+#    if len(kwargs) > 0:
+#        #raise ValueError('falco_gen_pupil_WFIRST_CGI_180718.m: Too many inputs')
+#        changes=Struct(**kwargs)
+#    else:
+#        changes = Changes()
+#        changes.dummy = 1
     
     ### Oversized strut features: overwrite defaults if values specified
-    if hasattr(changes, 'OD'):
-        OD = changes.OD
-    if hasattr(changes, 'ID'):
-        ID = changes.ID
-    if hasattr(changes, 'wStrut'):
-        wStrutVec = changes.wStrut * np.ones([6])
-    if hasattr(changes, 'wStrutVec'):
-        wStrutVec = changes.wStrutVec
+    if 'OD' in changes.keys(): OD = changes["OD"]
+    if 'ID' in changes.keys(): ID = changes["ID"]
+    if 'wStrut' in changes.keys(): wStrutVec = np.ones(6)*changes["wStrut"]
+    if 'wStrutVec' in changes.keys(): wStrutVec = changes["wStrutVec"]
+
+#    if hasattr(changes, 'OD'):
+#        OD = changes.OD
+#    if hasattr(changes, 'ID'):
+#        ID = changes.ID
+#    if hasattr(changes, 'wStrut'):
+#        wStrutVec = changes.wStrut * np.ones([6])
+#    if hasattr(changes, 'wStrutVec'):
+#        wStrutVec = changes.wStrutVec
 
     ### Padding values for obscuration
     #--Defaults of Bulk Changes: (All length units are pupil diameters. All angles are in degrees.)
-    if not hasattr(changes, 'xShear'): changes.xShear = 0
-    if not hasattr(changes, 'yShear'): changes.yShear = 0
-    if not hasattr(changes, 'magFac'): changes.magFac = 1.0
-    if not hasattr(changes, 'clock_deg'): changes.clock_deg = 0.0
-    if not hasattr(changes, 'flagRot180'): changes.flagRot180 = False
+    if not 'xShear' in changes.keys(): changes["xShear"] = 0
+    if not 'yShear' in changes.keys(): changes["yShear"] = 0
+    if not 'magFac' in changes.keys(): changes["magFac"] = 1.0
+    if not 'clock_deg' in changes.keys(): changes["clock_deg"] = 0.0
+    if not 'flagRot180' in changes.keys(): changes["flagRot180"] = False
 
     #--Defaults for obscuration padding: (All length units are pupil diameters.)
-    if not hasattr(changes, 'pad_all'): changes.pad_all = 0.
-    if not hasattr(changes, 'pad_strut'): changes.pad_strut = 0.
-    if not hasattr(changes, 'pad_COBS'): changes.pad_COBS = 0.
-    if not hasattr(changes, 'pad_COBStabs'): changes.pad_COBStabs = 0.
-    if not hasattr(changes, 'pad_OD'): changes.pad_OD = 0.
+    if not 'pad_all' in changes.keys(): changes["pad_all"] = 0.
+    if not 'pad_strut' in changes.keys(): changes["pad_strut"] = 0.
+    if not 'pad_COBS' in changes.keys(): changes["pad_COBS"] = 0.
+    if not 'pad_COBStabs' in changes.keys(): changes["pad_COBStabs"] = 0.
+    if not 'pad_OD' in changes.keys(): changes["pad_OD"] = 0.
 
     #--Values to use for bulk clocking, magnification, and translation
-    xShear = changes.xShear  # - xcOD;
-    yShear = changes.yShear  # - ycOD;
-    magFac = changes.magFac
-    clock_deg = changes.clock_deg
-    flagRot180 = changes.flagRot180
+    xShear = changes["xShear"]  # - xcOD;
+    yShear = changes["yShear"]  # - ycOD;
+    magFac = changes["magFac"]
+    clock_deg = changes["clock_deg"]
+    flagRot180 = changes["flagRot180"]
     
     #--Padding values. (pad_all is added to all the rest)
-    pad_all = changes.pad_all     #0.2/100; #--Uniform padding on all features
-    pad_strut = changes.pad_strut + pad_all
-    pad_COBS = changes.pad_COBS + pad_all
-    pad_COBStabs = changes.pad_COBStabs + pad_all
-    pad_OD = changes.pad_OD + pad_all  #--Radial padding at the edge
+    pad_all = changes["pad_all"]     #0.2/100; #--Uniform padding on all features
+    pad_strut = changes["pad_strut"] + pad_all
+    pad_COBS = changes["pad_COBS"] + pad_all
+    pad_COBStabs = changes["pad_COBStabs"] + pad_all
+    pad_OD = changes["pad_OD"] + pad_all  #--Radial padding at the edge
 
     #--Rotation matrix used on center coordinates.
     rotMat = np.array([[math.cos(math.radians(clock_deg)), -math.sin(math.radians(clock_deg))], [math.sin(math.radians(clock_deg)), math.cos(math.radians(clock_deg))]])
@@ -406,7 +411,7 @@ def falco_gen_pupil_WFIRST_20180103(Nbeam, centering, rot180deg=False):
         return np.pad(temp, ((1, 0), (1, 0)), "constant", constant_values=(0, 0))
 
 
-def falco_gen_SW_mask(**kwargs):
+def falco_gen_SW_mask(inputs):
     """
     Function to generate binary (0-1) software masks for the focal plane. 
     This can be used as a field stop, or for making the scoring and correction 
@@ -433,37 +438,37 @@ def falco_gen_SW_mask(**kwargs):
     xis: vector of coordinates along the horizontal axis (in lambda_c/D)
     etas: : vector of coordinates along the vertical axis (in lambda_c/D)
     """    
-    class Struct(object):
-        def __init__(self, **entries):
-            self.__dict__.update(entries)
-
-    if len(kwargs) > 0:
-        #raise ValueError('falco_gen_pupil_WFIRST_CGI_180718.m: Too many inputs')
-        inputs=Struct(**kwargs)
+#    class Struct(object):
+#        def __init__(self, **entries):
+#            self.__dict__.update(entries)
+#
+#    if len(kwargs) > 0:
+#        #raise ValueError('falco_gen_pupil_WFIRST_CGI_180718.m: Too many inputs')
+#        inputs=Struct(**kwargs)
     
     #--Read in user inputs
-    pixresFP = inputs.pixresFP    #--pixels per lambda_c/D
-    rhoInner = inputs.rhoInner    # radius of inner FPM amplitude spot (in lambda_c/D)
-    rhoOuter = inputs.rhoOuter    # radius of outer opaque FPM ring (in lambda_c/D)
-    angDeg = inputs.angDeg        #--angular opening (input in degrees) on the left/right/both sides of the dark hole.
-    whichSide = inputs.whichSide  #--which (sides) of the dark hole have open
+    pixresFP = inputs["pixresFP"]    #--pixels per lambda_c/D
+    rhoInner = inputs["rhoInner"]    # radius of inner FPM amplitude spot (in lambda_c/D)
+    rhoOuter = inputs["rhoOuter"]    # radius of outer opaque FPM ring (in lambda_c/D)
+    angDeg = inputs["angDeg"]        #--angular opening (input in degrees) on the left/right/both sides of the dark hole.
+    whichSide = inputs["whichSide"]  #--which (sides) of the dark hole have open
     
     
     
-    if hasattr(inputs, 'FOV'): 
-        FOV = inputs.FOV
+    if 'FOV' in inputs.keys(): #hasattr(inputs, 'FOV'): 
+        FOV = inputs["FOV"]
     else:
-        inputs.FOV = rhoOuter
+        inputs["FOV"] = rhoOuter
     
         
-    if hasattr(inputs, 'centering'):
-        centering = inputs.centering
+    if 'centering' in inputs.keys(): #hasattr(inputs, 'centering'):
+        centering = inputs["centering"]
     else:
         centering = 'pixel'
         
 
-    if hasattr(inputs,'shape'):
-        DHshape = inputs.shape
+    if 'shape' in inputs.keys(): #hasattr(inputs,'shape'):
+        DHshape = inputs["shape"]
     else:
         DHshape = 'circle' #default to a circular outer edge
 
@@ -474,14 +479,14 @@ def falco_gen_SW_mask(**kwargs):
     # if Nxi is defined use that, if not calculate Nxi.
     if centering == "interpixel":
         if hasattr(inputs,'Nxi'):#if Nxi is defined 
-            Nxi = inputs.Nxi
+            Nxi = inputs["Nxi"]
         else: #else calculate Nxi
             Nxi = falco.utils.ceil_even(2 * FOV * pixresFP)  # Number of points across the full FPM
             
         Neta = falco.utils.ceil_even(2 * FOV * pixresFP)
     else:
         if hasattr(inputs,'Nxi'):
-            Nxi = inputs.Nxi
+            Nxi = inputs["Nxi"]
         else:
             Nxi = falco.utils.ceil_even(2 * (FOV * pixresFP + 0.5))  # Number of points across the full FPM  
             
@@ -522,7 +527,7 @@ def falco_gen_SW_mask(**kwargs):
         else:
             clockAng = 0
     else:
-        clockAng = inputs.clockAngDeg*np.pi/180    
+        clockAng = inputs["clockAngDeg"]*np.pi/180    
 
 
     maskSW = np.logical_and(maskSW0,np.abs(np.angle(np.exp(1j*(THETAS-clockAng))))<=angRad/2)
@@ -641,7 +646,7 @@ def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering
     return mask
 
 
-def falco_gen_annular_FPM(**kwargs):
+def falco_gen_annular_FPM(inputs):
     """
     Function to generate an annular FPM in Matlab using PROPER.
     
@@ -674,16 +679,16 @@ def falco_gen_annular_FPM(**kwargs):
         def __init__(self, **entries):
             self.__dict__.update(entries)
 
-    FPMgenInputs=Struct(**kwargs)
+    #inputs=Struct(**kwargs)
 
-    pixresFPM=FPMgenInputs.pixresFPM 
-    rhoInner=FPMgenInputs.rhoInner 
-    rhoOuter=FPMgenInputs.rhoOuter 
-    FPMampFac=FPMgenInputs.FPMampFac 
-    centering=FPMgenInputs.centering 
+    pixresFPM=inputs["pixresFPM"]
+    rhoInner=inputs["rhoInner"]
+    rhoOuter=inputs["rhoOuter"] 
+    FPMampFac=inputs["FPMampFac"] 
+    centering=inputs["centering"] 
 
-    if hasattr(FPMgenInputs, 'flagRot180deg'):
-        flagRot180deg = FPMgenInputs.flagRot180deg
+    if hasattr(inputs, 'flagRot180deg'):
+        flagRot180deg = inputs["flagRot180deg"]
 
 
     dxiUL = 1.0 / pixresFPM  # lambda_c/D per pixel. "UL" for unitless
@@ -819,3 +824,581 @@ def falco_gen_bowtie_LS(inputs):
         pass
     
     return mask
+
+
+def falco_gen_pupil_LUVOIR_A_final(inputs,**kwargs):
+
+#    #--Function to generate the LUVOIR Design A (Final) telescope pupil from 
+#    % 2018 in Matlab using PROPER
+#    % Coordinates and dimensions of the primary, secondary, and hex segments
+#    %   are from Matthew Bolcar (NASA GSFC).
+#    % Coordinates and dimensions of the secondary mirror support struts were a
+#    %   best-fit match by A.J. Riggs by matching PROPER-made rectangles to the 
+#    %   pupil file from Matthew Bolcar (NASA GSFC).
+#
+#    #--Coordinates of hex segments to skip:
+#    % 1 13 114 115 126 127
+#    % 1 12 113 114 125 126
+#    
+#    function mask = falco_gen_pupil_LUVOIR_A_final(inputs,varargin)
+    
+    #--Optional inputs and their defaults
+    flagRot180deg = True if 'ROT180' in kwargs and kwargs["ROT180"]==True else False
+    centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
+    magfacD = inputs['magfacD'] if 'magfacD' in inputs.keys() else 1.0  #--Default to no magnification of the pupil
+    hexgap0 = inputs['wGap_m'] if 'wGap_m' in inputs.keys() else 6.0e-3  #--Default to 6 mm between segments
+    
+    # % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+    
+    #--USER INPUTS
+    Nbeam = inputs["Nbeam"] # number of points across the incoming beam  
+    Nap = Nbeam # number of points across FULL usable pupil
+    width_hex0 = 1.2225 #-- flat-to-flat (m)
+    Dap = (12*width_hex0 + 11*hexgap0) #(12*width_hex0 + 12*hexgap0);
+    dx = Dap/Nap
+    dx_drawing = 1.2225/158 # (m) #--In actual drawing, 158 pixels across the 1.2225m, so dx_pixel =
+    #dx_drawing. strut in drawing is 19 pixels across, so dx_strut =
+    # 19*dx_drawing = 0.1470m
+    
+    if("pixel" == centering):
+        Narray = falco.utils.ceil_even(Nbeam/magfacD+1) #--number of points across output array. Sometimes requires two more pixels when pixel centered.
+        cshift = -dx if flagRot180deg else 0. # shear of beam center relative to center pixel
+        
+    elif("interpixel" == centering):
+        Narray = falco.utils.ceil_even(Nbeam/magfacD) #--number of points across output array. Same size as width when interpixel centered.
+        cshift = -dx/2. # shear of beam center relative to center pixel
+    else:
+        pass
+    
+    Darray = Narray*dx
+    
+    #--For PROPER 
+    wl_dummy = 1e-6 # wavelength (m)
+    bdf = Nbeam/Narray #--beam diameter factor in output array
+          
+    dx_t = 0.
+    dy_t = 0.
+    
+    width_hex = magfacD*width_hex0 #-- flat-to-flat (m)
+    nrings = 6
+    hexrad = 2./np.sqrt(3.)*width_hex/2.
+    hexgap = magfacD*hexgap0 # (m)
+    hexsep = width_hex + hexgap # distance from center to center of neighboring segments
+    wStrut = 0.15*magfacD # meters
+    
+    #-------- Generate the input pupil for LUVOIR
+    bm = proper.prop_begin(Dap, wl_dummy, Narray, bdf);
+    
+    # Subtract the inner ring from all the rings
+#    ap = proper.prop_hex_aperture(bm,nrings,hexrad,hexsep,cshift-dx_t,cshift-dy_t,DARK=True) #--Official Matlab PROPER from August 2017
+    ap = falco_hex_aperture_LUVOIR_A(bm,nrings,hexrad,hexsep,cshift-dx_t,cshift-dy_t,DARK=True) #--Official Matlab PROPER from August 2017
+    
+    #--Add the struts
+    proper.prop_rectangular_obscuration(bm, wStrut, 7*width_hex, cshift-dx_t,cshift-dy_t + magfacD*Dap/4.);
+    
+    len_1b = (np.sqrt(93)+0.5)*hexrad
+    proper.prop_rectangular_obscuration(bm, wStrut, len_1b, cshift-dx_t + 1.5*hexrad, cshift-dy_t - 11*np.sqrt(3)/4*hexrad, ROTATION=12.7)
+    proper.prop_rectangular_obscuration(bm, wStrut, len_1b, cshift-dx_t - 1.5*hexrad, cshift-dy_t - 11*np.sqrt(3)/4*hexrad, ROTATION=-12.7)
+    
+    mask = np.fft.ifftshift(np.abs(bm.wfarr))*ap
+    
+    mask[mask>1] = 1. #--Get rid of overlapping segment edges at low resolution if the gap size is zero.
+    
+    if(flagRot180deg):
+        mask = np.rot90(mask,2)
+
+    return mask
+
+
+def falco_gen_pupil_LUVOIR_A_final_Lyot(inputs,**kwargs):
+
+    #--Optional inputs and their defaults
+    flagRot180deg = True if 'ROT180' in kwargs and kwargs["ROT180"]==True else False
+    centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
+    magfacD = inputs['magfacD'] if 'magfacD' in inputs.keys() else 1.0  #--Default to no magnification of the pupil
+    hexgap0 = inputs['wGap_m'] if 'wGap_m' in inputs.keys() else 6.0e-3  #--Default to 6 mm between segments
+    
+    # % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+    
+    #--USER INPUTS
+    Nbeam = inputs["Nbeam"] # number of points across the incoming beam  
+    ID = inputs["ID"] # inner diameter of mask (in pupil diameters)
+    OD = inputs["OD"] # outer diameter of mask (in pupil diameters)
+    wStrut = inputs["wStrut"] # width of the struts (in pupil diameters)
+    wStrut = wStrut*Dbeam # now in meters
+
+    Nap = Nbeam # number of points across FULL usable pupil
+    width_hex0 = 1.2225 #-- flat-to-flat (m)
+    Dap = (12*width_hex0 + 11*hexgap0) #(12*width_hex0 + 12*hexgap0);
+    dx = Dap/Nap
+    dx_drawing = 1.2225/158 # (m) #--In actual drawing, 158 pixels across the 1.2225m, so dx_pixel =
+    #dx_drawing. strut in drawing is 19 pixels across, so dx_strut =
+    # 19*dx_drawing = 0.1470m
+    
+    if("pixel" == centering):
+        Narray = falco.utils.ceil_even(Nbeam/magfacD+1) #--number of points across output array. Sometimes requires two more pixels when pixel centered.
+        cshift = -dx if flagRot180deg else 0. # shear of beam center relative to center pixel
+        
+    elif("interpixel" == centering):
+        Narray = falco.utils.ceil_even(Nbeam/magfacD) #--number of points across output array. Same size as width when interpixel centered.
+        cshift = -dx/2. # shear of beam center relative to center pixel
+    else:
+        pass
+    
+    Darray = Narray*dx
+    
+    #--For PROPER 
+    wl_dummy = 1e-6 # wavelength (m)
+    bdf = Nbeam/Narray #--beam diameter factor in output array
+          
+    dx_t = 0.
+    dy_t = 0.
+    
+    width_hex = magfacD*width_hex0 #-- flat-to-flat (m)
+    nrings = 6
+    hexrad = 2./np.sqrt(3.)*width_hex/2.
+    hexgap = magfacD*hexgap0 # (m)
+    hexsep = width_hex + hexgap # distance from center to center of neighboring segments
+    wStrut = 0.15*magfacD # meters
+    
+    #-------- Generate the input pupil for LUVOIR
+    bm = proper.prop_begin(Dap, wl_dummy, Narray, bdf);
+
+    #--Outer pupil edge
+    proper.prop_circular_aperture(bm, OD/2, cshift-dx_t, cshift-dy_t)
+
+    # Central Obscuration
+    proper.prop_circular_obscuration(bm, ID/2., cshift-dx_t, cshift-dy_t)
+    
+#    # Subtract the inner ring from all the rings
+#    ap = falco_hex_aperture_LUVOIR_A(bm,nrings,hexrad,hexsep,cshift-dx_t,cshift-dy_t,DARK=True) #--Official Matlab PROPER from August 2017
+    
+    #--Add the struts
+    proper.prop_rectangular_obscuration(bm, wStrut, 7*width_hex, cshift-dx_t,cshift-dy_t + magfacD*Dap/4.);
+    len_1b = (np.sqrt(93)+0.5)*hexrad
+    proper.prop_rectangular_obscuration(bm, wStrut, len_1b, cshift-dx_t + 1.5*hexrad, cshift-dy_t - 11*np.sqrt(3)/4*hexrad, ROTATION=12.7)
+    proper.prop_rectangular_obscuration(bm, wStrut, len_1b, cshift-dx_t - 1.5*hexrad, cshift-dy_t - 11*np.sqrt(3)/4*hexrad, ROTATION=-12.7)
+    
+    mask = np.fft.ifftshift(np.abs(bm.wfarr)) #*ap
+    
+    mask[mask>1] = 1. #--Get rid of overlapping segment edges at low resolution if the gap size is zero.
+    
+    if(flagRot180deg):
+        mask = np.rot90(mask,2)
+
+    return mask
+
+def falco_gen_pupil_LUVOIR_B_PROPER(inputs,**kwargs):
+
+#    #--Function to generate the LUVOIR Design A (Final) telescope pupil from 
+#    % 2018 in Matlab using PROPER
+#    % Coordinates and dimensions of the primary, secondary, and hex segments
+#    %   are from Matthew Bolcar (NASA GSFC).
+#    % Coordinates and dimensions of the secondary mirror support struts were a
+#    %   best-fit match by A.J. Riggs by matching PROPER-made rectangles to the 
+#    %   pupil file from Matthew Bolcar (NASA GSFC).
+#
+#    #--Coordinates of hex segments to skip:
+#    % 1 13 114 115 126 127
+#    % 1 12 113 114 125 126
+#    
+#    function mask = falco_gen_pupil_LUVOIR_A_final(inputs,varargin)
+    
+    #--Optional inputs and their defaults
+    flagRot180deg = True if 'ROT180' in kwargs and kwargs["ROT180"]==True else False
+    centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
+    magfacD = inputs['magfacD'] if 'magfacD' in inputs.keys() else 1.0  #--Default to no magnification of the pupil
+    hexgap0 = inputs['wGap_m'] if 'wGap_m' in inputs.keys() else 6.0e-3  #--Default to 6 mm between segments
+    
+    # % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+    
+    #--USER INPUTS
+    Nbeam = inputs["Nbeam"] # number of points across the incoming beam  
+#    Nap = falco.utils.ceil_even(1.1*Nbeam) # number of points across FULL usable pupil
+    nrings = 4
+    width_hex0 = 0.955 #-- flat-to-flat (m)
+    Dap = ((2*nrings)*width_hex0 + (2*nrings-1)*hexgap0) #(12*width_hex0 + 12*hexgap0);
+    dx = Dap/Nbeam
+    dx_drawing = 1.2225/158 # (m) #--In actual drawing, 158 pixels across the 1.2225m, so dx_pixel =
+    #dx_drawing. strut in drawing is 19 pixels across, so dx_strut =
+    # 19*dx_drawing = 0.1470m
+    
+    if("pixel" == centering):
+        Narray = falco.utils.ceil_even(1.02*Nbeam/magfacD+1) #--number of points across output array. Sometimes requires two more pixels when pixel centered.
+        cshift = -dx if flagRot180deg else 0. # shear of beam center relative to center pixel
+        
+    elif("interpixel" == centering):
+        Narray = falco.utils.ceil_even(1.02*Nbeam/magfacD) #--number of points across output array. Same size as width when interpixel centered.
+        cshift = -dx/2. # shear of beam center relative to center pixel
+    else:
+        pass
+    
+#    Darray = Narray*dx
+    
+    #--For PROPER 
+    wl_dummy = 1e-6 # wavelength (m)
+    bdf = Nbeam/Narray #--beam diameter factor in output array
+          
+    dx_t = 0.
+    dy_t = 0.
+    
+    width_hex = magfacD*width_hex0 #-- flat-to-flat (m)
+    
+    hexrad = 2./np.sqrt(3.)*width_hex/2.
+    hexgap = magfacD*hexgap0 # (m)
+    hexsep = width_hex + hexgap # distance from center to center of neighboring segments
+    
+    #-------- Generate the input pupil for LUVOIR
+    bm = proper.prop_begin((Narray/Nbeam)*Dap, wl_dummy, Narray, bdf);
+    
+    ap = falco_hex_aperture_LUVOIR_B(bm,nrings,hexrad,hexsep,cshift-dx_t,cshift-dy_t) 
+    
+    mask = np.fft.ifftshift(np.abs(bm.wfarr))*ap
+    
+    #mask[mask>1] = 1. #--Get rid of overlapping segment edges at low resolution if the gap size is zero.
+    
+    if(flagRot180deg):
+        mask = np.rot90(mask,2)
+
+    return mask
+
+def falco_hex_aperture_LUVOIR_A(wf, nrings, hexrad, hexsep, xc = 0.0, yc = 0.0, **kwargs):
+    """
+    Return an image containing a hexagonal mask consisting of multiple hexagons.
+    This is used for generating the primary mirror for the LUVOIR telescope. 
+    The hexagons have antialiased edges. This routine does not modify the wavefront.
+    
+    Parameters
+    ----------
+    wf : object
+        WaveFront class object
+        
+    nrings : int
+        Number of rings of hexagons in aperture (e.g. 1 = a central hexagon 
+        surrounded by a ring of hexagons)
+        
+    hexrad : float
+        The distance in meters from the center of a hexagon segment to a vertex.
+        
+    hexsep : float
+        The distance between the centers of adjacent hexagons.
+        
+    xc, yc : float
+        The offset in meters of the aperture from the center of the wavefront.  
+        By default, the aperture is centered within the wavefront.
+        
+    Optional Keywords
+    -----------------
+    DARK : boolean
+        If set, the central hexagonal segment will be set to 0.0.
+    
+    ROTATION : float
+        The counterclockwise rotation in degrees of the aperture about its center.
+        
+    Returns
+    -------
+        numpy ndarray
+        A hexagonal mask
+    """
+
+    ngrid = wf.ngrid
+    
+    ap = np.zeros([ngrid, ngrid], dtype = np.float64)
+    
+    if "ROTATION" in kwargs:
+        angle = kwargs["ROTATION"]
+        angle_rad = angle * np.pi/180.
+    else:
+        angle = 0.0
+        angle_rad = 0.0
+    
+    counter = 0
+    for iring in range(0, nrings+1):
+        x = hexsep * np.cos(30 * np.pi/180.) * iring
+        y = -nrings * hexsep + iring * hexsep * 0.5
+        for iseg in range(0, 2*nrings-iring+1):
+            xhex = x * np.cos(angle_rad) - y * np.sin(angle_rad) + xc
+            yhex = x * np.sin(angle_rad) + y * np.cos(angle_rad) + yc
+            if (iring != 0 or not (iseg == nrings and "DARK" in kwargs)):
+                counter += 1
+                if not any(counter==np.array([1, 12, 113, 114, 125, 126])):
+                    ap = ap + proper.prop_polygon(wf, 6, hexrad, xhex, yhex, rotation = angle)
+            
+            if (iring != 0):
+                xhex = -x * np.cos(angle_rad) - y * np.sin(angle_rad) + xc
+                yhex = -x * np.sin(angle_rad) + y * np.cos(angle_rad) + yc
+                counter += 1
+                if not any(counter==np.array([1, 12, 113, 114, 125, 126])):
+                    ap = ap + proper.prop_polygon(wf, 6, hexrad, xhex, yhex, rotation = angle)
+                
+            y += hexsep
+            
+    return ap
+
+def falco_hex_aperture_LUVOIR_B(wf, nrings, hexrad, hexsep, xc = 0.0, yc = 0.0, **kwargs):
+    """
+    Return an image containing a hexagonal mask consisting of multiple hexagons.
+    This is used for generating the primary mirror for the LUVOIR B telescope. 
+    The hexagons have antialiased edges. This routine does not modify the wavefront.
+    
+    Parameters
+    ----------
+    wf : object
+        WaveFront class object
+        
+    nrings : int
+        Number of rings of hexagons in aperture (e.g. 1 = a central hexagon 
+        surrounded by a ring of hexagons)
+        
+    hexrad : float
+        The distance in meters from the center of a hexagon segment to a vertex.
+        
+    hexsep : float
+        The distance between the centers of adjacent hexagons.
+        
+    xc, yc : float
+        The offset in meters of the aperture from the center of the wavefront.  
+        By default, the aperture is centered within the wavefront.
+        
+    Optional Keywords
+    -----------------
+    DARK : boolean
+        If set, the central hexagonal segment will be set to 0.0.
+    
+    ROTATION : float
+        The counterclockwise rotation in degrees of the aperture about its center.
+        
+    Returns
+    -------
+        numpy ndarray
+        A hexagonal mask
+    """
+
+    ngrid = wf.ngrid
+    
+    ap = np.zeros([ngrid, ngrid], dtype = np.float64)
+    
+    if "ROTATION" in kwargs:
+        angle = kwargs["ROTATION"]
+        angle_rad = angle * np.pi/180.
+    else:
+        angle = 0.0
+        angle_rad = 0.0
+    
+    counter = 0
+    for iring in range(0, nrings+1):
+        x = hexsep * np.cos(30 * np.pi/180.) * iring
+        y = -nrings * hexsep + iring * hexsep * 0.5
+        for iseg in range(0, 2*nrings-iring+1):
+            xhex = x * np.cos(angle_rad) - y * np.sin(angle_rad) + xc
+            yhex = x * np.sin(angle_rad) + y * np.cos(angle_rad) + yc
+            if (iring != 0 or not (iseg == nrings and "DARK" in kwargs)):
+                counter += 1
+                if not any(counter==np.array([1,9,52,60])):
+                    ap = ap + proper.prop_polygon(wf, 6, hexrad, xhex, yhex, rotation = angle)
+
+            if (iring != 0):
+                xhex = -x * np.cos(angle_rad) - y * np.sin(angle_rad) + xc
+                yhex = -x * np.sin(angle_rad) + y * np.cos(angle_rad) + yc
+                counter += 1
+                if not any(counter==np.array([1,9,53,61])):
+                    ap = ap + proper.prop_polygon(wf, 6, hexrad, xhex, yhex, rotation = angle)
+                
+            y += hexsep
+            
+    return ap
+
+
+def falco_gen_pupil_customHex( input ):
+#%gen_pupil_SCDA Generates a simple pupil.
+#%   Function may be used to generate circular, annular, and simple on-axis 
+#%   telescopes with radial struts. 
+
+    hg_expon = 1000 # hyper-gaussian exponent for anti-aliasing 
+    hg_expon_spider = 100 # hyper-gaussian exponent for anti-aliasing 
+
+    N = input["Npad"] #Number of samples in NxN grid 
+    OD = input["OD"] # pupil outer diameter, can be < 1
+    ID = input["ID"] # central obscuration radius 
+    apRad = input["Nbeam"]/2. # aperture radius in samples 
+    wStrut = input["wStrut"] # width of strut [pupil diameters], float
+    Nstrut = input["Nstrut"] # Number of radial struts, numpy ndarray
+    angStruts = input["angStrut"] # Azimuthal locations of the radial struts, numpy ndarray
+    
+    # Create coordinates
+    [X,Y] = np.meshgrid(np.arange(-N/2,N/2),np.arange(-N/2,N/2))
+    [THETA,RHO] = falco.utils.cart2pol(X,Y)
+   
+    input["apDia"] = input["Nbeam"];
+    if('pistons' in input.keys()):
+        PUPIL0 = falco.segmentutils.hexSegMirror_getField( input )
+    else:
+        PUPIL0 = falco.segmentutils.hexSegMirror_getSupport( input )
+    
+    # Create inner and outer circles
+    if(ID > 0):
+        PUPIL = np.exp(-(RHO/(apRad*OD))**hg_expon) - np.exp(-(RHO/(apRad*ID))**hg_expon)
+    else:
+        PUPIL = np.exp(-(RHO/(apRad*OD))**hg_expon)
+    
+    PUPIL = PUPIL*PUPIL0
+    
+    # Create spiders 
+    if(wStrut > 0):
+        
+        if not(Nstrut==angStruts.size):
+            raise ValueError("Pupil generation error: angStrut should be an array of length Nstrut.")
+        
+        halfwidth = wStrut*2.*apRad
+        for ang in angStruts:
+           PUPIL = PUPIL*(1.-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180.)/halfwidth)**hg_expon_spider)*
+               (RHO*np.cos(THETA-ang*np.pi/180.)>0))
+                           
+    return PUPIL   
+                  
+
+def falco_gen_pupil_LUVOIR_B(Nbeam):
+
+    D = 7.989 #--meters, circumscribed. The segment size is 0.955 m, flat-to-flat, and the gaps are 6 mm. 
+    wGap = 6e-3/D # Fractional width of segment gaps
+    
+    input = {} # initialize dictionary
+    input["Nbeam"] = Nbeam/0.925 # number of points across the pupil diameter
+    input["wGap"] = wGap*Nbeam # number of samples across segment gaps
+    input["numRings"] = 4 # Number of rings in hexagonally segmented mirror 
+    input["Npad"] = int(2**(falco.utils.nextpow2(Nbeam)))
+    input["ID"] = 0 # central obscuration radius 
+    input["OD"] = 1 # pupil outer diameter, can be < 1
+    input["Nstrut"] = 0 # Number of struts 
+    input["angStrut"] = np.array([]) # Angles of the struts (deg)
+    input["wStrut"] = np.array([]) # Width of the struts (fraction of pupil diam.)
+
+    missingSegments = np.ones(falco.segmentutils.hexSegMirror_numSegments(input["numRings"]),)
+    for index in range(6): #= 0:5
+        missingSegments[38+index*4 - 1] = 0
+
+    input["missingSegments"] = missingSegments;
+
+    pupil = falco_gen_pupil_customHex(input)
+        
+    return pupil
+        
+def falco_gen_vortex_mask( charge, N ):
+#% REQUIRED INPUTS: 
+#% charge  = charge of the vortex
+#% N   = number of points across the array 
+#%
+#% OUTPUTS:
+#%  V:     2-D square array of the vortex E-field
+#%
+#% Created in 2018 by Garreth Ruane.
+#
+#function V = falco_gen_vortex_mask( charge, N )
+#%   Detailed explanation goes here
+
+    [X,Y] = np.meshgrid(np.arange(-N/2,N/2),np.arange(-N/2,N/2))
+    V = np.exp(1j*charge*np.arctan2(Y,X))
+    
+    return V
+
+def falco_gen_pupil_Simple( input ):
+#% Inputs: 
+#% inputs["Npad"] #Number of samples in the padded array
+#% inputs["Nbeam"] - Number of samples across the beam 
+#% inputs["OD"] - Outer diameter (fraction of Nbeam)
+#% inputs["ID"] - Inner diameter (fraction of Nbeam)
+#% inputs["Nstrut"] - Number of struts
+#% inputs["angStrut"] - Array of struct angles (deg)
+#% inputs["wStrut"] - Strut widths (fraction of Nbeam)
+#% inputs["stretch"] - Create an elliptical aperture by changing Nbeam along
+#%                   the horizontal direction by a factor of stretch (PROPER
+#%                   version isn't implemented as of March 2019).
+
+#%falco_gen_pupil_SCDA Generates a simple pupil.
+#%   Function may be used to generate circular, annular, and simple on-axis 
+#%   telescopes with radial struts. 
+
+    hg_expon = 1000 # hyper-gaussian exponent for anti-aliasing 
+    hg_expon_spider = 100 # hyper-gaussian exponent for anti-aliasing 
+
+    # Optional dictionary keys
+    centering = input["centering"] if('centering' in input.keys()) else 'pixel'
+    Nstrut = input["Nstrut"] if('Nstrut' in input.keys()) else 0
+    b = input["stretch"] if('stretch' in input.keys()) else 1.0
+
+    # Required dictionary keys
+    N = input["Npad"] #Number of samples in NxN grid 
+    OD = input["OD"] # pupil outer diameter, can be < 1
+    ID = input["ID"] # central obscuration radius 
+    apRad = input["Nbeam"]/2 # aperture radius in samples 
+    
+    # Create coordinates
+    if centering == 'pixel':
+        [X,Y] = np.meshgrid( np.arange(-N/2,N/2), np.arange(-N/2,N/2) )
+    elif centering == 'interpixel':
+        [X,Y] = np.meshgrid( np.arange(-(N-1)/2,(N-1)/2+1), np.arange(-(N-1)/2,(N-1)/2+1) )
+            
+    [RHO,THETA] = utils.cart2pol(X/b,Y)
+    
+    # Make sure the inputs make sense
+    if(ID > OD):
+        raise ValueError("Pupil generation error: Inner diameter larger than outer diameter.")
+    
+    # Create inner and outer circles
+    if(ID > 0):
+        PUPIL = np.exp(-(RHO/(apRad*OD))**hg_expon) - np.exp(-(RHO/(apRad*ID))**hg_expon)
+    else:
+        PUPIL = np.exp(-(RHO/(apRad*OD))**hg_expon)
+    
+    #--OVERWRITE if PROPER is specified
+    if('flagPROPER' in input.keys()):
+        if(input["flagPROPER"]==True):
+
+            # Create inner and outer circles in PROPER
+        
+            #--INITIALIZE PROPER
+            Dbeam = 1 #--diameter of beam (normalized to itself)
+            dx = Dbeam/input["Nbeam"]
+            Narray = N
+            Darray = Narray*dx
+            wl_dummy = 1e-6 #--dummy value
+            bdf = Dbeam/Darray #--beam diameter fraction
+            xshift = 0 #--x-shear of pupil
+            yshift = 0 #--y-shear of pupil
+            bm = proper.prop_begin(Dbeam, wl_dummy, Narray,bdf);
+        
+            if(centering=='pixel'):
+                cshift = 0
+            elif(centering=='interpixel'):
+                cshift = -dx/2.
+        
+            #--PRIMARY MIRROR (OUTER DIAMETER)
+            ra_OD = OD/2
+            cx_OD = 0 + cshift + xshift
+            cy_OD = 0 + cshift + yshift
+            proper.prop_circular_aperture(bm, ra_OD,cx_OD,cy_OD)
+        
+            if(ID > 0):
+                #--SECONDARY MIRROR (INNER DIAMETER)
+                ra_ID = ID/2.
+                cx_ID = 0 + cshift + xshift
+                cy_ID = 0 + cshift + yshift
+                proper.prop_circular_obscuration(bm, ra_ID,cx_ID,cy_ID)
+        
+            PUPIL = np.fft.ifftshift(np.abs(bm.wfarr))           
+
+
+    # Create spiders 
+    if(Nstrut > 0):
+        if(input["wStrut"] > 0):
+            
+            angs = input["angStrut"]
+            
+            if not (Nstrut==angs.size):
+                raise ValueError('Pupil generation error: angStrut should be an array of length Nstrut');
+            
+            halfwidth = input["wStrut"]*2*apRad
+            for ang in angs:
+                PUPIL *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider)*(RHO*np.cos(THETA-ang*np.pi/180)>0))
+
+    return PUPIL
