@@ -87,6 +87,7 @@ class TestUtils:
     def test_padOrCropEven(cls):
         test_input = np.zeros((10,10))
         ret = falco.utils.padOrCropEven(test_input, 20)
+
         assert ret.shape[0] == 20
 
         test_input = np.zeros((5, 6))
@@ -95,6 +96,42 @@ class TestUtils:
         test_input = np.zeros((8, 6))
         with pytest.raises(ValueError):
             ret = falco.utils.padOrCropEven(test_input, 20)
+
+
+    def test_allcomb(cls):
+        in_a = 'abc'
+        in_b = 'XY'
+
+        a = falco.utils.allcomb(in_a, in_b)
+
+        assert len(a) == len(in_a) * len(in_b)
+        assert type(a[0]) is tuple
+
+        count = 0
+        for i, d in enumerate(in_a):
+            for j, c in enumerate(in_b):
+                assert c in a[count] and d in a[count]
+                count += 1 
+        
+        pass
+
+    def test__spec_arg(cls):
+        pass
+
+    def test_broadcast(cls):
+        pass
+
+    def test_radial_grid(cls):
+        pass
+
+    def test_radial_grid_squared(cls):
+        pass
+
+    def test_create_axis(cls):
+        pass
+
+    def test_falco_compute_thput(cls):
+        pass
 
 def test_test1Example():
     pass
