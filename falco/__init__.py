@@ -7,5 +7,6 @@ from .dms import *
 from .setups import *
 from .propcustom import *
 from .zernikes import *
-from . import models
+from .models import models
 from .segmentutils import *
+#from .models import compact,full,jacobian
