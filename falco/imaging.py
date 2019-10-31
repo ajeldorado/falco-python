@@ -85,6 +85,8 @@ def falco_get_summed_image(mp):
 #        pool = multiprocessing.Pool(processes=mp.Nthreads)
 #        results = [pool.apply_async(falco_get_sbp_image, args=(mp,si)) for si in np.arange(mp.Nsbp,dtype=int) ]
 #        results_img = [p.get() for p in results] #--All the sub-band images in a list
+#        pool.close()
+#        pool.join()
 #        
 #        Imean = 0
 #        for si in range(mp.Nsbp):
@@ -177,7 +179,7 @@ def falco_get_sim_sbp_image(mp, si):
     
     
     
-def falco_get_expected_summed_image(mp, cvar):
+def falco_get_expected_summed_image(mp, cvar, dDM):
     """
     Function to generate the expected broadband image after a new control command.
     
@@ -187,20 +189,85 @@ def falco_get_expected_summed_image(mp, cvar):
 
     Parameters
     ----------
-    mp: falco.config.ModelParameters
+    mp : falco.config.ModelParameters
         Structure of model parameters
-    cvar: ModelParameters
+    cvar : ModelParameters
         Structure of controller variables
-
+    dDM : ModelParameters
+        Structure of delta DM commands from the controller
+        
     Returns
     -------
-    TBD : numpy ndarray
-        Expected band-averaged image in units of normalized intensity
+    Ibandavg : numpy ndarray
+        Expected bandpass-averaged image in units of normalized intensity
     """
 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
+
+#% Function to generate the expected broadband image over the entire
+#% bandpass by adding the model-based delta electric field on top of the
+#% current E-field estimate in each sub-bandpass.
+#%
+#%--INPUTS
+#% mp = structure of all model parameters
+#%
+#%--OUTPUTS
+#% Ibandavg = band-averaged image in units of normalized intensity
+#%
+#%--REVISION HISTORY
+#% - Created on 2019-04-23 by A.J. Riggs. 
+#%--------------------------------------------------------------------------
+        
+    if(any(mp.dm_ind==1)): DM1V0 = mp.dm1.V.copy()
+    if(any(mp.dm_ind==2)): DM2V0 = mp.dm2.V.copy()
+    if(any(mp.dm_ind==8)): DM8V0 = mp.dm8.V.copy()
+    if(any(mp.dm_ind==9)): DM9V0 = mp.dm9.V.copy()
+        
+    #--Initialize variables
+    Ibandavg = 0
+    EnewTempVecArray = np.zeros((mp.Fend.corr.Npix,mp.Nsbp))
+    EoldTempVecArray = np.zeros((mp.Fend.corr.Npix,mp.Nsbp))
+
+    #--Generate the model-based E-field with the new DM setting
+    modvar = falco.config.Object() #--Initialize the new structure
+    modvar.whichSource = 'star'
+    modvar.wpsbpIndex = 0 #--Dummy, placeholder value
+    for si in range(mp.Nsbp):
+        modvar.sbpIndex = si
+        Etemp = falco.models.model_compact(mp, modvar)
+        EnewTempVecArray[:,si] = Etemp[mp.Fend.corr.maskBool]
+    
+    #--Revert to the previous DM commands
+    if(any(mp.dm_ind==1)):  mp.dm1.V = mp.dm1.V - dDM.dDM1V
+    if(any(mp.dm_ind==2)):  mp.dm2.V = mp.dm2.V - dDM.dDM2V
+    if(any(mp.dm_ind==8)):  mp.dm8.V = mp.dm8.V - dDM.dDM8V
+    if(any(mp.dm_ind==9)):  mp.dm9.V = mp.dm9.V - dDM.dDM9V   
+        
+    #--Generate the model-based E-field with the previous DM setting
+    modvar.whichSource = 'star'
+    modvar.wpsbpIndex = 0 #--Dummy, placeholder value
+    for si in range(mp.Nsbp):
+        modvar.sbpIndex = si
+        Etemp = falco.models.model_compact(mp, modvar)
+        EoldTempVecArray[:,si] = Etemp[mp.Fend.corr.maskBool]
+    
+    #--Compute the expected new 2-D intensity image
+    for si in range(mp.Nsbp):
+        EexpectedVec = cvar.EfieldVec[:,si] + (EnewTempVecArray[:,si]-EoldTempVecArray[:,si])
+        Eexpected2D = np.zeros((mp.Fend.Neta,mp.Fend.Nxi))
+        Eexpected2D[mp.Fend.corr.maskBool] = EexpectedVec
+        
+        Ibandavg +=  mp.sbp_weights[si]*np.abs(Eexpected2D)**2
+    
+    #--Reset voltage commands in mp
+    if(any(mp.dm_ind==1)): mp.dm1.V = DM1V0
+    if(any(mp.dm_ind==2)): mp.dm2.V = DM2V0
+    if(any(mp.dm_ind==8)): mp.dm8.V = DM8V0
+    if(any(mp.dm_ind==9)): mp.dm9.V = DM9V0
+    
+    return Ibandavg
+
 
 def falco_get_sbp_image_fiber(mp, si):
     """

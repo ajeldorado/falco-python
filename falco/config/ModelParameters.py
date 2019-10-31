@@ -12,6 +12,14 @@ class Object(object):
     pass
 
 class ModelParameters:
+#     class _base_compact:
+#         def __init__(self, **kwargs):
+#             self.dummy = _spec_arg("dummy", kwargs, 1)
+# 
+#     class _base_full:
+#         def __init__(self, **kwargs):
+#             self.dummy = _spec_arg("dummy", kwargs, 1)
+
     class _base_dm1:
         def __init__(self, **kwargs):
             self.dummy = _spec_arg("dummy", kwargs, 1)
@@ -159,6 +167,8 @@ class ModelParameters:
         dir_path = os.path.dirname(os.path.realpath(__file__))
         print(dir_path)
 
+#         self.compact = _spec_arg("compact", kwargs, self._base_compact())
+#         self.full = _spec_arg("full", kwargs, self._base_full())
         self.Nitr = _spec_arg("Nitr", kwargs, 10)
         self.SPname = _spec_arg("SPname", kwargs, 0)
         self.TToffset = _spec_arg("TToffset", kwargs, 1)

@@ -1,6 +1,8 @@
 import numpy as np
 import logging
 from falco import utils
+from falco.masks import falco_gen_vortex_mask
+from scipy.signal import tukey
 
 log = logging.getLogger(__name__)
 
@@ -235,3 +237,77 @@ def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering=
     scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_pup, post])
+
+
+def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
+    """
+    Function to propagate from the pupil plane before a vortex FPM to the pupil 
+    plane after it.
+    """
+
+    # showPlots2debug = False 
+
+    D = 2.0*apRad
+    lambdaOverD = 4. # samples per lambda/D
+    
+    NA = IN.shape[1]
+    NB = lambdaOverD*D
+    
+    [X,Y] = np.meshgrid(np.arange(-NB/2.,NB/2,dtype=float),np.arange(-NB/2.,NB/2,dtype=float))
+    [RHO,THETA] = utils.cart2pol(Y,X)    
+   
+    windowKnee = 1.-inVal/outVal
+    
+    windowMASK1 = falco_gen_Tukey4vortex( 2*outVal*lambdaOverD, RHO, windowKnee )
+    windowMASK2 = falco_gen_Tukey4vortex( NB, RHO, windowKnee )
+
+    # DFT vectors 
+    x = np.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D
+    u1 = np.arange(-NB/2,NB/2,dtype=float)/lambdaOverD #(-NB/2:NB/2-1)/lambdaOverD
+    u2 = np.arange(-NB/2,NB/2,dtype=float)*2*outVal/NB # (-NB/2:NB/2-1)*2*outVal/N
+    
+    FPM = falco_gen_vortex_mask( charge, NB )
+
+    #if showPlots2debug; figure;imagesc(abs(IN));axis image;colorbar; title('pupil'); end;
+
+    ## Low-sampled DFT of entire region
+
+    FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size)) @ IN @ np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size))
+    #if showPlots2debug; figure;imagesc(log10(abs(FP1).^2));axis image;colorbar; title('Large scale DFT'); end;
+
+    LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size)) @ (FP1*FPM*(1-windowMASK1)) @ np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size))
+    #if showPlots2debug; figure;imagesc(abs(FP1.*(1-windowMASK1)));axis image;colorbar; title('Large scale DFT (windowed)'); end;
+    
+    ## Fine sampled DFT of innter region
+    FP2 = 2*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*u2.reshape(u2.size,1)
+    @ x.reshape(1,x.size)) @ IN @ np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size))
+    #if showPlots2debug; figure;imagesc(log10(abs(FP2).^2));axis image;colorbar; title('Fine sampled DFT'); end;
+    FPM = falco_gen_vortex_mask(charge, NB)
+    LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size)) @ (FP2*FPM*windowMASK2) @ np.exp(-1j*2*np.pi*u2.reshape(u2.size,1) @ x.reshape(1,x.size))       
+    #if showPlots2debug; figure;imagesc(abs(FP2.*windowMASK2));axis image;colorbar; title('Fine sampled DFT (windowed)'); end;
+    OUT = LP1 + LP2;
+    #if showPlots2debug; figure;imagesc(abs(OUT));axis image;colorbar; title('Lyot plane'); end;
+
+    return OUT
+
+
+def falco_gen_Tukey4vortex( Nwindow, RHO, alpha ):
+#% REQUIRED INPUTS: 
+#% Nwindow =
+#% RHO = 
+#% alpha  = 
+#%
+#% OUTPUTS:
+#%  w:     2-D square array of the specified Tukey window
+#%
+#% Written by Garreth Ruane.
+#
+#function w = falco_gen_Tukey4vortex( Nwindow, RHO, alpha )
+
+    Nlut = int(10*Nwindow)
+    rhos0 = np.linspace(-Nwindow/2,Nwindow/2,Nlut)
+    lut = tukey(Nlut,alpha)#,left=0,right=0)
+    
+    w = np.interp(RHO,rhos0,lut)
+
+    return w

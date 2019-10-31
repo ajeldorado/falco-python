@@ -7,3 +7,4 @@ from .dms import *
 from .setups import *
 from .propcustom import *
 from .zernikes import *
+from .segmentutils import *

@@ -176,7 +176,7 @@ def falco_init_ws(mp, config=None):
         mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2,1+mp.fracBWcent2cent/2,mp.Nsbp); #--Space evenly at the centers of the subbandpasses.
     mp.sbp_weights = mp.sbp_weights/np.sum(mp.sbp_weights); #--Normalize the sum of the weights
     
-    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f# total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
+    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f%% total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
     print('Sub-bandpasses are centered at wavelengths [nm]:\t ',end='')
     print(1e9*mp.sbp_centers)
  
@@ -383,7 +383,7 @@ def falco_init_ws(mp, config=None):
         maskCorr.shape = mp.Fend.shape
     
     #--Compact Model: Generate Software Mask for Correction 
-    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);
+    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.masks.falco_gen_SW_mask(maskCorr);
     mp.Fend.corr.settings = maskCorr; #--Store values for future reference
     #--Size of the output image 
     #--Need the sizes to be the same for the correction and scoring masks
@@ -418,7 +418,7 @@ def falco_init_ws(mp, config=None):
         maskF5["centering"] = mp.centering;
         maskF5["FOV"] = mp.F5.FOV;
         maskF5["whichSide"] = mp.Fend.sides;
-        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.masks.falco_gen_SW_mask(**maskF5);
+        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.masks.falco_gen_SW_mask(maskF5);
     
         #--Size of the output image in F5
         mp.F5.Nxi = mp.F5.mask.shape[1] #size(mp.F5.mask, 2);
@@ -436,7 +436,7 @@ def falco_init_ws(mp, config=None):
         maskFiberCore["angDeg"] = 180;
         maskFiberCore["FOV"] = mp.F5.FOV;
         maskFiberCore["whichSide"] = mp.Fend.sides;
-        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskFiberCore);
+        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCore);
     
         maskFiberCladding["pixresFP"] = mp.F5.res;
         maskFiberCladding["rhoInner"] = mp.fiber.a;
@@ -444,7 +444,7 @@ def falco_init_ws(mp, config=None):
         maskFiberCladding["angDeg"] = 180;
         maskFiberCladding["FOV"] = mp.F5.FOV;
         maskFiberCladding["whichSide"] = mp.Fend.sides;
-        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskFiberCladding);
+        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCladding);
     
         F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
     
@@ -465,7 +465,7 @@ def falco_init_ws(mp, config=None):
     if not hasattr(mp.Fend.eval,'res'):  
         mp.Fend.eval.res = 10
     maskCorr["pixresFP"] = mp.Fend.eval.res; #--Assign the resolution
-    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(**maskCorr);  #--Generate the mask
+    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(maskCorr);  #--Generate the mask
     mp.Fend.eval.Nxi  = mp.Fend.eval.mask.shape[1]
     mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
     mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res; # higher sampling at Fend.for evaulation [meters]
@@ -493,7 +493,7 @@ def falco_init_ws(mp, config=None):
         maskScore["shape"] = mp.Fend.shape
     #--Compact Model: Generate Software Mask for Scoring Contrast 
     maskScore["pixresFP"] = mp.Fend.res;
-    mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskScore);
+    mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskScore);
     mp.Fend.score.settings = maskScore; #--Store values for future reference
     
     #--Number of pixels used in the dark hole
@@ -538,7 +538,7 @@ def falco_init_ws(mp, config=None):
             dx1 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
             pitch1 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
     
-            mp.dm1.inf0 = hdul[0].data[0,:,:]
+            mp.dm1.inf0 = np.squeeze(hdul[0].data) #hdul[0].data[0,:,:]
         mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1);
     
         if mp.dm1.inf_sign[0] in ['-','n','m']:
@@ -559,7 +559,7 @@ def falco_init_ws(mp, config=None):
             dx2 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
             pitch2 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
     
-            mp.dm2.inf0 = hdul[0].data[0,:,:]
+            mp.dm2.inf0 = np.squeeze(hdul[0].data)
         mp.dm2.dx_inf0 = mp.dm2.dm_spacing*(dx2/pitch2);
     
         if mp.dm2.inf_sign[0] in ['-','n','m']:
@@ -932,6 +932,7 @@ def falco_wfsc_loop(mp):
 #            if(Itr==1):
 #                plt.ion()
 #                plt.show()
+            plt.figure(1)
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
             fig.subplots_adjust(hspace=0.4, wspace=0.0)
             fig.suptitle(mp.coro+': Iteration %d'%Itr)
@@ -958,6 +959,7 @@ def falco_wfsc_loop(mp):
             ax4.tick_params(labelbottom=False,labelleft=False,bottom=False,left=False)
             cbar4 = fig.colorbar(im4, ax = ax4)
             
+            plt.show()
             plt.pause(0.1)
             
         ## Updated selection of Zernike modes targeted by the controller
@@ -1554,6 +1556,8 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
         pool = multiprocessing.Pool(processes=mp.Nthreads)
         results = [pool.apply_async(falco_ctrl_EFC_base, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
         results_ctrl = [p.get() for p in results] #--All the Jacobians in a list
+        pool.close()
+        pool.join()
         
         #--Convert from a list to arrays:
         for ni in range(Nvals):
@@ -1649,7 +1653,7 @@ def falco_ctrl_EFC_base(ni,vals_list,mp,cvar):
     
     #--Take images and compute average intensity in dark hole
     if(mp.ctrl.flagUseModel): #--Perform a model-based grid search using the compact model
-        Itotal = falco.imaging.falco_get_expected_summed_image(mp,cvar)
+        Itotal = falco.imaging.falco_get_expected_summed_image(mp,cvar,dDM)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
     else: #--Perform an empirical grid search with actual images from the testbed or full model
         Itotal = falco.imaging.falco_get_summed_image(mp)
