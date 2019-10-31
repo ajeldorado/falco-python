@@ -7,4 +7,5 @@ from .dms import *
 from .setups import *
 from .propcustom import *
 from .zernikes import *
+from . import models
 from .segmentutils import *
