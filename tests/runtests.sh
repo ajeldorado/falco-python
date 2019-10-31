@@ -1,1 +1,1 @@
-python3 -m pytest test_units.py -v -s
+python3 -m pytest -v -s

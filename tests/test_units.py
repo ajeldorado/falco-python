@@ -116,10 +116,27 @@ class TestUtils:
         pass
 
     def test__spec_arg(cls):
-        pass
+        
+        kwargs = {"logGmin" : 545}
+        val = falco.utils._spec_arg("logGmin", kwargs, -6)
+
+        assert val == 545
+
+    def test__spec_argi_unfoundArg(cls):
+        
+        kwargs = {"blahblah" : 545}
+        val = falco.utils._spec_arg("logGmin", kwargs, -6)
+
+        assert val == -6
 
     def test_broadcast(cls):
-        pass
+        a = np.zeros((10,))
+        x, y = falco.utils.broadcast(a)
+        assert x.shape[0] == 1
+        assert x.shape[1] == 10
+
+        assert y.shape[0] == 10
+        assert y.shape[1] == 1
 
     def test_radial_grid(cls):
         pass
