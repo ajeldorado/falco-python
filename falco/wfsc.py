@@ -176,7 +176,7 @@ def falco_init_ws(mp, config=None):
         mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2,1+mp.fracBWcent2cent/2,mp.Nsbp); #--Space evenly at the centers of the subbandpasses.
     mp.sbp_weights = mp.sbp_weights/np.sum(mp.sbp_weights); #--Normalize the sum of the weights
     
-    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f# total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
+    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f%% total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
     print('Sub-bandpasses are centered at wavelengths [nm]:\t ',end='')
     print(1e9*mp.sbp_centers)
  
@@ -932,6 +932,7 @@ def falco_wfsc_loop(mp):
 #            if(Itr==1):
 #                plt.ion()
 #                plt.show()
+            plt.figure(1)
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
             fig.subplots_adjust(hspace=0.4, wspace=0.0)
             fig.suptitle(mp.coro+': Iteration %d'%Itr)
@@ -958,6 +959,7 @@ def falco_wfsc_loop(mp):
             ax4.tick_params(labelbottom=False,labelleft=False,bottom=False,left=False)
             cbar4 = fig.colorbar(im4, ax = ax4)
             
+            plt.show()
             plt.pause(0.1)
             
         ## Updated selection of Zernike modes targeted by the controller
