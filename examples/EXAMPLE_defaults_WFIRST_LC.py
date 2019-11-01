@@ -155,8 +155,8 @@ mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 ## - 'influence_BMC_2kDM_400micron_res10.fits' for BMC 2k DM
 ## - 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
 
-mp.dm1.inf_fn = 'influence_dm5v2.fits';
-mp.dm2.inf_fn = 'influence_dm5v2.fits';
+mp.dm1.inf_fn = falco.INFLUENCE_DM5V2
+mp.dm2.inf_fn = falco.INFLUENCE_DM5V2
 
 mp.dm1.dm_spacing = 0.9906e-3;#1e-3; #--User defined actuator pitch
 mp.dm2.dm_spacing = 0.9906e-3;#1e-3; #--User defined actuator pitch
