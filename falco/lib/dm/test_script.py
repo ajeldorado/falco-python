@@ -7,14 +7,8 @@ import pdb
 import numpy as np
 #import scipy.io as sio
 
-<<<<<<< HEAD
-#sys.path.append('y:/src/Falco/falco-python/falco/')
-sys.path.append('/home/dmarx/src/Falco/falco-python/falco/')
-import config.init_from_mat
-=======
 # sys.path.append('y:/src/Falco/falco-python/falco/')
 import falco.config.init_from_mat
->>>>>>> 4acca5537dfa35deb224c5802d115f85553d0997
 
 from falco_gen_dm_poke_cube import *  # falco_gen_dm_poke_cube
 
