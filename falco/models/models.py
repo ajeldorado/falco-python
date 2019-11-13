@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 log = logging.getLogger(__name__)
 
-def model_full(mp,modvar,**kwargs):
+def model_full(mp,modvar,isNorm=True):
+#def model_full(mp,modvar,**kwargs):
     """
     Truth model used to generate images in simulation.
     
@@ -21,20 +22,14 @@ def model_full(mp,modvar,**kwargs):
         Structure containing optical model parameters
     modvar : ModelVariables
         Structure containing temporary optical model variables
-
+    isNorm : bool
+        If False, return an unnormalized image. If True, return a 
+        normalized image with the currently stored norm value.
+        
     Returns
     -------
     Eout : numpy ndarray
         2-D electric field in final focal plane
-        
-    Other Parameters
-    ----------------
-    GETNORM : bool
-        If set, the PSF normalization factor will be computed and assigned.
-    NORMOFF : bool
-        If set, the PSF normalization factor is set to 1. This is useful for a standalone 
-        call to model_full.
-
     """
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
@@ -43,11 +38,7 @@ def model_full(mp,modvar,**kwargs):
         normFac = mp.Fend.full.I00[modvar.sbpIndex,modvar.wpsbpIndex] #--Value to normalize the PSF. Set to 0 when finding the normalization factor
 
     #--Optional Keyword arguments
-    if ("GETNORM" in kwargs and kwargs["GETNORM"]):
-        normFac = 0.
-    
-    if ("NORMOFF" in kwargs and kwargs["NORMOFF"]):
-        normFac = 1.
+    if not isNorm: normFac = 0.
         
     #--Set the wavelength
     if(hasattr(modvar,'wvl')): #--For FALCO or for standalone use of full model
@@ -275,7 +266,7 @@ def model_full_scale(mp, wvl, Ein, normFac):
     pass  
      
         
-def model_compact(mp,modvar,**kwargs):
+def model_compact(mp,modvar,isNorm=True,isEvalMode=False):
     """
     Simplified (aka compact) model used by estimator and controller.
     
@@ -289,21 +280,17 @@ def model_compact(mp,modvar,**kwargs):
         Structure containing optical model parameters
     modvar : ModelVariables
         Structure containing temporary optical model variables
+    isNorm : bool
+        If False, return an unnormalized image. If True, return a 
+        normalized image with the currently stored norm value.
+    isEvalMode : bool
+        If set, uses a higher resolution in the focal plane for 
+        measuring performance metrics such as throughput.
 
     Returns
     -------
     Eout : array_like
         2-D electric field in final focal plane
-        
-    Other Parameters
-    ----------------
-    GETNORM : bool
-        If set, the PSF normalization factor will be computed and assigned.
-    NORMOFF :  bool
-        If set, the PSF normalization factor is set to 1. This is useful for a standalone 
-        call to model_full.
-    EVAL : bool
-        If set, uses a higher resolution in the focal plane for measuring performance.
 
     """
     if type(mp) is not falco.config.ModelParameters:
@@ -314,20 +301,13 @@ def model_compact(mp,modvar,**kwargs):
     # Set default values of input parameters
     normFac = mp.Fend.compact.I00[modvar.sbpIndex] # Value to normalize the PSF. Set to 0 when finding the normalization factor
     flagEval = False # flag to use a different (usually higher) resolution at final focal plane for evaluation
-    flagNewNorm = False
 
     #--Optional Keyword arguments
-    if ("GETNORM" in kwargs and kwargs["GETNORM"]):
-        normFac = 0.
-        flagNewNorm = True
-    if ("NORMOFF" in kwargs and kwargs["NORMOFF"]):
-        normFac = 1.
-    if ("EVAL" in kwargs and kwargs["EVAL"]):
-        flagEval = True
-        
+    if not isNorm: normFac = 0.
+    if isEvalMode: flagEval = True        
 
     #--Normalization factor for compact evaluation model
-    if( (flagNewNorm==False) and (flagEval==True) ):
+    if(isNorm and isEvalMode):
         normFac = mp.Fend.eval.I00[modvar.sbpIndex] # Value to normalize the PSF. Set to 0 when finding the normalization factor
 
     #--Set the wavelength

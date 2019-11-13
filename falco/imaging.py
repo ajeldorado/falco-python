@@ -37,13 +37,13 @@ def falco_get_PSF_norm_factor(mp):
     #--Compact Model Normalizations
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.models.model_compact(mp, modvar,GETNORM=True)
+        Etemp = falco.models.model_compact(mp, modvar,isNorm=False)
         mp.Fend.compact.I00[si] = (np.abs(Etemp)**2).max()
 
     #--Compact Evaluation Model Normalizations
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.models.model_compact(mp, modvar,GETNORM=True,EVAL=True)
+        Etemp = falco.models.model_compact(mp, modvar,isNorm=False,isEvalMode=True)
         mp.Fend.eval.I00[si] = (np.abs(Etemp)**2).max()
 
     #--Full Model Normalizations (at points for entire-bandpass evaluation)
@@ -52,7 +52,7 @@ def falco_get_PSF_norm_factor(mp):
             for wi in range(mp.Nwpsbp):
                 modvar.sbpIndex = si
                 modvar.wpsbpIndex = wi
-                Etemp = falco.models.model_full(mp, modvar,GETNORM=True)
+                Etemp = falco.models.model_full(mp, modvar,isNorm=False)
                 mp.Fend.full.I00[si,wi] = (np.abs(Etemp)**2).max()
 
 
@@ -367,7 +367,7 @@ def falco_get_testbed_sbp_image(mp, si):
 
     pass
 
-def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
+def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
     """
     Function to return the broadband intensity for the compact model.
 
@@ -376,15 +376,14 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
     mp: falco.config.ModelParameters
         Structure of model parameters
     x_offset: int
-        lateral offset (in xi) of the stellar PSF in the focal plane. [lambda0/D]
+        lateral offset (in xi) of the stellar PSF in the focal plane. 
+        [lambda0/D]
     y_offset: int
-        vertical offset (in eta) of the stellar PSF in the focal plane. [lambda0/D]
-
-    Other Parameters
-    ----------------
-    EVAL : bool
-       Switch that tells function to run at a higher final focal plane resolution when 
-       evaluating throughput.
+        vertical offset (in eta) of the stellar PSF in the focal plane. 
+        [lambda0/D]
+    isEvalMode : bool
+       Switch that tells function to run at a higher final focal plane 
+       resolution when evaluating throughput.
 
     Returns
     -------
@@ -396,10 +395,7 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     #--Optional Keyword arguments
-    if( ("EVAL" in kwargs and kwargs["EVAL"]) or ("eval" in kwargs and kwargs["eval"]) ):
-        flagEval = True # flag to use a different (usually higher) resolution at final focal plane for evaluation
-    else:
-        flagEval = False 
+#    flagEval = True if isEvalMode else False
           
     modvar = falco.config.Object()
     modvar.whichSource = 'offaxis'
@@ -411,7 +407,7 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, **kwargs):
     Iout = 0. #--Initialize output
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        E2D = falco.models.model_compact(mp, modvar, EVAL=flagEval )            
+        E2D = falco.models.model_compact(mp, modvar, isEvalMode=isEvalMode )            
         Iout = Iout + (np.abs(E2D)**2)*mp.jac.weightMat[si,0]
 
     return Iout

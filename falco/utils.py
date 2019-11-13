@@ -337,7 +337,7 @@ def falco_compute_thput(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
 
-    ImSimOffaxis = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,EVAL=True)
+    ImSimOffaxis = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,isEvalMode=True)
     #if(mp.flagPlot): figure(324); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,ImSimOffaxis); axis xy equal tight; title('Off-axis PSF for Throughput Calculation','Fontsize',20); set(gca,'Fontsize',20); colorbar; drawnow;  end
 
     if(mp.thput_metric.lower()=='hmi'): #--Absolute energy within half-max isophote(s)
