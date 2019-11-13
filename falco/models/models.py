@@ -832,11 +832,11 @@ def model_Jacobian_LC(mp,im,idm):
                     y_box = -1*y_box[::-1]
                
                 #--Matrices for the MFT from the pupil P3 to the focal plane mask
-                rect_mat_pre = (np.exp(-2*np.pi*1j*(mp.F3.compact.etas.reshape(mp.F3.compact.etas.size,1)@y_box.reshape(1,y_box.size))/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
-                rect_mat_post  = (np.exp(-2*np.pi*1j*(x_box.reshape(x_box.size,1)@mp.F3.compact.xis.reshape(1,mp.F3.compact.xis.size))/(wvl*mp.fl)))
-    
+                rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas,y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
+                rect_mat_post  = (np.exp(-2*np.pi*1j*np.outer(x_box,mp.F3.compact.xis)/(wvl*mp.fl)))
+
                 #--MFT from pupil P3 to FPM
-                EF3 = rect_mat_pre@dEP3box@rect_mat_post; # MFT to FPM
+                EF3 = rect_mat_pre @ dEP3box @ rect_mat_post; # MFT to FPM
                 EF3 = (1.-mp.F3.compact.mask.amp)*EF3; #--Propagate through (1-complex FPM) for Babinet's principle
     
                 #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
@@ -905,11 +905,11 @@ def model_Jacobian_LC(mp,im,idm):
 #                y_box = (-1)^mp.Nrelay2to3*rot90(y_box,2*mp.Nrelay2to3); #--Negate and rotate coordinates to effectively rotate by 180 degrees. No change if 360 degree rotation.
                 
                 #--Matrices for the MFT from the pupil P3 to the focal plane mask
-                rect_mat_pre = (np.exp(-2*np.pi*1j*(mp.F3.compact.etas.reshape(mp.F3.compact.etas.size,1)@y_box.reshape(1,y_box.size))/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
-                rect_mat_post  = (np.exp(-2*np.pi*1j*(x_box.reshape(x_box.size,1)@mp.F3.compact.xis.reshape(1,mp.F3.compact.xis.size))/(wvl*mp.fl)))
+                rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas,y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
+                rect_mat_post  = (np.exp(-2*np.pi*1j*np.outer(x_box,mp.F3.compact.xis)/(wvl*mp.fl)))
     
                 #--MFT from pupil P3 to FPM
-                EF3 = rect_mat_pre@dEP3box@rect_mat_post # MFT to FPM
+                EF3 = rect_mat_pre @ dEP3box @ rect_mat_post # MFT to FPM
                 EF3 = (1-mp.F3.compact.mask.amp)*EF3 #--Propagate through ( 1 - (complex FPM) ) for Babinet's principle
     
                 #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
