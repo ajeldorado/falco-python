@@ -686,7 +686,7 @@ def falco_init_ws(mp, config=None):
     modvar.whichSource = 'star';
     
     #SFF NOTE:  Since we not plotting at the moment I will comment out
-    #E0c = model_compact(mp, modvar);
+    #E0c = falco.model.compact(mp, modvar);
     #I0c = np.abs(E0c)**2;
     if mp.flagPlot:
         #figure(501); imagesc(log10(I0c)); axis xy equal tight; colorbar;
@@ -1031,7 +1031,7 @@ def falco_wfsc_loop(mp):
             cvar.flagRelin=False;
         
         if  Itr==0 or cvar.flagRelin:
-            jacStruct =  falco.models.model_Jacobian(mp); #--Get structure containing Jacobians
+            jacStruct =  falco.model.jacobian(mp); #--Get structure containing Jacobians
         
         ## Modify jacStruct to cull actuators, but only if(cvar.flagCullAct && cvar.flagRelin)
         falco_ctrl_cull(mp,cvar,jacStruct);
@@ -1275,7 +1275,7 @@ def falco_est_perfect_Efield_with_Zernikes(mp):
         EmatSbp = np.zeros((mp.Fend.corr.Npix, mp.Nwpsbp),dtype=complex)
         for wi in range(mp.Nwpsbp):
             modvar.wpsbpIndex = wi
-            E2D = falco.models.model_full(mp, modvar)
+            E2D = falco.model.full(mp, modvar)
             EmatSbp[:,wi] = mp.full.lambda_weights[wi]*E2D[mp.Fend.corr.maskBool] #--Actual field in estimation area. Apply spectral weight within the sub-bandpass
         Emat[:,im] = np.sum(EmatSbp,axis=1)
     

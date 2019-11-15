@@ -6,7 +6,7 @@ import falco.utils
 from falco.utils import _spec_arg
 #from falco.config import DeformableMirrorParameters
 import collections
-from falco import models
+from falco import model
 
 class Object(object):
     pass

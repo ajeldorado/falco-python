@@ -154,7 +154,7 @@ def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
     modvar.wpsbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],1]
     mp.full.polaxis = mp.full.pol_conds[ipol]
     modvar.whichSource = 'star'
-    Estar = falco.models.model_full(mp,modvar)
+    Estar = falco.model.full(mp,modvar)
     
     return Estar
 
@@ -222,7 +222,7 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
         ZernMap = falco.utils.padOrCropEven(ZernMap,mp.P1.full.Narr) #--Adjust zero padding if necessary
         mp.P1.full.E[:,:,wi,si] = np.exp(1j*2*np.pi/mp.full.lambdasMat[si,wi]*mp.full.ZrmsVal*ZernMap)*np.squeeze(mp.P1.full.E[:,:,wi,si])
         
-    Estar = falco.models.model_full(mp,modvar)
+    Estar = falco.model.full(mp,modvar)
     mp.P1.full.E = E0 # Reset to original value
 
     return Estar

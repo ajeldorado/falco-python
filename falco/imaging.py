@@ -37,13 +37,13 @@ def falco_get_PSF_norm_factor(mp):
     #--Compact Model Normalizations
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.models.model_compact(mp, modvar,isNorm=False)
+        Etemp = falco.model.compact(mp, modvar,isNorm=False)
         mp.Fend.compact.I00[si] = (np.abs(Etemp)**2).max()
 
     #--Compact Evaluation Model Normalizations
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.models.model_compact(mp, modvar,isNorm=False,isEvalMode=True)
+        Etemp = falco.model.compact(mp, modvar,isNorm=False,isEvalMode=True)
         mp.Fend.eval.I00[si] = (np.abs(Etemp)**2).max()
 
     #--Full Model Normalizations (at points for entire-bandpass evaluation)
@@ -52,7 +52,7 @@ def falco_get_PSF_norm_factor(mp):
             for wi in range(mp.Nwpsbp):
                 modvar.sbpIndex = si
                 modvar.wpsbpIndex = wi
-                Etemp = falco.models.model_full(mp, modvar,isNorm=False)
+                Etemp = falco.model.full(mp, modvar,isNorm=False)
                 mp.Fend.full.I00[si,wi] = (np.abs(Etemp)**2).max()
 
 
@@ -162,13 +162,13 @@ def falco_get_sim_sbp_image(mp, si):
         modvar.sbpIndex   = si
         modvar.wpsbpIndex = wi
         modvar.whichSource = 'star'
-        Estar = falco.models.model_full(mp, modvar)
+        Estar = falco.model.full(mp, modvar)
         Iout = np.abs(Estar)**2 #--Apply spectral weighting outside this function
 
         #--Optionally include the planet PSF
         if(mp.planetFlag):
             modvar.whichSource = 'exoplanet'
-            Eplanet = falco.models.model_full(mp,modvar)
+            Eplanet = falco.model.full(mp,modvar)
             Iout = Iout + np.abs(Eplanet)**2 #--Apply spectral weighting outside this function
 
         #--Apply weight within the sub-bandpass. Assume polarizations are evenly weigted.
@@ -235,7 +235,7 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
     modvar.wpsbpIndex = 0 #--Dummy, placeholder value
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.models.model_compact(mp, modvar)
+        Etemp = falco.model.compact(mp, modvar)
         EnewTempVecArray[:,si] = Etemp[mp.Fend.corr.maskBool]
     
     #--Revert to the previous DM commands
@@ -249,7 +249,7 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
     modvar.wpsbpIndex = 0 #--Dummy, placeholder value
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.models.model_compact(mp, modvar)
+        Etemp = falco.model.compact(mp, modvar)
         EoldTempVecArray[:,si] = Etemp[mp.Fend.corr.maskBool]
     
     #--Compute the expected new 2-D intensity image
@@ -407,7 +407,7 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
     Iout = 0. #--Initialize output
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        E2D = falco.models.model_compact(mp, modvar, isEvalMode=isEvalMode )            
+        E2D = falco.model.compact(mp, modvar, isEvalMode=isEvalMode )            
         Iout = Iout + (np.abs(E2D)**2)*mp.jac.weightMat[si,0]
 
     return Iout
