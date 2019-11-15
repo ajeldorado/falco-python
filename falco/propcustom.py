@@ -45,41 +45,9 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
         E_out = E_in
         
     return E_out
-    
-def propcustom_2FT(E_in, centering='pixel'):
-    """
-    Propagate a field using two successive Fourier transforms, without any intermediate mask
-    multiplications.
-
-    Parameters
-    ----------
-    E_in : numpy ndarray
-        Input electric field
-    centering : string
-        Whether the input field is pixel-centered or inter-pixel-centered.  If
-        inter-pixel-centered, then the output is simply a scaled version of the input, flipped in
-        the vertical and horizontal directions.  If pixel-centered, the output is also shifted by 1
-        pixel in both directions after flipping, to ensure that the origin remains at the same
-        pixel as in the input array.
-
-    Returns
-    -------
-    array_like
-        The input array, after propagation with two Fourier transforms.
-
-    """
-    if centering not in _VALID_CENTERING:
-        raise ValueError(_CENTERING_ERR)
-
-    E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
-
-    if centering == 'pixel':
-        E_out = np.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
-
-    return E_out
 
 
-def propcustom_PTP(E_in, full_width, lambda_, dz):
+def propcustom_PTP(E_in, full_width, wavelength, dz):
     """
     Propagate an electric field array using the angular spectrum technique.
 
@@ -89,7 +57,7 @@ def propcustom_PTP(E_in, full_width, lambda_, dz):
         Square (i.e. NxN) input array.
     full_width : float
         The width along each side of the array [meters]
-    lambda_ : float
+    wavelength : float
         Propagation wavelength [meters]
     dz : float
         Propagation distance [meters]
@@ -102,7 +70,7 @@ def propcustom_PTP(E_in, full_width, lambda_, dz):
     """
     M, N = E_in.shape
     dx = full_width / N
-    N_critical = int(np.floor(lambda_ * np.abs(dz) / (dx ** 2)))  # Critical sampling
+    N_critical = int(np.floor(wavelength * np.abs(dz) / (dx ** 2)))  # Critical sampling
 
     if M != N:  # Input array is not square
         raise ValueError('Input array is not square')
@@ -118,13 +86,13 @@ def propcustom_PTP(E_in, full_width, lambda_, dz):
     fx = np.arange(-N // 2, N // 2) / full_width
     rho = utils.radial_grid(fx)  # Spatial frequency coordinate grid
 
-    kernel = np.fft.fftshift(np.exp(-1j * np.pi * lambda_ * dz * (rho ** 2)))
+    kernel = np.fft.fftshift(np.exp(-1j * np.pi * wavelength * dz * (rho ** 2)))
     intermediate = np.fft.fftn(np.fft.fftshift(E_in))
 
     return np.fft.ifftshift(np.fft.ifftn(kernel * intermediate))
 
 
-def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel'):
+def propcustom_mft_FtoP(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
     """
     Propagate a field from a focal plane to a pupil plane, using a matrix-multiply DFT.
 
@@ -134,7 +102,7 @@ def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel')
         Electric field array in focal plane
     fl : float
         Focal length of Fourier transforming lens
-    lambda_ : float
+    wavelength : float
         Propagation wavelength
     dxi : float
         Step size along horizontal axis of focal plane
@@ -170,16 +138,16 @@ def propcustom_mft_FtoP(E_foc, fl, lambda_, dxi, deta, dx, N, centering='pixel')
     y = x.T  # Column vector
 
     # Fourier transform matrices
-    pre = np.exp(-2 * np.pi * 1j * (y * eta) / (lambda_ * fl))
-    post = np.exp(-2 * np.pi * 1j * (xi * x) / (lambda_ * fl))
+    pre = np.exp(-2 * np.pi * 1j * (y * eta) / (wavelength * fl))
+    post = np.exp(-2 * np.pi * 1j * (xi * x) / (wavelength * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_foc, post])
 
 
-def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering='pixel'):
+def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
     """
     Propagate a field from a pupil plane to a focal plane, using a matrix-multiply DFT.
 
@@ -189,7 +157,7 @@ def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering=
         Electric field array in pupil plane
     fl : float
         Focal length of Fourier transforming lens
-    lambda_ : float
+    wavelength : float
         Propagation wavelength
     dx : float
         Step size along either axis of focal plane.  The vertical and horizontal step sizes are
@@ -230,11 +198,11 @@ def propcustom_mft_PtoF(E_pup, fl, lambda_, dx, dxi, Nxi, deta, Neta, centering=
     eta = utils.create_axis(Neta, deta, centering=centering)[:, None]  # Broadcast to column vector
 
     # Fourier transform matrices
-    pre = np.exp(-2 * np.pi * 1j * (eta * y) / (lambda_ * fl))
-    post = np.exp(-2 * np.pi * 1j * (x * xi) / (lambda_ * fl))
+    pre = np.exp(-2 * np.pi * 1j * (eta * y) / (wavelength * fl))
+    post = np.exp(-2 * np.pi * 1j * (x * xi) / (wavelength * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * lambda_ * fl)
+    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
 
     return scaling * np.linalg.multi_dot([pre, E_pup, post])
 
@@ -273,20 +241,16 @@ def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
     ## Low-sampled DFT of entire region
 
     FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*np.outer(u1,x)) @ IN @ np.exp(-1j*2*np.pi*np.outer(x,u1))
-#    FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size)) @ IN @ np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size))
     #if showPlots2debug; figure;imagesc(log10(abs(FP1).^2));axis image;colorbar; title('Large scale DFT'); end;
 
     LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*np.outer(x,u1)) @ (FP1*FPM*(1-windowMASK1)) @ np.exp(-1j*2*np.pi*np.outer(u1,x))
-#    LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u1.reshape(1,u1.size)) @ (FP1*FPM*(1-windowMASK1)) @ np.exp(-1j*2*np.pi*u1.reshape(u1.size,1) @ x.reshape(1,x.size))
     #if showPlots2debug; figure;imagesc(abs(FP1.*(1-windowMASK1)));axis image;colorbar; title('Large scale DFT (windowed)'); end;
     
     ## Fine sampled DFT of innter region
     FP2 = 2*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*np.outer(u2,x)) @ IN @ np.exp(-1j*2*np.pi*np.outer(x,u2))
-#    FP2 = 2*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*u2.reshape(u2.size,1) @ x.reshape(1,x.size)) @ IN @ np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size))
     #if showPlots2debug; figure;imagesc(log10(abs(FP2).^2));axis image;colorbar; title('Fine sampled DFT'); end;
     FPM = falco_gen_vortex_mask(charge, NB)
     LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*np.outer(x,u2)) @ (FP2*FPM*windowMASK2) @ np.exp(-1j*2*np.pi*np.outer(u2,x))       
-#    LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*x.reshape(x.size,1) @ u2.reshape(1,u2.size)) @ (FP2*FPM*windowMASK2) @ np.exp(-1j*2*np.pi*u2.reshape(u2.size,1) @ x.reshape(1,x.size))       
     #if showPlots2debug; figure;imagesc(abs(FP2.*windowMASK2));axis image;colorbar; title('Fine sampled DFT (windowed)'); end;
     OUT = LP1 + LP2;
     #if showPlots2debug; figure;imagesc(abs(OUT));axis image;colorbar; title('Lyot plane'); end;

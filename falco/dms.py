@@ -201,7 +201,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
             'C2CDX_M' % actuator pitch x (m)
             'C2CDY_M' % actuator pitch y (m)
     
-    inf_sign : string
+    inf_sign : {+,-}
         specifies the sign (+/-) of the influence function. Given as an option because 
         the default influence function file is positive, but positive DM actuator 
         commands make a negative deformation for Xinetics and BMC DMs.
@@ -249,7 +249,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     if "inf_fn" in kwargs:
         inf_fn = kwargs["inf_fn"]
     else:
-        inf_file = "influence_dm5v2.fits"
+        inf_fn = "influence_dm5v2.fits"
         
     if "inf_sign" in kwargs:
         if(kwargs["inf_sign"]=='+'):
@@ -266,7 +266,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     # influence function sampling is 0.1 mm, peak at (x,y)=(45,45)
     # Influence function has shape = 1x91x91. Saving it as a 2D array
     # before continuing with processing
-    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "lib", "dm" )
+    dir_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "data" )
     inf = proper.prop_fits_read(os.path.join(dir_path, inf_fn))
     inf = sign_factor*np.squeeze(inf)    
     

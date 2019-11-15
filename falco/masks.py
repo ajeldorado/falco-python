@@ -389,28 +389,6 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     return pupil
 
 
-def falco_gen_pupil_WFIRST_20180103(Nbeam, centering, rot180deg=False):
-    pupil_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              "pupil_WFIRST_CGI_20180103.png")
-    pupil0 = scipy.misc.imread(pupil_file)
-    pupil0 = np.rot90(pupil0, 2 + 2 * rot180deg)
-
-    pupil1 = np.sum(pupil0, axis=2)
-    pupil1 = pupil1/np.max(pupil1)
-
-    # Temporarily using 0th order interpolation to ensure the result is identical to MATLAB's.
-    # In MATLAB code, this is equivalent to floor(interp2(Xs0,Xs0.',pupil1,Xs1,Xs1.','nearest',0));
-    if centering in ("interpixel", "even"):
-        xs = np.arange(0, Nbeam + 1) * len(pupil1) / float(Nbeam)
-        Xs = np.meshgrid(xs, xs, indexing="ij")
-        return np.floor(scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False))
-    else:
-        xs = np.arange(0, Nbeam + 1) * len(pupil1) / float(Nbeam) - 0.5
-        Xs = np.meshgrid(xs, xs, indexing="ij")
-        temp = np.floor(scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False))
-        return np.pad(temp, ((1, 0), (1, 0)), "constant", constant_values=(0, 0))
-
-
 def falco_gen_SW_mask(inputs):
     """
     Function to generate binary (0-1) software masks for the focal plane. 
