@@ -154,7 +154,11 @@ def padOrCropEven(Ain, Ndes, **kwargs):
         raise ValueError('Wrong number of dimensions specified for output')
 
     if min(Nx0, Ny0) > Ndes:  # Output array is smaller than input, so crop
-        Aout = Ain[(Ny0 - Ndes) // 2:(Ny0 + Ndes) // 2, (Nx0 - Ndes) // 2:(Nx0 + Ndes) // 2]
+        if Ndes%2==0:
+            Aout = Ain[(Ny0 - Ndes) // 2:(Ny0 + Ndes) // 2, (Nx0 - Ndes) // 2:(Nx0 + Ndes) // 2]
+        else:
+            Aout = Ain[1+(Ny0 - Ndes) // 2:1+(Ny0 + Ndes) // 2, 1+(Nx0 - Ndes) // 2:1+(Nx0 + Ndes) // 2]
+        
     elif max(Nx0, Ny0) < Ndes:  # Output array is bigger than input, so pad
         pad_x = (Ndes - Nx0) // 2
         pad_y = (Ndes - Ny0) // 2

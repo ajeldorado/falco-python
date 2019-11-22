@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # log = logging.getLogger(__name__)
 
-def LC(mp,im,idm):
+def lyot(mp,im,idm):
     """
     Special compact model used to compute the control Jacobian for the Lyot coronagraph.
     
@@ -261,7 +261,7 @@ def LC(mp,im,idm):
     return Gzdl
 
     
-def VC(mp,im,idm):
+def vortex(mp,im,idm):
     """
     Special compact model used to compute the control Jacobian for the vortex coronagraph.
     
