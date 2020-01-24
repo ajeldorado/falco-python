@@ -5,6 +5,8 @@ import proper
 import scipy.interpolate
 import scipy.ndimage
 import math
+from scipy.interpolate import RectBivariateSpline
+
 from . import utils
 import falco
 
@@ -658,7 +660,7 @@ def falco_gen_bowtie_FPM(inputs):
 #            self.__dict__.update(entries)
     #inputs=Struct(**kwargs)
 
-    angDegrees = inputs["angDegrees"] # Opening angle on each side of the bowtie
+    ang = inputs["ang"] # Opening angle on each side of the bowtie
     pixresFPM=inputs["pixresFPM"]
     rhoInner=inputs["rhoInner"]
     rhoOuter=inputs["rhoOuter"] 
@@ -715,16 +717,16 @@ def falco_gen_bowtie_FPM(inputs):
                                     cy_ID, DARK=True) * (1 - FPMampFac) + FPMampFac
                               
     #--Create the bowtie region
-    if angDegrees < 180:
+    if ang < 180:
         #--Top part
         Lside = 2*rhoOuter
-        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(angDegrees/2), Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2)])
-        yvert = cshift + xshift + np.array([0, Lside*falco.utils.sind(angDegrees/2), Lside, Lside, Lside*falco.utils.sind(angDegrees/2)])
+        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(ang/2), Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2)])
+        yvert = cshift + xshift + np.array([0, Lside*falco.utils.sind(ang/2), Lside, Lside, Lside*falco.utils.sind(ang/2)])
         bowtieTop = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True);
         
         #--Bottom part
-        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(angDegrees/2), Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2)])
-        yvert = cshift + xshift + -1*np.array([0, Lside*falco.utils.sind(angDegrees/2), Lside, Lside, Lside*falco.utils.sind(angDegrees/2)])
+        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(ang/2), Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2)])
+        yvert = cshift + xshift + -1*np.array([0, Lside*falco.utils.sind(ang/2), Lside, Lside, Lside*falco.utils.sind(ang/2)])
         bowtieBottom = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True);
     else:
         bowtieTop = 1
@@ -878,8 +880,8 @@ def falco_gen_bowtie_LS(inputs):
     mask = np.fft.ifftshift(np.abs(bm.wfarr))
 
     #--Create the bowtie region
-    if(ang<180.):
-        ang2 = 90.-ang/2.
+    if(ang < 180):
+        ang2 = 90. - ang/2.
         bm2 = bm
         Lside = 1.1*ra_OD # Have the triangle go a little past the edge of the circle
 
@@ -1490,3 +1492,66 @@ def falco_gen_pupil_Simple( input ):
                 PUPIL *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider)*(RHO*np.cos(THETA-ang*np.pi/180)>0))
 
     return PUPIL
+
+def resample_spm(Ain, nBeamIn, nBeamOut, dx, dy, centering = 'pixel'):
+    """
+    Shear and resample a shaped pupil mask.
+    
+    Parameters
+    ----------
+    Ain : np.ndarray
+        Rectangular or square input array with even size along each dimension. Must be pixel-centered.
+    nBeamIn : int
+        Number of points across beam at starting resolution. Can be int or float.
+    nBeamOut : int
+        Number of points across beam at final resolution. Can be int or float.    
+    dx : float
+        x-shear of the mask in pupil diameters 
+    dy : float
+        y-shear of the mask in pupil diameters        
+    Returns
+    -------
+    Aout : np.ndarray
+        2-D square array containing the resized mask. Is pixel-centered.
+    """
+    
+    #--Assumes the input SPM in Ain is array-centered
+
+    #--Error messages regarding properties of inputs
+    if not (len(Ain.shape)==2):
+        raise TypeError('func_resample_spm: Ain must be a 2-D array.')
+    if not (Ain.shape[0] == Ain.shape[1]):
+        raise TypeError('func_resample_spm: Ain must be a square array.')
+
+    if(nBeamIn==nBeamOut):
+        Aout = Ain
+    else:
+        Ain = Ain[1::,1::] # Crop. Assumes SP is pixel centered and row 0 and column 0 are empty.
+
+        #--Array sizes
+        dxIn = 1./nBeamIn
+        dxOut = 1./nBeamOut
+        nArrayIn = Ain.shape[0]
+        nArrayOut = falco.utils.ceil_odd(nArrayIn*dxIn/dxOut + 2.*np.max((dx,dy)))
+
+        x0 = np.arange(-(nArrayIn-1.)/2.,(nArrayIn)/2.,1)*dxIn #--array-centered coordinates of input matrix [pupil diameters]
+        [X0,Y0] = np.meshgrid(x0,x0)
+        R0 = np.sqrt(X0**2 + Y0**2)
+        Window = 0*R0
+        Window[R0<=dxOut] = 1 
+        Window = Window/np.sum(Window)
+
+        A = np.fft.ifftshift(  np.fft.ifft2( np.fft.fft2(np.fft.fftshift(Window))*np.fft.fft2(np.fft.fftshift(Ain)) )) #--To get good grayscale edges, convolve with the correct window before downsampling.
+        A = np.roll(A, (1, 1), axis=(0, 1))  #--Undo a centering shift for array-centered beam
+        x1 = (np.arange(-(nArrayOut-1.)/2.,nArrayOut/2.,1) - dx)*dxOut #((-(nArrayOut-1)/2:(nArrayOut-1)/2) - dx)*dxOut;
+        y1 = (np.arange(-(nArrayOut-1.)/2.,nArrayOut/2.,1) - dy)*dxOut #((-(nArrayOut-1)/2:(nArrayOut-1)/2) - dy)*dxOut;
+        #[X1,Y1] = np.meshgrid(x1,y1)
+            
+        interp_spline = RectBivariateSpline(x0, x0, A) # RectBivariateSpline is faster in 2-D than interp2d
+        Atemp = interp_spline(y1,x1)
+        # Refer to https://scipython.com/book/chapter-8-scipy/examples/two-dimensional-interpolation-with-scipyinterpolaterectbivariatespline/
+
+        Aout = np.zeros((nArrayOut+1,nArrayOut+1))
+        Aout[1::,1::] = np.real(Atemp)
+        
+        return Aout

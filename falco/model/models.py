@@ -201,10 +201,10 @@ def full_Fourier(mp, wvl, Ein, normFac):
         EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.full.dx,mp.F3.full.dxi,mp.F3.full.Nxi,mp.F3.full.deta,mp.F3.full.Neta,mp.centering)
         # Apply (1-FPM) for Babinet's principle later
         if(mp.coro.upper()=='RODDIER'):
-            FPM = mp.F3.full.mask.amp*np.exp(1j*2*np.pi/wvl*(mp.F3.n(wvl)-1)*mp.F3.t*mp.F3.full.mask.phzSupport)
+            FPM = mp.F3.full.ampMask*np.exp(1j*2*np.pi/wvl*(mp.F3.n(wvl)-1)*mp.F3.t*mp.F3.full.mask.phzSupport)
             EF3 = (1.-FPM)*EF3inc #--Apply (1-FPM) for Babinet's principle later
         else:
-            EF3 = (1.-mp.F3.full.mask.amp)*EF3inc;
+            EF3 = (1.-mp.F3.full.ampMask)*EF3inc;
         # Use Babinet's principle at the Lyot plane. This is the term without the FPM.
         EP4noFPM = falco.propcustom.propcustom_relay(EP3,mp.Nrelay3to4,mp.centering) #--Propagate forward another pupil plane 
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
@@ -212,6 +212,15 @@ def full_Fourier(mp, wvl, Ein, normFac):
         #--Babinet's principle at P4
         EP4 = falco.utils.padOrCropEven(EP4noFPM,mp.P4.full.Narr) - EP4subtrahend
         
+    elif(mp.coro.upper()=='SPLC' or mp.coro.upper()=='FLC'):
+        #--MFT from apodizer plane to FPM (i.e., P3 to F3)
+        EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.full.dx,mp.F3.full.dxi,mp.F3.full.Nxi,mp.F3.full.deta,mp.F3.full.Neta,mp.centering)
+        EF3 = mp.F3.full.ampMask * EF3inc
+        
+        #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
+        EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.full.dxi,mp.F3.full.deta,mp.P4.full.dx,mp.P4.full.Narr,mp.centering)  
+        EP4 = falco.propcustom.propcustom_relay(EP4, mp.Nrelay3to4-1, mp.centering) #--Propagate forward more pupil planes if necessary.
+
     elif(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
 #        if not mp.flagApod:
 #            EP3 = falco.utils.padOrCropEven(EP3,int(2**falco.utils.nextpow2(mp.P1.full.Narr)))
@@ -485,10 +494,10 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
         #--Apply (1-FPM) for Babinet's principle later
         if(mp.coro.upper()=='RODDIER'):
             pass
-            #FPM = mp.F3.compact.mask.amp*exp(1j*2.*np.pi/wvl*(mp.F3.n(wvl)-1)*mp.F3.t*mp.F3.compact.mask.phzSupport);
+            #FPM = mp.F3.compact.ampMask*exp(1j*2.*np.pi/wvl*(mp.F3.n(wvl)-1)*mp.F3.t*mp.F3.compact.mask.phzSupport);
             #EF3 = (1.-FPM).*EF3inc; #--Apply (1-FPM) for Babinet's principle later
         else:
-            EF3 = (1. - mp.F3.compact.mask.amp)*EF3inc;
+            EF3 = (1. - mp.F3.compact.ampMask)*EF3inc;
         #--Use Babinet's principle at the Lyot plane.
         EP4noFPM = falco.propcustom.propcustom_relay(EP3,mp.Nrelay3to4,mp.centering) #--Propagate forward another pupil plane 
         EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
@@ -503,11 +512,11 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
         EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
         
         #--Apply FPM
-        EF3 = mp.F3.compact.mask.amp*EF3inc
+        EF3 = mp.F3.compact.ampMask * EF3inc
         
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) # Subtrahend term for Babinet's principle     
-        EP4subRelay = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
+        EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) # Subtrahend term for Babinet's principle     
+        EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
             
     elif(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
 
@@ -680,8 +689,10 @@ def _model_Jacobian_middle_layer(mp,im,idm):
         
     #--Select which optical layout's Jacobian model to use and get the output E-field
     if(mp.layout.lower()=='fourier'):
-        if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'): #--DMs, optional apodizer, occulting spot FPM, and LS.
+        if (mp.coro.upper()=='LC' or (mp.coro.upper()=='APLC' \
+                          or mp.coro.upper()=='FLC') or mp.coro.upper()=='SPLC'):
             jacMode = jacobians.lyot(mp, im, idm)
+            
             
         elif (mp.coro.upper()=='VC') or (mp.coro.upper()=='AVC') or (mp.coro.upper()=='VORTEX'): #--DMs, optional apodizer, occulting spot FPM, and LS.
             jacMode = jacobians.vortex(mp, im, idm)

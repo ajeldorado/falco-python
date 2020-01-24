@@ -24,7 +24,8 @@ def lyot(mp,im,idm):
     Returns
     -------
     Gzdl : numpy ndarray
-        Complex-valued, 2-D array containing the Jacobian for the specified DM.
+        Complex-valued, 2-D array containing the Jacobian for the
+        specified Zernike mode, DM number, and wavelength.
 
     """
 
@@ -162,22 +163,32 @@ def lyot(mp,im,idm):
                 #--Matrices for the MFT from the pupil P3 to the focal plane mask
                 rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas,y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
                 rect_mat_post  = (np.exp(-2*np.pi*1j*np.outer(x_box,mp.F3.compact.xis)/(wvl*mp.fl)))
-
-                #--MFT from pupil P3 to FPM
-                EF3 = rect_mat_pre @ dEP3box @ rect_mat_post; # MFT to FPM
-                EF3 = (1.-mp.F3.compact.mask.amp)*EF3; #--Propagate through (1-complex FPM) for Babinet's principle
-    
-                #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)  #--Subtrahend term for the Lyot plane E-field    
-                EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering); #--Get the correct orientation
                 
+                EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post; # MFT to FPM
                 
-                #--Full Lyot plane pupil (for Babinet)
-                EP4noFPM = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad),dtype=np.complex)
-                EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field. 
-                EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the correct orientation 
-                EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
-                EP4 = mp.P4.compact.croppedMask*(EP4noFPM - EP4sub) #--Babinet's principle to get E-field at Lyot plane
+                if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'):
+                    EF3 = (1.-mp.F3.compact.ampMask) * EF3inc #--Propagate through (1-complex FPM) for Babinet's principle
+        
+                    #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
+                    EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)  #--Subtrahend term for the Lyot plane E-field    
+                    EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering); #--Get the correct orientation
+                    
+                    #--Full Lyot plane pupil (for Babinet)
+                    EP4noFPM = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad),dtype=np.complex)
+                    EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field. 
+                    EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the correct orientation 
+                    EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
+                    EP4 = EP4noFPM - EP4sub #--Babinet's principle to get E-field at Lyot plane
+                
+                elif(mp.coro.upper()=='FLC' or mp.coro.upper()=='SPLC'):
+                    EF3 = mp.F3.compact.ampMask * EF3inc # Apply FPM
+                    
+                    #--MFT to Lyot plane
+                    EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)  #--Subtrahend term for the Lyot plane E-field    
+                    EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering); #--Get the correct orientation
+                    
+                    
+                EP4 *= mp.P4.compact.croppedMask # Apply Lyot stop
     
                 #--MFT to camera
                 EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
@@ -236,19 +247,31 @@ def lyot(mp,im,idm):
                 rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas,y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
                 rect_mat_post  = (np.exp(-2*np.pi*1j*np.outer(x_box,mp.F3.compact.xis)/(wvl*mp.fl)))
     
-                #--MFT from pupil P3 to FPM
-                EF3 = rect_mat_pre @ dEP3box @ rect_mat_post # MFT to FPM
-                EF3 = (1-mp.F3.compact.mask.amp)*EF3 #--Propagate through ( 1 - (complex FPM) ) for Babinet's principle
-    
-                #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) #--Subtrahend term for the Lyot plane E-field    
-                EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Get the correct orientation
-                                
-                EP4noFPM = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad),dtype=np.complex)
-                EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field.
-                EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the number or re-imaging relays between pupils P3 and P4. 
-                EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
-                EP4 = mp.P4.compact.croppedMask*(EP4noFPM - EP4sub) #--Babinet's principle to get E-field at Lyot plane
+                EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post # MFT to FPM
+                
+                if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'):
+                    
+                    EF3 = (1-mp.F3.compact.ampMask) * EF3inc #--Propagate through ( 1 - (complex FPM) ) for Babinet's principle
+        
+                    #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
+                    EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) #--Subtrahend term for the Lyot plane E-field    
+                    EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Get the correct orientation
+                                    
+                    EP4noFPM = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad),dtype=np.complex)
+                    EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field.
+                    EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the number or re-imaging relays between pupils P3 and P4. 
+                    EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
+                    EP4 = (EP4noFPM - EP4sub) #--Babinet's principle to get E-field at Lyot plane
+                
+                elif(mp.coro.upper()=='FLC' or mp.coro.upper()=='SPLC'):
+
+                    EF3 = mp.F3.compact.ampMask * EF3inc # Apply FPM
+        
+                    #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
+                    EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)   
+                    EP4 = falco.propcustom.propcustom_relay(EP4, mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
+                
+                EP4 *= mp.P4.compact.croppedMask # Apply Lyot stop
     
                 #--MFT to detector
                 EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
@@ -279,7 +302,8 @@ def vortex(mp,im,idm):
     Returns
     -------
     Gzdl : numpy ndarray
-        Complex-valued, 2-D array containing the Jacobian for the specified DM.
+        Complex-valued, 2-D array containing the Jacobian for the
+        specified Zernike mode, DM number, and wavelength.
 
     """
 

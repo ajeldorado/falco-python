@@ -57,10 +57,10 @@ import numpy as np
 ##    if not hasattr(mp.F3.full,'mask'):
 ##        mp.F3.full.mask = falco.config.Object()
 ##        
-##    mp.F3.full.mask.amp = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+##    mp.F3.full.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
 ##
-##    mp.F3.full.Nxi = mp.F3.full.mask.amp.shape[1]
-##    mp.F3.full.Neta= mp.F3.full.mask.amp.shape[0]  
+##    mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
+##    mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]  
 ##    
 ##    #--Number of points across the FPM in the compact model
 ##    if(mp.F3.Rout==np.inf):
@@ -84,7 +84,7 @@ import numpy as np
 ##    if not hasattr(mp.F3.compact,'mask'):
 ##        mp.F3.compact.mask = falco.config.Object()
 ##        
-##    mp.F3.compact.mask.amp = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+##    mp.F3.compact.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
 #    
 #def falco_config_gen_FPM_Roddier(mp):
 #    """

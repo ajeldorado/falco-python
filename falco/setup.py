@@ -1228,20 +1228,28 @@ def falco_gen_chosen_lyot_stop(mp):
             LSshape = mp.LSshape.lower()
             if LSshape in ('bowtie'):
                 #--Define Lyot stop generator function inputs in a structure
-                inputs.Dbeam = mp.P4.D # meters;
-                inputs.ID = mp.P4.IDnorm # (pupil diameters)
-                inputs.OD = mp.P4.ODnorm # (pupil diameters)
-                inputs.ang = mp.P4.ang # (degrees)
-                inputs.centering = mp.centering # 'interpixel' or 'pixel'
+                inputs = {}
+                inputs["ID"] = mp.P4.IDnorm # (pupil diameters)
+                inputs["OD"]= mp.P4.ODnorm # (pupil diameters)
+                inputs["ang"] = mp.P4.ang # (degrees)
+                inputs["centering"] = mp.centering # 'interpixel' or 'pixel'
+
+#                #--Optional inputs and their defaults
+#                centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
+#                xShear = inputs['xShear'] if 'xShear' in inputs.keys() else  0. #--x-axis shear of mask [pupil diameters]
+#                yShear = inputs['yShear'] if 'yShear' in inputs.keys() else  0. #--y-axis shear of mask [pupil diameters]
+#                clocking = inputs['clocking'] if 'clocking' in inputs.keys() else 0. #--Clocking of the mask [degrees]
+#                magfac = inputs['magfac'] if 'magfac' in inputs.keys() else 1. #--magnification factor of the pupil diameter
+                
 
                 if(mp.full.flagGenLS):
-                    inputs.Nbeam = mp.P4.full.Nbeam
-                    mp.P4.full.mask = falco_gen_bowtie_LS(inputs)
+                    inputs["Nbeam"] = mp.P4.full.Nbeam
+                    mp.P4.full.mask = falco.masks.falco_gen_bowtie_LS(inputs)
                 
                 #--Make bowtie Lyot stop (LS) for the 'compact' model
                 if(mp.compact.flagGenLS):
-                    inputs.Nbeam = mp.P4.compact.Nbeam
-                    mp.P4.compact.mask = falco_gen_bowtie_LS(inputs)
+                    inputs["Nbeam"] = mp.P4.compact.Nbeam
+                    mp.P4.compact.mask = falco.masks.falco_gen_bowtie_LS(inputs)
        
     elif whichPupil in ('LUVOIRAFINAL'):
         pass
@@ -1264,7 +1272,7 @@ def falco_gen_chosen_lyot_stop(mp):
         #--Define Lyot stop generator function inputs for the 'full' optical model
         pass
         """
-        inputs.Nbeam = mp.P4.full.Nbeam; % number of points across incoming beam  
+        inputs.Nbeam = mp.P4.full.Nbeam # number of points across incoming beam  
         inputs.Dbeam = mp.P1.D;
         inputs.ID = mp.P4.IDnorm;
         inputs.OD = mp.P4.ODnorm;
@@ -1301,13 +1309,13 @@ def falco_gen_chosen_lyot_stop(mp):
         pass
         """  
         #--Full model
-        inputs.Nbeam = mp.P4.full.Nbeam; % number of points across incoming beam 
+        inputs.Nbeam = mp.P4.full.Nbeam # number of points across incoming beam 
         inputs.Npad = 2^(nextpow2(mp.P4.full.Nbeam));
         inputs.OD = mp.P4.ODnorm;
         inputs.ID = mp.P4.IDnorm;
         inputs.Nstrut = 0;
-        inputs.angStrut = []; % Angles of the struts 
-        inputs.wStrut = 0; % spider width (fraction of the pupil diameter)
+        inputs.angStrut = [] # Angles of the struts 
+        inputs.wStrut = 0 # spider width (fraction of the pupil diameter)
 
         mp.P4.full.mask = falco_gen_pupil_Simple(inputs);
         
@@ -1318,7 +1326,7 @@ def falco_gen_chosen_lyot_stop(mp):
             Nbeam = inputs.Nbeam;
             Npad = inputs.Npad;
 
-            xsD = (-Npad/2:(Npad/2-1))/Nbeam; %--coordinates, normalized to the pupil diameter
+            xsD = (-Npad/2:(Npad/2-1))/Nbeam #--coordinates, normalized to the pupil diameter
             [XS,YS] = meshgrid(xsD);
             RS = sqrt(XS.^2 + YS.^2);
         
@@ -1351,7 +1359,7 @@ def falco_gen_chosen_lyot_stop(mp):
             Nbeam = inputs.Nbeam
             Npad = inputs.Npad
 
-            xsD = (-Npad/2:(Npad/2-1))/Nbeam; %--coordinates, normalized to the pupil diameter
+            xsD = (-Npad/2:(Npad/2-1))/Nbeam #--coordinates, normalized to the pupil diameter
             [XS,YS] = meshgrid(xsD)
             RS = sqrt(XS.^2 + YS.^2)
 
@@ -1460,9 +1468,9 @@ def falco_gen_FPM(mp):
         falco_gen_FPM_LC(mp)
         #falco.configs.falco_config_gen_FPM_LC(mp);
     elif mp.coro.upper() in ['SPLC', 'FLC']:
-        falco.configs.falco_config_gen_FPM_SPLC(mp);
+        falco.setup.falco_gen_FPM_SPLC(mp);
     elif mp.coro.upper() == 'RODDIER':
-        falco.configs.falco_config_gen_FPM_Roddier(mp);
+        falco.setup.falco_gen_FPM_Roddier(mp);
     pass
 
 
@@ -1955,10 +1963,10 @@ def falco_gen_FPM_LC(mp):
     if not hasattr(mp.F3.full,'mask'):
         mp.F3.full.mask = falco.config.Object()
         
-    mp.F3.full.mask.amp = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    mp.F3.full.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
 
-    mp.F3.full.Nxi = mp.F3.full.mask.amp.shape[1]
-    mp.F3.full.Neta= mp.F3.full.mask.amp.shape[0]  
+    mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
+    mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]  
     
     #--Number of points across the FPM in the compact model
     if(mp.F3.Rout==np.inf):
@@ -1982,5 +1990,40 @@ def falco_gen_FPM_LC(mp):
     if not hasattr(mp.F3.compact,'mask'):
         mp.F3.compact.mask = falco.config.Object()
         
-    mp.F3.compact.mask.amp = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    mp.F3.compact.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    
+
+def falco_gen_FPM_SPLC(mp):
+
+    if not hasattr(mp.F3,'ang'):
+        mp.F3.ang = 180
+    
+    if(mp.full.flagGenFPM):
+        #--Generate the FPM amplitude for the full model
+        inputs = {}
+        inputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
+        inputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
+        inputs["ang"] = mp.F3.ang # [degrees]
+        inputs["centering"] = mp.centering;
+        inputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
+        mp.F3.full.ampMask = falco.masks.falco_gen_bowtie_FPM(inputs);
+    
+    if(mp.compact.flagGenFPM):
+        #--Generate the FPM amplitude for the compact model
+        inputs = {}
+        inputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
+        inputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
+        inputs["ang"] = mp.F3.ang # [degrees]
+        inputs["centering"] = mp.centering
+        inputs["pixresFPM"] = mp.F3.compact.res
+        mp.F3.compact.ampMask = falco.masks.falco_gen_bowtie_FPM(inputs)        
+    
+    if not mp.full.flagPROPER:
+        mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
+        mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]
+
+    
+    mp.F3.compact.Nxi = mp.F3.compact.ampMask.shape[1]
+    mp.F3.compact.Neta= mp.F3.compact.ampMask.shape[0]
+    pass
     

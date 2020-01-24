@@ -1,17 +1,22 @@
 import numpy as np
 import sys
 sys.path.append('../')
+from astropy.io import fits
+
 import falco
+
 #import proper
 
 
 mp = falco.config.ModelParameters()
+mp.compact = falco.config.Object()
+mp.full = falco.config.Object()
 #mp.init_ws()
 #type(mp.P2.full)
 ### Parameters from EXAMPLE_defaults_WFIRST_LC.m
 
 mp.SeriesNum = 1;
-mp.TrialNum = 34;
+mp.TrialNum = 1;
 
 ###--Special Computational Settings
 mp.flagMultiproc = True;
@@ -29,7 +34,7 @@ mp.planetFlag = False;
 ### - 'EE' for encircled energy within a radius (mp.thput_radius) divided by energy at telescope pupil
 mp.thput_metric = 'HMI'; 
 mp.thput_radius = 0.7; #--photometric aperture radius [lambda_c/D]. Used ONLY for 'EE' method.
-mp.thput_eval_x = 6; # x location [lambda_c/D] in dark hole at which to evaluate throughput
+mp.thput_eval_x = 7; # x location [lambda_c/D] in dark hole at which to evaluate throughput
 mp.thput_eval_y = 0; # y location [lambda_c/D] in dark hole at which to evaluate throughput
 
 ###--Where to shift the source to compute the intensity normalization value.
@@ -38,10 +43,10 @@ mp.source_y_offset_norm = 0;  # y location [lambda_c/D] in dark hole at which to
 
 #### Bandwidth and Wavelength Specs
 
-mp.lambda0 = 575e-9;   #--Central wavelength of the whole spectral bandpass [meters]
-mp.fracBW = 0.10;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.lambda0 = 730e-9;   #--Central wavelength of the whole spectral bandpass [meters]
+mp.fracBW = 0.15;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 5;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
-mp.Nwpsbp = 1;          #--Number of wavelengths to used to approximate an image in each sub-bandpass
+mp.Nwpsbp = 3;          #--Number of wavelengths to used to approximate an image in each sub-bandpass
 
 #### Wavefront Estimation
 
@@ -91,7 +96,7 @@ mp.eval.indsZnoll = np.array([2,3,4,5,6]) #--Noll indices of Zernikes to compute
 
 ####### NEED TO DETERMINE
 ###--Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
-mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  # [2-D ndarray]
+mp.eval.Rsens = np.array([[3., 4.], [4., 5.], [5., 8.], [8., 9.]]);  # [2-D ndarray]
 
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
@@ -187,14 +192,14 @@ mp.dm2.yc = (48/2 - 1/2);       # y-center location of DM surface [actuator widt
 mp.dm2.edgeBuffer = 1;          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
 
 ##--Aperture stops at DMs
-mp.flagDM1stop = False; #--Whether to apply an iris or not
-mp.dm1.Dstop = 100e-3;  #--Diameter of iris [meters]
-mp.flagDM2stop = True;  #--Whether to apply an iris or not
-mp.dm2.Dstop = 50e-3;   #--Diameter of iris [meters]
+mp.flagDM1stop = False #--Whether to apply an iris or not
+mp.dm1.Dstop = 0  #--Diameter of iris [meters]
+mp.flagDM2stop = True  #--Whether to apply an iris or not
+mp.dm2.Dstop = 50e-3   #--Diameter of iris [meters]
 
 ##--DM separations
-mp.d_P2_dm1 = 0;        # distance (along +z axis) from P2 pupil to DM1 [meters]
-mp.d_dm1_dm2 = 1.000;   # distance between DM1 and DM2 [meters]
+mp.d_P2_dm1 = 0        # distance (along +z axis) from P2 pupil to DM1 [meters]
+mp.d_dm1_dm2 = 1.000   # distance between DM1 and DM2 [meters]
 
 
 ### Optical Layout: All models
@@ -202,8 +207,8 @@ mp.d_dm1_dm2 = 1.000;   # distance between DM1 and DM2 [meters]
 ##--Key Optical Layout Choices
 mp.flagSim = True;      #--Simulation or not
 mp.layout = 'Fourier';  #--Which optical layout to use
-mp.coro = 'LC';#'HLC';
-mp.flagApod = False;    #--Whether to use an apodizer or not
+mp.coro = 'SPLC'
+mp.flagApod = True    #--Whether to use an apodizer or not
 
 ####### NEED TO DETERMINE
 mp.Fend = falco.config.Object()
@@ -215,14 +220,14 @@ mp.Fend.FOV = 11.; #--half-width of the field of view in both dimensions [lambda
 ####### NEED TO DETERMINE
 ##--Correction and scoring region definition
 mp.Fend.corr = falco.config.Object()
-mp.Fend.corr.Rin = 2.7;   # inner radius of dark hole correction region [lambda0/D]
-mp.Fend.corr.Rout  = 10;  # outer radius of dark hole correction region [lambda0/D]
-mp.Fend.corr.ang  = 180;  # angular opening of dark hole correction region [degrees]
+mp.Fend.corr.Rin = 2.6;   # inner radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.Rout  = 9;  # outer radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.ang  = 65;  # angular opening of dark hole correction region [degrees]
 #
 mp.Fend.score = falco.config.Object()
-mp.Fend.score.Rin = 2.7;  # inner radius of dark hole scoring region [lambda0/D]
-mp.Fend.score.Rout = 10;  # outer radius of dark hole scoring region [lambda0/D]
-mp.Fend.score.ang = 180;  # angular opening of dark hole scoring region [degrees]
+mp.Fend.score.Rin = 3.0;  # inner radius of dark hole scoring region [lambda0/D]
+mp.Fend.score.Rout = 9.0;  # outer radius of dark hole scoring region [lambda0/D]
+mp.Fend.score.ang = 65;  # angular opening of dark hole scoring region [degrees]
 #
 mp.Fend.sides = 'both'; #--Which side(s) for correction: 'both', 'left', 'right', 'top', 'bottom'
 
@@ -239,10 +244,10 @@ mp.P4.D = 46.2987e-3;
 
 ####### NEED TO DETERMINE
 ##--Pupil Plane Resolutions
-mp.P1.compact.Nbeam = 250;
-#mp.P2.compact.Nbeam = 250;
-#mp.P3.compact.Nbeam = 250;
-mp.P4.compact.Nbeam = 250;
+mp.P1.compact.Nbeam = 386
+#mp.P2.compact.Nbeam = 250
+#mp.P3.compact.Nbeam = 250
+mp.P4.compact.Nbeam = 150
 
 ##--Number of re-imaging relays between pupil planesin compact model. Needed
 ## to keep track of 180-degree rotations compared to the full model, which 
@@ -253,7 +258,7 @@ mp.Nrelay2to3 = 1;
 mp.Nrelay3to4 = 1;
 mp.NrelayFend = 0; #--How many times to rotate the final image by 180 degrees
 
-mp.F3.compact.res = 4;    # sampling of FPM for full model [pixels per lambda0/D]
+mp.F3.compact.res = 4    # sampling of FPM for full model [pixels per lambda0/D]
 
 ### Optical Layout: Full Model 
 
@@ -262,14 +267,38 @@ mp.F3.compact.res = 4;    # sampling of FPM for full model [pixels per lambda0/D
 #
 ####### NEED TO DETERMINE
 ##--Pupil Plane Resolutions
-mp.P1.full.Nbeam = 250;
+mp.P1.full.Nbeam = 1000
 #mp.P2.full.Nbeam = 250;
 #mp.P3.full.Nbeam = 250;
-mp.P4.full.Nbeam = 250;
+mp.P4.full.Nbeam = 250
 
 mp.F3.full.res = 4;    # sampling of FPM for full model [pixels per lambda0/D]
 
 ### Mask Definitions
+
+#--Shaped Pupil Mask: Load and downsample.
+mp.compact.flagGenApod = False
+mp.full.flagGenApod = False
+mp.SPname = 'SPC-20190130';
+SP0 = fits.getdata('../data/WFIRST/PhaseB/SPM_SPC-20190130.fits', ext=0)
+if(mp.P1.compact.Nbeam == 1000):
+    mp.P3.compact.mask = SP0
+else:
+    nBeamIn = 1000
+    nBeamOut = mp.P1.compact.Nbeam
+    dx = 0
+    dy = 0
+    mp.P3.compact.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+
+if(mp.P1.full.Nbeam == 1000):
+    mp.P3.full.mask = SP0
+else:
+    nBeamIn = 1000
+    nBeamOut = mp.P1.full.Nbeam
+    dx = 0
+    dy = 0
+    mp.P3.full.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+
 
 ##--Pupil definition
 mp.whichPupil = 'WFIRST180718';
@@ -278,16 +307,17 @@ mp.P1.D = 2.3631; #--telescope diameter [meters]. Used only for converting milli
 mp.P1.Dfac = 1; #--Factor scaling inscribed OD to circumscribed OD for the telescope pupil.
 
 ##--Lyot stop padding
-mp.P4.wStrut = 3.6/100.; # nominal pupil's value is 76mm = 3.216#
-mp.P4.IDnorm = 0.45; #--Lyot stop ID [Dtelescope]
-mp.P4.ODnorm = 0.78; #--Lyot stop OD [Dtelescope]
-
+mp.LSshape = 'bowtie'
+mp.P4.IDnorm = 0.38 #--Lyot stop ID [Dtelescope]
+mp.P4.ODnorm = 0.92 #--Lyot stop OD [Dtelescope]
+mp.P4.ang = 90      #--Lyot stop opening angle [degrees]
+mp.P4.wStrut = 0;    #--Lyot stop strut width [pupil diameters]
 
 ##--FPM size
-mp.F3.Rin = 2.7;    # maximum radius of inner part of the focal plane mask [lambda0/D]
-mp.F3.RinA = 2.7;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
-mp.F3.Rout = np.Inf;   # radius of outer opaque edge of FPM [lambda0/D]
-mp.F3.ang = 180;    # on each side, opening angle [degrees]
+mp.F3.Rin = 2.6;    # maximum radius of inner part of the focal plane mask [lambda0/D]
+#mp.F3.RinA = 2.6;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
+mp.F3.Rout = 9.0;   # radius of outer opaque edge of FPM [lambda0/D]
+mp.F3.ang = 65;    # on each side, opening angle [degrees]
 
 mp.FPMampFac = 0;#10^(-3.7); # amplitude transmission of the FPM
 
