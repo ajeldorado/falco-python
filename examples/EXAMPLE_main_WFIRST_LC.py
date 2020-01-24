@@ -35,6 +35,7 @@ mp.SeriesNum = 1;
 #--Use just 1 wavelength for initial debugging of code
 mp.fracBW = 0.01;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 1;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+mp.Nwpsbp = 1;
 
 ####### NEED TO DETERMINE
 mp.F3.Rin = 2.7;    # maximum radius of inner part of the focal plane mask [lambda0/D]
@@ -61,7 +62,8 @@ print(mp.runLabel)
 print('Series0001_Trial0001_LC_WFIRST180718_2DM48_z1_IWA2.7_OWA10_1lams575nm_BW1_gridsearchEFC')
 ## Step 5: Perform the Wavefront Sensing and Control
 
-falco.falco_wfsc_loop(mp)
+out = falco.setup.flesh_out_workspace(mp)
+falco.wfsc.loop(mp, out)
 
 print('END OF MAIN: ', mp)
 

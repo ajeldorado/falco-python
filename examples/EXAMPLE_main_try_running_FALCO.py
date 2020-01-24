@@ -55,7 +55,8 @@ print(mp.runLabel)
 #print('Series0001_Trial0001_LC_WFIRST180718_2DM48_z1_IWA2.7_OWA10_1lams575nm_BW1_gridsearchEFC')
 ## Step 5: Perform the Wavefront Sensing and Control
 
-falco.falco_wfsc_loop(mp)
+out = falco.setup.flesh_out_workspace(mp)
+falco.wfsc.loop(mp, out)
 
 print('END OF MAIN: ', mp)
 

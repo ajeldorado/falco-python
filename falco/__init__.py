@@ -1,5 +1,6 @@
 # import falco.proper as proper
 from falco.config import init_from_mat as ifm
+from .setup import *
 from .utils import *
 from .wfsc  import *
 from .configs  import *

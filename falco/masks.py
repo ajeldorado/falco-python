@@ -271,9 +271,9 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
 
     ## Coordinates
     if centering.lower() in ('pixel', 'odd'):
-        Narray = falco.utils.ceil_even(Nbeam + 1) #--number of points across output array. Requires two more pixels when pixel centered.
+        Narray = falco.utils.ceil_even(Nbeam*np.max(2*np.abs((xShear, yShear))) + magFac*(Nbeam+1)) #--number of points across output array. Requires two more pixels when pixel centered.
     else:
-        Narray = falco.utils.ceil_even(Nbeam) #--No zero-padding needed if beam is centered between pixels
+        Narray = falco.utils.ceil_even(Nbeam*np.max(2*np.abs((xShear, yShear))) + magFac*Nbeam) #--No zero-padding needed if beam is centered between pixels
 
     if centering.lower() == 'interpixel':
         xs = np.linspace(-(Nbeam-1)/2, (Nbeam-1)/2,Nbeam)/Nbeam
@@ -624,9 +624,119 @@ def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering
     return mask
 
 
+def falco_gen_bowtie_FPM(inputs):
+    """
+    Function to generate an bowtie FPM using PROPER.
+    
+    Outside the outer ring is opaque.If rhoOuter = infinity, then the outer 
+    ring is omitted and the mask is cropped down to the size of the inner spot.
+    The inner spot has a specifyable amplitude value. The output array is the 
+    smallest size that fully contains the mask.    
+
+    Parameters
+    ----------
+     pixresFPM:  resolution in pixels per lambda_c/D
+     rhoInner:   radius of inner FPM amplitude spot (in lambda_c/D)
+     rhoOuter:   radius of outer opaque FPM ring (in lambda_c/D). Set to
+                 infinity for an occulting-spot only FPM
+     FPMampFac:  amplitude transmission of inner FPM spot
+     centering:  pixel centering 
+    
+    Returns
+    -------
+     mask:    cropped-down, 2-D FPM representation. amplitude only 
+     
+    """
+
+    # Set default values of input parameters
+    flagRot180deg = False
+
+
+    #unfolding **kwargs
+#    class Struct(object):
+#        def __init__(self, **entries):
+#            self.__dict__.update(entries)
+    #inputs=Struct(**kwargs)
+
+    angDegrees = inputs["angDegrees"] # Opening angle on each side of the bowtie
+    pixresFPM=inputs["pixresFPM"]
+    rhoInner=inputs["rhoInner"]
+    rhoOuter=inputs["rhoOuter"] 
+    centering=inputs["centering"] 
+    FPMampFac = 0 #inputs["FPMampFac"] 
+
+    if hasattr(inputs, 'flagRot180deg'):
+        flagRot180deg = inputs["flagRot180deg"]
+
+
+    dxiUL = 1.0 / pixresFPM  # lambda_c/D per pixel. "UL" for unitless
+#    if np.isinf(rhoOuter):
+#        if centering == "interpixel":
+#            # number of points across the inner diameter of the FPM.
+#            Narray = falco.utils.ceil_even((2 * rhoInner / dxiUL))
+#        else:
+#            # number of points across the inner diameter of the FPM. Another half pixel added for pixel-centered masks.
+#            Narray = falco.utils.ceil_even(2 * (rhoInner / dxiUL + 0.5))
+#    else:
+    if centering == "interpixel":
+        # number of points across the outer diameter of the FPM.
+        Narray = falco.utils.ceil_even(2 * rhoOuter / dxiUL)
+    else:
+        # number of points across the outer diameter of the FPM. Another half pixel added for pixel-centered masks.
+        Narray = falco.utils.ceil_even(2 * (rhoOuter / dxiUL + 0.5))
+
+    xshift = 0  # translation in x of FPM (in lambda_c/D)
+    yshift = 0  # translation in y of FPM (in lambda_c/D)
+
+    Darray = Narray * dxiUL  # width of array in lambda_c/D
+    diam = Darray
+    wl_dummy = 1e-6  # wavelength (m); Dummy value--no propagation here, so not used.
+
+    if centering == "interpixel":
+        cshift = -diam / 2 / Narray
+    elif flagRot180deg: #rot180
+        cshift = -diam / Narray
+    else:
+        cshift = 0
+
+    #--INITIALIZE PROPER. Note that:  bm.dx = diam / bdf / np;
+    wf = proper.prop_begin(diam, wl_dummy, Narray, 1.0)
+
+#    if not np.isinf(rhoOuter):
+    # Outer opaque ring of FPM
+    cx_OD = 0 + cshift + xshift
+    cy_OD = 0 + cshift + yshift
+    proper.prop_circular_aperture(wf, rhoOuter, cx_OD, cy_OD)
+
+    # Inner spot of FPM (Amplitude transmission can be nonzero)
+    cx_ID = 0 + cshift + xshift
+    cy_ID = 0 + cshift + yshift
+    innerSpot = proper.prop_ellipse(wf, rhoInner, rhoInner, cx_ID,
+                                    cy_ID, DARK=True) * (1 - FPMampFac) + FPMampFac
+                              
+    #--Create the bowtie region
+    if angDegrees < 180:
+        #--Top part
+        Lside = 2*rhoOuter
+        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(angDegrees/2), Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2)])
+        yvert = cshift + xshift + np.array([0, Lside*falco.utils.sind(angDegrees/2), Lside, Lside, Lside*falco.utils.sind(angDegrees/2)])
+        bowtieTop = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True);
+        
+        #--Bottom part
+        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(angDegrees/2), Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2), -Lside*falco.utils.cosd(angDegrees/2)])
+        yvert = cshift + xshift + -1*np.array([0, Lside*falco.utils.sind(angDegrees/2), Lside, Lside, Lside*falco.utils.sind(angDegrees/2)])
+        bowtieBottom = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True);
+    else:
+        bowtieTop = 1
+        bowtieBottom = 1
+                                
+    mask = np.fft.ifftshift(np.abs(wf.wfarr))  # undo PROPER's fftshift
+    return mask * innerSpot * bowtieTop * bowtieBottom
+
+
 def falco_gen_annular_FPM(inputs):
     """
-    Function to generate an annular FPM in Matlab using PROPER.
+    Function to generate an annular FPM using PROPER.
     
     Outside the outer ring is opaque.If rhoOuter = infinity, then the outer 
     ring is omitted and the mask is cropped down to the size of the inner spot.
@@ -738,7 +848,7 @@ def falco_gen_bowtie_LS(inputs):
 
     if(centering=='pixel'):
         Narray = falco.utils.ceil_even(magfac*Nbeam + 1 + 2*Nbeam*np.max(np.abs(np.array([xShear,yShear]))))  #--number of points across output array. Sometimes requires two more pixels when pixel centered.
-    else:
+    elif(centering=='interpixel'):
         Narray = falco.utils.ceil_even(magfac*Nbeam + 2*Nbeam*np.max(np.abs(np.array([xShear,yShear]))))    #--number of points across output array. Same size as width when interpixel centered.
 
     Darray = Narray*dx  #--width of the output array [meters]
@@ -773,25 +883,25 @@ def falco_gen_bowtie_LS(inputs):
         bm2 = bm
         Lside = 1.1*ra_OD # Have the triangle go a little past the edge of the circle
 
-        yvert0 = np.array([0., Lside*falco.utils.sind(ang2), Lside*falco.utils.sind(ang2), -Lside*falco.utils.sind(ang2), -Lside*falco.utils.sind(ang2), 0.])
+        yvert0 = np.array([0., Lside*falco.utils.falco.utils.sind(ang2), Lside*falco.utils.falco.utils.sind(ang2), -Lside*falco.utils.falco.utils.sind(ang2), -Lside*falco.utils.falco.utils.sind(ang2), 0.])
 
         #--Right triangular obscuration
-        xvert0 = np.array([0., Lside*falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.cosd(ang2), 0.])
+        xvert0 = np.array([0., Lside*falco.utils.falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.falco.utils.cosd(ang2), 0.])
         xvert = xvert0.copy()
         yvert = yvert0.copy()
         for ii in range(len(xvert0)):
-            xy = np.array([[falco.utils.cosd(clocking),falco.utils.sind(clocking)],[ -falco.utils.sind(clocking),falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
+            xy = np.array([[falco.utils.falco.utils.cosd(clocking),falco.utils.falco.utils.sind(clocking)],[ -falco.utils.falco.utils.sind(clocking),falco.utils.falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
             xvert[ii] = xy[0]
             yvert[ii] = xy[1]
             pass
         bowtieRight = proper.prop_irregular_polygon( bm, cshift+xShear+xvert, cshift+yShear+yvert,DARK=True)
    
         #--Left triangular obscuration
-        xvert0 = -np.array([0., Lside*falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.cosd(ang2), 0.])
+        xvert0 = -np.array([0., Lside*falco.utils.falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.falco.utils.cosd(ang2), 0.])
         xvert = xvert0.copy()
         yvert = yvert0.copy()
         for ii in range(len(xvert0)):
-            xy = np.array([[falco.utils.cosd(clocking),falco.utils.sind(clocking)], [-falco.utils.sind(clocking),falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
+            xy = np.array([[falco.utils.falco.utils.cosd(clocking),falco.utils.falco.utils.sind(clocking)], [-falco.utils.falco.utils.sind(clocking),falco.utils.falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
             xvert[ii] = xy[0]
             yvert[ii] = xy[1]
             pass

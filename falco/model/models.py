@@ -35,7 +35,7 @@ def full(mp,modvar,isNorm=True):
         raise TypeError('Input "mp" must be of type ModelParameters')
         
     if(hasattr(modvar,'sbpIndex')):
-        normFac = mp.Fend.full.I00[modvar.sbpIndex,modvar.wpsbpIndex] #--Value to normalize the PSF. Set to 0 when finding the normalization factor
+        normFac = mp.Fend.full.I00[modvar.sbpIndex, modvar.wpsbpIndex] #--Value to normalize the PSF. Set to 0 when finding the normalization factor
 
     #--Optional Keyword arguments
     if not isNorm: normFac = 0.
@@ -89,13 +89,13 @@ def full(mp,modvar,isNorm=True):
     
     #--Select which optical layout's full model to use.
     if mp.layout.lower() == 'fourier':
-        Eout = _model_full_Fourier(mp, wvl, Ein, normFac)
+        Eout = full_Fourier(mp, wvl, Ein, normFac)
     elif mp.layout.lower() == 'fpm_scale': #--FPM scales with wavelength
         Eout = model_full_scale(mp, wvl, Ein, normFac)
 
     return Eout
  
-def _model_full_Fourier(mp, wvl, Ein, normFac):
+def full_Fourier(mp, wvl, Ein, normFac):
     """
     Truth model with a simple layout used to generate images in simulation. 
     
@@ -251,7 +251,7 @@ def _model_full_Fourier(mp, wvl, Ein, normFac):
 
     #--MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
     EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-    EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.full.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta)
+    EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.full.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
 
     #--Don't apply FPM if normalization value is being found
     if(normFac==0):
@@ -358,7 +358,7 @@ def compact(mp,modvar,isNorm=True,isEvalMode=False):
       
     #--Select which optical layout's compact model to use and get the output E-field
     if mp.layout.lower()=='fourier':
-        Eout = _model_compact_general(mp, wvl, Ein, normFac, flagEval);
+        Eout = compact_general(mp, wvl, Ein, normFac, flagEval);
     elif mp.layout.lower()=='fpm_scale':
         if mp.coro.upper()=='HLC':
             Eout = model_compact_scale(mp, wvl, Ein, normFac, flagEval)
@@ -366,7 +366,7 @@ def compact(mp,modvar,isNorm=True,isEvalMode=False):
     return Eout
 
 
-def _model_compact_general(mp, wvl, Ein, normFac, flagEval):
+def compact_general(mp, wvl, Ein, normFac, flagEval):
     """
     Compact model with a general-purpose optical layout used by estimator and controller.
     
@@ -498,6 +498,17 @@ def _model_compact_general(mp, wvl, Ein, normFac, flagEval):
         #--Babinet's principle at P4
         EP4 = (EP4noFPM-EP4subRelay)
         
+    elif mp.coro.upper()=='FLC' or mp.coro.upper()=='SPLC':
+        #--MFT from SP to FPM (i.e., P3 to F3)
+        EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
+        
+        #--Apply FPM
+        EF3 = mp.F3.compact.mask.amp*EF3inc
+        
+        #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
+        EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) # Subtrahend term for Babinet's principle     
+        EP4subRelay = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
+            
     elif(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
 
         # Get FPM charge 
