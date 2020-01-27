@@ -154,7 +154,11 @@ def padOrCropEven(Ain, Ndes, **kwargs):
         raise ValueError('Wrong number of dimensions specified for output')
 
     if min(Nx0, Ny0) > Ndes:  # Output array is smaller than input, so crop
-        Aout = Ain[(Ny0 - Ndes) // 2:(Ny0 + Ndes) // 2, (Nx0 - Ndes) // 2:(Nx0 + Ndes) // 2]
+        if Ndes%2==0:
+            Aout = Ain[(Ny0 - Ndes) // 2:(Ny0 + Ndes) // 2, (Nx0 - Ndes) // 2:(Nx0 + Ndes) // 2]
+        else:
+            Aout = Ain[1+(Ny0 - Ndes) // 2:1+(Ny0 + Ndes) // 2, 1+(Nx0 - Ndes) // 2:1+(Nx0 + Ndes) // 2]
+        
     elif max(Nx0, Ny0) < Ndes:  # Output array is bigger than input, so pad
         pad_x = (Ndes - Nx0) // 2
         pad_y = (Ndes - Ny0) // 2
@@ -337,7 +341,7 @@ def falco_compute_thput(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
 
-    ImSimOffaxis = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,EVAL=True)
+    ImSimOffaxis = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,isEvalMode=True)
     #if(mp.flagPlot): figure(324); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,ImSimOffaxis); axis xy equal tight; title('Off-axis PSF for Throughput Calculation','Fontsize',20); set(gca,'Fontsize',20); colorbar; drawnow;  end
 
     if(mp.thput_metric.lower()=='hmi'): #--Absolute energy within half-max isophote(s)

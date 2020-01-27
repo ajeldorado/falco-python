@@ -10,7 +10,7 @@ mp.SeriesNum = 867
 mp.TrialNum = 5309
 
 ###--Special Computational Settings
-mp.flagParfor = False
+mp.flagMultiproc = False
 mp.flagPlot = False
 mp.useGPU = False
 

@@ -6,7 +6,7 @@ import falco.utils
 from falco.utils import _spec_arg
 #from falco.config import DeformableMirrorParameters
 import collections
-from falco import models
+from falco import model
 
 class Object(object):
     pass
@@ -39,11 +39,11 @@ class ModelParameters:
             self.dummy = _spec_arg("dummy", kwargs, 1)
             self.D = _spec_arg("D", kwargs, 0.0463)
 
-    class _base_P3:
-        def __init__(self, **kwargs):
-            self.dummy = _spec_arg("dummy", kwargs, 1)
-            self.D = _spec_arg("D", kwargs, 0.0463)
-
+#     class _base_P3:
+#         def __init__(self, **kwargs):
+#             self.dummy = _spec_arg("dummy", kwargs, 1)
+#             self.D = _spec_arg("D", kwargs, 0.0463)
+                
     class _base_P1:
         class _base_compact:
             def __init__(self, **kwargs):
@@ -58,18 +58,32 @@ class ModelParameters:
         def __init__(self, **kwargs):
             self.compact = _spec_arg("compact", kwargs, self._base_compact())
             self.full = _spec_arg("full", kwargs, self._base_full())
-            self.D = _spec_arg("D", kwargs, 2.3631)
+#             self.D = _spec_arg("D", kwargs, 2.3631)
+
+    class _base_P3:
+        class _base_compact:
+            def __init__(self, **kwargs):
+                self.dummy = _spec_arg("dummy", kwargs, 1)
+#                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
+
+        class _base_full:
+            def __init__(self, **kwargs):
+                self.dummy = _spec_arg("dummy", kwargs, 1)
+        
+        def __init__(self, **kwargs):
+            self.compact = _spec_arg("compact", kwargs, self._base_compact())
+            self.full = _spec_arg("full", kwargs, self._base_full())
 
     class _base_P4:
         class _base_compact:
             def __init__(self, **kwargs):
                 self.dummy = _spec_arg("dummy", kwargs, 1)
-                self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
+#                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
 
         class _base_full:
             def __init__(self, **kwargs):
                 self.dummy = _spec_arg("dummy", kwargs, 1)
-                self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
+#                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
 
         def __init__(self, **kwargs):
             self.compact = _spec_arg("compact", kwargs, self._base_compact())
@@ -91,9 +105,9 @@ class ModelParameters:
 
         def __init__(self, **kwargs):
             self.compact = _spec_arg("compact", kwargs, self._base_compact())
+            self.full = _spec_arg("full", kwargs, self._base_full())
             self.Rin = _spec_arg("Rin", kwargs, 2.8)
             self.Rout = _spec_arg("Rout", kwargs, inf)
-            self.full = _spec_arg("full", kwargs, self._base_full())
             self.ang = _spec_arg("ang", kwargs, 180)
 
     class _base_Fend:
