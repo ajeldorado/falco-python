@@ -245,9 +245,9 @@ mp.P4.D = 46.2987e-3;
 ####### NEED TO DETERMINE
 ##--Pupil Plane Resolutions
 mp.P1.compact.Nbeam = 386
-#mp.P2.compact.Nbeam = 250
-#mp.P3.compact.Nbeam = 250
-mp.P4.compact.Nbeam = 150
+#mp.P2.compact.Nbeam = 386
+#mp.P3.compact.Nbeam = 386
+mp.P4.compact.Nbeam = 60
 
 ##--Number of re-imaging relays between pupil planesin compact model. Needed
 ## to keep track of 180-degree rotations compared to the full model, which 

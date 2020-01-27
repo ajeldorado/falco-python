@@ -1,7 +1,6 @@
 import numpy as np
 import falco
 import logging
-import multiprocessing
 import matplotlib.pyplot as plt
 
 # log = logging.getLogger(__name__)
@@ -164,7 +163,7 @@ def lyot(mp,im,idm):
                 rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas,y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
                 rect_mat_post  = (np.exp(-2*np.pi*1j*np.outer(x_box,mp.F3.compact.xis)/(wvl*mp.fl)))
                 
-                EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post; # MFT to FPM
+                EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post # MFT to FPM
                 
                 if (mp.coro.upper()=='LC') or (mp.coro.upper()=='APLC'):
                     EF3 = (1.-mp.F3.compact.ampMask) * EF3inc #--Propagate through (1-complex FPM) for Babinet's principle
@@ -184,8 +183,8 @@ def lyot(mp,im,idm):
                     EF3 = mp.F3.compact.ampMask * EF3inc # Apply FPM
                     
                     #--MFT to Lyot plane
-                    EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)  #--Subtrahend term for the Lyot plane E-field    
-                    EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering); #--Get the correct orientation
+                    EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)   
+                    EP4 = falco.propcustom.propcustom_relay(EP4, mp.Nrelay3to4-1, mp.centering) #--Get the correct orientation
                     
                     
                 EP4 *= mp.P4.compact.croppedMask # Apply Lyot stop

@@ -305,7 +305,7 @@ def compact(mp,modvar,isNorm=True,isEvalMode=False):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
         
-    modvar.wpsbpIndex = 1000 #--Dummy index since not needed in compact model
+#    modvar.wpsbpIndex = 12345 #--Dummy index since not needed in compact model
 
     # Set default values of input parameters
     normFac = mp.Fend.compact.I00[modvar.sbpIndex] # Value to normalize the PSF. Set to 0 when finding the normalization factor
@@ -515,7 +515,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
         EF3 = mp.F3.compact.ampMask * EF3inc
         
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) # Subtrahend term for Babinet's principle     
+        EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)    
         EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
             
     elif(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
@@ -544,7 +544,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
     if(normFac==0):
         if(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
             EP4 = falco.propcustom.propcustom_relay(EP3, mp.Nrelay3to4, mp.centering)
-            EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr)
+            EP4 = falco.utils.padOrCropEven(EP4, mp.P4.compact.Narr)
             pass
         pass
 
@@ -611,7 +611,7 @@ def jacobian(mp):
         with falco.utils.TicToc():
 #            results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]        
             results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] #--Use for assigning parts of the Jacobian list to the correct DM and mode
-            results = [pool.apply_async(model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
+            results = [pool.apply_async(_model_Jacobian_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
             results_Jac = [p.get() for p in results] #--All the Jacobians in a list
             pool.close()
             pool.join()
