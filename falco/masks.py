@@ -5,6 +5,8 @@ import proper
 import scipy.interpolate
 import scipy.ndimage
 import math
+from scipy.interpolate import RectBivariateSpline
+
 from . import utils
 import falco
 
@@ -134,6 +136,331 @@ def falco_gen_DM_stop(dx, Dmask, centering):
     return np.fft.ifftshift(np.abs(wf.wfarr))
 
 
+def falco_gen_pupil_WFIRST_CGI_20191009(Nbeam, centering, changes={}):
+    """
+    Function to generate WFIRST pupil CGI-20191009.
+
+    Function to generate WFIRST pupil CGI-20191009. Options to change
+    the x- or y-shear, clocking, or magnification via keys in the dict
+    called changes.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    centering : string
+        String specifying the centering of the output array
+    Returns
+    -------
+    pupil : numpy ndarray
+        2-D amplitude map of the WFIRST pupil CGI-20191009
+    """    
+    
+    ## Define the best-fit values for ellipses and rectangles (DO NOT CHANGE)
+    
+    primaryRadiusYpixels = 4022.0
+    ODpixels = 2*primaryRadiusYpixels
+    
+    primaryRadiusX = 3987.0/ODpixels
+    primaryRadiusY = primaryRadiusYpixels/ODpixels
+    primaryCenterX = 0.0
+    primaryCenterY = 0.0
+    
+    secondarradiusYX = 1208.5/ODpixels
+    secondarradiusYY = 1219.0/ODpixels
+    # secondaryCenterX = -0.5/ODpixels
+    # secondaryCenterY = -1.3/ODpixels
+    secondaryCenterX = -0.0/ODpixels
+    secondaryCenterY = -1.8/ODpixels
+    
+    strutEndVecX1 = np.array([843.0, 728.0, 47.0, -192.0, -676.0, -816.0])/ODpixels
+    strutEndVecY1 = np.array([552.0, 581.0, -968.0, -1095.0, 606.5, 460.0])/ODpixels
+    
+    strutEndVecX2 = np.array([1579.0, 3988.0, 2430.0, -2484.0, -3988.0, -1572.0])/ODpixels
+    strutEndVecY2 = np.array([3868.0, -511.0, -3212.0, -3254.0, -503.5, 3868.0])/ODpixels
+    
+    strutCenterVecX = (strutEndVecX1 + strutEndVecX2)/2.0
+    strutCenterVecY = (strutEndVecY1 + strutEndVecY2)/2.0
+
+    strutWidthVec = np.array([257.0, 259.0, 258.0, 258.0, 258.5, 257.0])/ODpixels
+    
+    strutAngleVec = np.arctan2(strutEndVecY2-strutEndVecY1, strutEndVecX2-strutEndVecX1)*(180/np.pi)
+    
+    tabRadiusVecX = np.array([1342.0, 1342.0, 1364.0])/ODpixels
+    tabRadiusVecY = np.array([1352.0, 1352.0, 1374.0])/ODpixels
+    tabCenterVecX = np.array([0.0, 0.0, 0.0])/ODpixels
+    # tabCenterVecY = [60.0, 60.0, 60.0]/ODpixels;
+    tabCenterVecY = np.array([55.0, 55.0, 70.0])/ODpixels
+    
+    lStrut = 0.55
+    
+    deltaAngle = 2.5*np.pi/16
+    angTabStart = np.array([0.616 - deltaAngle/2.0, 2.54 - deltaAngle/2.0, -1.57 - deltaAngle/2.0])
+    angTabEnd   = np.array([0.616 + deltaAngle/2.0, 2.54 + deltaAngle/2.0, -1.57 + deltaAngle/2.0])
+    
+    xcStrutVec = strutCenterVecX
+    ycStrutVec = strutCenterVecY
+    angStrutVec = strutAngleVec
+    wStrutVec = strutWidthVec
+
+
+    ## Changes to the pupil
+    
+    
+    ### (Optional) Lyot stop mode (concentric, circular ID and OD)
+    if not 'flagLyot' in changes: 
+        flagLyot = False
+    else:
+        flagLyot = changes['flagLyot']
+    if flagLyot:
+        if 'ID' in changes:
+            ID = changes['ID']
+        else:
+            raise ValueError('ID must be defined for Lyot stop generation mode.')
+        
+        if 'OD' in changes:
+            OD = changes['OD']
+        else:
+            raise ValueError('OD must be defined for Lyot stop generation mode.')
+    
+    ### Oversized strut features: overwrite defaults if values specified
+#    if 'OD' in changes.keys(): OD = changes["OD"]
+#    if 'ID' in changes.keys(): ID = changes["ID"]
+    if 'wStrut' in changes.keys(): wStrutVec = np.ones(6)*changes["wStrut"]
+    if 'wStrutVec' in changes.keys(): wStrutVec = changes["wStrutVec"]
+
+    ### Padding values for obscuration
+    #--Defaults of Bulk Changes: (All length units are pupil diameters. All angles are in degrees.)
+    if not 'xShear' in changes.keys(): changes["xShear"] = 0
+    if not 'yShear' in changes.keys(): changes["yShear"] = 0
+    if not 'magFac' in changes.keys(): changes["magFac"] = 1.0
+    if not 'clock_deg' in changes.keys(): changes["clock_deg"] = 0.0
+    if not 'flagRot180' in changes.keys(): changes["flagRot180"] = False
+
+    #--Defaults for obscuration padding: (All length units are pupil diameters.)
+    if not 'pad_all' in changes.keys(): changes["pad_all"] = 0.
+    if not 'pad_strut' in changes.keys(): changes["pad_strut"] = 0.
+    if not 'pad_COBS' in changes.keys(): changes["pad_COBS"] = 0.
+    if not 'pad_COBStabs' in changes.keys(): changes["pad_COBStabs"] = 0.
+    if not 'pad_OD' in changes.keys(): changes["pad_OD"] = 0.
+
+    #--Values to use for bulk clocking, magnification, and translation
+    xShear = changes["xShear"]  # - xcOD;
+    yShear = changes["yShear"]  # - ycOD;
+    magFac = changes["magFac"]
+    clock_deg = changes["clock_deg"]
+    clockRad = clock_deg*(np.pi/180.)
+    flagRot180 = changes["flagRot180"]
+    
+    #--Padding values. (pad_all is added to all the rest)
+    pad_all = changes["pad_all"]     #0.2/100; #--Uniform padding on all features
+    pad_strut = changes["pad_strut"] + pad_all
+    pad_COBS = changes["pad_COBS"] + pad_all
+    pad_COBStabs = changes["pad_COBStabs"] + pad_all
+    pad_OD = changes["pad_OD"] + pad_all  #--Radial padding at the edge
+     
+    #--Rotation matrix used on center coordinates.
+    rotMat = np.array([[math.cos(clockRad), -math.sin(clockRad)], [math.sin(clockRad), math.cos(clockRad)]])
+
+    ## Nominal Mask Coordinates
+    if centering.lower() == 'pixel':
+        Narray = falco.utils.ceil_even(Nbeam*np.max(2*np.abs((xShear, yShear))) + magFac*(Nbeam+1))
+    elif centering.lower() == 'interpixel':
+        Narray = falco.utils.ceil_even(Nbeam*np.max(2*np.abs((xShear, yShear))) + magFac*Nbeam)
+
+    if centering.lower() == 'interpixel':
+        xs = np.linspace(-(Nbeam-1)/2, (Nbeam-1)/2, Nbeam)/Nbeam
+    else:
+        xs = np.linspace(-(Narray/2), Narray/2-1, Narray)/Nbeam
+
+    [XS, YS] = np.meshgrid(xs,xs)
+
+    ## Proper Setup Values
+    Dbeam = 1                 #--Diameter of aperture, normalized to itself
+    wl   = 1e-6               # wavelength (m); Dummy value--no propagation here, so not used.
+    bdf = Nbeam/Narray        #--beam diameter factor in output array
+    dx = Dbeam/Nbeam
+
+    if centering.lower() in ('interpixel', 'even'):
+        cshift = -dx/2
+    elif centering.lower() in ('pixel', 'odd'):
+        cshift = 0
+        if flagRot180:
+            cshift = -dx
+
+    ## INITIALIZE PROPER
+    bm = proper.prop_begin(Dbeam, wl, Narray,bdf)    
+
+    ## Struts
+    for iStrut in range(6):
+        angDeg = angStrutVec[iStrut] + clock_deg # degrees
+        wStrut = magFac*(wStrutVec[iStrut] + 2*pad_strut)
+        lStrutIn = magFac*lStrut
+        xc = magFac*(xcStrutVec[iStrut]) 
+        yc = magFac*(ycStrutVec[iStrut])
+        cxy = rotMat @ np.array([xc, yc]).reshape((2,1))
+        xc = cxy[0] + xShear
+        yc = cxy[1] + yShear
+        proper.prop_rectangular_obscuration(bm, lStrutIn, wStrut, xc+cshift, yc+cshift, ROTATION=angDeg) #;%, norm)
+    
+    
+    if not flagLyot:
+        
+        ## PRIMARY MIRROR (OUTER DIAMETER)
+        ra_OD_x = magFac*(primaryRadiusX-pad_OD)
+        ra_OD_y = magFac*(primaryRadiusY-pad_OD)
+        cx_OD = magFac*primaryCenterX
+        cy_OD = magFac*primaryCenterY
+        cxy = rotMat @ np.array([cx_OD, cy_OD]).reshape((2,1))
+        cx_OD = cxy[0] + xShear # + cshift; --> cshift not needed because falco_gen_ellipse takes centering into account
+        cy_OD = cxy[1] + yShear # + cshift; --> cshift not needed because falco_gen_ellipse takes centering into account
+        # bm = prop_elliptical_aperture( bm, ra_OD_x, ra_OD_y, 'XC', cx_OD, 'YC', cy_OD);
+        
+        inputs = {}
+        inputs["Narray"] = Narray
+        inputs["Nbeam"] = Nbeam
+        inputs["radiusX"] = ra_OD_x
+        inputs["radiusY"] = ra_OD_y
+        inputs["clockingDegrees"] = clock_deg
+        inputs["centering"] = centering
+        inputs["xShear"] = cx_OD
+        inputs["yShear"] = cy_OD
+    #    inputs.Narray = Narray;
+    #    inputs.Nbeam = Nbeam;
+    #    inputs.radiusX = ra_OD_x;
+    #    inputs.radiusY = ra_OD_y;
+    #    inputs.clockingDegrees = clock_deg;
+    #    inputs.centering = centering; 
+    #    inputs.xShear = cx_OD;
+    #    inputs.yShear = cy_OD;
+        # inputs.magFac = magFac; %  not needed because falco_gen_ellipse takes magnification into account
+        primaryAperture = falco_gen_ellipse(inputs)
+        # primaryAperture = 1;
+        
+        ## SECONDARY MIRROR (INNER DIAMETER)
+        ra_ID_x = magFac*(secondarradiusYX + pad_COBS)
+        ra_ID_y = magFac*(secondarradiusYY + pad_COBS)
+        cx_ID = magFac*secondaryCenterX
+        cy_ID = magFac*secondaryCenterY
+        cxy = rotMat @ np.array([cx_ID, cy_ID]).reshape((2,1))
+        cx_ID = cxy[0] + xShear # + cshift; --> cshift not needed because falco_gen_ellipse takes centering into account
+        cy_ID = cxy[1] + yShear # + cshift; --> cshift not needed because falco_gen_ellipse takes centering into account
+        # bm = prop_elliptical_obscuration(bm, ra_ID_x, ra_ID_y,'XC',cx_ID,'YC',cy_ID);
+        
+        inputs = {}
+        inputs["Narray"] = Narray
+        inputs["Nbeam"] = Nbeam
+        inputs["radiusX"] = ra_ID_x
+        inputs["radiusY"] = ra_ID_y
+        inputs["clockingDegrees"] = clock_deg
+        inputs["centering"] = centering
+        inputs["xShear"] = cx_ID
+        inputs["yShear"] = cy_ID
+    #    inputsSec.Narray = Narray;
+    #    inputsSec.Nbeam = Nbeam;
+    #    inputsSec.radiusX = ra_ID_x;
+    #    inputsSec.radiusY = ra_ID_y;
+    #    inputsSec.clockingDegrees = clock_deg;
+    #    inputsSec.centering = centering;
+    #    inputsSec.xShear = cx_ID;
+    #    inputsSec.yShear = cy_ID;
+        # inputsSec.magFac = magFac; %  not needed because falco_gen_ellipse takes magnification into account
+        secondaryObscuration = 1 - falco_gen_ellipse(inputs)
+        
+        ## Tabs where Struts Meet Secondary Mirror
+        
+        nTabs = 3
+        tabCube = np.ones((Narray, Narray, nTabs))
+        
+        for iTab in range(nTabs):
+            cobsTabsMask = np.zeros((Narray, Narray))
+        
+            XSnew = (XS + tabCenterVecX[iTab]) - xShear;
+            YSnew = (YS + tabCenterVecY[iTab]) - yShear;
+            THETAS = np.arctan2(YSnew,XSnew);
+            
+            if(angTabStart[iTab] > angTabEnd[iTab]):
+                cobsTabsMask[ (THETAS >= (angTabEnd[iTab]+clockRad)) & (THETAS <= (angTabStart[iTab]+clockRad)) ] = 1.0
+            else:
+                cobsTabsMask[ (THETAS <= (angTabEnd[iTab]+clockRad)) & (THETAS >= (angTabStart[iTab]+clockRad)) ] = 1.0
+            
+        
+            #--ELLIPSE:
+        #     bm2 = prop_begin(Dbeam, wl, Narray,'beam_diam_fraction',bdf);
+        
+            # Full ellipse to be multiplied by the mask to get just tabs
+            cx_tab = magFac*tabCenterVecX[iTab]
+            cy_tab = magFac*tabCenterVecY[iTab]
+            cxy = rotMat @ np.array([cx_tab, cy_tab]).reshape((2,1))
+            cx_tab = cxy[0] + xShear
+            cy_tab = cxy[1] + yShear
+            tabRadiusX = magFac*(tabRadiusVecX[iTab] + pad_COBStabs)
+            tabRadiusY = magFac*(tabRadiusVecY[iTab] + pad_COBStabs)
+        
+        #     bm2 = prop_elliptical_obscuration(bm2, tabRadiusX, tabRadiusY,'XC',cx_tab+cshift,'YC',cy_tab+cshift);
+        #     tabEllipse = 1-ifftshift(abs(bm2.wf));
+    
+            inputs = {}
+            inputs["Narray"] = Narray
+            inputs["Nbeam"] = Nbeam
+            inputs["radiusX"] = tabRadiusX
+            inputs["radiusY"] = tabRadiusY
+            inputs["clockingDegrees"] = clock_deg
+            inputs["centering"] = centering
+            inputs["xShear"] = cx_tab
+            inputs["yShear"] = cy_tab
+            tabEllipse = falco_gen_ellipse(inputs)
+        
+    #        clear inputs
+    #        inputs.Narray = Narray;
+    #        inputs.Nbeam = Nbeam #;% = 1219.0/ODpixels %Nbeam;
+    #        inputs.radiusX = tabRadiusX;
+    #        inputs.radiusY = tabRadiusY;
+    #        inputs.clockingDegrees = clock_deg;
+    #        inputs.centering = centering;
+    #        inputs.xShear = cx_tab;
+    #        inputs.yShear = cy_tab;
+    #        % inputs.magFac = magFac;
+    #        tabEllipse = falco_gen_ellipse(inputs);
+        
+            tabSector = cobsTabsMask*tabEllipse
+        
+            tabCube[:,:,iTab] = 1 - tabSector  
+    #    %     figure(11); imagesc(cobsTabsMask); axis xy equal tight; colorbar; drawnow;
+    #    %     figure(12); imagesc(tabEllipse); axis xy equal tight; colorbar; drawnow;
+    #    %     figure(13); imagesc(tabCube(:,:,iTab)); axis xy equal tight; colorbar; drawnow;
+        
+        
+        ## Output
+        
+        pupil = secondaryObscuration*primaryAperture*tabCube[:,:,0]*tabCube[:,:,1]*tabCube[:,:,2]*np.fft.ifftshift(np.abs(bm.wfarr))
+    
+    else: # (Lyot stop mode)
+
+        #-- OUTER DIAMETER
+        ra_OD = magFac*(OD/2.);
+        cx_OD = xShear;
+        cy_OD = yShear;
+        proper.prop_circular_aperture(bm, ra_OD, cx_OD+cshift, cy_OD+cshift);
+    
+        #-- INNER DIAMETER
+        ra_ID = magFac*(ID/2.)
+        cx_ID = xShear;
+        cy_ID = yShear;
+        proper.prop_circular_obscuration(bm, ra_ID, cx_ID+cshift, cy_ID+cshift);
+    
+        pupil = np.fft.ifftshift(np.abs(bm.wfarr))
+        
+        pass
+    
+    
+    if(flagRot180):
+       pupil = np.rot90(pupil,2)
+    
+    return pupil
+
+#############
+
 def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     """
     Function to generate WFIRST pupil CGI-180718.
@@ -207,35 +534,12 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
      -2.822938064533701e+00,
     ])
 
-#    ### Changes to the pupil
-#    class Changes(object):
-#        pass
-#    
-#    class Struct(object):
-#        def __init__(self, **entries):
-#            self.__dict__.update(entries)
-#
-#    if len(kwargs) > 0:
-#        #raise ValueError('falco_gen_pupil_WFIRST_CGI_180718.m: Too many inputs')
-#        changes=Struct(**kwargs)
-#    else:
-#        changes = Changes()
-#        changes.dummy = 1
     
     ### Oversized strut features: overwrite defaults if values specified
     if 'OD' in changes.keys(): OD = changes["OD"]
     if 'ID' in changes.keys(): ID = changes["ID"]
     if 'wStrut' in changes.keys(): wStrutVec = np.ones(6)*changes["wStrut"]
     if 'wStrutVec' in changes.keys(): wStrutVec = changes["wStrutVec"]
-
-#    if hasattr(changes, 'OD'):
-#        OD = changes.OD
-#    if hasattr(changes, 'ID'):
-#        ID = changes.ID
-#    if hasattr(changes, 'wStrut'):
-#        wStrutVec = changes.wStrut * np.ones([6])
-#    if hasattr(changes, 'wStrutVec'):
-#        wStrutVec = changes.wStrutVec
 
     ### Padding values for obscuration
     #--Defaults of Bulk Changes: (All length units are pupil diameters. All angles are in degrees.)
@@ -257,6 +561,7 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     yShear = changes["yShear"]  # - ycOD;
     magFac = changes["magFac"]
     clock_deg = changes["clock_deg"]
+    clockRad = clock_deg*(np.pi/180.)
     flagRot180 = changes["flagRot180"]
     
     #--Padding values. (pad_all is added to all the rest)
@@ -267,13 +572,13 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     pad_OD = changes["pad_OD"] + pad_all  #--Radial padding at the edge
 
     #--Rotation matrix used on center coordinates.
-    rotMat = np.array([[math.cos(math.radians(clock_deg)), -math.sin(math.radians(clock_deg))], [math.sin(math.radians(clock_deg)), math.cos(math.radians(clock_deg))]])
+    rotMat = np.array([[math.cos(clockRad), -math.sin(clockRad)], [math.sin(clockRad), math.cos(clockRad)]])
 
     ## Coordinates
     if centering.lower() in ('pixel', 'odd'):
-        Narray = falco.utils.ceil_even(Nbeam + 1) #--number of points across output array. Requires two more pixels when pixel centered.
+        Narray = falco.utils.ceil_even(Nbeam*np.max(2*np.abs((xShear, yShear))) + magFac*(Nbeam+1)) #--number of points across output array. Requires two more pixels when pixel centered.
     else:
-        Narray = falco.utils.ceil_even(Nbeam) #--No zero-padding needed if beam is centered between pixels
+        Narray = falco.utils.ceil_even(Nbeam*np.max(2*np.abs((xShear, yShear))) + magFac*Nbeam) #--No zero-padding needed if beam is centered between pixels
 
     if centering.lower() == 'interpixel':
         xs = np.linspace(-(Nbeam-1)/2, (Nbeam-1)/2,Nbeam)/Nbeam
@@ -344,20 +649,20 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     overSizeFac = 1.3
     cobsTabsMask = np.zeros([Narray,Narray])
     THETAS = np.arctan2(YSnew,XSnew)
-    clock_rad = np.deg2rad(clock_deg)
+    clockRad = np.deg2rad(clock_deg)
 
     
     if angTabStart[0] > angTabEnd[0]:
         msk1=(XSnew**2 + YSnew**2) <= (overSizeFac*magFac*IDtabs/2)**2
-        msk2=np.logical_and(THETAS>=angTabEnd[0]+clock_rad,THETAS<=angTabStart[0]+clock_rad)
-        msk3=np.logical_and(THETAS>=angTabEnd[1]+clock_rad,THETAS<=angTabStart[1]+clock_rad)
-        msk4=np.logical_and(THETAS>=angTabEnd[2]+clock_rad,THETAS<=angTabStart[2]+clock_rad)
+        msk2=np.logical_and(THETAS>=angTabEnd[0]+clockRad,THETAS<=angTabStart[0]+clockRad)
+        msk3=np.logical_and(THETAS>=angTabEnd[1]+clockRad,THETAS<=angTabStart[1]+clockRad)
+        msk4=np.logical_and(THETAS>=angTabEnd[2]+clockRad,THETAS<=angTabStart[2]+clockRad)
         cobsTabsMask[np.logical_and(msk1,np.logical_or(msk2,np.logical_or(msk3,msk4)))]=1
     else:
         msk1=(XSnew**2 + YSnew**2) <= (overSizeFac*magFac*IDtabs/2)**2
-        msk2=np.logical_and(THETAS<=angTabEnd[0]+clock_rad,THETAS>=angTabStart[0]+clock_rad)
-        msk3=np.logical_and(THETAS<=angTabEnd[1]+clock_rad,THETAS>=angTabStart[1]+clock_rad)
-        msk4=np.logical_and(THETAS<=angTabEnd[2]+clock_rad,THETAS>=angTabStart[2]+clock_rad)
+        msk2=np.logical_and(THETAS<=angTabEnd[0]+clockRad,THETAS>=angTabStart[0]+clockRad)
+        msk3=np.logical_and(THETAS<=angTabEnd[1]+clockRad,THETAS>=angTabStart[1]+clockRad)
+        msk4=np.logical_and(THETAS<=angTabEnd[2]+clockRad,THETAS>=angTabStart[2]+clockRad)
         cobsTabsMask[np.logical_and(msk1,np.logical_or(msk2,np.logical_or(msk3,msk4)))]=1
     
 
@@ -387,28 +692,6 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
         pupil = np.rot90(pupil,2)
 
     return pupil
-
-
-def falco_gen_pupil_WFIRST_20180103(Nbeam, centering, rot180deg=False):
-    pupil_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              "pupil_WFIRST_CGI_20180103.png")
-    pupil0 = scipy.misc.imread(pupil_file)
-    pupil0 = np.rot90(pupil0, 2 + 2 * rot180deg)
-
-    pupil1 = np.sum(pupil0, axis=2)
-    pupil1 = pupil1/np.max(pupil1)
-
-    # Temporarily using 0th order interpolation to ensure the result is identical to MATLAB's.
-    # In MATLAB code, this is equivalent to floor(interp2(Xs0,Xs0.',pupil1,Xs1,Xs1.','nearest',0));
-    if centering in ("interpixel", "even"):
-        xs = np.arange(0, Nbeam + 1) * len(pupil1) / float(Nbeam)
-        Xs = np.meshgrid(xs, xs, indexing="ij")
-        return np.floor(scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False))
-    else:
-        xs = np.arange(0, Nbeam + 1) * len(pupil1) / float(Nbeam) - 0.5
-        Xs = np.meshgrid(xs, xs, indexing="ij")
-        temp = np.floor(scipy.ndimage.map_coordinates(pupil1, Xs, order=0, prefilter=False))
-        return np.pad(temp, ((1, 0), (1, 0)), "constant", constant_values=(0, 0))
 
 
 def falco_gen_SW_mask(inputs):
@@ -646,9 +929,119 @@ def falco_gen_pupil_WFIRSTcycle6_LS(Nbeam, Dbeam, ID, OD, strut_width, centering
     return mask
 
 
+def falco_gen_bowtie_FPM(inputs):
+    """
+    Function to generate an bowtie FPM using PROPER.
+    
+    Outside the outer ring is opaque.If rhoOuter = infinity, then the outer 
+    ring is omitted and the mask is cropped down to the size of the inner spot.
+    The inner spot has a specifyable amplitude value. The output array is the 
+    smallest size that fully contains the mask.    
+
+    Parameters
+    ----------
+     pixresFPM:  resolution in pixels per lambda_c/D
+     rhoInner:   radius of inner FPM amplitude spot (in lambda_c/D)
+     rhoOuter:   radius of outer opaque FPM ring (in lambda_c/D). Set to
+                 infinity for an occulting-spot only FPM
+     FPMampFac:  amplitude transmission of inner FPM spot
+     centering:  pixel centering 
+    
+    Returns
+    -------
+     mask:    cropped-down, 2-D FPM representation. amplitude only 
+     
+    """
+
+    # Set default values of input parameters
+    flagRot180deg = False
+
+
+    #unfolding **kwargs
+#    class Struct(object):
+#        def __init__(self, **entries):
+#            self.__dict__.update(entries)
+    #inputs=Struct(**kwargs)
+
+    ang = inputs["ang"] # Opening angle on each side of the bowtie
+    pixresFPM=inputs["pixresFPM"]
+    rhoInner=inputs["rhoInner"]
+    rhoOuter=inputs["rhoOuter"] 
+    centering=inputs["centering"] 
+    FPMampFac = 0 #inputs["FPMampFac"] 
+
+    if hasattr(inputs, 'flagRot180deg'):
+        flagRot180deg = inputs["flagRot180deg"]
+
+
+    dxiUL = 1.0 / pixresFPM  # lambda_c/D per pixel. "UL" for unitless
+#    if np.isinf(rhoOuter):
+#        if centering == "interpixel":
+#            # number of points across the inner diameter of the FPM.
+#            Narray = falco.utils.ceil_even((2 * rhoInner / dxiUL))
+#        else:
+#            # number of points across the inner diameter of the FPM. Another half pixel added for pixel-centered masks.
+#            Narray = falco.utils.ceil_even(2 * (rhoInner / dxiUL + 0.5))
+#    else:
+    if centering == "interpixel":
+        # number of points across the outer diameter of the FPM.
+        Narray = falco.utils.ceil_even(2 * rhoOuter / dxiUL)
+    else:
+        # number of points across the outer diameter of the FPM. Another half pixel added for pixel-centered masks.
+        Narray = falco.utils.ceil_even(2 * (rhoOuter / dxiUL + 0.5))
+
+    xshift = 0  # translation in x of FPM (in lambda_c/D)
+    yshift = 0  # translation in y of FPM (in lambda_c/D)
+
+    Darray = Narray * dxiUL  # width of array in lambda_c/D
+    diam = Darray
+    wl_dummy = 1e-6  # wavelength (m); Dummy value--no propagation here, so not used.
+
+    if centering == "interpixel":
+        cshift = -diam / 2 / Narray
+    elif flagRot180deg: #rot180
+        cshift = -diam / Narray
+    else:
+        cshift = 0
+
+    #--INITIALIZE PROPER. Note that:  bm.dx = diam / bdf / np;
+    wf = proper.prop_begin(diam, wl_dummy, Narray, 1.0)
+
+#    if not np.isinf(rhoOuter):
+    # Outer opaque ring of FPM
+    cx_OD = 0 + cshift + xshift
+    cy_OD = 0 + cshift + yshift
+    proper.prop_circular_aperture(wf, rhoOuter, cx_OD, cy_OD)
+
+    # Inner spot of FPM (Amplitude transmission can be nonzero)
+    cx_ID = 0 + cshift + xshift
+    cy_ID = 0 + cshift + yshift
+    innerSpot = proper.prop_ellipse(wf, rhoInner, rhoInner, cx_ID,
+                                    cy_ID, DARK=True) * (1 - FPMampFac) + FPMampFac
+                              
+    #--Create the bowtie region
+    if ang < 180:
+        #--Top part
+        Lside = 2*rhoOuter
+        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(ang/2), Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2)])
+        yvert = cshift + xshift + np.array([0, Lside*falco.utils.sind(ang/2), Lside, Lside, Lside*falco.utils.sind(ang/2)])
+        bowtieTop = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True);
+        
+        #--Bottom part
+        xvert = cshift + xshift + np.array([0, Lside*falco.utils.cosd(ang/2), Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2), -Lside*falco.utils.cosd(ang/2)])
+        yvert = cshift + xshift + -1*np.array([0, Lside*falco.utils.sind(ang/2), Lside, Lside, Lside*falco.utils.sind(ang/2)])
+        bowtieBottom = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True);
+    else:
+        bowtieTop = 1
+        bowtieBottom = 1
+                                
+    mask = np.fft.ifftshift(np.abs(wf.wfarr))  # undo PROPER's fftshift
+    return mask * innerSpot * bowtieTop * bowtieBottom
+
+
 def falco_gen_annular_FPM(inputs):
     """
-    Function to generate an annular FPM in Matlab using PROPER.
+    Function to generate an annular FPM using PROPER.
     
     Outside the outer ring is opaque.If rhoOuter = infinity, then the outer 
     ring is omitted and the mask is cropped down to the size of the inner spot.
@@ -760,7 +1153,7 @@ def falco_gen_bowtie_LS(inputs):
 
     if(centering=='pixel'):
         Narray = falco.utils.ceil_even(magfac*Nbeam + 1 + 2*Nbeam*np.max(np.abs(np.array([xShear,yShear]))))  #--number of points across output array. Sometimes requires two more pixels when pixel centered.
-    else:
+    elif(centering=='interpixel'):
         Narray = falco.utils.ceil_even(magfac*Nbeam + 2*Nbeam*np.max(np.abs(np.array([xShear,yShear]))))    #--number of points across output array. Same size as width when interpixel centered.
 
     Darray = Narray*dx  #--width of the output array [meters]
@@ -790,30 +1183,30 @@ def falco_gen_bowtie_LS(inputs):
     mask = np.fft.ifftshift(np.abs(bm.wfarr))
 
     #--Create the bowtie region
-    if(ang<180.):
-        ang2 = 90.-ang/2.
+    if(ang < 180):
+        ang2 = 90. - ang/2.
         bm2 = bm
         Lside = 1.1*ra_OD # Have the triangle go a little past the edge of the circle
 
-        yvert0 = np.array([0., Lside*falco.utils.sind(ang2), Lside*falco.utils.sind(ang2), -Lside*falco.utils.sind(ang2), -Lside*falco.utils.sind(ang2), 0.])
+        yvert0 = np.array([0., Lside*falco.utils.falco.utils.sind(ang2), Lside*falco.utils.falco.utils.sind(ang2), -Lside*falco.utils.falco.utils.sind(ang2), -Lside*falco.utils.falco.utils.sind(ang2), 0.])
 
         #--Right triangular obscuration
-        xvert0 = np.array([0., Lside*falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.cosd(ang2), 0.])
+        xvert0 = np.array([0., Lside*falco.utils.falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.falco.utils.cosd(ang2), 0.])
         xvert = xvert0.copy()
         yvert = yvert0.copy()
         for ii in range(len(xvert0)):
-            xy = np.array([[falco.utils.cosd(clocking),falco.utils.sind(clocking)],[ -falco.utils.sind(clocking),falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
+            xy = np.array([[falco.utils.falco.utils.cosd(clocking),falco.utils.falco.utils.sind(clocking)],[ -falco.utils.falco.utils.sind(clocking),falco.utils.falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
             xvert[ii] = xy[0]
             yvert[ii] = xy[1]
             pass
         bowtieRight = proper.prop_irregular_polygon( bm, cshift+xShear+xvert, cshift+yShear+yvert,DARK=True)
    
         #--Left triangular obscuration
-        xvert0 = -np.array([0., Lside*falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.cosd(ang2), 0.])
+        xvert0 = -np.array([0., Lside*falco.utils.falco.utils.cosd(ang2), Lside,             Lside,             Lside*falco.utils.falco.utils.cosd(ang2), 0.])
         xvert = xvert0.copy()
         yvert = yvert0.copy()
         for ii in range(len(xvert0)):
-            xy = np.array([[falco.utils.cosd(clocking),falco.utils.sind(clocking)], [-falco.utils.sind(clocking),falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
+            xy = np.array([[falco.utils.falco.utils.cosd(clocking),falco.utils.falco.utils.sind(clocking)], [-falco.utils.falco.utils.sind(clocking),falco.utils.falco.utils.cosd(clocking)]]) @ np.array([xvert0[ii], yvert0[ii]]).reshape(2,1)
             xvert[ii] = xy[0]
             yvert[ii] = xy[1]
             pass
@@ -1402,3 +1795,131 @@ def falco_gen_pupil_Simple( input ):
                 PUPIL *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider)*(RHO*np.cos(THETA-ang*np.pi/180)>0))
 
     return PUPIL
+
+def resample_spm(Ain, nBeamIn, nBeamOut, dx, dy, centering = 'pixel'):
+    """
+    Shear and resample a shaped pupil mask.
+    
+    Parameters
+    ----------
+    Ain : np.ndarray
+        Rectangular or square input array with even size along each dimension. Must be pixel-centered.
+    nBeamIn : int
+        Number of points across beam at starting resolution. Can be int or float.
+    nBeamOut : int
+        Number of points across beam at final resolution. Can be int or float.    
+    dx : float
+        x-shear of the mask in pupil diameters 
+    dy : float
+        y-shear of the mask in pupil diameters        
+    Returns
+    -------
+    Aout : np.ndarray
+        2-D square array containing the resized mask. Is pixel-centered.
+    """
+    
+    #--Assumes the input SPM in Ain is array-centered
+
+    #--Error messages regarding properties of inputs
+    if not (len(Ain.shape)==2):
+        raise TypeError('func_resample_spm: Ain must be a 2-D array.')
+    if not (Ain.shape[0] == Ain.shape[1]):
+        raise TypeError('func_resample_spm: Ain must be a square array.')
+
+    if(nBeamIn==nBeamOut):
+        Aout = Ain
+    else:
+        Ain = Ain[1::,1::] # Crop. Assumes SP is pixel centered and row 0 and column 0 are empty.
+
+        #--Array sizes
+        dxIn = 1./nBeamIn
+        dxOut = 1./nBeamOut
+        nArrayIn = Ain.shape[0]
+        nArrayOut = falco.utils.ceil_odd(nArrayIn*dxIn/dxOut + 2.*np.max((dx,dy)))
+
+        x0 = np.arange(-(nArrayIn-1.)/2.,(nArrayIn)/2.,1)*dxIn #--array-centered coordinates of input matrix [pupil diameters]
+        [X0,Y0] = np.meshgrid(x0,x0)
+        R0 = np.sqrt(X0**2 + Y0**2)
+        Window = 0*R0
+        Window[R0<=dxOut] = 1 
+        Window = Window/np.sum(Window)
+
+        A = np.fft.ifftshift(  np.fft.ifft2( np.fft.fft2(np.fft.fftshift(Window))*np.fft.fft2(np.fft.fftshift(Ain)) )) #--To get good grayscale edges, convolve with the correct window before downsampling.
+        A = np.roll(A, (1, 1), axis=(0, 1))  #--Undo a centering shift for array-centered beam
+        x1 = (np.arange(-(nArrayOut-1.)/2.,nArrayOut/2.,1) - dx)*dxOut #((-(nArrayOut-1)/2:(nArrayOut-1)/2) - dx)*dxOut;
+        y1 = (np.arange(-(nArrayOut-1.)/2.,nArrayOut/2.,1) - dy)*dxOut #((-(nArrayOut-1)/2:(nArrayOut-1)/2) - dy)*dxOut;
+        #[X1,Y1] = np.meshgrid(x1,y1)
+            
+        interp_spline = RectBivariateSpline(x0, x0, A) # RectBivariateSpline is faster in 2-D than interp2d
+        Atemp = interp_spline(y1,x1)
+        # Refer to https://scipython.com/book/chapter-8-scipy/examples/two-dimensional-interpolation-with-scipyinterpolaterectbivariatespline/
+
+        Aout = np.zeros((nArrayOut+1,nArrayOut+1))
+        Aout[1::,1::] = np.real(Atemp)
+        
+        return Aout
+
+
+def falco_gen_ellipse(inputs):
+    Nbeam = inputs['Nbeam']
+    Narray = inputs['Narray']
+    radiusX = inputs['radiusX']
+    radiusY = inputs['radiusY']
+    
+    # Optional dictionary keys
+    centering = inputs["centering"] if('centering' in inputs) else 'pixel'
+    clockingDegrees = inputs["clockingDegrees"] if('clockingDegrees' in inputs) else 0.
+    clockingRadians = (np.pi/180.)*clockingDegrees
+    xShear = inputs["xShear"] if('xShear' in inputs) else 0.
+    yShear = inputs["yShear"] if('yShear' in inputs) else 0.
+    magFac = inputs["magFac"] if('magFac' in inputs) else 1
+    
+    if centering == 'pixel':
+        x = np.linspace(-Narray/2., Narray/2. - 1, Narray)/float(Nbeam)
+    elif centering == 'interpixel':
+        x = np.linspace(-(Narray-1)/2., (Narray-1)/2., Narray)/float(Nbeam)
+        
+    y = x
+    x = x - xShear
+    y = y - yShear
+    [X, Y] = np.meshgrid(x,y)
+    dx = x[1] - x[0]
+    radius = 0.5
+    
+    RHO = 1/magFac*0.5*np.sqrt(
+        1/(radiusX)**2*(np.cos(clockingRadians)*X + np.sin(clockingRadians)*Y)**2
+        + 1/(radiusY)**2*(np.sin(clockingRadians)*X - np.cos(clockingRadians)*Y)**2
+        )
+    
+    halfWindowWidth = np.max(np.abs((RHO[1, 0]-RHO[0, 0], RHO[0, 1] - RHO[0, 0])))
+    pupil = -1*np.ones(RHO.shape)
+    pupil[np.abs(RHO) < radius - halfWindowWidth] = 1
+    pupil[np.abs(RHO) > radius + halfWindowWidth] = 0
+    grayInds = np.array(np.nonzero(pupil==-1))
+    # print('Number of grayscale points = %d' % grayInds.shape[1])
+    
+    upsampleFactor = 100
+    dxUp = dx/float(upsampleFactor)
+    xUp = np.linspace(-(upsampleFactor-1)/2., (upsampleFactor-1)/2., upsampleFactor)*dxUp
+    #xUp = (-(upsampleFactor-1)/2:(upsampleFactor-1)/2)*dxUp
+    [Xup, Yup] = np.meshgrid(xUp, xUp)
+    
+    subpixel = np.zeros((upsampleFactor,upsampleFactor))
+    
+    for iInterior in range(grayInds.shape[1]):
+    
+        subpixel = 0*subpixel
+    
+        xCenter = X[grayInds[0, iInterior], grayInds[1, iInterior]]
+        yCenter = Y[grayInds[0, iInterior], grayInds[1, iInterior]]
+        RHOup = 0.5*np.sqrt(
+        1/(radiusX)**2*(np.cos(clockingRadians)*(Xup+xCenter) + np.sin(clockingRadians)*(Yup+yCenter))**2
+        + 1/(radiusY)**2*(np.sin(clockingRadians)*(Xup+xCenter) - np.cos(clockingRadians)*(Yup+yCenter))**2 
+        )
+    
+        subpixel[RHOup <= radius] = 1
+        pixelValue = np.sum(subpixel)/float(upsampleFactor**2)
+        pupil[grayInds[0, iInterior], grayInds[1, iInterior]] = pixelValue
+    
+#    plt.figure(2); plt.imshow(pupil); plt.colorbar(); plt.pause(0.1)
+    return pupil

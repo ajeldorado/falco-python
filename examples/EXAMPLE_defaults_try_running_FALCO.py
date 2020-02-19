@@ -10,7 +10,7 @@ mp.SeriesNum = 867
 mp.TrialNum = 5309
 
 ###--Special Computational Settings
-mp.flagParfor = False
+mp.flagMultiproc = False
 mp.flagPlot = False
 mp.useGPU = False
 
@@ -147,12 +147,12 @@ mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 
 ### Deformable Mirrors: Influence Functions
 ##--Influence Function Options:
-## - 'influence_dm5v2.fits' for one type of Xinetics DM
-## - 'influence_BMC_2kDM_400micron_res10.fits' for BMC 2k DM
-## - 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
+## - falco.INFLUENCE_XINETICS uses the file 'influence_dm5v2.fits' for one type of Xinetics DM
+## - INFLUENCE_BMC_2K uses the file 'influence_BMC_2kDM_400micron_res10.fits' for BMC 2k DM
+## - INFLUENCE_BMC_KILO uses the file 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
 
-mp.dm1.inf_fn = 'influence_BMC_2kDM_400micron_res10.fits'
-mp.dm2.inf_fn = 'influence_BMC_2kDM_400micron_res10.fits'
+mp.dm1.inf_fn = falco.INFLUENCE_BMC_2K
+mp.dm2.inf_fn = falco.INFLUENCE_BMC_2K
 
 mp.dm1.dm_spacing = 400e-6 #--User defined actuator pitch
 mp.dm2.dm_spacing = 400e-6 #--User defined actuator pitch

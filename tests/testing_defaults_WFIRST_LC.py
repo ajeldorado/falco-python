@@ -2,7 +2,6 @@ import numpy as np
 import sys
 sys.path.append('../')
 import falco
-#import proper
 
 
 mp = falco.config.ModelParameters()
@@ -10,11 +9,11 @@ mp = falco.config.ModelParameters()
 #type(mp.P2.full)
 ### Parameters from EXAMPLE_defaults_WFIRST_LC.m
 
-mp.SeriesNum = 1;
-mp.TrialNum = 34;
+mp.SeriesNum = 0
+mp.TrialNum = 0
 
 ###--Special Computational Settings
-mp.flagMultiproc = True;
+mp.flagParfor = False;
 mp.useGPU = False;
 mp.flagPlot = False;
 
@@ -39,8 +38,8 @@ mp.source_y_offset_norm = 0;  # y location [lambda_c/D] in dark hole at which to
 #### Bandwidth and Wavelength Specs
 
 mp.lambda0 = 575e-9;   #--Central wavelength of the whole spectral bandpass [meters]
-mp.fracBW = 0.10;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
-mp.Nsbp = 5;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+mp.fracBW = 0.01;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.Nsbp = 1;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1;          #--Number of wavelengths to used to approximate an image in each sub-bandpass
 
 #### Wavefront Estimation
@@ -215,12 +214,12 @@ mp.Fend.FOV = 11.; #--half-width of the field of view in both dimensions [lambda
 ####### NEED TO DETERMINE
 ##--Correction and scoring region definition
 mp.Fend.corr = falco.config.Object()
-mp.Fend.corr.Rin = 2.7;   # inner radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.Rin = 2.8;   # inner radius of dark hole correction region [lambda0/D]
 mp.Fend.corr.Rout  = 10;  # outer radius of dark hole correction region [lambda0/D]
 mp.Fend.corr.ang  = 180;  # angular opening of dark hole correction region [degrees]
 #
 mp.Fend.score = falco.config.Object()
-mp.Fend.score.Rin = 2.7;  # inner radius of dark hole scoring region [lambda0/D]
+mp.Fend.score.Rin = 2.8;  # inner radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.Rout = 10;  # outer radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.ang = 180;  # angular opening of dark hole scoring region [degrees]
 #
@@ -279,13 +278,12 @@ mp.P1.Dfac = 1; #--Factor scaling inscribed OD to circumscribed OD for the teles
 
 ##--Lyot stop padding
 mp.P4.wStrut = 3.6/100.; # nominal pupil's value is 76mm = 3.216#
-mp.P4.IDnorm = 0.45; #--Lyot stop ID [Dtelescope]
-mp.P4.ODnorm = 0.78; #--Lyot stop OD [Dtelescope]
-
+mp.P4.IDnorm = 0.47; #--Lyot stop ID [Dtelescope]
+mp.P4.ODnorm = 0.81; #--Lyot stop OD [Dtelescope]
 
 ##--FPM size
-mp.F3.Rin = 2.7;    # maximum radius of inner part of the focal plane mask [lambda0/D]
-mp.F3.RinA = 2.7;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
+mp.F3.Rin = 2.8;    # maximum radius of inner part of the focal plane mask [lambda0/D]
+mp.F3.RinA = 2.8;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
 mp.F3.Rout = np.Inf;   # radius of outer opaque edge of FPM [lambda0/D]
 mp.F3.ang = 180;    # on each side, opening angle [degrees]
 

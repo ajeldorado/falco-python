@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov 21 10:11:55 2019
+
+@author: ajriggs
+"""
+
+import sys
+sys.path.insert(0,"../")
+import falco
+import proper
+import numpy as np
+from astropy.io import fits
+
+import matplotlib.pyplot as plt
+
+#% Steps:
+#% 1) Create random DM command map. 
+#% 2) Generate DM surface
+#% 3) Derotate DM surface
+#% 4) Downsample DM surface
+#% 5) Convert DM surface to DM commands
+
+#clear all
+
+dm = falco.config.Object()
+
+dm.xtilt = 0.
+
+N = 400; 
+dm.centering = 'pixel';
+dm.dm_spacing = 1e-3;
+dm.dx_inf0 = 1e-4;
+orderOfOps = 'XYZ';
+dm.inf_sign = '+';
+dm.inf_fn = falco.INFLUENCE_XINETICS #'influence_dm5v2.fits';
+dm.inf0 = np.squeeze(fits.getdata(dm.inf_fn, ext=0))
+#dm.inf0 = fitsread(dm.inf_fn);
+cshift = 0
+dx = 2e-4# # [meters]
+dm.dx = dx
+dm.Nact = 50
+dm.xc = dm.Nact/2 - 1/2
+dm.yc = dm.Nact/2 - 1/2
+#dm.xc = dm.Nact/2 - 1/2 + 1;
+#dm.yc = dm.Nact/2 - 1/2 - 1;
+
+dm.VtoH = 1e-9*np.ones((dm.Nact,dm.Nact))
+
+#dm.V = np.eye(dm.Nact)
+dm.V = np.zeros((dm.Nact,dm.Nact))
+dm.V[0,0] = 1; dm.V[0,-1]= 1; dm.V[-1,0] = 1;  dm.V[-1,-1] = 1;
+dm.V[9,9] = 2;
+dm.V[29,9] = 2;
+
+dm.xtilt = 45
+dm.ytilt = 20
+dm.zrot = 30
+
+#--PROPER initialization
+pupil_ratio = 1; # beam diameter fraction
+wl_dummy = 1e-6; #--dummy value needed to initialize wavelength in PROPER (meters)
+bm  = proper.prop_begin(N*dx, wl_dummy, N, pupil_ratio)
+
+#--Generate the DM surface
+H = dm.VtoH*dm.V;
+DMSurf = falco.dms.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, 
+                       XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,XYZ=True,
+                       inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
+
+
+plt.figure(1); h = plt.imshow(H); plt.colorbar();  plt.gca().invert_yaxis()
+#ax = h.axes
+#ax.invert_yaxis(); 
+plt.figure(2); plt.imshow(DMSurf); plt.colorbar(); plt.gca().invert_yaxis()
+
+
+#--Fit the surface
+#DMSurf = falco.utils.padOrCropEven(DMSurf,500)
+Vout = falco.dms.falco_fit_dm_surf(dm,DMSurf)
+plt.figure(3); plt.imshow(Vout); plt.colorbar(); plt.gca().invert_yaxis()
+
+plt.figure(4); plt.imshow(Vout-H); plt.colorbar(); plt.gca().invert_yaxis()
+print(np.max(np.abs(Vout-H)))
+
+hdu = fits.PrimaryHDU(Vout-H)
+hdu.writeto('/Users/ajriggs/Downloads/diff_python.fits',overwrite=True)
+    

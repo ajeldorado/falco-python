@@ -154,7 +154,11 @@ def padOrCropEven(Ain, Ndes, **kwargs):
         raise ValueError('Wrong number of dimensions specified for output')
 
     if min(Nx0, Ny0) > Ndes:  # Output array is smaller than input, so crop
-        Aout = Ain[(Ny0 - Ndes) // 2:(Ny0 + Ndes) // 2, (Nx0 - Ndes) // 2:(Nx0 + Ndes) // 2]
+        if Ndes%2==0:
+            Aout = Ain[(Ny0 - Ndes) // 2:(Ny0 + Ndes) // 2, (Nx0 - Ndes) // 2:(Nx0 + Ndes) // 2]
+        else:
+            Aout = Ain[1+(Ny0 - Ndes) // 2:1+(Ny0 + Ndes) // 2, 1+(Nx0 - Ndes) // 2:1+(Nx0 + Ndes) // 2]
+        
     elif max(Nx0, Ny0) < Ndes:  # Output array is bigger than input, so pad
         pad_x = (Ndes - Nx0) // 2
         pad_y = (Ndes - Ny0) // 2
@@ -163,6 +167,68 @@ def padOrCropEven(Ain, Ndes, **kwargs):
         Aout = Ain
 
     return Aout
+
+
+def pad_crop(arrayIn, outsize, extrapval=0):
+    """Insert a 2D array into another array, centered and zero-padded.
+
+    Given an array and a tuple/list denoting the dimensions of a second array,
+    this places the smaller array in the center of the larger array and
+    returns that larger array.  The smaller array will be zero-padded to the
+    size of the larger.  If ``arrayIn.shape`` is larger than ``outsize`` in
+    either dimension, this dimension will be truncated.
+
+    If both sizes of a dimension are even or odd, the array will be centered
+    in that dimension.  If the input size is even and the output size is odd,
+    the smaller array will be shifted one element toward the start of the
+    array.  If the input is odd and the output is even, the smaller array will
+    be shifted one element toward the end of the array.  This sequence is
+    intended to ensure transitivity, so several ``pad_crop()`` calls can be
+    chained in no particular order without changing the final result.
+
+    The output array will be of the same type as the input array. It will be
+    a copy even if the arrays are the same size.
+
+    Arguments:
+     arrayIn: an ndarray
+     outsize: a 2-element tuple/list/ndarray of positive integers giving
+      dimensions of output array.
+
+    Returns:
+     an ndarray of the same size as ``outsize`` and type as ``arrayIn``
+
+    """
+    
+    sh0 = arrayIn.shape
+    sh1 = outsize
+
+    # check inputs
+    try:
+        if len(sh1) != 2:
+            raise TypeError('Output dimensions must have 2 elements')
+        if (not isinstance(sh1[0], int)) or (not isinstance(sh1[1], int)):
+            raise TypeError('Output dimensions must be integers')
+        if (sh1[0] <= 0) or (sh1[1] <= 0):
+            raise TypeError('Output dimensions must be positive ' + \
+                                      'integers')
+    except: # not iterable
+        raise TypeError('outsize must be an iterable')
+
+    arrayOut = extrapval * np.ones(outsize, dtype=arrayIn.dtype)
+
+    xneg = min(sh0[1]//2, sh1[1]//2)
+    xpos = min(sh0[1] - sh0[1]//2, sh1[1] - sh1[1]//2)
+    yneg = min(sh0[0]//2, sh1[0]//2)
+    ypos = min(sh0[0] - sh0[0]//2, sh1[0] - sh1[0]//2)
+
+    slice0 = (slice(sh0[0]//2-yneg, sh0[0]//2+ypos), \
+              slice(sh0[1]//2-xneg, sh0[1]//2+xpos))
+    slice1 = (slice(sh1[0]//2-yneg, sh1[0]//2+ypos), \
+              slice(sh1[1]//2-xneg, sh1[1]//2+xpos))
+
+    arrayOut[slice1] = arrayIn[slice0]
+    
+    return arrayOut
 
 
 def allcomb(*args, **kwargs):
@@ -337,7 +403,7 @@ def falco_compute_thput(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
 
-    ImSimOffaxis = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,EVAL=True)
+    ImSimOffaxis = falco.imaging.falco_sim_image_compact_offaxis(mp, mp.thput_eval_x, mp.thput_eval_y,isEvalMode=True)
     #if(mp.flagPlot): figure(324); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,ImSimOffaxis); axis xy equal tight; title('Off-axis PSF for Throughput Calculation','Fontsize',20); set(gca,'Fontsize',20); colorbar; drawnow;  end
 
     if(mp.thput_metric.lower()=='hmi'): #--Absolute energy within half-max isophote(s)

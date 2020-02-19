@@ -41,7 +41,10 @@ mp.Nitr = 3 #--Number of wavefront control iterations
 
 ## Step 4: Generate the label associated with this trial
 
-mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)) + '_Trial' + ('%04d_'%(mp.TrialNum)) + mp.coro + '_' + mp.whichPupil + '_' + str(np.size(mp.dm_ind)) + 'DM' + str(mp.dm1.Nact) + '_z' + str(mp.d_dm1_dm2) + '_IWA' + str(mp.Fend.corr.Rin) + '_OWA' + str(mp.Fend.corr.Rout) + '_' + str(mp.Nsbp) + 'lams' + str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100) + '_' + mp.controller
+mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)) + '_Trial' + ('%04d_'%(mp.TrialNum)) + mp.coro + '_' \
++ mp.whichPupil + '_' + str(np.size(mp.dm_ind)) + 'DM' + str(mp.dm1.Nact) + '_z' + str(mp.d_dm1_dm2) \
++ '_IWA' + str(mp.Fend.corr.Rin) + '_OWA' + str(mp.Fend.corr.Rout) + '_' + str(mp.Nsbp) + 'lams' \
++ str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100) + '_' + mp.controller
               
 
 #mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)),'_Trial',num2str(mp.TrialNum,'#04d_'),...
@@ -55,7 +58,8 @@ print(mp.runLabel)
 #print('Series0001_Trial0001_LC_WFIRST180718_2DM48_z1_IWA2.7_OWA10_1lams575nm_BW1_gridsearchEFC')
 ## Step 5: Perform the Wavefront Sensing and Control
 
-falco.falco_wfsc_loop(mp)
+out = falco.setup.flesh_out_workspace(mp)
+falco.wfsc.loop(mp, out)
 
 print('END OF MAIN: ', mp)
 
