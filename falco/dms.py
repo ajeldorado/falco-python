@@ -7,6 +7,7 @@ import scipy.signal as ss
 from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline
 
+#import insertinto 
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
     
@@ -328,7 +329,8 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     y = np.arange(ny_dm, dtype = np.int16) * int(inf_mag) + int(yoff_grid)
     dm_grid[np.tile(np.vstack(y), (nx_dm,)), np.tile(x, (ny_dm,1))] = dm_z_commanded
     dm_grid = ss.fftconvolve(dm_grid, inf, mode = 'same')
-
+#    dm_grid = np.real(np.fft.ifftshift( np.fft.fft2(np.fft.fftshift(dm_grid))*np.fft.fft2(np.fft.fftshift(insertinto.insertinto(inf, dm_grid.shape))) ))
+    
     # 3D rotate DM grid and project orthogonally onto wavefront
     xdim = int(np.round(np.sqrt(2) * nx_grid * dx_inf / dx_surf)) # grid dimensions (pix) projected onto wavefront
     ydim = int(np.round(np.sqrt(2) * ny_grid * dx_inf / dx_surf))
@@ -782,7 +784,7 @@ def falco_enforce_dm_constraints(dm):
     return dm
 
 
-def falco_fit_dm_surf(dm,surfaceToFit):
+def falco_fit_dm_surf(dm, surfaceToFit):
     """
     Function to fit a surface to a deformable mirror (DM) commands.
 

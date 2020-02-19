@@ -555,7 +555,7 @@ def falco_ctrl(mp,cvar,jacStruct):
 
     for im in range(mp.jac.Nmode):
 
-        Gmode = np.zeros((mp.Fend.corr.Npix,1)) #--Initialize a row to concatenate onto
+        Gmode = np.zeros((mp.Fend.corr.Npix,1), dtype=complex) #--Initialize a row to concatenate onto
         if(any(mp.dm_ind==1)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G1[:,:,im])))
         if(any(mp.dm_ind==2)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G2[:,:,im])))
         if(any(mp.dm_ind==8)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G8[:,:,im])))

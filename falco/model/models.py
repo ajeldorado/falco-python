@@ -1,11 +1,14 @@
 from . import jacobians
 #from .jacobians import *
 import numpy as np
-import falco
 import multiprocessing
 import matplotlib.pyplot as plt
 import logging
 log = logging.getLogger(__name__)
+import copy
+
+import falco
+import proper
 
 def full(mp,modvar,isNorm=True):
 #def model_full(mp,modvar,**kwargs):
@@ -38,7 +41,7 @@ def full(mp,modvar,isNorm=True):
         normFac = mp.Fend.full.I00[modvar.sbpIndex, modvar.wpsbpIndex] #--Value to normalize the PSF. Set to 0 when finding the normalization factor
 
     #--Optional Keyword arguments
-    if not isNorm: normFac = 0.
+    if not isNorm: normFac = 0
         
     #--Set the wavelength
     if(hasattr(modvar,'wvl')): #--For FALCO or for standalone use of full model
@@ -82,7 +85,7 @@ def full(mp,modvar,isNorm=True):
         Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[mp.jac.zerns==modvar.zernIndex]
 
     #--Pre-compute the FPM first for HLC as mp.FPM.mask
-    if mp.layout.lower() == 'fourier':
+    if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
         pass
     elif mp.layout.lower() == 'fpm_scale':
         pass
@@ -90,11 +93,40 @@ def full(mp,modvar,isNorm=True):
     #--Select which optical layout's full model to use.
     if mp.layout.lower() == 'fourier':
         Eout = full_Fourier(mp, wvl, Ein, normFac)
+        
     elif mp.layout.lower() == 'fpm_scale': #--FPM scales with wavelength
         Eout = model_full_scale(mp, wvl, Ein, normFac)
 
+    elif mp.layout.lower() == 'proper':
+        
+        optval = copy.copy(vars(mp.full))
+        
+        if any(mp.dm_ind == 1):
+            optval['use_dm1'] = True
+            optval['dm1'] = mp.dm1.V*mp.dm1.VtoH + mp.full.dm1FlatMap #--DM1 commands in meters
+        
+        if any(mp.dm_ind == 2):
+            optval['use_dm2'] = True
+            optval['dm2'] = mp.dm2.V*mp.dm2.VtoH + mp.full.dm2FlatMap #--DM2 commands in meters
+        
+        if normFac == 0:
+            optval['xoffset'] = -mp.source_x_offset_norm
+            optval['yoffset'] = -mp.source_y_offset_norm
+            if mp.coro.upper() == 'VORTEX' or mp.coro.upper() == 'VC' or mp.coro.upper() == 'AVC':
+                optval['use_fpm'] = False
+                optval['xoffset'] = 0
+                optval['yoffset'] = 0
+                pass
+
+        [Eout, sampling_m] = proper.prop_run(mp.full.prescription, wvl*1e6, mp.P1.full.Narr, QUIET=True, PASSVALUE=optval) #--wavelength needs to be in microns instead of meters for PROPER
+        if not normFac == 0:
+            Eout = Eout/np.sqrt(normFac)
+        
+        del optval
+
     return Eout
  
+    
 def full_Fourier(mp, wvl, Ein, normFac):
     """
     Truth model with a simple layout used to generate images in simulation. 
@@ -366,7 +398,7 @@ def compact(mp,modvar,isNorm=True,isEvalMode=False):
         Ein = Ein*zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns==modvar.zernIndex]
       
     #--Select which optical layout's compact model to use and get the output E-field
-    if mp.layout.lower()=='fourier':
+    if mp.layout.lower()=='fourier' or mp.layout.lower() == 'proper':
         Eout = compact_general(mp, wvl, Ein, normFac, flagEval);
     elif mp.layout.lower()=='fpm_scale':
         if mp.coro.upper()=='HLC':
@@ -688,7 +720,7 @@ def _model_Jacobian_middle_layer(mp,im,idm):
     """
         
     #--Select which optical layout's Jacobian model to use and get the output E-field
-    if(mp.layout.lower()=='fourier'):
+    if(mp.layout.lower()=='fourier' or mp.layout.lower()=='proper'):
         if (mp.coro.upper()=='LC' or (mp.coro.upper()=='APLC' \
                           or mp.coro.upper()=='FLC') or mp.coro.upper()=='SPLC'):
             jacMode = jacobians.lyot(mp, im, idm)

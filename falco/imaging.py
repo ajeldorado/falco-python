@@ -38,14 +38,14 @@ def falco_get_PSF_norm_factor(mp):
     #--Compact Model Normalizations
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.model.compact(mp, modvar,isNorm=False)
-        mp.Fend.compact.I00[si] = (np.abs(Etemp)**2).max()
+        Ecompact = falco.model.compact(mp, modvar, isNorm=False)
+        mp.Fend.compact.I00[si] = (np.abs(Ecompact)**2).max()
 
     #--Compact Evaluation Model Normalizations
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
-        Etemp = falco.model.compact(mp, modvar,isNorm=False,isEvalMode=True)
-        mp.Fend.eval.I00[si] = (np.abs(Etemp)**2).max()
+        Eeval = falco.model.compact(mp, modvar,isNorm=False, isEvalMode=True)
+        mp.Fend.eval.I00[si] = (np.abs(Eeval)**2).max()
 
     #--Full Model Normalizations (at points for entire-bandpass evaluation)
     if(mp.flagSim):
@@ -53,8 +53,8 @@ def falco_get_PSF_norm_factor(mp):
             for wi in range(mp.Nwpsbp):
                 modvar.sbpIndex = si
                 modvar.wpsbpIndex = wi
-                Etemp = falco.model.full(mp, modvar,isNorm=False)
-                mp.Fend.full.I00[si,wi] = (np.abs(Etemp)**2).max()
+                Efull = falco.model.full(mp, modvar, isNorm=False)
+                mp.Fend.full.I00[si, wi] = (np.abs(Efull)**2).max()
     
     #--Visually verify the normalized coronagraphic PSF
     modvar = falco.config.Object() # reset
@@ -244,8 +244,8 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
         
     #--Initialize variables
     Ibandavg = 0
-    EnewTempVecArray = np.zeros((mp.Fend.corr.Npix,mp.Nsbp))
-    EoldTempVecArray = np.zeros((mp.Fend.corr.Npix,mp.Nsbp))
+    EnewTempVecArray = np.zeros((mp.Fend.corr.Npix,mp.Nsbp), dtype=complex)
+    EoldTempVecArray = np.zeros((mp.Fend.corr.Npix,mp.Nsbp), dtype=complex)
 
     #--Generate the model-based E-field with the new DM setting
     modvar = falco.config.Object() #--Initialize the new structure
@@ -273,7 +273,7 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
     #--Compute the expected new 2-D intensity image
     for si in range(mp.Nsbp):
         EexpectedVec = cvar.EfieldVec[:,si] + (EnewTempVecArray[:,si]-EoldTempVecArray[:,si])
-        Eexpected2D = np.zeros((mp.Fend.Neta,mp.Fend.Nxi))
+        Eexpected2D = np.zeros((mp.Fend.Neta,mp.Fend.Nxi), dtype=complex)
         Eexpected2D[mp.Fend.corr.maskBool] = EexpectedVec
         
         Ibandavg +=  mp.sbp_weights[si]*np.abs(Eexpected2D)**2

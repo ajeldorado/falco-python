@@ -1,6 +1,8 @@
 import falco
 import numpy as np
-import math
+import copy
+#import math
+
 import proper
 
 _VALID_CENTERING = ['pixel', 'interpixel']
@@ -206,25 +208,28 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
         if not hasattr(mp.full,'zindex'):  
             mp.full.zindex = np.array([])  
             mp.full.zval_m = np.array([])  
-        zindex0 = mp.full.zindex #--Save the original
-        zval_m0 = mp.full.zval_m #--Save the original
+        zindex0 = copy.copy(mp.full.zindex) #--Save the original
+        zval_m0 = copy.copy(mp.full.zval_m) #--Save the original
     
         #--Put the Zernike index and coefficent in the vectors used by the PROPER full model
         if(any(zindex0==indsZnoll[izern])): #--Add the delta to an existing entry
             zind = np.nonzero(zindex0==indsZnoll[izern])[0]
             mp.full.zval_m[zind] = mp.full.zval_m[zind] + mp.full.ZrmsVal
         else: #--Concatenate the Zenike modes to the vector if it isn't included already
-            mp.full.zindex = np.array([mp.full.zindex[:],indsZnoll[izern]])
-            mp.full.zval_m = np.array([zval_m0[:], mp.full.ZrmsVal]) # [meters]
+            mp.full.zindex = np.concatenate((zindex0, np.array([indsZnoll[izern]]))).astype(int)
+            mp.full.zval_m = np.concatenate((zval_m0, np.array([mp.full.ZrmsVal]))) # [meters]
+        mp.full.zval = mp.full.zval_m # for PROPER models defined differently
         
     else: #--Include the Zernike map at the input pupil for the FALCO full model
         ZernMap = np.squeeze(falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,np.array([indsZnoll[izern]]))) #--2-D map of the normalized (RMS = 1) Zernike mode
-        ZernMap = falco.utils.padOrCropEven(ZernMap,mp.P1.full.Narr) #--Adjust zero padding if necessary
+        ZernMap = falco.utils.padOrCropEven(ZernMap, mp.P1.full.Narr) #--Adjust zero padding if necessary
         mp.P1.full.E[:,:,wi,si] = np.exp(1j*2*np.pi/mp.full.lambdasMat[si,wi]*mp.full.ZrmsVal*ZernMap)*np.squeeze(mp.P1.full.E[:,:,wi,si])
         
     Estar = falco.model.full(mp,modvar)
     mp.P1.full.E = E0 # Reset to original value
-
+    mp.full.zindex = zindex0
+    mp.full.zval_m = zval_m0
+    
     return Estar
 
 

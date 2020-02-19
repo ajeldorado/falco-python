@@ -32,7 +32,7 @@ mp.dm1.yc = mp.dm1.Nact/2 - 1/2 -1;
 
 ## Step 4: Initialize the rest of the workspace
 
-out = falco.wfsc.falco_init_ws(mp)
+out = falco.setup.flesh_out_workspace(mp)
 
 
 # %% Generate a DM surface and try to re-create the actuator commands
