@@ -457,7 +457,38 @@ def falco_gen_chosen_pupil(mp):
 
     whichPupil = mp.whichPupil.upper()
     if whichPupil in ('SIMPLE', 'SIMPLEPROPER'):
-        pass
+                
+        inputs = dict([
+                ('OD', mp.P1.ODnorm),
+                ('ID', mp.P1.IDnorm),
+                ('Nstrut', mp.P1.Nstrut),
+                ('angStrut', mp.P1.angStrut),
+                ('wStrut', mp.P1.wStrut),
+                ('stretch', mp.P1.stretch)
+                ])
+    
+        if whichPupil in ('SIMPLEPROPER',):
+            inputs['flagPROPER'] = True
+        
+        if mp.full.flagGenPupil:
+            inputs['Nbeam'] = mp.P1.full.Nbeam
+            inputs['Npad'] = 2**falco.nextpow2(mp.P1.full.Nbeam) 
+            mp.P1.full.mask = falco.masks.falco_gen_pupil_Simple(inputs)
+        
+        #--Generate low-res input pupil for the 'compact' model
+        if mp.compact.flagGenPupil:
+            inputs['Nbeam'] = mp.P1.compact.Nbeam # number of points across usable pupil   
+            inputs['Npad'] = 2**falco.nextpow2(mp.P1.compact.Nbeam) 
+            mp.P1.compact.mask = falco.masks.falco_gen_pupil_Simple(inputs)    
+    
+    
+    elif whichPupil == 'WFIRST20191009':
+        if mp.full.flagGenPupil:
+            mp.P1.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.full.Nbeam, mp.centering)
+
+        if mp.compact.flagGenPupil:
+            mp.P1.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.compact.Nbeam, mp.centering)
+    
     elif whichPupil == 'WFIRST180718':
         if mp.full.flagGenPupil:
             mp.P1.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.full.Nbeam, mp.centering)
@@ -506,14 +537,15 @@ def falco_gen_chosen_pupil(mp):
 
 
     [mp.P2.compact.XsDL,mp.P2.compact.YsDL] = np.meshgrid(mp.P2.compact.xsDL,mp.P2.compact.xsDL)
-    
-    if(mp.full.flagPROPER):
-        if mp.centering.lower() == ('interpixel'):
-            mp.P1.full.Narr = falco.utils.ceil_even(mp.P1.full.Nbeam)
+
+    if not hasattr(mp.P1.full, 'Narr'):    
+        if(mp.full.flagPROPER):
+            if mp.centering.lower() == 'interpixel':
+                mp.P1.full.Narr = int(falco.utils.ceil_even(mp.P1.full.Nbeam))
+            else:
+                mp.P1.full.Narr = int(2**falco.utils.nextpow2(mp.P1.full.Nbeam+1)) #falco.utils.ceil_even(mp.P1.full.Nbeam+1)
         else:
-            mp.P1.full.Narr = falco.utils.ceil_even(mp.P1.full.Nbeam+1)
-    else:
-        mp.P1.full.Narr = len(mp.P1.full.mask)  ##--Total number of pixels across array containing the pupil in the full model. Add 2 pixels to Nbeam when the beam is pixel-centered.
+            mp.P1.full.Narr = len(mp.P1.full.mask)  ##--Total number of pixels across array containing the pupil in the full model. Add 2 pixels to Nbeam when the beam is pixel-centered.
 
 
     #--NORMALIZED (in pupil diameter) coordinate grids in the input pupil for making the tip/tilted input wavefront within the full model
@@ -650,6 +682,30 @@ def falco_gen_chosen_lyot_stop(mp):
 
     whichPupil = mp.whichPupil.upper()
     if whichPupil in ('SIMPLE','SIMPLEPROPER','DST_LUVOIRB','ISAT'):
+        
+        inputs = dict([
+                ('OD', mp.P4.ODnorm),
+                ('ID', mp.P4.IDnorm),
+                ('Nstrut', mp.P4.Nstrut),
+                ('angStrut', mp.P4.angStrut),
+                ('wStrut', mp.P4.wStrut),
+                ('stretch', mp.P4.stretch)
+                ])
+    
+        if whichPupil in ('SIMPLEPROPER',):
+            inputs['flagPROPER'] = True
+        
+        if mp.full.flagGenLS:
+            inputs['Nbeam'] = mp.P4.full.Nbeam
+            inputs['Npad'] = 2**falco.nextpow2(mp.P4.full.Nbeam) 
+            mp.P4.full.mask = falco.masks.falco_gen_pupil_Simple(inputs)
+        
+        #--Generate low-res input pupil for the 'compact' model
+        if mp.compact.flagGenLS:
+            inputs['Nbeam'] = mp.P4.compact.Nbeam # number of points across usable pupil   
+            inputs['Npad'] = 2**falco.nextpow2(mp.P4.compact.Nbeam) 
+            mp.P4.compact.mask = falco.masks.falco_gen_pupil_Simple(inputs)    
+        
         """
         if whichPupil in ('SIMPLEPROPER'):  
             inputs.flagPROPER = true
@@ -670,7 +726,9 @@ def falco_gen_chosen_lyot_stop(mp):
         mp.P4.compact.mask = falco_gen_pupil_Simple(inputs)
         """
         pass
-    elif whichPupil == 'WFIRST180718':
+    
+
+    elif whichPupil == 'WFIRST20191009':
         #--Define Lyot stop generator function inputs for the 'full' optical model
         if mp.compact.flagGenLS or mp.full.flagGenLS:
             changes["ID"] = mp.P4.IDnorm
@@ -680,11 +738,11 @@ def falco_gen_chosen_lyot_stop(mp):
         
         #kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.full.Nbeam,mp.centering,changes)
+            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam,mp.centering,changes)
         
         ##--Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.compact.Nbeam,mp.centering,changes)
+            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam,mp.centering,changes)
         
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()
@@ -703,7 +761,49 @@ def falco_gen_chosen_lyot_stop(mp):
 #                clocking = inputs['clocking'] if 'clocking' in inputs.keys() else 0. #--Clocking of the mask [degrees]
 #                magfac = inputs['magfac'] if 'magfac' in inputs.keys() else 1. #--magnification factor of the pupil diameter
                 
+                if(mp.full.flagGenLS):
+                    inputs["Nbeam"] = mp.P4.full.Nbeam
+                    mp.P4.full.mask = falco.masks.falco_gen_bowtie_LS(inputs)
+                
+                #--Make bowtie Lyot stop (LS) for the 'compact' model
+                if(mp.compact.flagGenLS):
+                    inputs["Nbeam"] = mp.P4.compact.Nbeam
+                    mp.P4.compact.mask = falco.masks.falco_gen_bowtie_LS(inputs)
 
+
+    elif whichPupil == 'WFIRST180718':
+        #--Define Lyot stop generator function inputs for the 'full' optical model
+        if mp.compact.flagGenLS or mp.full.flagGenLS:
+            changes["ID"] = mp.P4.IDnorm
+            changes["OD"] = mp.P4.ODnorm
+            changes["wStrut"] = mp.P4.wStrut
+            changes["flagRot180"] = True
+        
+        #kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
+        if(mp.full.flagGenLS):
+            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam,mp.centering,changes)
+        
+        ##--Make or read in Lyot stop (LS) for the 'compact' model
+        if(mp.compact.flagGenLS):
+            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam,mp.centering,changes)
+        
+        if hasattr(mp, 'LSshape'):
+            LSshape = mp.LSshape.lower()
+            if LSshape in ('bowtie'):
+                #--Define Lyot stop generator function inputs in a structure
+                inputs = {}
+                inputs["ID"] = mp.P4.IDnorm # (pupil diameters)
+                inputs["OD"]= mp.P4.ODnorm # (pupil diameters)
+                inputs["ang"] = mp.P4.ang # (degrees)
+                inputs["centering"] = mp.centering # 'interpixel' or 'pixel'
+
+#                #--Optional inputs and their defaults
+#                centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
+#                xShear = inputs['xShear'] if 'xShear' in inputs.keys() else  0. #--x-axis shear of mask [pupil diameters]
+#                yShear = inputs['yShear'] if 'yShear' in inputs.keys() else  0. #--y-axis shear of mask [pupil diameters]
+#                clocking = inputs['clocking'] if 'clocking' in inputs.keys() else 0. #--Clocking of the mask [degrees]
+#                magfac = inputs['magfac'] if 'magfac' in inputs.keys() else 1. #--magnification factor of the pupil diameter
+                
                 if(mp.full.flagGenLS):
                     inputs["Nbeam"] = mp.P4.full.Nbeam
                     mp.P4.full.mask = falco.masks.falco_gen_bowtie_LS(inputs)
@@ -1234,8 +1334,8 @@ def falco_configure_dm1_and_dm2(mp):
             raise ValueError('Sign of influence function not recognized')
 
     ## DM1
-    mp.dm1.compact = falco.config.Object()
     mp.dm1.centering = mp.centering
+    mp.dm1.compact = falco.config.Object()
     mp.dm1.compact = copy.copy(mp.dm1)
     mp.dm1.dx = mp.P2.full.dx
     mp.dm1.compact.dx = mp.P2.compact.dx
@@ -1246,8 +1346,8 @@ def falco_configure_dm1_and_dm2(mp):
         falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
     ## DM2
-    mp.dm2.compact = falco.config.Object()
     mp.dm2.centering = mp.centering
+    mp.dm2.compact = falco.config.Object()
     mp.dm2.compact = copy.copy(mp.dm2)
     mp.dm2.dx = mp.P2.full.dx
     mp.dm2.compact.dx = mp.P2.compact.dx

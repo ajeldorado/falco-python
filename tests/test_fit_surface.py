@@ -34,7 +34,7 @@ def test_fit_DM_surface_with_DM():
     
     ## Step 4: Initialize the rest of the workspace
     
-    out = falco.wfsc.falco_init_ws(mp)
+    out = falco.setup.flesh_out_workspace(mp)
     
     
     ## Generate a DM surface and try to re-create the actuator commands
@@ -88,7 +88,7 @@ def test_fit_PSD_error_map_with_DM():
     
     ## Step 4: Initialize the rest of the workspace
     
-    out = falco.wfsc.falco_init_ws(mp)
+    out = falco.setup.flesh_out_workspace(mp)
     
     
     ## Step 5

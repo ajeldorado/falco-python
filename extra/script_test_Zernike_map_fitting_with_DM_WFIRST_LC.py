@@ -7,9 +7,12 @@ import numpy as np
 import testing_defaults_WFIRST_LC as DEFAULTS
 import matplotlib.pyplot as plt
 
+from astropy.io import fits
+
+
 mp = DEFAULTS.mp
 
-flagPlotDebug = False
+flagPlotDebug = True
 
 mp.path = falco.config.Object()
 mp.path.falco = './'  #--Location of FALCO
@@ -48,9 +51,15 @@ pupil_ratio = 1 # beam diameter fraction
 wl_dummy = 1e-6 # dummy value needed to initialize wavelength in PROPER (meters)
 wavefront = proper.prop_begin(mp.dm1.compact.NdmPad*mp.dm1.dx, wl_dummy, mp.dm1.compact.NdmPad, pupil_ratio)
 # PSD Error Map Generation using PROPER
-amp = 9.6e-19; b = 4.0;
-c = 3.0;
-errorMap = proper.prop_psd_errormap( wavefront, amp, b, c, TPF=True )
+
+#amp = 9.6e-19; b = 4.0;
+#c = 3.0;
+#errorMap = proper.prop_psd_errormap( wavefront, amp, b, c, TPF=True )
+#errorMap = errorMap*testArea;
+
+zSet = np.arange(3,12)
+zCoef = 1e-9*np.random.rand(len(zSet))
+errorMap = proper.prop_zernikes(wavefront, zSet, zCoef)
 errorMap = errorMap*testArea;
 
 if(flagPlotDebug):
@@ -61,7 +70,7 @@ if(flagPlotDebug):
 Vout = falco.dms.falco_fit_dm_surf(mp.dm1,errorMap)/mp.dm1.VtoH
 mp.dm1.V = Vout
 DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)  
-surfError = errorMap - DM1Surf;
+surfError = (errorMap - DM1Surf)*testArea;
 rmsError = np.sqrt(np.mean((surfError[testArea==1].flatten()**2)))
 print('RMS fitting error to voltage map is %.2e meters.\n'%rmsError)
 
@@ -70,3 +79,7 @@ if(flagPlotDebug):
     plt.figure(4); plt.imshow(DM1Surf); plt.colorbar(); plt.pause(0.1);
     plt.figure(5); plt.imshow(surfError); plt.colorbar(); plt.title('Difference'); plt.pause(0.1);
 
+# %% Save data to file
+
+hdu = fits.PrimaryHDU(surfError)
+hdu.writeto('/Users/ajriggs/Downloads/surfError.fits',overwrite=True)

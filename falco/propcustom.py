@@ -221,13 +221,13 @@ def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
     NA = IN.shape[1]
     NB = lambdaOverD*D
     
-    [X,Y] = np.meshgrid(np.arange(-NB/2.,NB/2,dtype=float),np.arange(-NB/2.,NB/2,dtype=float))
+    [X,Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float),np.arange(-NB/2., NB/2., dtype=float))
     [RHO,THETA] = utils.cart2pol(Y,X)    
    
     windowKnee = 1.-inVal/outVal
     
-    windowMASK1 = falco_gen_Tukey4vortex( 2*outVal*lambdaOverD, RHO, windowKnee )
-    windowMASK2 = falco_gen_Tukey4vortex( NB, RHO, windowKnee )
+    windowMASK1 = falco_gen_Tukey4vortex(2*outVal*lambdaOverD, RHO, windowKnee)
+    windowMASK2 = falco_gen_Tukey4vortex(NB, RHO, windowKnee)
 
     # DFT vectors 
     x = np.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D

@@ -373,8 +373,8 @@ def vortex(mp,im,idm):
     else: 
         DM2stop = np.ones((NdmPad,NdmPad))
 
-    if(mp.useGPU):
-        log.warning('GPU support not yet implemented. Proceeding without GPU.')
+#    if(mp.useGPU):
+#        log.warning('GPU support not yet implemented. Proceeding without GPU.')
         
     #--This block is for BMC surface error testing
     if(mp.flagDMwfe): # if(mp.flagDMwfe && (mp.P1.full.Nbeam==mp.P1.compact.Nbeam))
