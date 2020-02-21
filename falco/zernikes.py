@@ -1,7 +1,7 @@
 import falco
 import numpy as np
 import copy
-#import math
+import math
 
 import proper
 
@@ -203,14 +203,15 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
     E = mp.P1.full.E
     E0 = E.copy()
     
-    if(mp.full.flagPROPER): # WARNING: THIS OPTION HAS NOT BEEN TESTED
-        #--Initialize the Zernike modes to include as empty if the variable doesn't exist already
-        if not hasattr(mp.full,'zindex'):  
-            mp.full.zindex = np.array([])  
-            mp.full.zval_m = np.array([])  
-        zindex0 = copy.copy(mp.full.zindex) #--Save the original
-        zval_m0 = copy.copy(mp.full.zval_m) #--Save the original
+    #--Initialize the Zernike modes to include as empty if the variable doesn't exist already
+    if not hasattr(mp.full,'zindex'):  
+        mp.full.zindex = np.array([])  
+        mp.full.zval_m = np.array([])  
+    zindex0 = copy.copy(mp.full.zindex) #--Save the original
+    zval_m0 = copy.copy(mp.full.zval_m) #--Save the original
     
+    if(mp.full.flagPROPER): # WARNING: THIS OPTION HAS NOT BEEN TESTED
+
         #--Put the Zernike index and coefficent in the vectors used by the PROPER full model
         if(any(zindex0==indsZnoll[izern])): #--Add the delta to an existing entry
             zind = np.nonzero(zindex0==indsZnoll[izern])[0]
