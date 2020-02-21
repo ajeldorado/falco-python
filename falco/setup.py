@@ -781,11 +781,11 @@ def falco_gen_chosen_lyot_stop(mp):
         
         #kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam,mp.centering,changes)
+            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.full.Nbeam,mp.centering,changes)
         
         ##--Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam,mp.centering,changes)
+            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.compact.Nbeam,mp.centering,changes)
         
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()
