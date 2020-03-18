@@ -1,7 +1,8 @@
 import falco
 import numpy as np
+import multiprocessing
 import copy
-#import math
+import math
 
 import proper
 
@@ -59,7 +60,7 @@ def falco_get_Zernike_sensitivities(mp):
     if not hasattr(mp,'full'):
         mp.full = falco.config.Object() #--Initialize if this doesn't exist
     if hasattr(mp.full,'pol_conds'): 
-        Npol = mp.full.pol_conds.size  
+        Npol = len(mp.full.pol_conds) 
     else:
         Npol = 1
 
@@ -70,20 +71,28 @@ def falco_get_Zernike_sensitivities(mp):
     Nvals = mp.full.NlamUnique*Npol
     
     #--Get nominal, unaberrated final E-field at each wavelength and polarization
-    E0array = np.zeros((mp.Fend.Neta,mp.Fend.Nxi,mp.full.NlamUnique,Npol),dtype=complex) #--initialize
-    Eunab = np.zeros((mp.Fend.Neta,mp.Fend.Nxi,Nvals),dtype=complex) #--Temporary array
+    E0array = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol),dtype=complex) #--initialize
+    Eunab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nvals), dtype=complex) #--Temporary array
 
-    print('Computing unaberrated E-fields...\t',end='')
-    #--Obtain all the images in parallel
-    for ni in range(Nvals): 
-        Eunab[:,:,ni] = falco_get_single_sim_Efield_LamPol(ni,inds_list,mp)
+    print('Computing unaberrated E-fields for Zernike sensitivities...\t',end='')
+    if mp.flagMultiproc:
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPol, args=(iv, inds_list, mp)) for iv in range(Nvals) ]
+        results = [p.get() for p in resultsRaw] #--All the E-fields in a list
+        pool.close()
+        pool.join()        
+        for iv in range(Nvals):
+            Eunab[:, :, iv] = results[iv]
+    else:
+        for iv in range(Nvals): 
+            Eunab[:,:,iv] = falco_get_single_sim_Efield_LamPol(iv, inds_list, mp)
     print('done.')
 
     #--Reorganize the output
-    for ni in range(Nvals):  
-        ilam = inds_list[ni][0]
-        ipol = inds_list[ni][1]
-        E0array[:,:,ilam,ipol] = Eunab[:,:,ni]
+    for iv in range(Nvals):  
+        ilam = inds_list[iv][0]
+        ipol = inds_list[iv][1]
+        E0array[:,:,ilam,ipol] = Eunab[:, : ,iv]
     del Eunab
     
     ## Get E-fields with Zernike aberrations
@@ -97,8 +106,18 @@ def falco_get_Zernike_sensitivities(mp):
     Eab = np.zeros((mp.Fend.Neta,mp.Fend.Nxi,NvalsZern),dtype=complex) # temporary array for linear indexing
     
     print('Computing aberrated E-fields for Zernike sensitivities...\t',end='')
-    for ni in range(NvalsZern): 
-        Eab[:,:,ni] = falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp)
+    if mp.flagMultiproc:
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPolZern, args=(iv, inds_list_zern, mp)) for iv in range(NvalsZern) ]
+        results = [p.get() for p in resultsRaw] #--All the E-fields in a list
+        pool.close()
+        pool.join()        
+        for iv in range(NvalsZern):
+            Eab[:, :, iv] = results[iv]        
+        pass
+    else:
+        for iv in range(NvalsZern): 
+            Eab[:, :, iv] = falco_get_single_sim_Efield_LamPolZern(iv, inds_list_zern, mp)
     print('done.')
     
     #--Reorganize the output
@@ -203,14 +222,15 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
     E = mp.P1.full.E
     E0 = E.copy()
     
-    if(mp.full.flagPROPER): # WARNING: THIS OPTION HAS NOT BEEN TESTED
-        #--Initialize the Zernike modes to include as empty if the variable doesn't exist already
-        if not hasattr(mp.full,'zindex'):  
-            mp.full.zindex = np.array([])  
-            mp.full.zval_m = np.array([])  
-        zindex0 = copy.copy(mp.full.zindex) #--Save the original
-        zval_m0 = copy.copy(mp.full.zval_m) #--Save the original
+    #--Initialize the Zernike modes to include as empty if the variable doesn't exist already
+    if not hasattr(mp.full,'zindex'):  
+        mp.full.zindex = np.array([])  
+        mp.full.zval_m = np.array([])  
+    zindex0 = copy.copy(mp.full.zindex) #--Save the original
+    zval_m0 = copy.copy(mp.full.zval_m) #--Save the original
     
+    if(mp.full.flagPROPER): # WARNING: THIS OPTION HAS NOT BEEN TESTED
+
         #--Put the Zernike index and coefficent in the vectors used by the PROPER full model
         if(any(zindex0==indsZnoll[izern])): #--Add the delta to an existing entry
             zind = np.nonzero(zindex0==indsZnoll[izern])[0]

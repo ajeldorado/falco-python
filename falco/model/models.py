@@ -123,7 +123,24 @@ def full(mp,modvar,isNorm=True):
             Eout = Eout/np.sqrt(normFac)
         
         del optval
+    
+    elif mp.layout.lower() == 'wfirst_phaseb_proper':
+        optval = copy.copy(vars(mp.full))
+        optval['use_dm1'] = True
+        optval['use_dm2'] = True
+        optval['dm1_m'] = mp.dm1.V*mp.dm1.VtoH + mp.full.dm1.flatmap #--DM1 commands in meters
+        optval['dm2_m'] = mp.dm2.V*mp.dm2.VtoH + mp.full.dm2.flatmap #--DM2 commands in meters
+        if(normFac==0):
+            optval['source_x_offset'] = -mp.source_x_offset_norm
+            optval['source_y_offset'] = -mp.source_y_offset_norm
 
+        [Eout, sampling] = proper.prop_run('wfirst_phaseb', wvl*1e6, int(2**falco.utils.nextpow2(mp.Fend.Nxi)),  QUIET=True, PASSVALUE=optval)
+        Eout = falco.utils.pad_crop(Eout, (mp.Fend.Nxi, mp.Fend.Nxi))
+#        [Eout, sampling] = proper.prop_run('wfirst_phaseb', wvl*1e6, mp.Fend.Nxi,  QUIET=True, PASSVALUE=optval)
+
+        if not normFac == 0:
+            Eout = Eout/np.sqrt(normFac)
+        
     return Eout
  
     
@@ -307,7 +324,7 @@ def model_full_scale(mp, wvl, Ein, normFac):
     pass  
      
         
-def compact(mp,modvar,isNorm=True,isEvalMode=False):
+def compact(mp, modvar, isNorm=True, isEvalMode=False):
     """
     Simplified (aka compact) model used by estimator and controller.
     
@@ -398,12 +415,16 @@ def compact(mp,modvar,isNorm=True,isEvalMode=False):
         Ein = Ein*zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns==modvar.zernIndex]
       
     #--Select which optical layout's compact model to use and get the output E-field
-    if mp.layout.lower()=='fourier' or mp.layout.lower() == 'proper':
-        Eout = compact_general(mp, wvl, Ein, normFac, flagEval);
-    elif mp.layout.lower()=='fpm_scale':
-        if mp.coro.upper()=='HLC':
+    if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
+        Eout = compact_general(mp, wvl, Ein, normFac, flagEval)
+    elif mp.layout.lower() == 'fpm_scale':
+        if mp.coro.upper() == 'HLC':
             Eout = model_compact_scale(mp, wvl, Ein, normFac, flagEval)
-
+    elif mp.layout.lower() == 'wfirst_phaseb_proper': 
+        if mp.coro.upper() == 'HLC':
+            Eout = model_compact_scale(mp, wvl, Ein, normFac, flagEval)
+        elif 'SP' in mp.coro.upper():
+            Eout = compact_general(mp, wvl, Ein, normFac, flagEval);
     return Eout
 
 
@@ -728,5 +749,15 @@ def _model_Jacobian_middle_layer(mp,im,idm):
             
         elif (mp.coro.upper()=='VC') or (mp.coro.upper()=='AVC') or (mp.coro.upper()=='VORTEX'): #--DMs, optional apodizer, occulting spot FPM, and LS.
             jacMode = jacobians.vortex(mp, im, idm)
+    
+    elif mp.layout.lower() == 'wfirst_phaseb_proper':
+         if mp.coro.upper() == 'HLC':
+             jacMode = jacobians.hlc_scale(mp, im, idm)
+         elif 'SP' in mp.coro.upper():
+             jacMode = jacobians.lyot(mp, im, idm)
+             
+    else:
+         raise ValueError('mp.layout.lower not recognized')
+        
             
     return jacMode
