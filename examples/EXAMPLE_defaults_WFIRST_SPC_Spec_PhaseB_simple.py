@@ -5,8 +5,6 @@ from astropy.io import fits
 
 import falco
 
-#import proper
-
 
 mp = falco.config.ModelParameters()
 mp.compact = falco.config.Object()
@@ -57,7 +55,6 @@ mp.Nwpsbp = 3;          #--Number of wavelengths to used to approximate an image
 ### - 'pwp-iekf' for pairwise probing with iterated extended Kalman filter  [NOT AVAILABLE YET]
 mp.estimator = 'perfect';
 
-####### NEED TO DETERMINE
 ###--New variables for pairwise probing estimation:
 mp.est = falco.config.Object()
 mp.est.probe = falco.config.Object()
@@ -69,42 +66,32 @@ mp.est.probe.offsetY = 14;    # offset of probe center in y [actuators]. Use to 
 mp.est.probe.axis = 'alternate';     # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
 mp.est.probe.gainFudge = 1;     # empirical fudge factor to make average probe amplitude match desired value.
 
-###--New variables for pairwise probing with a Kalman filter
-###  mp.est.ItrStartKF =  #Which correction iteration to start recursive estimate
-###  mp.est.tExp =
-###  mp.est.num_im =
-###  mp.readNoiseStd =
-###  mp.peakCountsPerPixPerSec =
-###  mp.est.Qcoef =
-###  mp.est.Rcoef =
-
 #### Wavefront Control: General
+
+mp.ctrl = falco.config.Object()
+mp.ctrl.flagUseModel = True #--Use the compact model for the grid search
 
 ###--Threshold for culling weak actuators from the Jacobian:
 mp.logGmin = -6;  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobians to weed out the weakest actuators
 
-####### NEED TO DETERMINE
 ###--Zernikes to suppress with controller
 mp.jac = falco.config.Object()
 mp.jac.zerns = np.array([1])  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
 mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
     
-####### NEED TO DETERMINE
 ###--Zernikes to compute sensitivities for
 mp.eval = falco.config.Object()
 mp.eval.indsZnoll = np.array([2,3,4,5,6]) #--Noll indices of Zernikes to compute values for [1-D ndarray]
 
-####### NEED TO DETERMINE
 ###--Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
 mp.eval.Rsens = np.array([[3., 4.], [4., 5.], [5., 8.], [8., 9.]]);  # [2-D ndarray]
 
-####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
-mp.ctrl = falco.config.Object()
 mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
+
 ###--Spatial pixel weighting
 mp.WspatialDef = [];# [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)] [ndarray]
 
@@ -175,7 +162,7 @@ mp.dm2.inf_sign = '+';
 mp.dm1.Nact = 48;               # # of actuators across DM array
 mp.dm1.VtoH = 1e-9*np.ones((48,48))  # gains of all actuators [nm/V of free stroke]
 mp.dm1.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
-mp.dm1.ytilt = 5.83;               # for foreshortening. angle of rotation about y-axis [degrees]
+mp.dm1.ytilt = 5.7               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm1.zrot = 0;                # clocking of DM surface [degrees]
 mp.dm1.xc = (48/2 - 1/2);       # x-center location of DM surface [actuator widths]
 mp.dm1.yc = (48/2 - 1/2);       # y-center location of DM surface [actuator widths]
@@ -185,7 +172,7 @@ mp.dm1.edgeBuffer = 1;          # max radius (in actuator spacings) outside of b
 mp.dm2.Nact = 48;               # # of actuators across DM array
 mp.dm2.VtoH = 1e-9*np.ones((48,48))  # gains of all actuators [nm/V of free stroke]
 mp.dm2.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
-mp.dm2.ytilt = 5.55;#8;               # for foreshortening. angle of rotation about y-axis [degrees]
+mp.dm2.ytilt = 5.7               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm2.zrot = 0;              # clocking of DM surface [degrees]
 mp.dm2.xc = (48/2 - 1/2);       # x-center location of DM surface [actuator widths]
 mp.dm2.yc = (48/2 - 1/2);       # y-center location of DM surface [actuator widths]
@@ -210,14 +197,12 @@ mp.layout = 'Fourier';  #--Which optical layout to use
 mp.coro = 'SPLC'
 mp.flagApod = True    #--Whether to use an apodizer or not
 
-####### NEED TO DETERMINE
 mp.Fend = falco.config.Object()
 
 ##--Final Focal Plane Properties
 mp.Fend.res = 2.5;#3; #--Sampling [ pixels per lambda0/D]
 mp.Fend.FOV = 11.; #--half-width of the field of view in both dimensions [lambda0/D]
 
-####### NEED TO DETERMINE
 ##--Correction and scoring region definition
 mp.Fend.corr = falco.config.Object()
 mp.Fend.corr.Rin = 2.6;   # inner radius of dark hole correction region [lambda0/D]
@@ -242,7 +227,6 @@ mp.P2.D = 46.2987e-3;
 mp.P3.D = 46.2987e-3;
 mp.P4.D = 46.2987e-3;
 
-####### NEED TO DETERMINE
 ##--Pupil Plane Resolutions
 mp.P1.compact.Nbeam = 386
 #mp.P2.compact.Nbeam = 386
@@ -265,7 +249,6 @@ mp.F3.compact.res = 4    # sampling of FPM for full model [pixels per lambda0/D]
 ##--Focal Lengths
 ## mp.fl = 1; 
 #
-####### NEED TO DETERMINE
 ##--Pupil Plane Resolutions
 mp.P1.full.Nbeam = 1000
 #mp.P2.full.Nbeam = 250;

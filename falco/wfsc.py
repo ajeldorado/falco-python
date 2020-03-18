@@ -67,8 +67,8 @@ def loop(mp, out):
 #        mp.bench = bench
 
 
-    print('AFTER INIT: ', mp)
-    print('FlagFiber = ', mp.flagFiber)
+    #print('AFTER INIT: ', mp)
+    #print('FlagFiber = ', mp.flagFiber)
     ## Initializations of Arrays for Data Storage 
     
     #--Raw contrast (broadband)
@@ -472,7 +472,8 @@ def loop(mp, out):
         print('Entire workspace NOT saved because mp.flagSaveWS==false')
     
     #--END OF main FUNCTION
-    print('END OF WFSC LOOP: ', mp)
+    print('END OF WFSC LOOP')
+    #print('END OF WFSC LOOP: ', mp)
 
     
 def falco_est_perfect_Efield_with_Zernikes(mp):
@@ -494,24 +495,86 @@ def falco_est_perfect_Efield_with_Zernikes(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
-    Emat = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode),dtype=complex)
-    modvar = falco.config.Object() #--Initialize
-    
-    for im in range(mp.jac.Nmode):
-        modvar.sbpIndex = mp.jac.sbp_inds[im]
-        modvar.zernIndex = mp.jac.zern_inds[im]
-        modvar.whichSource = 'star'
+    if mp.flagMultiproc:
         
-        #--Take the mean over the wavelengths within the sub-bandpass
-        EmatSbp = np.zeros((mp.Fend.corr.Npix, mp.Nwpsbp),dtype=complex)
-        for wi in range(mp.Nwpsbp):
-            modvar.wpsbpIndex = wi
-            E2D = falco.model.full(mp, modvar)
-            EmatSbp[:,wi] = mp.full.lambda_weights[wi]*E2D[mp.Fend.corr.maskBool] #--Actual field in estimation area. Apply spectral weight within the sub-bandpass
-        Emat[:,im] = np.sum(EmatSbp,axis=1)
+        Emat = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode), dtype=complex)
+        
+        #--Loop over all modes and wavelengths
+        inds_list = [(x,y) for x in range(mp.jac.Nmode) for y in range(mp.Nwpsbp)] #--Make all combinations of the values  
+        Nvals = mp.jac.Nmode*mp.Nwpsbp
+
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        resultsRaw = [pool.apply_async(_est_perfect_Efield_with_Zernikes_in_parallel, args=(mp, ilist, inds_list)) for ilist in range(Nvals) ]
+        results = [p.get() for p in resultsRaw] #--All the images in a list
+        pool.close()
+        pool.join()  
+        
+#        parfor ni=1:Nval
+#            Evecs{ni} = falco_est_perfect_Efield_with_Zernikes_parfor(ni,ind_list,mp)
+#        end
+        
+        #--Re-order for easier indexing
+        Ecube = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode, mp.Nwpsbp), dtype=complex)
+        for iv in range(Nvals):
+            im = inds_list[iv][0]  #--Index of the Jacobian mode
+            wi = inds_list[iv][1]   #--Index of the wavelength in the sub-bandpass
+            Ecube[:, im, wi] = results[iv]
+        Emat = np.mean(Ecube, axis=2) # Average over wavelengths in the subband
+  
+#        EmatAll = np.zeros((mp.Fend.corr.Npix, Nval))
+#        for iv in range(Nval):
+#            EmatAll[:, iv] = results[iv]
+#
+#        counter = 0;
+#        for im=1:mp.jac.Nmode
+#            EsbpMean = 0;
+#            for wi=1:mp.Nwpsbp
+#                counter = counter + 1;
+#                EsbpMean = EsbpMean + EmatAll(:,counter)*mp.full.lambda_weights(wi);
+#            end
+#            Emat(:,im) = EsbpMean;
+#        end
+    
+    else:
+    
+        Emat = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode), dtype=complex)
+        modvar = falco.config.Object() #--Initialize
+        
+        for im in range(mp.jac.Nmode):
+            modvar.sbpIndex = mp.jac.sbp_inds[im]
+            modvar.zernIndex = mp.jac.zern_inds[im]
+            modvar.whichSource = 'star'
+            
+            #--Take the mean over the wavelengths within the sub-bandpass
+            EmatSbp = np.zeros((mp.Fend.corr.Npix, mp.Nwpsbp),dtype=complex)
+            for wi in range(mp.Nwpsbp):
+                modvar.wpsbpIndex = wi
+                E2D = falco.model.full(mp, modvar)
+                EmatSbp[:,wi] = mp.full.lambda_weights[wi]*E2D[mp.Fend.corr.maskBool] #--Actual field in estimation area. Apply spectral weight within the sub-bandpass
+            Emat[:,im] = np.sum(EmatSbp,axis=1)
+            
     
     return Emat
     
+#%--Extra function needed to use parfor (because parfor can have only a
+#%  single changing input argument).
+def _est_perfect_Efield_with_Zernikes_in_parallel(mp, ilist, inds_list):
+
+    im = inds_list[ilist][0]  #--Index of the Jacobian mode
+    wi = inds_list[ilist][1]   #--Index of the wavelength in the sub-bandpass
+    
+    modvar = falco.config.Object()
+    modvar.sbpIndex = mp.jac.sbp_inds[im]
+    modvar.zernIndex = mp.jac.zern_inds[im]
+    modvar.wpsbpIndex = wi
+    modvar.whichSource = 'star'
+    
+    E2D = falco.model.full(mp, modvar)
+    
+    return E2D[mp.Fend.corr.maskBool] # Actual field in estimation area. Don't apply spectral weight here.
+
+
+
     #pass
     #return falco.config.Object()
 
@@ -728,27 +791,27 @@ def falco_ctrl_grid_search_EFC(mp,cvar):
     if(any(mp.dm_ind==9)): dDM9V_store = np.zeros((mp.dm9.NactTotal,Nvals))
 
     ## Empirically find the regularization value giving the best contrast
-    if(mp.flagMultiproc):
-        #--Run the controller in parallel
-        pool = multiprocessing.Pool(processes=mp.Nthreads)
-        results = [pool.apply_async(falco_ctrl_EFC_base, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
-        results_ctrl = [p.get() for p in results] #--All the Jacobians in a list
-        pool.close()
-        pool.join()
-        
-        #--Convert from a list to arrays:
-        for ni in range(Nvals):
-            InormVec[ni] = results_ctrl[ni][0]
-            if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = results_ctrl[ni][1].dDM1V
-            if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = results_ctrl[ni][1].dDM2V
-    else:
-        for ni in range(Nvals):
-            [InormVec[ni],dDM_temp] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar) 
-            #--delta voltage commands
-            if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = dDM_temp.dDM1V
-            if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = dDM_temp.dDM2V
-            if(any(mp.dm_ind==8)): dDM8V_store[:,ni] = dDM_temp.dDM8V
-            if(any(mp.dm_ind==9)): dDM9V_store[:,ni] = dDM_temp.dDM9V
+#    if(mp.flagMultiproc and mp.ctrl.flagUseModel):
+#        #--Run the controller in parallel
+#        pool = multiprocessing.Pool(processes=mp.Nthreads)
+#        results = [pool.apply_async(falco_ctrl_EFC_base, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
+#        results_ctrl = [p.get() for p in results] #--All the Jacobians in a list
+#        pool.close()
+#        pool.join()
+#        
+#        #--Convert from a list to arrays:
+#        for ni in range(Nvals):
+#            InormVec[ni] = results_ctrl[ni][0]
+#            if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = results_ctrl[ni][1].dDM1V
+#            if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = results_ctrl[ni][1].dDM2V
+#    else:
+    for ni in range(Nvals):
+        [InormVec[ni],dDM_temp] = falco_ctrl_EFC_base(ni,vals_list,mp,cvar) 
+        #--delta voltage commands
+        if(any(mp.dm_ind==1)): dDM1V_store[:,:,ni] = dDM_temp.dDM1V
+        if(any(mp.dm_ind==2)): dDM2V_store[:,:,ni] = dDM_temp.dDM2V
+        if(any(mp.dm_ind==8)): dDM8V_store[:,ni] = dDM_temp.dDM8V
+        if(any(mp.dm_ind==9)): dDM9V_store[:,ni] = dDM_temp.dDM9V
 
     #--Print out results to the command line
     print('Scaling factor:\t',end='')

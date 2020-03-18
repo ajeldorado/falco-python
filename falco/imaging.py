@@ -1,5 +1,6 @@
 import falco
 import numpy as np
+import multiprocessing
 import matplotlib.pyplot as plt 
 
 def falco_get_PSF_norm_factor(mp):
@@ -49,12 +50,29 @@ def falco_get_PSF_norm_factor(mp):
 
     #--Full Model Normalizations (at points for entire-bandpass evaluation)
     if(mp.flagSim):
-        for si in range(mp.Nsbp):
-            for wi in range(mp.Nwpsbp):
-                modvar.sbpIndex = si
-                modvar.wpsbpIndex = wi
-                Efull = falco.model.full(mp, modvar, isNorm=False)
-                mp.Fend.full.I00[si, wi] = (np.abs(Efull)**2).max()
+        if mp.flagMultiproc:
+            
+            inds_list = [(x,y) for x in range(mp.Nsbp) for y in range(mp.Nwpsbp)] #--Make all combinations of the values      
+            Nvals = mp.Nsbp*mp.Nwpsbp
+            
+            pool = multiprocessing.Pool(processes=mp.Nthreads)
+            resultsRaw = [pool.apply_async(_model_full_norm_wrapper, args=(mp, ilist, inds_list)) for ilist in range(Nvals) ]
+            I00list = [p.get() for p in resultsRaw] #--All the E-fields in a list
+            pool.close()
+            pool.join()    
+        
+            for ilist in range(Nvals):
+                si = inds_list[ilist][0]
+                wi = inds_list[ilist][1]
+                mp.Fend.full.I00[si, wi] = I00list[ilist]
+        
+        else:
+            for si in range(mp.Nsbp):
+                for wi in range(mp.Nwpsbp):
+                    modvar.sbpIndex = si
+                    modvar.wpsbpIndex = wi
+                    Efull = falco.model.full(mp, modvar, isNorm=False)
+                    mp.Fend.full.I00[si, wi] = (np.abs(Efull)**2).max()
     
     #--Visually verify the normalized coronagraphic PSF
     modvar = falco.config.Object() # reset
@@ -72,6 +90,22 @@ def falco_get_PSF_norm_factor(mp):
     if(mp.flagPlot):
         plt.figure(502); plt.imshow(np.log10(I0f)); plt.colorbar();
         plt.title('(Full Model: Normalization Check Using Starting PSF)'); plt.pause(1e-2)
+
+
+def _model_full_norm_wrapper(mp, ilist, inds_list):
+    """ Used only by falco_get_PSF_norm_factor for parallel processing """
+    
+    si = inds_list[ilist][0]
+    wi = inds_list[ilist][1]
+    
+    modvar = falco.config.Object()
+    modvar.sbpIndex = si #mp.full.indsLambdaMat[ilam, 0]
+    modvar.wpsbpIndex = wi #mp.full.indsLambdaMat[ilam, 1]
+    modvar.zernIndex = 1
+    modvar.whichSource = 'star'
+    
+    Etemp = falco.model.full(mp, modvar, isNorm=False)
+    return np.max(np.abs(Etemp)**2)
 
 
 def falco_get_summed_image(mp):
@@ -96,28 +130,49 @@ def falco_get_summed_image(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
    
-    ## Do not use this function in parallel yet because the controller could be 
-    #    running in parallel when calling this function.
-#    if(mp.flagMultiproc and mp.flagSim):
-#        #--Compute the simulated images in parallel
-#        pool = multiprocessing.Pool(processes=mp.Nthreads)
-#        results = [pool.apply_async(falco_get_sbp_image, args=(mp,si)) for si in np.arange(mp.Nsbp,dtype=int) ]
-#        results_img = [p.get() for p in results] #--All the sub-band images in a list
-#        pool.close()
-#        pool.join()
-#        
-#        Imean = 0
-#        for si in range(mp.Nsbp):
-#            Imean += mp.sbp_weights[si]*results_img[si]
-#            
-#    else:
-    
-    #--Loop over the function that gets the sbp images
-    Imean = 0 # Initialize image
-    for si in range(0,mp.Nsbp):
-        Imean += mp.sbp_weights[si]*falco_get_sbp_image(mp,si)
-
+    if not (mp.flagMultiproc and mp.flagSim): #
+        Imean = 0
+        for si in range(0,mp.Nsbp):
+            Imean += mp.sbp_weights[si]*falco_get_sbp_image(mp,si)
+            
+    else: #--Compute simulated images in parallel
+        
+        #--Initializations    
+        vals_list = [(ilam, pol) for ilam in range(mp.full.NlamUnique) for pol in mp.full.pol_conds]
+        Nvals = mp.full.NlamUnique*len(mp.full.pol_conds)
+            
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        results = [pool.apply_async(_get_single_sim_full_image, args=(mp, ilist, vals_list)) for ilist in range(Nvals) ]
+        results_img = [p.get() for p in results] #--All the images in a list
+        pool.close()
+        pool.join()
+        
+        #--Apply the spectral weights and sum
+        Imean = 0
+        for ilist in np.arange(Nvals, dtype=int):
+            ilam = vals_list[ilist][0]
+            #pol = vals_list[ilist][1]
+            Imean += mp.full.lambda_weights_all[ilam]/len(mp.full.pol_conds)*results_img[ilist] 
+            
     return Imean
+   
+         
+def _get_single_sim_full_image(mp, ilist, vals_list):
+    """ Function used only by falco_get_summed_image """
+    
+    ilam = vals_list[ilist][0]
+    pol = vals_list[ilist][1]
+    
+    modvar = falco.config.Object() #--Initialize the new structure
+    modvar.sbpIndex   = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam], 0]
+    modvar.wpsbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam], 1]
+    mp.full.polaxis = pol # mp.full.pol_conds[ipol]
+    modvar.whichSource = 'star'
+    Estar = falco.model.full(mp, modvar)
+    
+    return np.abs(Estar)**2 #--Apply spectral weighting outside this function
+
+
 
 
 def falco_get_sbp_image(mp, si):
@@ -171,30 +226,86 @@ def falco_get_sim_sbp_image(mp, si):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    #--Compute the DM surfaces outside the full model to save lots of time
 
-    #--Loop over all wavelengths to get the starlight image
-    Isbp = 0 #--Initialize the image sum in the sub-bandpass
-    modvar = falco.config.Object() #--Initialize the new structure
-    for wi in range(mp.Nwpsbp):
-        modvar.sbpIndex   = si
-        modvar.wpsbpIndex = wi
-        modvar.whichSource = 'star'
-        Estar = falco.model.full(mp, modvar)
-        Iout = np.abs(Estar)**2 #--Apply spectral weighting outside this function
+    Npol = len(mp.full.pol_conds) #--Number of polarization states used
+    
+    #--Loop over all wavelengths and polarizations        
+    inds_list = [(x,y) for x in range(mp.Nwpsbp) for y in range(Npol)] #--Make all combinations of the values  
+    Nvals = mp.Nwpsbp*Npol
+        
+    Iall = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
+    if mp.flagMultiproc:
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        resultsRaw = [pool.apply_async(_get_single_sbp_image_wvlPol, args=(mp, si, ilist, inds_list)) for ilist in range(Nvals) ]
+        results = [p.get() for p in resultsRaw] #--All the images in a list
+        pool.close()
+        pool.join()  
 
-        #--Optionally include the planet PSF
-        if(mp.planetFlag):
-            modvar.whichSource = 'exoplanet'
-            Eplanet = falco.model.full(mp,modvar)
-            Iout = Iout + np.abs(Eplanet)**2 #--Apply spectral weighting outside this function
+        for ilist in range(Nvals):
+            Iall[ilist, :, :] = results[ilist]
+            
+    else: 
+        for ilist in range(Nvals):
+            Iall[ilist, :, :] = _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list)
 
-        #--Apply weight within the sub-bandpass. Assume polarizations are evenly weigted.
-        Iout = mp.full.lambda_weights[wi]*Iout #mp.full.lambda_weights(wi)/length(mp.full.pol_conds)*Iout;
-        Isbp += Iout
+    #--Apply the spectral weights and sum
+    Isbp = 0; 
+    for ilist in range(Nvals):
+        Isbp = Isbp + np.squeeze(Iall[ilist, :, :])
+
+#    #--Loop over all wavelengths to get the starlight image
+#    Isbp = 0 #--Initialize the image sum in the sub-bandpass
+#    modvar = falco.config.Object() #--Initialize the new structure
+#    for wi in range(mp.Nwpsbp):
+#        modvar.sbpIndex   = si
+#        modvar.wpsbpIndex = wi
+#        modvar.whichSource = 'star'
+#        Estar = falco.model.full(mp, modvar)
+#        Iout = np.abs(Estar)**2 #--Apply spectral weighting outside this function
+#
+#        #--Optionally include the planet PSF
+#        if(mp.planetFlag):
+#            modvar.whichSource = 'exoplanet'
+#            Eplanet = falco.model.full(mp,modvar)
+#            Iout = Iout + np.abs(Eplanet)**2 #--Apply spectral weighting outside this function
+#
+#        #--Apply weight within the sub-bandpass. Assume polarizations are evenly weigted.
+#        Iout = mp.full.lambda_weights[wi]*Iout #mp.full.lambda_weights(wi)/length(mp.full.pol_conds)*Iout;
+#        Isbp += Iout
         
     return Isbp  
+
     
+def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
+    """
+    Called only by falco_get_sim_sbp_image for parallel processing.
+    
+    Function to return the weighted, normalized intensity image at a
+    given wavelength in the specified sub-bandpass.
+    
+    """
+    wi = inds_list[ilist][0]
+    ipol = inds_list[ilist][1]
+
+    #--Get the starlight image
+    modvar = falco.config.Object()
+    modvar.sbpIndex   = si
+    modvar.wpsbpIndex = wi
+    mp.full.polaxis = mp.full.pol_conds[ipol]
+    modvar.whichSource = 'star'
+    Estar = falco.model.full(mp, modvar)
+    Iout = np.abs(Estar)**2 #--Apply spectral weighting outside this function
+
+    #--Optionally include the planet PSF
+    if(mp.planetFlag):
+        modvar.whichSource = 'exoplanet'
+        Eplanet = falco.model.full(mp,modvar)
+        Iout = Iout + np.abs(Eplanet)**2 #--Apply spectral weighting outside this function
+
+    #--Apply weight within the sub-bandpass. Assume polarizations are evenly weigted.
+    Iout = mp.full.lambda_weights[wi]/len(mp.full.pol_conds)*Iout
+    
+    return Iout
     
     
 def falco_get_expected_summed_image(mp, cvar, dDM):

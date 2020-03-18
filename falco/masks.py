@@ -289,7 +289,7 @@ def falco_gen_pupil_WFIRST_CGI_20191009(Nbeam, centering, changes={}):
             cshift = -dx
 
     ## INITIALIZE PROPER
-    bm = proper.prop_begin(Dbeam, wl, Narray,bdf)    
+    bm = proper.prop_begin(Dbeam, wl, Narray, bdf)    
 
     ## Struts
     for iStrut in range(6):

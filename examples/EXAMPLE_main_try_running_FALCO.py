@@ -10,8 +10,7 @@ mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
 
-mp.path.falco = './'  #--Location of FALCO
-mp.path.proper = './' #--Location of the MATLAB PROPER library
+mp.path.falco = '../'  #--Location of FALCO
 
 ##--Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
 mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
