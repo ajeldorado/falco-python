@@ -1148,7 +1148,7 @@ def falco_gen_bowtie_LS(inputs):
     centering = inputs['centering'] if 'centering' in inputs.keys() else 'pixel'  #--Default to pixel centering
     xShear = inputs['xShear'] if 'xShear' in inputs.keys() else  0. #--x-axis shear of mask [pupil diameters]
     yShear = inputs['yShear'] if 'yShear' in inputs.keys() else  0. #--y-axis shear of mask [pupil diameters]
-    clocking = inputs['clocking'] if 'clocking' in inputs.keys() else 0. #--Clocking of the mask [degrees]
+    clocking = -inputs['clocking'] if 'clocking' in inputs.keys() else 0. #--Clocking of the mask [degrees]
     magfac = inputs['magfac'] if 'magfac' in inputs.keys() else 1. #--magnification factor of the pupil diameter
 
     if(centering=='pixel'):

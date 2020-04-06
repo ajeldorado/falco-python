@@ -75,19 +75,20 @@ def falco_get_PSF_norm_factor(mp):
                     mp.Fend.full.I00[si, wi] = (np.abs(Efull)**2).max()
     
     #--Visually verify the normalized coronagraphic PSF
-    modvar = falco.config.Object() # reset
-    modvar.ttIndex = 1
-    modvar.sbpIndex = mp.si_ref
-    modvar.wpsbpIndex = mp.wi_ref
-    modvar.whichSource = 'star'  
-    E0c = falco.model.compact(mp, modvar)
-    I0c = np.abs(E0c)**2
     if(mp.flagPlot):
+        modvar = falco.config.Object() # reset
+        modvar.ttIndex = 1
+        modvar.sbpIndex = mp.si_ref
+        modvar.wpsbpIndex = mp.wi_ref
+        modvar.whichSource = 'star'  
+        E0c = falco.model.compact(mp, modvar)
+        I0c = np.abs(E0c)**2
+    
         plt.figure(501); plt.imshow(np.log10(I0c)); plt.colorbar();
         plt.title('(Compact Model: Normalization Check Using Starting PSF)'); plt.pause(1e-2)
-    E0f = falco.model.full(mp, modvar)
-    I0f = np.abs(E0f)**2
-    if(mp.flagPlot):
+       
+        E0f = falco.model.full(mp, modvar)
+        I0f = np.abs(E0f)**2
         plt.figure(502); plt.imshow(np.log10(I0f)); plt.colorbar();
         plt.title('(Full Model: Normalization Check Using Starting PSF)'); plt.pause(1e-2)
 

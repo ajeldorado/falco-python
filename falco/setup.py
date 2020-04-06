@@ -1423,8 +1423,17 @@ def falco_set_initial_Efields(mp):
     mp.Eplanet = mp.P1.full.E; #--Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
     
     if not hasattr(mp.P1.compact,'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp),dtype=complex)
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E,2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
+        mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
+    else:
+        if not mp.P1.compact.E.shape[0] == mp.P1.compact.Narr:
+            EcubeTemp = copy.copy(mp.P1.compact.E)
+            mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
+            for si in range(mp.Nsbp):
+                mp.P1.compact.E[:, :, si] = falco.utils.pad_crop(EcubeTemp[:, :, si], (mp.P1.compact.Narr, mp.P1.compact.Narr))
+                pass
+            pass
+        pass
+    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E, 2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
     
     pass
                 
