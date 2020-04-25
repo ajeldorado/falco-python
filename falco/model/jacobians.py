@@ -54,7 +54,7 @@ def lyot(mp,im,idm):
     #--Re-image the apodizer from pupil P3 back to pupil P2. (Sign of mp.Nrelay2to3 doesn't matter.)
     if(mp.flagApod):
         apodReimaged = falco.utils.padOrCropEven(mp.P3.compact.mask, NdmPad)
-        apodReimaged = falco.propcustom.propcustom_relay(apodReimaged,mp.Nrelay2to3,mp.centering)
+        apodReimaged = falco.propcustom.relay(apodReimaged,mp.Nrelay2to3,mp.centering)
     else:
         apodReimaged = np.ones((NdmPad,NdmPad)) 
     
@@ -100,11 +100,11 @@ def lyot(mp,im,idm):
 
     #--Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein #--E-field at pupil plane P1
-    EP2 = falco.propcustom.propcustom_relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
+    EP2 = falco.propcustom.relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
 
     #--Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not (abs(mp.d_P2_dm1)==0): #--E-field arriving at DM1
-        Edm1 = falco.propcustom.propcustom_PTP(EP2,mp.P2.compact.dx*NdmPad,wvl,mp.d_P2_dm1)
+        Edm1 = falco.propcustom.ptp(EP2,mp.P2.compact.dx*NdmPad,wvl,mp.d_P2_dm1)
     else:
         Edm1 = EP2
     Edm1b = Edm1*Edm1WFE*DM1stop*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl) #--E-field leaving DM1
@@ -144,10 +144,10 @@ def lyot(mp,im,idm):
                 
                 #--Propagate from DM1 to DM2, and then back to P2
                 dEbox = (mirrorFac*2*np.pi*1j/wvl)*falco.utils.padOrCropEven((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:,:,iact]),NboxPad1AS) #--Pad influence function at DM1 for angular spectrum propagation.
-                dEbox = falco.propcustom.propcustom_PTP(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
-                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(mirrorFac*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
-#                dEbox = falco.propcustom.propcustom_PTP_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2,mp.dm1.dm_spacing,mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
-#                dEP2box = falco.propcustom.propcustom_PTP_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(mirrorFac*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm1.dm_spacing,mp.propMethodPTP ) # back-propagate to DM1
+                dEbox = falco.propcustom.ptp(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
+                dEP2box = falco.propcustom.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(mirrorFac*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
+#                dEbox = falco.propcustom.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2,mp.dm1.dm_spacing,mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
+#                dEP2box = falco.propcustom.ptp_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(mirrorFac*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm1.dm_spacing,mp.propMethodPTP ) # back-propagate to DM1
 #                
                 #--To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
@@ -169,13 +169,13 @@ def lyot(mp,im,idm):
                     EF3 = (1.-mp.F3.compact.ampMask) * EF3inc #--Propagate through (1-complex FPM) for Babinet's principle
         
                     #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                    EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)  #--Subtrahend term for the Lyot plane E-field    
-                    EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering); #--Get the correct orientation
+                    EP4sub = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)  #--Subtrahend term for the Lyot plane E-field    
+                    EP4sub = falco.propcustom.relay(EP4sub,mp.Nrelay3to4-1,mp.centering); #--Get the correct orientation
                     
                     #--Full Lyot plane pupil (for Babinet)
                     EP4noFPM = np.zeros((mp.dm1.compact.NdmPad,mp.dm1.compact.NdmPad),dtype=np.complex)
                     EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field. 
-                    EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the correct orientation 
+                    EP4noFPM = falco.propcustom.relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the correct orientation 
                     EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
                     EP4 = EP4noFPM - EP4sub #--Babinet's principle to get E-field at Lyot plane
                 
@@ -183,15 +183,15 @@ def lyot(mp,im,idm):
                     EF3 = mp.F3.compact.ampMask * EF3inc # Apply FPM
                     
                     #--MFT to Lyot plane
-                    EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)   
-                    EP4 = falco.propcustom.propcustom_relay(EP4, mp.Nrelay3to4-1, mp.centering) #--Get the correct orientation
+                    EP4 = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)   
+                    EP4 = falco.propcustom.relay(EP4, mp.Nrelay3to4-1, mp.centering) #--Get the correct orientation
                     
                     
                 EP4 *= mp.P4.compact.croppedMask # Apply Lyot stop
     
                 #--MFT to camera
-                EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-                EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
+                EP4 = falco.propcustom.relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
+                EFend = falco.propcustom.mft_p2f(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
                 
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
@@ -210,7 +210,7 @@ def lyot(mp,im,idm):
         Edm2WFEpad = falco.utils.padOrCropEven(Edm2WFE,mp.dm2.compact.NdmPad)
     
         #--Propagate full field to DM2 before back-propagating in small boxes
-        Edm2inc = falco.utils.padOrCropEven( falco.propcustom.propcustom_PTP(Edm1b,mp.compact.NdmPad*mp.P2.compact.dx,wvl,mp.d_dm1_dm2), mp.dm2.compact.NdmPad) # E-field incident upon DM2
+        Edm2inc = falco.utils.padOrCropEven( falco.propcustom.ptp(Edm1b,mp.compact.NdmPad*mp.P2.compact.dx,wvl,mp.d_dm1_dm2), mp.dm2.compact.NdmPad) # E-field incident upon DM2
         Edm2inc = falco.utils.padOrCropEven(Edm2inc,mp.dm2.compact.NdmPad);
         Edm2 = DM2stopPad*Edm2WFEpad*Edm2inc*np.exp(mirrorFac*2*np.pi*1j/wvl*falco.utils.padOrCropEven(DM2surf,mp.dm2.compact.NdmPad)) # Initial E-field at DM2 including its own phase contribution
         
@@ -227,8 +227,8 @@ def lyot(mp,im,idm):
                 y_box = mp.dm2.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box 
                 
                 dEbox = (mp.dm2.VtoH.reshape(mp.dm2.Nact**2)[iact])*(mirrorFac*2*np.pi*1j/wvl)*falco.utils.padOrCropEven(np.squeeze(mp.dm2.compact.inf_datacube[:,:,iact]),NboxPad2AS) #--the padded influence function at DM2
-                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
-#                dEP2box = propcustom_PTP_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind),mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm2.dm_spacing,mp.propMethodPTP); # back-propagate to pupil P2
+                dEP2box = falco.propcustom.ptp(dEbox*Edm2[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
+#                dEP2box = ptp_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind),mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm2.dm_spacing,mp.propMethodPTP); # back-propagate to pupil P2
                 
                 #--To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
@@ -253,12 +253,12 @@ def lyot(mp,im,idm):
                     EF3 = (1-mp.F3.compact.ampMask) * EF3inc #--Propagate through ( 1 - (complex FPM) ) for Babinet's principle
         
                     #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                    EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) #--Subtrahend term for the Lyot plane E-field    
-                    EP4sub = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Get the correct orientation
+                    EP4sub = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) #--Subtrahend term for the Lyot plane E-field    
+                    EP4sub = falco.propcustom.relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Get the correct orientation
                                     
                     EP4noFPM = np.zeros((mp.dm2.compact.NdmPad,mp.dm2.compact.NdmPad),dtype=np.complex)
                     EP4noFPM[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2box #--Propagating the E-field from P2 to P4 without masks gives the same E-field.
-                    EP4noFPM = falco.propcustom.propcustom_relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the number or re-imaging relays between pupils P3 and P4. 
+                    EP4noFPM = falco.propcustom.relay(EP4noFPM,mp.Nrelay2to3+mp.Nrelay3to4,mp.centering) #--Get the number or re-imaging relays between pupils P3 and P4. 
                     EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
                     EP4 = (EP4noFPM - EP4sub) #--Babinet's principle to get E-field at Lyot plane
                 
@@ -267,14 +267,14 @@ def lyot(mp,im,idm):
                     EF3 = mp.F3.compact.ampMask * EF3inc # Apply FPM
         
                     #--MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                    EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)   
-                    EP4 = falco.propcustom.propcustom_relay(EP4, mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
+                    EP4 = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)   
+                    EP4 = falco.propcustom.relay(EP4, mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
                 
                 EP4 *= mp.P4.compact.croppedMask # Apply Lyot stop
     
                 #--MFT to detector
-                EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-                EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
+                EP4 = falco.propcustom.relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
+                EFend = falco.propcustom.mft_p2f(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
                 
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
@@ -348,7 +348,7 @@ def vortex(mp,im,idm):
     #--Re-image the apodizer from pupil P3 back to pupil P2. (Sign of mp.Nrelay2to3 doesn't matter.)
     if(mp.flagApod):
         apodReimaged = falco.utils.padOrCropEven(mp.P3.compact.mask, NdmPad)
-        apodReimaged = falco.propcustom.propcustom_relay(apodReimaged,mp.Nrelay2to3,mp.centering)
+        apodReimaged = falco.propcustom.relay(apodReimaged,mp.Nrelay2to3,mp.centering)
     else:
         apodReimaged = np.ones((NdmPad,NdmPad)) 
     
@@ -394,11 +394,11 @@ def vortex(mp,im,idm):
 
     #--Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein #--E-field at pupil plane P1
-    EP2 = falco.propcustom.propcustom_relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
+    EP2 = falco.propcustom.relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
 
     #--Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not (abs(mp.d_P2_dm1)==0): #--E-field arriving at DM1
-        Edm1 = falco.propcustom.propcustom_PTP(EP2,mp.P2.compact.dx*NdmPad,wvl,mp.d_P2_dm1)
+        Edm1 = falco.propcustom.ptp(EP2,mp.P2.compact.dx*NdmPad,wvl,mp.d_P2_dm1)
     else:
         Edm1 = EP2
     Edm1b = Edm1*Edm1WFE*DM1stop*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl) #--E-field leaving DM1
@@ -444,10 +444,10 @@ def vortex(mp,im,idm):
                 
                 #--Propagate from DM1 to DM2, and then back to P2
                 dEbox = (mirrorFac*2*np.pi*1j/wvl)*falco.utils.padOrCropEven((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:,:,iact]),NboxPad1AS) #--Pad influence function at DM1 for angular spectrum propagation.
-                dEbox = falco.propcustom.propcustom_PTP(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
-                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(mirrorFac*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
-#                dEbox = falco.propcustom.propcustom_PTP_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2,mp.dm1.dm_spacing,mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
-#                dEP2box = falco.propcustom.propcustom_PTP_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(mirrorFac*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm1.dm_spacing,mp.propMethodPTP ) # back-propagate to DM1
+                dEbox = falco.propcustom.ptp(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
+                dEP2box = falco.propcustom.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(mirrorFac*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
+#                dEbox = falco.propcustom.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad1AS,wvl,mp.d_dm1_dm2,mp.dm1.dm_spacing,mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
+#                dEP2box = falco.propcustom.ptp_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(mirrorFac*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)),mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm1.dm_spacing,mp.propMethodPTP ) # back-propagate to DM1
 #                
                 #--To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
@@ -461,7 +461,7 @@ def vortex(mp,im,idm):
                 EP2eff[np.ix_(y_box_AS_ind,x_box_AS_ind)] = dEP2boxEff
                 
                 #--Forward propagate from P2 (effective) to P3
-                EP3 = falco.propcustom.propcustom_relay(EP2eff,mp.Nrelay2to3,mp.centering)
+                EP3 = falco.propcustom.relay(EP2eff,mp.Nrelay2to3,mp.centering)
                 
                 #--Pad pupil P3 for FFT
                 EP3pad = falco.utils.padOrCropEven(EP3, Nfft1)
@@ -471,7 +471,7 @@ def vortex(mp,im,idm):
                 
                 #--FFT from Vortex FPM to Lyot Plane
                 EP4 = np.fft.fftshift(np.fft.fft2(EF3))/Nfft1
-                EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Add more re-imaging relays if necessary
+                EP4 = falco.propcustom.relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Add more re-imaging relays if necessary
                 if(Nfft1 > mp.P4.compact.Narr):
                     EP4 = mp.P4.compact.croppedMask*falco.utils.padOrCropEven(EP4,mp.P4.compact.Narr) #--Crop EP4 and then apply Lyot stop 
                 else:
@@ -479,8 +479,8 @@ def vortex(mp,im,idm):
                     pass
                 
                 #--MFT to camera
-                EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-                EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
+                EP4 = falco.propcustom.relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
+                EFend = falco.propcustom.mft_p2f(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
                 
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
@@ -505,7 +505,7 @@ def vortex(mp,im,idm):
         Edm2WFEpad = falco.utils.padOrCropEven(Edm2WFE,mp.dm2.compact.NdmPad)
     
         #--Propagate full field to DM2 before back-propagating in small boxes
-        Edm2inc = falco.utils.padOrCropEven( falco.propcustom.propcustom_PTP(Edm1b,mp.compact.NdmPad*mp.P2.compact.dx,wvl,mp.d_dm1_dm2), mp.dm2.compact.NdmPad) # E-field incident upon DM2
+        Edm2inc = falco.utils.padOrCropEven( falco.propcustom.ptp(Edm1b,mp.compact.NdmPad*mp.P2.compact.dx,wvl,mp.d_dm1_dm2), mp.dm2.compact.NdmPad) # E-field incident upon DM2
         Edm2inc = falco.utils.padOrCropEven(Edm2inc,mp.dm2.compact.NdmPad);
         Edm2 = DM2stopPad*Edm2WFEpad*Edm2inc*np.exp(mirrorFac*2*np.pi*1j/wvl*falco.utils.padOrCropEven(DM2surf,mp.dm2.compact.NdmPad)) # Initial E-field at DM2 including its own phase contribution
         
@@ -522,8 +522,8 @@ def vortex(mp,im,idm):
 #                y_box = mp.dm2.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box 
                 
                 dEbox = (mp.dm2.VtoH.reshape(mp.dm2.Nact**2)[iact])*(mirrorFac*2*np.pi*1j/wvl)*falco.utils.padOrCropEven(np.squeeze(mp.dm2.compact.inf_datacube[:,:,iact]),NboxPad2AS) #--the padded influence function at DM2
-                dEP2box = falco.propcustom.propcustom_PTP(dEbox*Edm2[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
-#                dEP2box = propcustom_PTP_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind),mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm2.dm_spacing,mp.propMethodPTP); # back-propagate to pupil P2
+                dEP2box = falco.propcustom.ptp(dEbox*Edm2[np.ix_(y_box_AS_ind,x_box_AS_ind)],mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
+#                dEP2box = ptp_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind),mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1),mp.dm2.dm_spacing,mp.propMethodPTP); # back-propagate to pupil P2
                 
                 #--To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
@@ -540,7 +540,7 @@ def vortex(mp,im,idm):
 
 
                 #--Forward propagate from P2 (effective) to P3
-                EP3 = falco.propcustom.propcustom_relay(EP2eff,mp.Nrelay2to3,mp.centering); 
+                EP3 = falco.propcustom.relay(EP2eff,mp.Nrelay2to3,mp.centering); 
     
                 #--Pad pupil P3 for FFT
                 EP3pad = falco.utils.padOrCropEven(EP3, Nfft2)
@@ -550,7 +550,7 @@ def vortex(mp,im,idm):
     
                 #--FFT from Vortex FPM to Lyot Plane
                 EP4 = np.fft.fftshift(np.fft.fft2(EF3))/Nfft2
-                EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Add more re-imaging relays if necessary
+                EP4 = falco.propcustom.relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Add more re-imaging relays if necessary
                 
                 if(Nfft2 > mp.P4.compact.Narr):
                     EP4 = mp.P4.compact.croppedMask*falco.utils.padOrCropEven(EP4,mp.P4.compact.Narr) #--Crop EP4 and then apply Lyot stop 
@@ -558,8 +558,8 @@ def vortex(mp,im,idm):
                     EP4 = falco.utils.padOrCropEven(mp.P4.compact.croppedMask,Nfft2)*EP4 #--Crop the Lyot stop and then apply it.
 
                 #--MFT to detector
-                EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-                EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
+                EP4 = falco.propcustom.relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
+                EFend = falco.propcustom.mft_p2f(EP4,mp.fl,wvl,mp.P4.compact.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
                 
                 Gzdl[:,Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 

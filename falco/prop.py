@@ -10,7 +10,7 @@ _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
 
 
-def propcustom_relay(E_in, Nrelay, centering='pixel'):
+def relay(E_in, Nrelay, centering='pixel'):
     """
     Perform re-imaging of the input E-field through optical relays.
     
@@ -54,7 +54,7 @@ def propcustom_relay(E_in, Nrelay, centering='pixel'):
     return E_out
 
 
-def propcustom_PTP(E_in, full_width, wavelength, dz):
+def ptp(E_in, full_width, wavelength, dz):
     """
     Propagate an electric field array using the angular spectrum technique.
 
@@ -104,7 +104,7 @@ def propcustom_PTP(E_in, full_width, wavelength, dz):
     return np.fft.ifftshift(np.fft.ifftn(kernel * intermediate))
 
 
-def propcustom_mft_FtoP(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
+def mft_f2p(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
     """
     Propagate a field from a focal plane to a pupil plane, using a matrix-multiply DFT.
 
@@ -166,7 +166,7 @@ def propcustom_mft_FtoP(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixe
     return scaling * np.linalg.multi_dot([pre, E_foc, post])
 
 
-def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
+def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
     """
     Propagate a pupil to a focus using a matrix-multiply DFT.
 
@@ -233,10 +233,9 @@ def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centeri
     return scaling * np.linalg.multi_dot([pre, E_pup, post])
 
 
-def propcustom_mft_Pup2Vortex2Pup(pupilPre, charge, beamRadius, inVal, outVal):
+def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal):
     """
-    Function to propagate from the pupil plane before a vortex FPM to the pupil 
-    plane after it.
+    Propagate from the pupil plane before a vortex FPM to pupil plane after it.
     
     Compute a radial Tukey window for propagating through a vortex coroangraph.
 
@@ -279,8 +278,8 @@ def propcustom_mft_Pup2Vortex2Pup(pupilPre, charge, beamRadius, inVal, outVal):
    
     windowKnee = 1.-inVal/outVal
     
-    windowMask1 = falco_gen_Tukey4vortex(2*outVal*lambdaOverD, RHO, windowKnee)
-    windowMask2 = falco_gen_Tukey4vortex(NB, RHO, windowKnee)
+    windowMask1 = gen_tukey_for_vortex(2*outVal*lambdaOverD, RHO, windowKnee)
+    windowMask2 = gen_tukey_for_vortex(NB, RHO, windowKnee)
 
     # DFT vectors 
     x = np.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D
@@ -311,7 +310,7 @@ def propcustom_mft_Pup2Vortex2Pup(pupilPre, charge, beamRadius, inVal, outVal):
     return pupilPost
 
 
-def falco_gen_Tukey4vortex(Nwindow, RHO, alpha):
+def gen_tukey_for_vortex(Nwindow, RHO, alpha):
     """
     Compute a radial Tukey window for propagating through a vortex coroangraph.
 

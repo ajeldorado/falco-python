@@ -7,7 +7,7 @@ from .configs  import *
 from .imaging import *
 from .dms import *
 from .setups import *
-from .propcustom import *
+from .prop import *
 from .zernikes import *
 from . import model
 from ._globals import INFLUENCE_XINETICS

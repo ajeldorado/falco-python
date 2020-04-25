@@ -218,27 +218,27 @@ def full_Fourier(mp, wvl, Ein, normFac):
 
     #--Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein #--E-field at pupil plane P1
-    EP2 = falco.propcustom.propcustom_relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
+    EP2 = falco.propcustom.relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
 
     #--Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not ( abs(mp.d_P2_dm1)==0 ): 
-        Edm1 = falco.propcustom.propcustom_PTP(EP2,mp.P2.full.dx*NdmPad,wvl,mp.d_P2_dm1) 
+        Edm1 = falco.propcustom.ptp(EP2,mp.P2.full.dx*NdmPad,wvl,mp.d_P2_dm1) 
     else: 
         Edm1 = EP2   #--E-field arriving at DM1
     Edm1b = Edm1*Edm1WFE*DM1stop*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl) #--E-field leaving DM1
 
     #--Propagate from DM1 to DM2, and apply DM2 surface and aperture stop
-    Edm2 = falco.propcustom.propcustom_PTP(Edm1b,mp.P2.full.dx*NdmPad,wvl,mp.d_dm1_dm2)
+    Edm2 = falco.propcustom.ptp(Edm1b,mp.P2.full.dx*NdmPad,wvl,mp.d_dm1_dm2)
     Edm2 *= Edm2WFE*DM2stop*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
 
     #--Back-propagate to pupil P2
     if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
         EP2eff = Edm2 #--Do nothing if zero distance
     else:
-        EP2eff = falco.propcustom.propcustom_PTP(Edm2,mp.P2.full.dx*NdmPad,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) #--Back propagate to pupil P2
+        EP2eff = falco.propcustom.ptp(Edm2,mp.P2.full.dx*NdmPad,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) #--Back propagate to pupil P2
 
     #--Re-image to pupil P3
-    EP3 = falco.propcustom.propcustom_relay(EP2eff,mp.Nrelay2to3,mp.centering)
+    EP3 = falco.propcustom.relay(EP2eff,mp.Nrelay2to3,mp.centering)
 
     #--Apply the apodizer mask (if there is one)
     if(mp.flagApod):
@@ -247,7 +247,7 @@ def full_Fourier(mp, wvl, Ein, normFac):
     #--Propagations Specific to the Coronagraph Type
     if(mp.coro.upper()=='LC' or mp.coro.upper()=='APLC' or mp.coro.upper()=='RODDIER'):
         #--MFT from apodizer plane to FPM (i.e., P3 to F3)
-        EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.full.dx,mp.F3.full.dxi,mp.F3.full.Nxi,mp.F3.full.deta,mp.F3.full.Neta,mp.centering)
+        EF3inc = falco.propcustom.mft_p2f(EP3, mp.fl,wvl,mp.P2.full.dx,mp.F3.full.dxi,mp.F3.full.Nxi,mp.F3.full.deta,mp.F3.full.Neta,mp.centering)
         # Apply (1-FPM) for Babinet's principle later
         if(mp.coro.upper()=='RODDIER'):
             FPM = mp.F3.full.ampMask*np.exp(1j*2*np.pi/wvl*(mp.F3.n(wvl)-1)*mp.F3.t*mp.F3.full.mask.phzSupport)
@@ -255,20 +255,20 @@ def full_Fourier(mp, wvl, Ein, normFac):
         else:
             EF3 = (1.-mp.F3.full.ampMask)*EF3inc;
         # Use Babinet's principle at the Lyot plane. This is the term without the FPM.
-        EP4noFPM = falco.propcustom.propcustom_relay(EP3,mp.Nrelay3to4,mp.centering) #--Propagate forward another pupil plane 
+        EP4noFPM = falco.propcustom.relay(EP3,mp.Nrelay3to4,mp.centering) #--Propagate forward another pupil plane 
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4subtrahend = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.full.dxi,mp.F3.full.deta,mp.P4.full.dx,mp.P4.full.Narr,mp.centering) # Subtrahend term for Babinet's principle     
+        EP4subtrahend = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.full.dxi,mp.F3.full.deta,mp.P4.full.dx,mp.P4.full.Narr,mp.centering) # Subtrahend term for Babinet's principle     
         #--Babinet's principle at P4
         EP4 = falco.utils.padOrCropEven(EP4noFPM,mp.P4.full.Narr) - EP4subtrahend
         
     elif(mp.coro.upper()=='SPLC' or mp.coro.upper()=='FLC'):
         #--MFT from apodizer plane to FPM (i.e., P3 to F3)
-        EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.full.dx,mp.F3.full.dxi,mp.F3.full.Nxi,mp.F3.full.deta,mp.F3.full.Neta,mp.centering)
+        EF3inc = falco.propcustom.mft_p2f(EP3, mp.fl,wvl,mp.P2.full.dx,mp.F3.full.dxi,mp.F3.full.Nxi,mp.F3.full.deta,mp.F3.full.Neta,mp.centering)
         EF3 = mp.F3.full.ampMask * EF3inc
         
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.full.dxi,mp.F3.full.deta,mp.P4.full.dx,mp.P4.full.Narr,mp.centering)  
-        EP4 = falco.propcustom.propcustom_relay(EP4, mp.Nrelay3to4-1, mp.centering) #--Propagate forward more pupil planes if necessary.
+        EP4 = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.full.dxi,mp.F3.full.deta,mp.P4.full.dx,mp.P4.full.Narr,mp.centering)  
+        EP4 = falco.propcustom.relay(EP4, mp.Nrelay3to4-1, mp.centering) #--Propagate forward more pupil planes if necessary.
 
     elif(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
 #        if not mp.flagApod:
@@ -287,7 +287,7 @@ def full_Fourier(mp, wvl, Ein, normFac):
         else:
             raise TypeError("mp.F3.VortexCharge must be an int, float or numpy ndarray.")
             pass
-        EP4 = falco.propcustom.propcustom_mft_Pup2Vortex2Pup( EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
+        EP4 = falco.propcustom.mft_p2v2p( EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
         EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr);
         
     else:
@@ -298,7 +298,7 @@ def full_Fourier(mp, wvl, Ein, normFac):
     #--Remove the FPM completely if normalization value is being found for the vortex
     if(normFac==0):
         if(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
-            EP4 = falco.propcustom.propcustom_relay(EP3, mp.Nrelay3to4, mp.centering)
+            EP4 = falco.propcustom.relay(EP3, mp.Nrelay3to4, mp.centering)
             EP4 = falco.utils.padOrCropEven(EP4,mp.P4.full.Narr)
             pass
         pass
@@ -308,8 +308,8 @@ def full_Fourier(mp, wvl, Ein, normFac):
     EP4 *= mp.P4.full.croppedMask
 
     #--MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
-    EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-    EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.full.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
+    EP4 = falco.propcustom.relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
+    EFend = falco.propcustom.mft_p2f(EP4,mp.fl,wvl,mp.P4.full.dx,mp.Fend.dxi,mp.Fend.Nxi,mp.Fend.deta,mp.Fend.Neta,mp.centering)
 
     #--Don't apply FPM if normalization value is being found
     if(normFac==0):
@@ -514,27 +514,27 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
 
     #--Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein #--E-field at pupil plane P1
-    EP2 = falco.propcustom.propcustom_relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
+    EP2 = falco.propcustom.relay(EP1,mp.Nrelay1to2,mp.centering) #--Forward propagate to the next pupil plane (P2) by rotating 180 degrees mp.Nrelay1to2 times.
 
     #--Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not (abs(mp.d_P2_dm1)==0): #--E-field arriving at DM1
-        Edm1 = falco.propcustom.propcustom_PTP(EP2,mp.P2.compact.dx*NdmPad,wvl,mp.d_P2_dm1)
+        Edm1 = falco.propcustom.ptp(EP2,mp.P2.compact.dx*NdmPad,wvl,mp.d_P2_dm1)
     else:
         Edm1 = EP2
     Edm1b = Edm1*Edm1WFE*DM1stop*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl) #--E-field leaving DM1
 
     #--Propagate from DM1 to DM2, and apply DM2 surface and aperture stop
-    Edm2 = falco.propcustom.propcustom_PTP(Edm1b,mp.P2.compact.dx*NdmPad,wvl,mp.d_dm1_dm2); 
+    Edm2 = falco.propcustom.ptp(Edm1b,mp.P2.compact.dx*NdmPad,wvl,mp.d_dm1_dm2); 
     Edm2 *= Edm2WFE*DM2stop*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
 
     #--Back-propagate to pupil P2
     if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
         EP2eff = Edm2
     else:
-        EP2eff = falco.propcustom.propcustom_PTP(Edm2,mp.P2.compact.dx*NdmPad,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1))
+        EP2eff = falco.propcustom.ptp(Edm2,mp.P2.compact.dx*NdmPad,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1))
 
     #--Re-image to pupil P3
-    EP3 = falco.propcustom.propcustom_relay(EP2eff,mp.Nrelay2to3,mp.centering)
+    EP3 = falco.propcustom.relay(EP2eff,mp.Nrelay2to3,mp.centering)
 
     #--Apply apodizer mask.
     if(mp.flagApod):
@@ -543,7 +543,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
     """  Select propagation based on coronagraph type   """
     if mp.coro.upper()=='LC' or mp.coro.upper()=='APLC' or mp.coro.upper()=='RODDIER':
         #--MFT from SP to FPM (i.e., P3 to F3)
-        EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
+        EF3inc = falco.propcustom.mft_p2f(EP3, mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
         #--Apply (1-FPM) for Babinet's principle later
         if(mp.coro.upper()=='RODDIER'):
             pass
@@ -552,24 +552,24 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
         else:
             EF3 = (1. - mp.F3.compact.ampMask)*EF3inc;
         #--Use Babinet's principle at the Lyot plane.
-        EP4noFPM = falco.propcustom.propcustom_relay(EP3,mp.Nrelay3to4,mp.centering) #--Propagate forward another pupil plane 
+        EP4noFPM = falco.propcustom.relay(EP3,mp.Nrelay3to4,mp.centering) #--Propagate forward another pupil plane 
         EP4noFPM = falco.utils.padOrCropEven(EP4noFPM,mp.P4.compact.Narr) #--Crop down to the size of the Lyot stop opening
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4sub = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) # Subtrahend term for Babinet's principle     
-        EP4subRelay = falco.propcustom.propcustom_relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
+        EP4sub = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering) # Subtrahend term for Babinet's principle     
+        EP4subRelay = falco.propcustom.relay(EP4sub,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
         #--Babinet's principle at P4
         EP4 = (EP4noFPM-EP4subRelay)
         
     elif mp.coro.upper()=='FLC' or mp.coro.upper()=='SPLC':
         #--MFT from SP to FPM (i.e., P3 to F3)
-        EF3inc = falco.propcustom.propcustom_mft_PtoF(EP3, mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
+        EF3inc = falco.propcustom.mft_p2f(EP3, mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
         
         #--Apply FPM
         EF3 = mp.F3.compact.ampMask * EF3inc
         
         #--MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4 = falco.propcustom.propcustom_mft_FtoP(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)    
-        EP4 = falco.propcustom.propcustom_relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
+        EP4 = falco.propcustom.mft_f2p(EF3,mp.fl,wvl,mp.F3.compact.dxi,mp.F3.compact.deta,mp.P4.compact.dx,mp.P4.compact.Narr,mp.centering)    
+        EP4 = falco.propcustom.relay(EP4,mp.Nrelay3to4-1,mp.centering) #--Propagate forward more pupil planes if necessary.
             
     elif(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
 
@@ -586,7 +586,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
         else:
             raise TypeError("mp.F3.VortexCharge must be an int, float or numpy ndarray.")
             pass
-        EP4 = falco.propcustom.propcustom_mft_Pup2Vortex2Pup( EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
+        EP4 = falco.propcustom.mft_p2v2p( EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
         EP4 = falco.utils.padOrCropEven(EP4,mp.P4.compact.Narr);        
 
     else:     
@@ -596,7 +596,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
     #--Remove the FPM completely if normalization value is being found for the vortex
     if(normFac==0):
         if(mp.coro.upper()=='VORTEX' or mp.coro.upper()=='VC' or mp.coro.upper()=='AVC'):
-            EP4 = falco.propcustom.propcustom_relay(EP3, mp.Nrelay3to4, mp.centering)
+            EP4 = falco.propcustom.relay(EP3, mp.Nrelay3to4, mp.centering)
             EP4 = falco.utils.padOrCropEven(EP4, mp.P4.compact.Narr)
             pass
         pass
@@ -606,8 +606,8 @@ def compact_general(mp, wvl, Ein, normFac, flagEval):
     EP4 = mp.P4.compact.croppedMask*EP4
 
     #--MFT to camera
-    EP4 = falco.propcustom.propcustom_relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
-    EFend = falco.propcustom.propcustom_mft_PtoF(EP4,mp.fl,wvl,mp.P4.compact.dx,dxi,Nxi,deta,Neta,mp.centering);
+    EP4 = falco.propcustom.relay(EP4,mp.NrelayFend,mp.centering) #--Rotate the final image 180 degrees if necessary
+    EFend = falco.propcustom.mft_p2f(EP4,mp.fl,wvl,mp.P4.compact.dx,dxi,Nxi,deta,Neta,mp.centering);
 
     #--Don't apply FPM if normalization value is being found
     if(normFac==0):
