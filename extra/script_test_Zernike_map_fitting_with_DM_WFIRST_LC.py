@@ -22,6 +22,7 @@ mp.path.proper = './' #--Location of the MATLAB PROPER library
 mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
+mp.flagMultiproc = False
 
 ## Step 3: Overwrite default values as desired
 

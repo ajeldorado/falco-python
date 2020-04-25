@@ -41,9 +41,9 @@ mp.source_y_offset_norm = 0;  # y location [lambda_c/D] in dark hole at which to
 
 # %# Bandwidth and Wavelength Specs
 
-mp.lambda0 = 730e-9;   #--Central wavelength of the whole spectral bandpass [meters]
-mp.fracBW = 0.15;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
-mp.Nsbp = 5;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+mp.lambda0 = 575e-9;   #--Central wavelength of the whole spectral bandpass [meters]
+mp.fracBW = 0.10;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.Nsbp = 3;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 3;          #--Number of wavelengths to used to approximate an image in each sub-bandpass
 
 # %# Wavefront Estimation
@@ -198,29 +198,29 @@ mp.d_dm1_dm2 = 1.000   # distance between DM1 and DM2 [meters]
 #--Key Optical Layout Choices
 mp.flagSim = True      #--Simulation or not
 mp.layout = 'wfirst_phaseb_proper';  #--Which optical layout to use
-mp.coro = 'SPLC';
-mp.flagApod = True    #--Whether to use an apodizer or not
+mp.coro = 'HLC';
+mp.flagApod = False    #--Whether to use an apodizer or not
 mp.flagDMwfe = False  #--Whether to use BMC DM quilting maps
 
 mp.Fend = falco.config.Object()
 
 #--Final Focal Plane Properties
 mp.Fend.res = 3; #(730/660)*2.; #--Sampling [ pixels per lambda0/D]
-mp.Fend.FOV = 11.; #--half-width of the field of view in both dimensions [lambda0/D]
+mp.Fend.FOV = 10.; #--half-width of the field of view in both dimensions [lambda0/D]
 
 #--Correction and scoring region definition
 mp.Fend.corr = falco.config.Object()
-mp.Fend.corr.Rin = 2.6;   # inner radius of dark hole correction region [lambda0/D]
-mp.Fend.corr.Rout  = 9;  # outer radius of dark hole correction region [lambda0/D]
-mp.Fend.corr.ang  = 65;  # angular opening of dark hole correction region [degrees]
+mp.Fend.corr.Rin = 2.7   # inner radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.Rout  = 9.0  # outer radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.ang  = 180  # angular opening of dark hole correction region [degrees]
 
 mp.Fend.score = falco.config.Object()
-mp.Fend.score.Rin = 3;  # inner radius of dark hole scoring region [lambda0/D]
-mp.Fend.score.Rout = 9;  # outer radius of dark hole scoring region [lambda0/D]
-mp.Fend.score.ang = 65;  # angular opening of dark hole scoring region [degrees]
+mp.Fend.score.Rin = 3.0  # inner radius of dark hole scoring region [lambda0/D]
+mp.Fend.score.Rout = 9.0  # outer radius of dark hole scoring region [lambda0/D]
+mp.Fend.score.ang = 180  # angular opening of dark hole scoring region [degrees]
 
 mp.Fend.sides = 'both'; #--Which side(s) for correction: 'both', 'left', 'right', 'top', 'bottom'
-mp.Fend.clockAngDeg = 90; #--Amount to rotate the dark hole location
+# mp.Fend.clockAngDeg = 90; #--Amount to rotate the dark hole location
 
 # %# Optical Layout: Compact Model (and Jacobian Model)
 
@@ -233,34 +233,34 @@ mp.P3.D = 46.3e-3
 mp.P4.D = 46.3e-3
 
 #--Pupil Plane Resolutions
-mp.P1.compact.Nbeam = 386
+mp.P1.compact.Nbeam = 309
 # mp.P2.compact.Nbeam = 386;
 # mp.P3.compact.Nbeam = 386;
-mp.P4.compact.Nbeam = 60
+mp.P4.compact.Nbeam = 309
 
 #--Shaped Pupil Mask: Load and downsample.
-mp.compact.flagGenApod = False
-mp.full.flagGenApod = False
-mp.SPname = 'SPC-20190130';
-SP0 = fits.getdata('../data/WFIRST/PhaseB/SPM_SPC-20190130.fits', ext=0)
-NbeamSP = 1000
-if(mp.P1.compact.Nbeam == NbeamSP):
-    mp.P3.compact.mask = SP0
-else:
-    nBeamIn = NbeamSP
-    nBeamOut = mp.P1.compact.Nbeam
-    dx = 0
-    dy = 0
-    mp.P3.compact.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+# mp.compact.flagGenApod = False
+# mp.full.flagGenApod = False
+# # mp.SPname = 'SPC-20190130';
+# SP0 = fits.getdata('../data/WFIRST/PhaseB/SPM_SPC-20190130.fits', ext=0)
+# NbeamSP = 1000
+# if(mp.P1.compact.Nbeam == NbeamSP):
+#     mp.P3.compact.mask = SP0
+# else:
+#     nBeamIn = NbeamSP
+#     nBeamOut = mp.P1.compact.Nbeam
+#     dx = 0
+#     dy = 0
+#     mp.P3.compact.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
-if(mp.P1.full.Nbeam == NbeamSP):
-    mp.P3.full.mask = SP0
-else:
-    nBeamIn = NbeamSP
-    nBeamOut = mp.P1.full.Nbeam
-    dx = 0
-    dy = 0
-    mp.P3.full.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+# if(mp.P1.full.Nbeam == NbeamSP):
+#     mp.P3.full.mask = SP0
+# else:
+#     nBeamIn = NbeamSP
+#     nBeamOut = mp.P1.full.Nbeam
+#     dx = 0
+#     dy = 0
+#     mp.P3.full.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 
 #--Number of re-imaging relays between pupil planesin compact model. Needed
@@ -273,58 +273,20 @@ mp.Nrelay3to4 = 1;
 mp.NrelayFend = 1; #--How many times to rotate the final image by 180 degrees
 
 #--FPM resolution
-mp.F3.compact.res = 6;    # sampling of FPM for compact model [pixels per lambda0/D]
+mp.F3.compact.res = 2048./309.    # sampling of FPM for compact model [pixels per lambda0/D]
 
-#--Load and downsample the FPM. To get good grayscale edges, convolve with the correct window before downsampling. 
-FPM0 = fits.getdata('/Users/ajriggs/Repos/falco-python/data/WFIRST/PhaseB/FPM_res100_SPC-20190130.fits') #--Resolution of 100 pixels per lambda0/D
-FPM0 = falco.utils.pad_crop(FPM0, (1821, 1821))
-# figure(1); imagesc(FPM0); axis xy equal tight; colormap jet; colorbar;
-# figure(11); imagesc(FPM0-rot90(FPM0,2)); axis xy equal tight; colormap jet; colorbar;
-dx0 = 1/100.
-dx1 = 1/mp.F3.compact.res
-N0 = FPM0.shape[0]
-if mp.centering == 'pixel':
-    N1 = falco.utils.ceil_odd(N0*dx0/dx1)
-elif mp.centering == 'pixel':
-    N1 = falco.utils.ceil_even(N0*dx0/dx1)
-
-x0 = np.arange(-(N0-1)/2., (N0-1)/2.+1)*dx0 #(-(N0-1)/2:(N0-1)/2)*dx0
-[X0, Y0] = np.meshgrid(x0, x0)
-R0 = np.sqrt(X0**2 + Y0**2);
-Window = 0*R0
-Window[R0 <= dx1/2.] = 1
-Window = Window/np.sum(Window)
-# figure(10); imagesc(Window); axis xy equal tight; colormap jet; colorbar;
-#--To get good grayscale edges, convolve with the correct window before downsampling.
-FPM0 = np.fft.ifftshift(  np.fft.ifft2( np.fft.fft2(np.fft.fftshift(Window))*np.fft.fft2(np.fft.fftshift(FPM0)) )) 
-FPM0 = np.roll(FPM0, (1,1), axis=(0,1)) #--Undo a centering shift
-x1 = np.arange(-(N1-1)/2., (N1-1)/2.+1)*dx1 # (-(N1-1)/2:(N1-1)/2)*dx1;
-# [X1, Y1] = np.meshgrid(x1, x1)
-interp_spline = RectBivariateSpline(x0, x0, FPM0) # RectBivariateSpline is faster in 2-D than interp2d
-FPM1 = interp_spline(x1, x1)
-# FPM1 = interp2(X0, Y0, FPM0, X1, Y1, 'cubic', 0); #--Downsample by interpolation
-if mp.centering == 'pixel':
-        mp.F3.compact.ampMask = np.zeros((N1+1, N1+1))
-        mp.F3.compact.ampMask[1::, 1::] = FPM1
-elif mp.centering == 'interpixel':    
-        mp.F3.compact.ampMask = FPM1
-
-# figure(2); imagesc(FPM0); axis xy equal tight; colormap jet; colorbar;
-# figure(3); imagesc(FPM1); axis xy equal tight; colormap jet; colorbar;
-# figure(12); imagesc(FPM0-rot90(FPM0,2)); axis xy equal tight; colormap jet; colorbar;
-# figure(13); imagesc(FPM1-rot90(FPM1,2)); axis xy equal tight; colormap jet; colorbar;
 
 # %# Optical Layout: Full Model 
 
 mp.full.data_dir = '/Users/ajriggs/Repos/proper-models/wfirst_cgi/data_phaseb/'; # mask design data path
-mp.full.cor_type = 'spc-spec_long'; #   'hlc', 'spc', or 'none' (none = clear aperture, no coronagraph)
+mp.full.cor_type = 'hlc'; #   'hlc', 'spc', or 'none' (none = clear aperture, no coronagraph)
 
-mp.full.flagGenFPM = False
+# mp.full.flagGenFPM = False
 mp.full.flagPROPER = True #--Whether the full model is a PROPER prescription
 
 # #--Pupil Plane Resolutions
-mp.P1.full.Nbeam = 1000
-mp.P1.full.Narr = 1002
+mp.P1.full.Nbeam = 309
+mp.P1.full.Narr = 310
 
 mp.full.output_dim = falco.utils.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV)); #  dimensions of output in pixels (overrides output_dim0)
 mp.full.final_sampling_lam0 = 1/mp.Fend.res;	#   final sampling in lambda0/D
@@ -356,7 +318,7 @@ mp.full.fpm_axis = 'p';             #   HLC FPM axis: '', 's', 'p'
 
 mp.full.dm1 = falco.config.Object()
 mp.full.dm2 = falco.config.Object()
-mp.full.dm1.flatmap = fits.getdata('/Users/ajriggs/Repos/proper-models/wfirst_cgi/models_phaseb/matlab/examples/errors_polaxis10_dm.fits');
+mp.full.dm1.flatmap = np.zeros((mp.dm1.Nact, mp.dm1.Nact)) #fits.getdata('/Users/ajriggs/Repos/proper-models/wfirst_cgi/models_phaseb/matlab/examples/errors_polaxis10_dm.fits');
 mp.full.dm2.flatmap = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
 
@@ -371,15 +333,16 @@ mp.P1.IDnorm = 0.303; #--ID of the central obscuration [diameter]. Used only for
 mp.P1.D = 2.3631; #--telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
 mp.P1.Dfac = 1; #--Factor scaling inscribed OD to circumscribed OD for the telescope pupil.
 
-#--Lyot stop shape
-mp.LSshape = 'bowtie';
-mp.P4.IDnorm = 0.38; #--Lyot stop ID [Dtelescope]
-mp.P4.ODnorm = 0.92; #--Lyot stop OD [Dtelescope]
-mp.P4.ang = 90;      #--Lyot stop opening angle [degrees]
-mp.P4.wStrut = 0;    #--Lyot stop strut width [pupil diameters]
+#--Whether to generate or load various masks: compact model
+mp.compact.flagGenPupil = False 
+mp.compact.flagGenFPM = False 
+mp.compact.flagGenLS = False
 
-# #--FPM size
-# mp.F3.Rin = 2.6;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
-# mp.F3.Rout = 9;   # radius of outer opaque edge of FPM [lambda0/D]
-# mp.F3.ang = 65;    # on each side, opening angle [degrees]
+mp.P1.compact.mask = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_pupil.fits'));
+mp.P1.compact.mask = falco.utils.pad_crop(mp.P1.compact.mask, 310)
 
+mp.P4.compact.mask = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_lyot.fits'))
+mp.P4.compact.mask = falco.utils.pad_crop(mp.P4.compact.mask, 310)
+
+# mp.dm1.wfe = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_dm1wfe.fits'))
+# mp.dm2.wfe = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_dm2wfe.fits'))

@@ -1,11 +1,11 @@
-import sys
-sys.path.insert(0,"../")
-import falco
-import proper
+# import sys
+# sys.path.insert(0,"../")
+
 import numpy as np
 
-import EXAMPLE_defaults_WFIRST_LC as DEFAULTS
+import falco
 
+import EXAMPLE_defaults_WFIRST_LC as DEFAULTS
 mp = DEFAULTS.mp
 
 

@@ -30,6 +30,46 @@ def _checkexc(vexc):
     pass
 
 
+def centering(var):
+    """
+    Checks whether an object is in the values ['pixel', 'interpixel']
+
+    Parameters
+    ----------
+    var
+        Variable to check
+
+    Returns
+    -------
+    var
+        Same value as input
+
+    """
+    _VALID_CENTERING = ['pixel', 'interpixel']
+    _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
+    
+    if not isinstance(var, str):
+        raise TypeError("'centering' value must be a string'")
+    if not var in _VALID_CENTERING:
+        raise ValueError(_CENTERING_ERR)
+    return var
+
+
+def dict(var, vname):
+    """
+    Checks whether an object is a dictionary
+
+    Arguments:
+     var: variable to check
+     vname: string to output in case of error for debugging
+     """
+    _checkname(vname)
+    
+    if not isinstance(var, type({})):
+        raise TypeError(vname + 'must be a dictionary')
+    return var
+
+
 def real_positive_scalar(var, vname, vexc):
     """
     Checks whether an object is a real positive scalar
@@ -52,6 +92,55 @@ def real_positive_scalar(var, vname, vexc):
         raise vexc(vname + ' must be real positive scalar')
     if var <= 0:
         raise vexc(vname + ' must be real positive scalar')
+    return var
+
+
+def real_nonnegative_scalar(var, vname, vexc):
+    """
+    Checks whether an object is a real nonnegative scalar
+
+    Arguments:
+     var: variable to check
+     vname: string to output in case of error for debugging
+     vexc: Exception to raise in case of error for debugging
+
+    Returns:
+     returns var
+
+    """
+    _checkname(vname)
+    _checkexc(vexc)
+
+    if not np.isscalar(var):
+        raise vexc(vname + ' must be real nonnegative scalar')
+    if not np.isreal(var):
+        raise vexc(vname + ' must be real nonnegative scalar')
+    if var < 0:
+        raise vexc(vname + ' must be real nonnegative scalar')
+    return var
+
+
+def oneD_array(var, vname, vexc):
+    """
+    Checks whether an object is a 1D numpy array, or castable to one
+
+    Arguments:
+     var: variable to check
+     vname: string to output in case of error for debugging
+     vexc: Exception to raise in case of error for debugging
+
+    Returns:
+     returns var
+
+    """
+    _checkname(vname)
+    _checkexc(vexc)
+
+    var = np.array(var) # cast to array
+    if len(var.shape) != 1:
+        raise vexc(vname + ' must be a real or complex 1D array')
+    if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
+        raise vexc(vname + ' must be a real or complex 1D array')
     return var
 
 
@@ -101,7 +190,6 @@ def threeD_array(var, vname, vexc):
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
         raise vexc(vname + ' must be a real or complex 2D array')
     return var
-
 
 
 def real_scalar(var, vname, vexc):

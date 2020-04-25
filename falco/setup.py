@@ -1,20 +1,16 @@
 import numpy as np
 import falco
 import os
-import pickle
+# import pickle
 import scipy
 import psutil # For checking number of cores available
-import multiprocessing
+# import multiprocessing
 from astropy.io import fits 
 import matplotlib.pyplot as plt 
 import copy
 
-#def flesh_out_workspace(mp, config=None):
-def flesh_out_workspace(mp):
 
-#     if config:
-#         with open(config, 'rb') as f:
-#             mp = pickle.load(f)
+def flesh_out_workspace(mp):
 
     falco_set_optional_variables(mp) # Optional/hidden boolean flags and variables
 
@@ -86,7 +82,9 @@ def falco_set_optional_variables(mp):
     if not hasattr(mp.path,'ws_inprogress'): 
         mp.path.ws_inprogress = mainPath + 'data' + filesep + 'ws_inprogress' + filesep # Store in progress workspace data here
     
-    ## Number of threads to use if doing multiprocessing
+    ## multiprocessing
+    if not hasattr(mp, "Nthreads"):
+        mp.flagMultiproc = False
     if not hasattr(mp, "Nthreads"):
         mp.Nthreads = psutil.cpu_count(logical=False) 
     
@@ -603,7 +601,7 @@ def falco_gen_chosen_apodizer(mp):
             if(mp.full.flagGenApod):
                 mp.P3.full.mask = falco.masks.falco_gen_pupil_Simple( inputs );
             else:
-                disp('*** Simple aperture stop to be loaded instead of generated for full model. ***')
+                print('*** Simple aperture stop to be loaded instead of generated for full model. ***')
         
             # Compact model only 
             inputs["Nbeam"] = mp.P1.compact.Nbeam #--Number of pixels across the aperture or beam (independent of beam centering)
@@ -612,7 +610,7 @@ def falco_gen_chosen_apodizer(mp):
             if(mp.compact.flagGenApod):
                 mp.P3.compact.mask = falco.masks.falco_gen_pupil_Simple( inputs );
             else:
-                disp('*** Simple aperture stop to be loaded instead of generated for compact model. ***')
+                print('*** Simple aperture stop to be loaded instead of generated for compact model. ***')
             
 
     mp.P3.full.dummy = 1
@@ -664,11 +662,7 @@ def falco_gen_chosen_lyot_stop(mp):
 
     ### Changes to the pupil
     changes = {}
-#    class Changes(object):
-#        pass
-#    
-#    changes = Changes()
-    
+
     
     """
     % switch mp.layout
@@ -1514,20 +1508,15 @@ def falco_gen_FPM_LC(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
-
-#    class FPMgenIn(object):
-#        pass
     
-    FPMgenInputs = {} #FPMgenIn()
     
     #--Make or read in focal plane mask (FPM) amplitude for the full model
-    #FPMgenInputs.flagRot180deg
+    FPMgenInputs = {}
     FPMgenInputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
     FPMgenInputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
     FPMgenInputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
     FPMgenInputs["FPMampFac"] = mp.FPMampFac # amplitude transmission of inner FPM spot
     FPMgenInputs["centering"] = mp.centering
-    #kwargs = FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.full,'mask'):
         mp.F3.full.mask = falco.config.Object()
@@ -1554,7 +1543,6 @@ def falco_gen_FPM_LC(mp):
     
     #--Make or read in focal plane mask (FPM) amplitude for the compact model
     FPMgenInputs["pixresFPM"] = mp.F3.compact.res #--pixels per lambda_c/D
-    #kwargs=FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.compact,'mask'):
         mp.F3.compact.mask = falco.config.Object()

@@ -1,8 +1,9 @@
 import time
 import numpy as np
 import itertools
-import falco
 import math
+import falco
+from . import check
 
 class TicToc(object):
     def __init__(self, name=None):
@@ -42,7 +43,8 @@ def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y,x)
     
-    return(rho,theta)
+    return(rho, theta)
+
 
 def sind(thetaDeg):
     """
@@ -55,11 +57,12 @@ def sind(thetaDeg):
 
     Returns
     --------
-    x : float or numpy.ndarray
+    float or numpy.ndarray
         sine of the input value
     """
 
     return math.sin(math.radians(thetaDeg))
+
 
 def cosd(thetaDeg):
     """
@@ -72,7 +75,7 @@ def cosd(thetaDeg):
 
     Returns
     --------
-    x : float or numpy.ndarray
+    float or numpy.ndarray
         cosine of the input value
     """
 
@@ -84,7 +87,8 @@ def nextpow2(N):
     P = nextpow2(N) returns the exponents for the smallest powers of two that satisfy
     2^p ≥ |N|
     """   
-    p = np.ceil(np.log2(abs(N)))    
+    p = np.ceil(np.log2(np.abs(N)))  
+    
     return p
 
 
@@ -123,7 +127,79 @@ def ceil_odd(x_in):
     x_out = int(np.ceil(x_in))
     if x_out % 2 == 0:
         x_out += 1
+        
     return x_out
+
+
+def pad_crop(arrayIn, outsize, extrapval=0):
+    """
+    Insert a 2D array into another array, centered and zero-padded.
+
+    Given an array and a tuple/list denoting the dimensions of a second array,
+    this places the smaller array in the center of the larger array and
+    returns that larger array.  The smaller array will be zero-padded to the
+    size of the larger.  If ``arrayIn.shape`` is larger than ``outsize`` in
+    either dimension, this dimension will be truncated.
+
+    If both sizes of a dimension are even or odd, the array will be centered
+    in that dimension.  If the input size is even and the output size is odd,
+    the smaller array will be shifted one element toward the start of the
+    array.  If the input is odd and the output is even, the smaller array will
+    be shifted one element toward the end of the array.  This sequence is
+    intended to ensure transitivity, so several ``pad_crop()`` calls can be
+    chained in no particular order without changing the final result.
+
+    The output array will be of the same type as the input array. It will be
+    a copy even if the arrays are the same size.
+
+    Parameters
+    ----------
+     arrayIn: numpy ndarray
+         input array to be padded or cropped
+     outsize: array_like, int
+         A positive integer or 2-element tuple/list/ndarray of positive
+         integers giving dimensions of output array. If outsize is an int, the
+         output has square dimensions of (outsize, outsize)
+
+    Returns
+    -------
+     arrayOut: numpy ndarray
+        an ndarray of the same size as ``outsize`` and type as ``arrayIn``
+
+    """
+
+    sh0 = arrayIn.shape    # np.shape(arrayIn) #
+    if isinstance(outsize, int):
+        sh1 = (outsize, outsize)
+    else:
+        sh1 = outsize
+        
+    try:
+        if len(sh1) != 2:
+            raise TypeError('Output dimensions must have 2 elements')
+        if (not isinstance(sh1[0], int)) or (not isinstance(sh1[1], int)):
+            raise TypeError('Output dimensions must be integers')
+        if (sh1[0] <= 0) or (sh1[1] <= 0):
+            raise TypeError('Output dimensions must be positive ' + \
+                                      'integers')
+    except: # not iterable
+        raise TypeError('outsize must be an iterable')
+
+    arrayOut = extrapval * np.ones(sh1, dtype=arrayIn.dtype)
+
+    xneg = min(sh0[1]//2, sh1[1]//2)
+    xpos = min(sh0[1] - sh0[1]//2, sh1[1] - sh1[1]//2)
+    yneg = min(sh0[0]//2, sh1[0]//2)
+    ypos = min(sh0[0] - sh0[0]//2, sh1[0] - sh1[0]//2)
+
+    slice0 = (slice(sh0[0]//2-yneg, sh0[0]//2+ypos), \
+              slice(sh0[1]//2-xneg, sh0[1]//2+xpos))
+    slice1 = (slice(sh1[0]//2-yneg, sh1[0]//2+ypos), \
+              slice(sh1[1]//2-xneg, sh1[1]//2+xpos))
+
+    arrayOut[slice1] = arrayIn[slice0]
+    
+    return arrayOut
 
 
 def padOrCropEven(Ain, Ndes, **kwargs):
@@ -167,68 +243,6 @@ def padOrCropEven(Ain, Ndes, **kwargs):
         Aout = Ain
 
     return Aout
-
-
-def pad_crop(arrayIn, outsize, extrapval=0):
-    """Insert a 2D array into another array, centered and zero-padded.
-
-    Given an array and a tuple/list denoting the dimensions of a second array,
-    this places the smaller array in the center of the larger array and
-    returns that larger array.  The smaller array will be zero-padded to the
-    size of the larger.  If ``arrayIn.shape`` is larger than ``outsize`` in
-    either dimension, this dimension will be truncated.
-
-    If both sizes of a dimension are even or odd, the array will be centered
-    in that dimension.  If the input size is even and the output size is odd,
-    the smaller array will be shifted one element toward the start of the
-    array.  If the input is odd and the output is even, the smaller array will
-    be shifted one element toward the end of the array.  This sequence is
-    intended to ensure transitivity, so several ``pad_crop()`` calls can be
-    chained in no particular order without changing the final result.
-
-    The output array will be of the same type as the input array. It will be
-    a copy even if the arrays are the same size.
-
-    Arguments:
-     arrayIn: an ndarray
-     outsize: a 2-element tuple/list/ndarray of positive integers giving
-      dimensions of output array.
-
-    Returns:
-     an ndarray of the same size as ``outsize`` and type as ``arrayIn``
-
-    """
-    
-    sh0 = arrayIn.shape
-    sh1 = outsize
-
-    # check inputs
-    try:
-        if len(sh1) != 2:
-            raise TypeError('Output dimensions must have 2 elements')
-        if (not isinstance(sh1[0], int)) or (not isinstance(sh1[1], int)):
-            raise TypeError('Output dimensions must be integers')
-        if (sh1[0] <= 0) or (sh1[1] <= 0):
-            raise TypeError('Output dimensions must be positive ' + \
-                                      'integers')
-    except: # not iterable
-        raise TypeError('outsize must be an iterable')
-
-    arrayOut = extrapval * np.ones(outsize, dtype=arrayIn.dtype)
-
-    xneg = min(sh0[1]//2, sh1[1]//2)
-    xpos = min(sh0[1] - sh0[1]//2, sh1[1] - sh1[1]//2)
-    yneg = min(sh0[0]//2, sh1[0]//2)
-    ypos = min(sh0[0] - sh0[0]//2, sh1[0] - sh1[0]//2)
-
-    slice0 = (slice(sh0[0]//2-yneg, sh0[0]//2+ypos), \
-              slice(sh0[1]//2-xneg, sh0[1]//2+xpos))
-    slice1 = (slice(sh1[0]//2-yneg, sh1[0]//2+ypos), \
-              slice(sh1[1]//2-xneg, sh1[1]//2+xpos))
-
-    arrayOut[slice1] = arrayIn[slice0]
-    
-    return arrayOut
 
 
 def allcomb(*args, **kwargs):
@@ -321,7 +335,28 @@ def broadcast(axis):
     return x, y
 
 
-def radial_grid(axis):
+def azimuthal_grid(axis, xStretch=1., yStretch=1.):
+    """
+    Compute a memory-efficient radial grid using array broadcasting.
+
+    Parameters
+    ----------
+    axis : array_like
+        1D coordinate axis
+
+    Returns
+    -------
+    array_like
+        2D grid with azimuthal coordinates generated by axis
+    """
+    check.oneD_array(axis, 'axis', TypeError)
+    check.real_scalar(xStretch, 'xStretch', TypeError)
+    check.real_scalar(yStretch, 'yStretch', TypeError)
+    x, y = broadcast(axis)
+    return np.arctan2(y/yStretch, x/xStretch)
+
+
+def radial_grid(axis, xStretch=1., yStretch=1.):
     """
     Compute a memory-efficient radial grid using array broadcasting.
 
@@ -335,10 +370,15 @@ def radial_grid(axis):
     array_like
         2D grid with radial coordinates generated by axis
     """
+    check.oneD_array(axis, 'axis', TypeError)
+    check.real_scalar(xStretch, 'xStretch', TypeError)
+    check.real_scalar(yStretch, 'yStretch', TypeError)
+    
     x, y = broadcast(axis)
-    return np.sqrt(x ** 2 + y ** 2)
+    return np.sqrt((x/xStretch)**2 + (y/yStretch)**2)
 
-def radial_grid_squared(axis):
+
+def radial_grid_squared(axis, xStretch=1., yStretch=1.):
     """
     Compute a memory-efficient squared radial grid using array broadcasting.
 
@@ -352,8 +392,13 @@ def radial_grid_squared(axis):
     array_like
         2D grid with squared radial coordinates generated by axis
     """
+    check.oneD_array(axis, 'axis', TypeError)
+    check.real_scalar(xStretch, 'xStretch', TypeError)
+    check.real_scalar(yStretch, 'yStretch', TypeError)
+    
     x, y = broadcast(axis)
-    return (x ** 2 + y ** 2)
+    return (x/xStretch)**2 + (y/yStretch)**2
+
 
 def create_axis(N, step, centering='pixel'):
     """
@@ -384,6 +429,7 @@ def create_axis(N, step, centering='pixel'):
         axis += 0.5 * step
 
     return axis
+
 
 def falco_compute_thput(mp):
     """

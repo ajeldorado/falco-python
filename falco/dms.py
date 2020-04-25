@@ -1,20 +1,22 @@
-import falco
 import os
-import proper
 import numpy as np
 from math import sin, cos, radians
 import scipy.signal as ss
 from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline
 
+import proper
+import falco
+from falco import check
+
 #import insertinto 
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
     
-import matplotlib.pyplot as plt
-from astropy.io import fits
+# import matplotlib.pyplot as plt
+# from astropy.io import fits
     
-def falco_gen_dm_surf(dm,dx,N):
+def falco_gen_dm_surf(dm, dx, N):
 
     """
     Function to compute the surface shape of a deformable mirror. Uses PROPER.
@@ -34,18 +36,16 @@ def falco_gen_dm_surf(dm,dx,N):
         2-D surface map of the DM
 
     """
-    
-#    if type(mp) is not falco.config.ModelParameters:
-#        raise TypeError('Input "mp" must be of type ModelParameters')
+    check.real_positive_scalar(dx, 'dx', TypeError)
+    check.positive_scalar_integer(N, 'N', TypeError)
+    # if type(dm) is not falco.config.Object:
+    #     raise TypeError('Input "dm" must be of type falco.config.Object')
         
     #--Set the order of operations
-    flagXYZ = True # default
-    #flagZYX = False
+    flagXYZ = True
     if(hasattr(dm,'flagZYX')):
         if(dm.flagZYX):
             flagXYZ = False
-            #flagZYX = True
-
 
     #--Adjust the centering of the output DM surface. The shift needs to be in
     #units of actuators, not meters, for prop_dm.m.
@@ -75,7 +75,6 @@ def falco_gen_dm_surf(dm,dx,N):
         H = dm.VtoH*dm.Vquantized
     else: # Quantization not desired; send raw, continuous voltages
         H = dm.VtoH*dm.V
-
     
     #--Generate the DM surface
     DMsurf = falco.dms.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, 
@@ -105,6 +104,9 @@ def falco_discretize_dm_surf(dm, HminStepMethod):
 #     HminStep = dm.HminStep;
 # % end
 
+    if not isinstance(HminStepMethod, str):
+        raise TypeError('HminStepMethod must be a str')
+
     #Use HminStep for dm model 
     HminStep = dm.HminStep
 
@@ -115,17 +117,16 @@ def falco_discretize_dm_surf(dm, HminStepMethod):
     nSteps = h_cont/HminStep
 
     # Discretize by removing fractional step
-    if 'round' in HminStepMethod:
+    if 'round' in HminStepMethod.lower():
         nSteps = np.round(nSteps)
-    elif 'floor' in HminStepMethod:
+    elif 'floor' in HminStepMethod.lower():
         nSteps = np.floor(nSteps)
-    elif 'ceil' in HminStepMethod:
+    elif 'ceil' in HminStepMethod.lower():
         nSteps = np.ceil(nSteps)
-    elif 'fix' in HminStepMethod:
+    elif 'fix' in HminStepMethod.lower():
         nSteps = np.fix(nSteps)
     else:
-        #error([mfilename, ': method for rounding must be one of - round, floor, ceil, or fix'])
-        pass
+        raise ValueError('Method for rounding must be one of: round, floor, ceil, or fix')
 
     # Calculate discretized surface
     dm.Vquantized = nSteps*HminStep/dm.VtoH
@@ -391,7 +392,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     return dmap
 
 
-def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
+def falco_gen_dm_poke_cube(dm, mp, dx_dm, **kwargs):
 
     """
     Function to compute the datacube of each influence function cropped down or padded up 
@@ -417,9 +418,9 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
         modifies structure "dm" by reference
 
     """
-    print(type(mp))
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
+    check.real_positive_scalar(dx_dm, 'dx_dm', TypeError)
           
     if "NOCUBE" in kwargs and kwargs["NOCUBE"]:
         flagGenCube = False
@@ -456,7 +457,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     
     #--Compute list of initial actuator center coordinates (in actutor widths).
     if(dm.flag_hex_array): #--Hexagonal, hex-packed grid
-        pass
+        raise ValueError('flag_hex_array option not implemented yet.')
 #     Nrings = dm.Nrings;
 #     x_vec = [];
 #     y_vec = [];
@@ -607,7 +608,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
     if(flagGenCube):
         if not dm.flag_hex_array:
             print("  Influence function padded from %d to %d points for A.S. propagation." % (Nbox,dm.NboxAS))
-        #     tic
+
         print('Computing datacube of DM influence functions... ',end='')
 
         #--Find the locations of the postage stamps arrays in the larger pupilPad array
@@ -642,7 +643,7 @@ def falco_gen_dm_poke_cube(dm,mp,dx_dm,**kwargs):
            dm.inf_datacube[:,:,iact] = interp_spline(ybox,xbox)
            inf_datacube[iact,:,:] = interp_spline(ybox,xbox)
 
-        print('done.') # fprintf('done.  Time = %.1fs\n',toc);
+        print('done.')
 
     else:
         dm.act_ele = np.arange(dm.NactTotal)    
@@ -658,7 +659,9 @@ def falco_dm_neighbor_rule(Vin, Vlim, Nact):
     Vin : numpy ndarray
         2-D array of DM voltage commands
     Vlim : float
-        maximum difference in command values between neighboring actuators    
+        maximum difference in command values between neighboring actuators 
+    Nact : int
+        Number of actuators across the DM
 
     Returns
     -------
@@ -668,7 +671,10 @@ def falco_dm_neighbor_rule(Vin, Vlim, Nact):
         [nPairs x 2] array of tied actuator linear indices
 
     """
-
+    check.twoD_array(Vin, 'Vin', TypeError)
+    check.real_scalar(Vlim, 'Vlim', TypeError)
+    check.positive_scalar_integer(Nact, 'Nact', TypeError)
+    
     Vout   = Vin #--Initialize output voltage map
     indPair  = np.zeros((0,2)) #--Initialize the paired indices list. [nPairs x 2]
     
@@ -724,7 +730,7 @@ def falco_dm_neighbor_rule(Vin, Vlim, Nact):
                         Vout[jj,ii] = Vout[jj,ii] - np.sign(a1)*fx
                         Vout[kr[iNbr],kc[iNbr]] = Vout[kr[iNbr],kc[iNbr]] + np.sign(a1)*fx
 
-    return Vout,indPair
+    return Vout, indPair
     
 
 def falco_enforce_dm_constraints(dm):
@@ -800,6 +806,8 @@ def falco_fit_dm_surf(dm, surfaceToFit):
     Vout : numpy ndarray
         2-D array of DM voltage commands
     """
+    check.twoD_array(surfaceToFit, 'surfaceToFit', TypeError)
+    
     [mSurface, nSurface] = surfaceToFit.shape
 
     #--Starting influence function (must be square)
@@ -836,7 +844,7 @@ def falco_fit_dm_surf(dm, surfaceToFit):
     
         gridDerotAtActRes = propcustom_derotate_resize_dm_surface(surfaceToFit, dm.dx, 
         dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt,
-        ZTILT=dm.zrot,XYZ=flagXYZ,inf_sign=dm.inf_sign,inf_fn=dm.inf_fn); 
+        ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn); 
     
     elif(nSurface < dm.Nact):
         raise ValueError('surfaceToFit cannot be smaller than [Nact x Nact].')
@@ -846,7 +854,7 @@ def falco_fit_dm_surf(dm, surfaceToFit):
     return Vout
 
         
-def falco_dm_surf_from_cube(dm,dmFullOrCompact):
+def falco_dm_surf_from_cube(dm, dmFullOrCompact):
     """
     Function to produce a DM surface by superposing actuators from a datacube.
     
@@ -886,43 +894,33 @@ def falco_dm_surf_from_cube(dm,dmFullOrCompact):
 
     return DMsurf
 
-def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing = 0., **kwargs):    
-# def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
+
+def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing, **kwargs):    
     """
-    Derotate and resize a surface to the size and alignment of the actuator grid.
+    Derotate and resize a DM surface to size and alignment of actuator grid.
+    
+    Does the order of operations in the reverse order of PROPER's prop_dm.
 
 
     Parameters
     ----------
     surfaceToFit : numpy ndarray
-        Surface map to be fitted
-    
+        2-D DM surface map to be fitted
     dx : float
         width of a pixel in meters
-    
     Nact : int
         number of actuators across the DM array
-
-    dm_z0 : str or numpy ndarray
-        Either a 2D numpy array containing the surface piston of each DM
-        actuator in meters or the name of a 2D FITS image file containing the
-        above
-
     dm_xc, dm_yc : list or numpy ndarray
         The location of the optical axis (center of the wavefront) on the DM in
         actuator units (0 ro num_actuator-1). The center of the first actuator
         is (0.0, 0.0)
-
     spacing : float
-        Defines the spacing in meters between actuators; must not be used when
-        n_act_across_pupil is specified.
-
+        Spacing in meters between actuator centers (aka the pitch).
 
     Returns
     -------
     gridDerotAtActRes : numpy ndarray
         Returns DM surface at same alignment and resolution as the DM actuator array.
-
 
     Other Parameters
     ----------------
@@ -959,17 +957,23 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
         User cannot specify both ZYX and XYZ rotations.
 
     """
+    check.twoD_array(surfaceToFit, 'surfaceToFit', TypeError)
+    check.real_positive_scalar(dx, 'dx', TypeError)
+    check.real_scalar(dm_xc, 'dm_xc', TypeError)
+    check.real_scalar(dm_yc, 'dm_yc', TypeError)
+    check.real_positive_scalar(spacing, 'spacing', TypeError)
+    
     if "ZYX" in kwargs and "XYZ" in kwargs:
         raise ValueError('Error: Cannot specify both XYZ and ZYX rotation orders. Stopping')
     elif not "ZYX" in kwargs and not 'XYZ' in kwargs:
         XYZ = 1    # default is rotation around X, then Y, then Z
-        ZYX = 0
+        # ZYX = 0
     elif "ZYX" in kwargs:
-        ZYX = 1
+        # ZYX = 1
         XYZ = 0
     elif "XYZ" in kwargs:
         XYZ = 1
-        ZYX = 0
+        # ZYX = 0
 
     if "XTILT" in kwargs:
         xtilt = kwargs["XTILT"]
@@ -987,10 +991,6 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
         ztilt = 0.
 
     dm_z = np.eye(Nact)
-#    if type(dm_z0) == str:
-#        dm_z = proper.prop_fits_read(dm_z0) # Read DM setting from FITS file
-#    else:
-#        dm_z = dm_z0
     
     if "inf_fn" in kwargs:
         inf_fn = kwargs["inf_fn"]
@@ -1005,9 +1005,8 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
     else:
         sign_factor = 1.
 
-    n = surfaceToFit.shape[0] #proper.prop_get_gridsize(wf)
-    dx_surf = dx #proper.prop_get_sampling(wf)  # sampling of current surface in meters
-#    beamradius = proper.prop_get_beamradius(wf)
+    n = surfaceToFit.shape[0]
+    dx_surf = dx # sampling of current surface in meters
 
     # Default influence function sampling is 0.1 mm, peak at (x,y)=(45,45)
     # Default influence function has shape = 1x91x91. Saving it as a 2D array
@@ -1016,7 +1015,6 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
     inf = proper.prop_fits_read(os.path.join(dir_path, inf_fn))
     inf = sign_factor*np.squeeze(inf)    
     
-
     s = inf.shape
     nx_inf = s[1]
     ny_inf = s[0]
@@ -1026,35 +1024,12 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
     dx_dm_inf = 1.e-3          # spacing between DM actuators in meters assumed by influence function
     inf_mag = 10
 
-#     if spacing != 0 and "N_ACT_ACROSS_PUPIL" in kwargs:
-#         raise ValueError("PROP_DM: User cannot specify both actuator spacing and N_ACT_ACROSS_PUPIL. Stopping.")
-# 
-# 
-#     if spacing == 0 and not "N_ACT_ACROSS_PUPIL" in kwargs:
-#         raise ValueError("PROP_DM: User must specify either actuator spacing or N_ACT_ACROSS_PUPIL. Stopping.")
-
     dx_dm = spacing
-    # if "N_ACT_ACROSS_PUPIL" in kwargs:
-#         dx_dm = 2. * beamradius / int(kwargs["N_ACT_ACROSS_PUPIL"])
-#     else:
-#         dx_dm = spacing
 
     dx_inf = dx_inf * dx_dm / dx_dm_inf   # Influence function sampling scaled
                                           # to specified DM actuator spacing
 
     dm_z_commanded = dm_z
-#     if "FIT" in kwargs:
-#         x = (np.arange(5, dtype = np.float64) - 2) * dx_dm
-# 
-#         if proper.use_cubic_conv:
-#             inf_kernel = proper.prop_cubic_conv(inf.T, x/dx_inf+xc_inf, x/dx_inf+yc_inf, GRID=True)
-#         else:
-#             xygrid = np.meshgrid(x/dx_inf+xc_inf, x/dx_inf+yc_inf)
-#             inf_kernel = map_coordinates(inf.T, xygrid, order = 3, mode = "nearest")
-# 
-#         (dm_z_commanded, dms) = proper.prop_fit_dm(dm_z, inf_kernel)
-#     else:
-#         dm_z_commanded = dm_z
 
     s = dm_z.shape
     nx_dm = s[1]
@@ -1137,11 +1112,11 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
 #         grid = grid.reshape([xdm.shape[1], xdm.shape[0]])
 #     else:
 #         grid = map_coordinates(dm_grid.T, [xdm, ydm], order = 3, mode = "nearest", prefilter = True)
-    dm_grid = falco.utils.padOrCropEven(surfaceToFit,xdm.shape[0])
+    dm_grid = falco.utils.pad_crop(surfaceToFit, xdm.shape[0])
 
     # Derotate the DM surface
-    dm_grid = falco.utils.padOrCropEven(surfaceToFit,xdm.shape[0])
-    gridDerot = griddata( (xdm.flatten(),ydm.flatten()), dm_grid.flatten(), (xdm0, ydm0), method='cubic',fill_value=0.)
+    dm_grid = falco.utils.pad_crop(surfaceToFit, xdm.shape[0])
+    gridDerot = griddata( (xdm.flatten(),ydm.flatten()), dm_grid.flatten(), (xdm0, ydm0), method='cubic', fill_value=0.)
     #gridDerot(isnan(gridDerot)) = 0
 
     # Resize and decimate the DM surface to get it at the same size as the DM actuator command array.

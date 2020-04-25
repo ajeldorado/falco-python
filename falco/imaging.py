@@ -1,7 +1,9 @@
-import falco
 import numpy as np
 import multiprocessing
 import matplotlib.pyplot as plt 
+
+import falco
+from falco import check
 
 def falco_get_PSF_norm_factor(mp):
     """
@@ -127,7 +129,6 @@ def falco_get_summed_image(mp):
         band-averaged image in units of normalized intensity
 
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
    
@@ -174,8 +175,6 @@ def _get_single_sim_full_image(mp, ilist, vals_list):
     return np.abs(Estar)**2 #--Apply spectral weighting outside this function
 
 
-
-
 def falco_get_sbp_image(mp, si):
     """
     Function to get an image in the specified sub-bandpass.
@@ -196,9 +195,9 @@ def falco_get_sbp_image(mp, si):
         Sub-bandpass image in units of normalized intensity
 
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
+    check.nonnegative_scalar_integer(si, 'si', TypeError)
 
     if mp.flagSim:
         Isbp = falco_get_sim_sbp_image(mp, si)
@@ -226,7 +225,7 @@ def falco_get_sim_sbp_image(mp, si):
     """
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-
+    check.nonnegative_scalar_integer(si, 'si', TypeError)
 
     Npol = len(mp.full.pol_conds) #--Number of polarization states used
     
@@ -285,6 +284,10 @@ def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
     given wavelength in the specified sub-bandpass.
     
     """
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    check.nonnegative_scalar_integer(si, 'si', TypeError)
+    
     wi = inds_list[ilist][0]
     ipol = inds_list[ilist][1]
 
@@ -311,11 +314,11 @@ def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
     
 def falco_get_expected_summed_image(mp, cvar, dDM):
     """
-    Function to generate the expected broadband image after a new control command.
+    Function to generate the expected broadband image after a new DM command.
     
-    Function to generate the expected broadband image over the entire bandpass by adding 
-    the model-based delta electric field on top of the current E-field estimate in each 
-    sub-bandpass.
+    Function to generate the expected broadband image over the entire bandpass
+    by adding the model-based delta electric field on top of the current 
+    E-field estimate in each sub-bandpass.
 
     Parameters
     ----------
@@ -334,20 +337,6 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-
-#% Function to generate the expected broadband image over the entire
-#% bandpass by adding the model-based delta electric field on top of the
-#% current E-field estimate in each sub-bandpass.
-#%
-#%--INPUTS
-#% mp = structure of all model parameters
-#%
-#%--OUTPUTS
-#% Ibandavg = band-averaged image in units of normalized intensity
-#%
-#%--REVISION HISTORY
-#% - Created on 2019-04-23 by A.J. Riggs. 
-#%--------------------------------------------------------------------------
         
     if(any(mp.dm_ind==1)): DM1V0 = mp.dm1.V.copy()
     if(any(mp.dm_ind==2)): DM2V0 = mp.dm2.V.copy()
@@ -399,104 +388,6 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
     return Ibandavg
 
 
-def falco_get_sbp_image_fiber(mp, si):
-    """
-    Function to get an image in the specified sub-bandpass from an optical fiber.
-
-    Parameters
-    ----------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    si: int
-        Index of sub-bandpass for which to take the image
-
-    Returns
-    -------
-    TBD
-        Sub-bandpass image in units of normalized intensity
-    """
-
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-
-    if mp.flagSim:
-        ImNI = falco_get_sim_sbp_image_fiber(mp, si)
-    else:
-        raise NotImplementedError('Testbed functionality not implemented for fibers yet.')
-
-    return ImNI
-
-def falco_get_sim_sbp_image_fiber(mp, si):
-    """
-    Function to get an image in the specified sub-bandpass.
-
-    Parameters
-    ----------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    si: int
-        Index of sub-bandpass for which to take the image
-
-    Returns
-    -------
-    TBD
-        Sub-bandpass image in units of normalized intensity
-
-    """
-
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-
-    pass
-    
-def falco_get_summed_image_fiber(mp):
-    """
-    Function to get a summed image from the back end of a single-mode optical
-    fiber(s).
-
-    Parameters
-    ----------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-
-    Returns
-    -------
-    TBD
-        Total intensity across the bandpass from all fibers.
-    
-    """
-
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-
-    pass
-
-def falco_get_testbed_sbp_image(mp, si):
-    """
-    Function to get an image in the specified sub-bandpass from a testbed.
-    This function calls an equivalent sub-function depending on mp.testbed.
-
-    Parameters
-    ----------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    si: int
-        Index of sub-bandpass for which to take the image
-
-    Returns
-    -------
-    TBD
-        Normalized intensity in the sub-bandpass
-               (i.e. approximate raw contrast but normalized
-           by a photometry measurement at a single offset)
-
-    """
-
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-
-    pass
-
 def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
     """
     Function to return the broadband intensity for the compact model.
@@ -523,9 +414,10 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
 
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-
-    #--Optional Keyword arguments
-#    flagEval = True if isEvalMode else False
+    check.real_scalar(x_offset, 'x_offset', TypeError)
+    check.real_scalar(y_offset, 'y_offset', TypeError)
+    if not isinstance(isEvalMode, bool):
+        raise TypeError('isEvalMode must be a bool')
           
     modvar = falco.config.Object()
     modvar.whichSource = 'offaxis'
@@ -541,6 +433,111 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
         Iout = Iout + (np.abs(E2D)**2)*mp.jac.weightMat[si,0]
 
     return Iout
+
+
+def falco_get_sbp_image_fiber(mp, si):
+    """
+    Function to get an image in the specified sub-bandpass from an optical fiber.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    si: int
+        Index of sub-bandpass for which to take the image
+
+    Returns
+    -------
+    TBD
+        Sub-bandpass image in units of normalized intensity
+    """
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    check.nonnegative_scalar_integer(si, 'si', TypeError)
+
+    if mp.flagSim:
+        ImNI = falco_get_sim_sbp_image_fiber(mp, si)
+    else:
+        raise NotImplementedError('Testbed functionality not implemented for fibers yet.')
+
+    return ImNI
+
+
+def falco_get_sim_sbp_image_fiber(mp, si):
+    """
+    Function to get an image in the specified sub-bandpass.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    si: int
+        Index of sub-bandpass for which to take the image
+
+    Returns
+    -------
+    TBD
+        Sub-bandpass image in units of normalized intensity
+
+    """
+
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    check.nonnegative_scalar_integer(si, 'si', TypeError)
+
+    pass
+    
+
+def falco_get_summed_image_fiber(mp):
+    """
+    Function to get a summed image from the back end of a single-mode optical
+    fiber(s).
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+
+    Returns
+    -------
+    TBD
+        Total intensity across the bandpass from all fibers.
+    
+    """
+
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
+    pass
+
+
+def falco_get_testbed_sbp_image(mp, si):
+    """
+    Function to get an image in the specified sub-bandpass from a testbed.
+    This function calls an equivalent sub-function depending on mp.testbed.
+
+    Parameters
+    ----------
+    mp: falco.config.ModelParameters
+        Structure of model parameters
+    si: int
+        Index of sub-bandpass for which to take the image
+
+    Returns
+    -------
+    TBD
+        Normalized intensity in the sub-bandpass
+               (i.e. approximate raw contrast but normalized
+           by a photometry measurement at a single offset)
+
+    """
+
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+    check.nonnegative_scalar_integer(si, 'si', TypeError)
+
+    pass
+
     
 def falco_get_gpct_sbp_image(mp, si):
     """
