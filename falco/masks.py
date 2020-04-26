@@ -1699,9 +1699,9 @@ def falco_gen_pupil_customHex(inputs):
    
     inputs["apDia"] = inputs["Nbeam"];
     if('pistons' in inputs.keys()):
-        pupil0 = falco.segmentutils.hexSegMirror_getField( inputs )
+        pupil0 = falco.hexsegmirror.get_field( inputs )
     else:
-        pupil0 = falco.segmentutils.hexSegMirror_getSupport( inputs )
+        pupil0 = falco.hexsegmirror.get_support( inputs )
     
     # Create inner and outer circles
     if(ID > 0):
@@ -1755,7 +1755,7 @@ def falco_gen_pupil_LUVOIR_B(Nbeam):
     inputs["angStrut"] = np.array([]) # Angles of the struts (deg)
     inputs["wStrut"] = 0#np.array([]) # Width of the struts (fraction of pupil diam.)
 
-    missingSegments = np.ones(falco.segmentutils.hexSegMirror_numSegments(inputs["numRings"]),)
+    missingSegments = np.ones(falco.hexsegmirror.count_segments(inputs["numRings"]),)
     for index in range(6): #= 0:5
         missingSegments[38+index*4 - 1] = 0
 

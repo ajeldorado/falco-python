@@ -202,7 +202,7 @@ def pad_crop(arrayIn, outsize, extrapval=0):
     return arrayOut
 
 
-def padOrCropEven(Ain, Ndes, **kwargs):
+def pad_crop(Ain, Ndes, **kwargs):
     """
     Pad or crop an even-sized input matrix to the desired size.
 

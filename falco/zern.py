@@ -9,7 +9,7 @@ import proper
 _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
 
-def falco_get_Zernike_sensitivities(mp):
+def calc_zern_sens(mp):
     """
     Function to compute the Zernike aberration sensitivities of the coronagraph
 
@@ -47,12 +47,12 @@ def falco_get_Zernike_sensitivities(mp):
 
     if not mp.full.flagPROPER:  #--When using full models completely made with PROPER
         #--Generate Zernike map datacube
-        ZmapCube = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
+        ZmapCube = gen_norm_zern_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
         #--Make sure ZmapCube is padded or cropped to the right array size
         if not ZmapCube.shape[0]==mp.P1.full.Narr:
             ZmapCubeTemp = np.zeros((mp.P1.full.Narr,mp.P1.full.Narr,Nzern))
             for zi in range(Nzern):
-                ZmapCubeTemp[:,:,zi] = falco.utils.padOrCropEven(np.squeeze(ZmapCube[:,:,zi]),mp.P1.full.Narr)
+                ZmapCubeTemp[:,:,zi] = falco.utils.pad_crop(np.squeeze(ZmapCube[:,:,zi]),mp.P1.full.Narr)
             ZmapCube = ZmapCubeTemp 
             del ZmapCubeTemp
 
@@ -147,7 +147,7 @@ def falco_get_Zernike_sensitivities(mp):
 
 def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
     """
-    Function used only by falco_get_Zernike_sensitivities to get the E-field for a given 
+    Used only by calc_zern_sens to get the E-field for a given 
     wavelength and polarization state. 
 
     Parameters
@@ -164,7 +164,7 @@ def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
     Estar : numpy ndarray
         2-D array of the stellar E-field for the given wavelength and polarization state.
     """
-    # This function is used only by falco_get_Zernike_sensitivities
+    # This function is used only by calc_zern_sens
     
     ilam = inds_list[ni][0]
     ipol = inds_list[ni][1]
@@ -181,7 +181,7 @@ def falco_get_single_sim_Efield_LamPol(ni,inds_list,mp):
 
 def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
     """
-    Function used only by falco_get_Zernike_sensitivities to get the E-field for a given 
+    Used only by calc_zern_sens to get the E-field for a given 
     wavelength, polarization state, and Zernike mode. 
 
     Parameters
@@ -201,7 +201,7 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
         2-D array of the stellar E-field for the given wavelength, polarization state, and 
         Zernike mode.
     """
-    # This function is used only by falco_get_Zernike_sensitivities
+    # This function is used only by calc_zern_sens
     
     ilam = inds_list_zern[ni][0]
     ipol = inds_list_zern[ni][1]
@@ -241,8 +241,8 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
         mp.full.zval = mp.full.zval_m # for PROPER models defined differently
         
     else: #--Include the Zernike map at the input pupil for the FALCO full model
-        ZernMap = np.squeeze(falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,np.array([indsZnoll[izern]]))) #--2-D map of the normalized (RMS = 1) Zernike mode
-        ZernMap = falco.utils.padOrCropEven(ZernMap, mp.P1.full.Narr) #--Adjust zero padding if necessary
+        ZernMap = np.squeeze(gen_norm_zern_maps(mp.P1.full.Nbeam,mp.centering,np.array([indsZnoll[izern]]))) #--2-D map of the normalized (RMS = 1) Zernike mode
+        ZernMap = falco.utils.pad_crop(ZernMap, mp.P1.full.Narr) #--Adjust zero padding if necessary
         mp.P1.full.E[:,:,wi,si] = np.exp(1j*2*np.pi/mp.full.lambdasMat[si,wi]*mp.full.ZrmsVal*ZernMap)*np.squeeze(mp.P1.full.E[:,:,wi,si])
         
     Estar = falco.model.full(mp,modvar)
@@ -254,7 +254,7 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
 
 
 
-def falco_gen_norm_zernike_maps(Nbeam,centering,indsZnoll):
+def gen_norm_zern_maps(Nbeam, centering, indsZnoll):
     """
     Function to compute normalized 2-D maps of the specified Zernike modes.
 
@@ -305,7 +305,7 @@ def falco_gen_norm_zernike_maps(Nbeam,centering,indsZnoll):
         
     return ZmapCube
 
-        
+     
 def propcustom_zernikes(a, zernike_num, zernike_val, eps = 0., **kwargs):
     """Add Zernike-polynomial wavefront errors to current wavefront. 
     

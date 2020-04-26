@@ -16,7 +16,7 @@ if not proper.use_cubic_conv:
 # import matplotlib.pyplot as plt
 # from astropy.io import fits
     
-def falco_gen_dm_surf(dm, dx, N):
+def gen_surf_from_act(dm, dx, N):
 
     """
     Function to compute the surface shape of a deformable mirror. Uses PROPER.
@@ -62,7 +62,7 @@ def falco_gen_dm_surf(dm, dx, N):
     bm = proper.prop_begin(N*dx, wl_dummy, N, pupil_ratio)
 
     #--Apply various constraints to DM commands
-    dm = falco_enforce_dm_constraints(dm)
+    dm = enforce_constraints(dm)
 
     #--Quantization of DM actuation steps based on least significant bit of the
     # DAC (digital-analog converter). In height, so called HminStep
@@ -71,7 +71,7 @@ def falco_gen_dm_surf(dm, dx, N):
         if not(hasattr(dm,'HminStepMethod')):
             dm.HminStepMethod = 'round'
          # Discretize/Quantize the DM voltages (creates dm.Vquantized)
-        dm = falco_discretize_dm_surf(dm, dm.HminStepMethod);
+        dm = discretize_surf(dm, dm.HminStepMethod);
         H = dm.VtoH*dm.Vquantized
     else: # Quantization not desired; send raw, continuous voltages
         H = dm.VtoH*dm.V
@@ -84,9 +84,9 @@ def falco_gen_dm_surf(dm, dx, N):
     return DMsurf
 
 
-def falco_discretize_dm_surf(dm, HminStepMethod):
+def discretize_surf(dm, HminStepMethod):
 
-#function dm = falco_discretize_dm_surf(dm,flagMethod,varargin)
+#function dm = discretize_surf(dm,flagMethod,varargin)
 #
 # % optional flag to use testbed instead of simulation  
 # % if(nargin>0)
@@ -135,56 +135,51 @@ def falco_discretize_dm_surf(dm, HminStepMethod):
 
     
 def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
-    """Simulate a deformable mirror of specified actuator spacing, including the
-    effects of the DM influence function. Has two more optional keywords compared to 
-    prop_dm.
+    """
+    Generate a deformable mirror surface almost exactly like PROPER.
+    
+    Simulate a deformable mirror of specified actuator spacing, including the
+    effects of the DM influence function. Has two more optional keywords
+    compared to  proper.prop_dm
 
     Parameters
     ----------
     wf : obj
         WaveFront class object
-
     dm_z0 : str or numpy ndarray
         Either a 2D numpy array containing the surface piston of each DM
         actuator in meters or the name of a 2D FITS image file containing the
         above
-
     dm_xc, dm_yc : list or numpy ndarray
         The location of the optical axis (center of the wavefront) on the DM in
         actuator units (0 ro num_actuator-1). The center of the first actuator
         is (0.0, 0.0)
-
     spacing : float
         Defines the spacing in meters between actuators; must not be used when
         n_act_across_pupil is specified.
-
-
+        
     Returns
     -------
     dmap : numpy ndarray
         Returns DM surface (not wavefront) map in meters
 
-
     Other Parameters
     ----------------
     FIT : bool
-       Switch that tells routine that the values in "dm_z" are the desired
-       surface heights rather than commanded actuator heights, and so the
-       routine should fit this map, accounting for actuator influence functions,
-       to determine the necessary actuator heights. An iterative error-minimizing
-       loop is used for the fit.
-
+        Switch that tells routine that the values in "dm_z" are the desired
+        surface heights rather than commanded actuator heights, and so the
+        routine should fit this map, accounting for actuator influence functions,
+        to determine the necessary actuator heights. An iterative error-minimizing
+        loop is used for the fit.
     NO_APPLY : bool
         If set, the DM pattern is not added to the wavefront. Useful if the DM
         surface map is needed but should not be applied to the wavefront
-
     N_ACT_ACROSS_PUPIL : int
         Specifies the number of actuators that span the X-axis beam diameter. If
         it is a whole number, the left edge of the left pixel is aligned with
         the left edge of the beam, and the right edge of the right pixel with
         the right edge of the beam. This determines the spacing and size of the
         actuators. Should not be used when "spacing" value is specified.
-
     XTILT, YTILT, ZTILT : float
         Specify the rotation of the DM surface with respect to the wavefront plane
         in degrees about the X, Y, Z axes, respectively, with the origin at the
@@ -193,19 +188,16 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
         the wavefront and initial DM surface are in the X,Y plane with a lower
         left origin with Z towards the observer. The rotations are left handed.
         The default rotation order is X, Y, then Z unless the /ZYX switch is set.
-
     XYZ or ZYX : bool
         Specifies the rotation order if two or more of XTILT, YTILT, or ZTILT
         are specified. The default is /XYZ for X, Y, then Z rotations.
-
-   inf_fn : string
+    inf_fn : string
         specify a new influence function as a FITS file with the same header keywords as 
         PROPER's default influence function. Needs these values in info.PrimaryData.Keywords:
             'P2PDX_M' % pixel width x (m)
             'P2PDY_M' % pixel width y (m)
             'C2CDX_M' % actuator pitch x (m)
             'C2CDY_M' % actuator pitch y (m)
-    
     inf_sign : {+,-}
         specifies the sign (+/-) of the influence function. Given as an option because 
         the default influence function file is positive, but positive DM actuator 
@@ -215,7 +207,6 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     ------
     ValueError:
         User cannot specify both actuator spacing and N_ACT_ACROSS_PUPIL
-
     ValueError:
         User must specify either actuator spacing or N_ACT_ACROSS_PUPIL
     """
@@ -223,13 +214,13 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
         raise ValueError('PROP_DM: Error: Cannot specify both XYZ and ZYX rotation orders. Stopping')
     elif not "ZYX" in kwargs and not 'XYZ' in kwargs:
         XYZ = 1    # default is rotation around X, then Y, then Z
-        ZYX = 0
+        # ZYX = 0
     elif "ZYX" in kwargs:
-        ZYX = 1
+        # ZYX = 1
         XYZ = 0
     elif "XYZ" in kwargs:
         XYZ = 1
-        ZYX = 0
+        # ZYX = 0
 
     if "XTILT" in kwargs:
         xtilt = kwargs["XTILT"]
@@ -392,10 +383,11 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
     return dmap
 
 
-def falco_gen_dm_poke_cube(dm, mp, dx_dm, **kwargs):
-
+def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     """
-    Function to compute the datacube of each influence function cropped down or padded up 
+    Compute the datacube of each influence function.
+    
+    Influence functions are cropped down or padded up 
     to the best size for angular spectrum propagation.
 
     Parameters
@@ -649,9 +641,11 @@ def falco_gen_dm_poke_cube(dm, mp, dx_dm, **kwargs):
         dm.act_ele = np.arange(dm.NactTotal)    
    
     
-def falco_dm_neighbor_rule(Vin, Vlim, Nact):
+def apply_neighbor_rule(Vin, Vlim, Nact):
     """
-    Function to find neighboring actuators that exceed a specified difference
+    Apply the neighbor rule to DM commands.
+    
+    Find neighboring actuators that exceed a specified difference
     in voltage and to scale down those voltages until the rule is met.
 
     Parameters
@@ -733,7 +727,7 @@ def falco_dm_neighbor_rule(Vin, Vlim, Nact):
     return Vout, indPair
     
 
-def falco_enforce_dm_constraints(dm):
+def enforce_constraints(dm):
     """
     Function to enforce various constraints on DM actuator commands.
     
@@ -777,7 +771,7 @@ def falco_enforce_dm_constraints(dm):
     # the maximum voltage between an actuator and each of its 8 neighbors.) 
     # Add those actuator pairs to the list of tied actuators.
     if(dm.flagNbrRule):
-        dm.V, indPair1 = falco_dm_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
+        dm.V, indPair1 = apply_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
         dm.tied = np.vstack([dm.tied, indPair1]) #--Tie together actuators violating the neighbor rule
         
     #--4) Enforce tied actuator pairs
@@ -790,7 +784,7 @@ def falco_enforce_dm_constraints(dm):
     return dm
 
 
-def falco_fit_dm_surf(dm, surfaceToFit):
+def fit_surf_to_act(dm, surfaceToFit):
     """
     Function to fit a surface to a deformable mirror (DM) commands.
 
@@ -842,7 +836,7 @@ def falco_fit_dm_surf(dm, surfaceToFit):
         wArray = nSurface*dm.dx
         cshift = -wArray/2./nSurface/dm.dm_spacing if(dm.centering == 'interpixel') else 0.
     
-        gridDerotAtActRes = propcustom_derotate_resize_dm_surface(surfaceToFit, dm.dx, 
+        gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx, 
         dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt,
         ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn); 
     
@@ -854,7 +848,7 @@ def falco_fit_dm_surf(dm, surfaceToFit):
     return Vout
 
         
-def falco_dm_surf_from_cube(dm, dmFullOrCompact):
+def surf_from_poke_cube(dm, dmFullOrCompact):
     """
     Function to produce a DM surface by superposing actuators from a datacube.
     
@@ -895,7 +889,7 @@ def falco_dm_surf_from_cube(dm, dmFullOrCompact):
     return DMsurf
 
 
-def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing, **kwargs):    
+def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing, **kwargs):    
     """
     Derotate and resize a DM surface to size and alignment of actuator grid.
     
@@ -1120,7 +1114,7 @@ def propcustom_derotate_resize_dm_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, 
     #gridDerot(isnan(gridDerot)) = 0
 
     # Resize and decimate the DM surface to get it at the same size as the DM actuator command array.
-    #  The result will be fed to falco_fit_dm_surf() for deconvolution with the
+    #  The result will be fed to fit_surf_to_act() for deconvolution with the
     #  influence function.
     xOffsetInAct = ((Nact/2 - 1/2) - dm_xc)
     yOffsetInAct = ((Nact/2 - 1/2) - dm_yc)

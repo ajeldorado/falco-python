@@ -373,10 +373,10 @@ import numpy as np
 ##            counter = 2
 ##            while(np.abs(LSdiff) <= 1e-7):
 ##                mp.P4.full.Narr = len(mp.P4.full.mask)-counter
-##                LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
+##                LSdiff = LSsum - np.sum(falco.utils.pad_crop(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
 ##                counter = counter + 2
 ##            
-##            mp.P4.full.croppedMask = falco.utils.padOrCropEven(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
+##            mp.P4.full.croppedMask = falco.utils.pad_crop(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
 ##        
 ##        ## --Crop down the low-resolution Lyot stop to get rid of extra zero padding. Speeds up the compact model.
 ##        LSsum = np.sum(mp.P4.compact.mask)
@@ -384,10 +384,10 @@ import numpy as np
 ##        counter = 2
 ##        while(abs(LSdiff) <= 1e-7):
 ##            mp.P4.compact.Narr = len(mp.P4.compact.mask)-counter #--Number of points across the cropped-down Lyot stop
-##            LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
+##            LSdiff = LSsum - np.sum(falco.utils.pad_crop(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
 ##            counter = counter + 2
 ##
-##        mp.P4.compact.croppedMask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
+##        mp.P4.compact.croppedMask = falco.utils.pad_crop(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
 ## 
 ##    #--(METERS) Lyot plane coordinates (over the cropped down to Lyot stop mask) for MFTs in the compact model from the FPM to the LS.
 ##    if mp.centering == 'interpixel':
@@ -472,7 +472,7 @@ import numpy as np
 ##            
 ##                if(mp.flagPlot):  
 ##                    figure(504); 
-##                    imagesc(padOrCropEven(mp.P3.full.mask,length(mp.P1.full.mask)) + mp.P1.full.mask); 
+##                    imagesc(pad_crop(mp.P3.full.mask,length(mp.P1.full.mask)) + mp.P1.full.mask); 
 ##                    axis xy equal tight; 
 ##                    colorbar 
 ##                    drawnow
@@ -496,7 +496,7 @@ import numpy as np
 ##            
 ##                if(mp.flagPlot):  
 ##                    figure(504) 
-##                    imagesc(padOrCropEven(mp.P3.full.mask,length(mp.P1.full.mask)).*mp.P1.full.mask) 
+##                    imagesc(pad_crop(mp.P3.full.mask,length(mp.P1.full.mask)).*mp.P1.full.mask) 
 ##                    axis xy equal tight 
 ##                    colorbar 
 ##                    drawnow

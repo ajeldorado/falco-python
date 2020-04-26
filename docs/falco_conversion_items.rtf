@@ -58,8 +58,8 @@ EXAMPLE_defaults_WFIRST_FOHLC.m\
 
 \f2\b0\fs22 \cf4 \CocoaLigature0 falco_3fold_symmetry_Zernikes.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf2 falco_gen_norm_zernike_maps.m\
-falco_get_Zernike_sensitivities.m\
+\cf2 gen_norm_zern_maps.m\
+calc_zern_sens.m\
 propcustom_zernikes.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf3 \
@@ -70,15 +70,15 @@ propcustom_zernikes.m\
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\tx7262\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf6 \CocoaLigature0 falco_discretize_FPM_surf.m \cf5 -> (moved to thinfilms.py)\cf4 \
+\f2\b0\fs22 \cf6 \CocoaLigature0 discretize_fpm_surf.m \cf5 -> (moved to thinfilms.py)\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf6 falco_discretize_dm_surf.m\cf2 \
-falco_dm_neighbor_rule.m\cf4 \
-\cf6 falco_dm_surf_from_cube.m\cf4 \
+\cf6 discretize_surf.m\cf2 \
+apply_neighbor_rule.m\cf4 \
+\cf6 surf_from_poke_cube.m\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf2 falco_enforce_dm_constraints.m\cf4 \
+\cf2 enforce_constraints.m\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf6 falco_fit_dm_surf.m\
+\cf6 fit_surf_to_act.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf7 falco_fpm_inf_cube.m\
 falco_fpm_inf_cube_3x3.m\cf4 \
@@ -88,8 +88,8 @@ falco_gen_HLC_FPM_amplitude_from_cube.m\
 falco_gen_HLC_FPM_complex_trans_mat.m\cf4 \
 \cf3 falco_gen_HLC_FPM_surf_from_cube.m\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf2 falco_gen_dm_poke_cube.m\
-falco_gen_dm_surf.m\
+\cf2 gen_poke_cube.m\
+gen_surf_from_act.m\
 propcustom_dm.m\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf5 \
@@ -207,12 +207,12 @@ falco_gen_tradApodizer.m\
 \f3\b \cf4 segMirrorFunctions
 \f2\b0 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
-\cf6   hexSegMirror_addHexSegment.m. (need to correct the and(and()) logic for HEXphz)\
-  hexSegMirror_addHexagon.m\
-  hexSegMirror_getField.m\cf3 \
-  \cf6 hexSegMirror_getSupport.m\cf3 \
+\cf6   add_hex_segment.m. (need to correct the and(and()) logic for HEXphz)\
+  add_hex.m\
+  get_field.m\cf3 \
+  \cf6 get_support.m\cf3 \
   \cf5 hexSegMirror_getSurfHeight.m\cf3 \
-\cf6   hexSegMirror_numSegments.m\
+\cf6   count_segments.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf4 test_falco_gen_tradApodizer.m\cf5 \
 \
@@ -252,9 +252,9 @@ relay.m\cf5 \
 \f0\fs24 \cf0 \CocoaLigature1 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\b0\fs22 \cf6 \CocoaLigature0 falco_gen_complex_trans_table.m\cf3 \
-\cf6 falco_thin_film_material_def.m\cf3 \
-\cf6 falco_thin_film_solver.m\cf5 \
+\f2\b0\fs22 \cf6 \CocoaLigature0 gen_complex_trans_table.m\cf3 \
+\cf6 define_materials.m\cf3 \
+\cf6 solver.m\cf5 \
 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -271,7 +271,7 @@ falco_gen_RMS_TipTilt.m (used only in falco_get_summed_image_TipTiltPol.m)\
 falco_rms.m\
 falco_sim_image_fiber.m\
 falco_sim_image_fiber_eval.m\
-\cf2 padOrCropEven.m\cf4 \
+\cf2 pad_crop.m\cf4 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 \cf3 padOrCropOdd.m\cf4 \
 propcustom_getZernCoefAndMat.m\

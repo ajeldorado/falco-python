@@ -3,7 +3,7 @@ import numpy as np
 from os.path import isfile
 
 
-def falco_discretize_FPM_surf(FPMsurf, t_nm_vec, dt_nm):
+def discretize_fpm_surf(FPMsurf, t_nm_vec, dt_nm):
     """
     Discretize the surface profiles of the FPM materials.
 
@@ -36,7 +36,7 @@ def falco_discretize_FPM_surf(FPMsurf, t_nm_vec, dt_nm):
     return DMtransInd.astype(int)
    
     
-def falco_thin_film_solver(n, d0, theta, lam, tetm=0):
+def solver(n, d0, theta, lam, tetm=0):
     """
     Solve the thin film equations for the given materials.
 
@@ -117,7 +117,7 @@ def falco_thin_film_solver(n, d0, theta, lam, tetm=0):
     return [R, T, rr, tt]
 
 
-def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, \
+def define_materials(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, \
                                  d0, pol, flagOPD=False, SUBSTRATE='FS'): 
     """
     Calculate the thin-film complex transmission and reflectance.
@@ -271,14 +271,14 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, \
             
             #--Choose polarization
             if(pol==2): #--Mean of the two
-                [dummy1, dummy2, rr0, tt0] = falco_thin_film_solver(nvec, dvec, theta, lam, 0)
-                [dummy1, dummy2, rr1, tt1] = falco_thin_film_solver(nvec, dvec, theta, lam, 1)
+                [dummy1, dummy2, rr0, tt0] = solver(nvec, dvec, theta, lam, 0)
+                [dummy1, dummy2, rr1, tt1] = solver(nvec, dvec, theta, lam, 1)
                 rr = (rr0+rr1)/2.;
                 tt = (tt0+tt1)/2.;
             elif(pol==0 or pol==1):
-                [dumm1, dummy2, rr, tt] = falco_thin_film_solver(nvec, dvec, theta, lam, pol)
+                [dumm1, dummy2, rr, tt] = solver(nvec, dvec, theta, lam, pol)
             else:
-                #error('falco_thin_film_material_def.m: Wrong input value for polarization.')
+                #error('define_materials.m: Wrong input value for polarization.')
                 pass
 
             #--Choose phase convention
@@ -292,7 +292,7 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, \
     return tCoef, rCoef
 
 
-def falco_gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
+def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
     """
     Calculate 3-D look-up table for thin film transmission data.
     
@@ -359,7 +359,7 @@ def falco_gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
         for si in range(Nsbp):
             lam = sbp_centers[si]
             d0 = lam * mp.FPM.d0fac # Max thickness of PMGI + Ni
-            [tCoef,rCoef] = falco_thin_film_material_def(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2) 
+            [tCoef,rCoef] = define_materials(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2) 
             if(flagRefl):
                 complexTransCompact[:,:,si] = rCoef     
             else:
@@ -391,7 +391,7 @@ def falco_gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
             for li in range(len(lambdas)):
                 lam = lambdas[li]
                 d0 = lam * mp.FPM.d0fac # Max thickness of PMGI + Ni
-                [tCoef,rCoef] = falco_thin_film_material_def(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
+                [tCoef,rCoef] = define_materials(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
                 if(flagRefl):
                     complexTransFull[:,:,li] = rCoef
                 else:

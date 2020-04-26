@@ -952,10 +952,10 @@ def falco_gen_chosen_lyot_stop(mp):
             counter = 2
             while(np.abs(LSdiff) <= 1e-7):
                 mp.P4.full.Narr = len(mp.P4.full.mask)-counter
-                LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
+                LSdiff = LSsum - np.sum(falco.utils.pad_crop(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
                 counter = counter + 2
             
-            mp.P4.full.croppedMask = falco.utils.padOrCropEven(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
+            mp.P4.full.croppedMask = falco.utils.pad_crop(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
         
         ## --Crop down the low-resolution Lyot stop to get rid of extra zero padding. Speeds up the compact model.
         LSsum = np.sum(mp.P4.compact.mask)
@@ -963,10 +963,10 @@ def falco_gen_chosen_lyot_stop(mp):
         counter = 2
         while(abs(LSdiff) <= 1e-7):
             mp.P4.compact.Narr = len(mp.P4.compact.mask)-counter #--Number of points across the cropped-down Lyot stop
-            LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
+            LSdiff = LSsum - np.sum(falco.utils.pad_crop(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
             counter = counter + 2
 
-        mp.P4.compact.croppedMask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
+        mp.P4.compact.croppedMask = falco.utils.pad_crop(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
  
     #--(METERS) Lyot plane coordinates (over the cropped down to Lyot stop mask) for MFTs in the compact model from the FPM to the LS.
     if mp.centering == 'interpixel':
@@ -986,7 +986,7 @@ def falco_plot_superposed_pupil_masks(mp):
     #pupil and Lyot plane have the same resolution.
     if mp.coro.upper() in ['FOHLC','HLC','LC','APLC','VC','AVC', 'VORTEX']:
         if mp.flagPlot:
-            P4mask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P1.compact.Narr)
+            P4mask = falco.utils.pad_crop(mp.P4.compact.mask,mp.P1.compact.Narr)
             P4mask = np.rot90(P4mask,2);
             if mp.centering.lower() == 'pixel':
                #P4mask = circshift(P4mask,[1 1]);
@@ -996,7 +996,7 @@ def falco_plot_superposed_pupil_masks(mp):
             plt.figure(301); plt.imshow(P1andP4); plt.colorbar(); plt.title('Pupil and LS Superimposed'); plt.pause(1e-2)
 
             if mp.flagApod:
-                P1andP3 = mp.P1.compact.mask + falco.utils.padOrCropEven(mp.P3.compact.mask,len(mp.P1.compact.mask));
+                P1andP3 = mp.P1.compact.mask + falco.utils.pad_crop(mp.P3.compact.mask,len(mp.P1.compact.mask));
                 plt.figure(302); plt.imshow(P1andP3); plt.colorbar(); plt.title('Pupil and Apod Superimposed'); plt.pause(1e-2)
     pass
 
@@ -1017,7 +1017,7 @@ def falco_gen_FPM(mp):
     
             ##--Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
             if mp.coro in ('HLC',):
-                [mp.complexTransCompact,mp.complexTransFull] = falco_gen_complex_trans_table(mp);
+                [mp.complexTransCompact,mp.complexTransFull] = gen_complex_trans_table(mp);
 
     ## Generate FPM
     if mp.coro.upper() in ['LC', 'APLC']: #--Occulting spot FPM (can be HLC-style and partially transmissive)
@@ -1333,11 +1333,11 @@ def falco_configure_dm1_and_dm2(mp):
     mp.dm1.compact = copy.copy(mp.dm1)
     mp.dm1.dx = mp.P2.full.dx
     mp.dm1.compact.dx = mp.P2.compact.dx
-    falco.dms.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx, NOCUBE=True);
+    falco.dms.gen_poke_cube(mp.dm1, mp, mp.P2.full.dx, NOCUBE=True);
     if np.any(mp.dm_ind==1):
-        falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx)
+        falco.dms.gen_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx)
     else:        
-        falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
+        falco.dms.gen_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
     ## DM2
     mp.dm2.centering = mp.centering
@@ -1345,11 +1345,11 @@ def falco_configure_dm1_and_dm2(mp):
     mp.dm2.compact = copy.copy(mp.dm2)
     mp.dm2.dx = mp.P2.full.dx
     mp.dm2.compact.dx = mp.P2.compact.dx
-    falco.dms.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, NOCUBE=True)
+    falco.dms.gen_poke_cube(mp.dm2, mp, mp.P2.full.dx, NOCUBE=True)
     if np.any(mp.dm_ind==2):
-        falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx)
+        falco.dms.gen_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx)
     else:    
-        falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx, NOCUBE=True)
+        falco.dms.gen_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
     #--Initial DM voltages
     if not hasattr(mp.dm1,'V'):
@@ -1427,7 +1427,7 @@ def falco_set_initial_Efields(mp):
                 pass
             pass
         pass
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E, 2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
+    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.pad_crop(np.mean(mp.P1.compact.E, 2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
     
     pass
                 

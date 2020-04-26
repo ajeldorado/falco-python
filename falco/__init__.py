@@ -9,8 +9,8 @@ from .est  import *
 from .ctrl  import *
 from .wfsc  import *
 from .prop import *
-from .segmentutils import *
-from .zernikes import *
+from .hexsegmirror import *
+from .zern import *
 from . import model
 from ._globals import INFLUENCE_XINETICS
 from ._globals import INFLUENCE_BMC_KILO

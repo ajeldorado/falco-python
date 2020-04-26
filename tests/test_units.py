@@ -84,18 +84,18 @@ class TestUtils:
         assert ret % 2 != 0
         assert ret == expected;
 
-    def test_padOrCropEven(cls):
+    def test_pad_crop(cls):
         test_input = np.zeros((10,10))
-        ret = falco.utils.padOrCropEven(test_input, 20)
+        ret = falco.utils.pad_crop(test_input, 20)
 
         assert ret.shape[0] == 20
 
         test_input = np.zeros((5, 6))
         with pytest.raises(ValueError):
-            ret = falco.utils.padOrCropEven(test_input, 20)
+            ret = falco.utils.pad_crop(test_input, 20)
         test_input = np.zeros((8, 6))
         with pytest.raises(ValueError):
-            ret = falco.utils.padOrCropEven(test_input, 20)
+            ret = falco.utils.pad_crop(test_input, 20)
 
 
     def test_allcomb(cls):

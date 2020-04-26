@@ -154,7 +154,7 @@ for si in range(mp.Nsbp):
     # [Xc,Yc] = meshgrid(xC);
 
     # fldC = interp2(Xf,Yf,fld,Xc,Yc,'cubic',0); #--Downsample by interpolation
-    # fldC = padOrCropEven(fldC,ceil_even(mp.P1.compact.Nbeam+1));
+    # fldC = pad_crop(fldC,ceil_even(mp.P1.compact.Nbeam+1));
 
     # figure(607); imagesc(angle(fldC)); axis xy equal tight; colorbar; colormap hsv; drawnow;
     # figure(608); imagesc(abs(fldC)); axis xy equal tight; colorbar; colormap parula; drawnow;

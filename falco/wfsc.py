@@ -77,7 +77,7 @@ def loop(mp, out):
     
     # if(mp.flagPlot); figure(101); imagesc(mp.P1.full.mask);axis image; colorbar; title('pupil');drawnow; end
     # if(mp.flagPlot && (length(mp.P4.full.mask)==length(mp.P1.full.mask))); figure(102); imagesc(mp.P4.full.mask);axis image; colorbar; title('Lyot stop');drawnow; end
-    # if(mp.flagPlot && isfield(mp,'P3.full.mask')); figure(103); imagesc(padOrCropEven(mp.P1.full.mask,mp.P3.full.Narr).*mp.P3.full.mask);axis image; colorbar; drawnow; end
+    # if(mp.flagPlot && isfield(mp,'P3.full.mask')); figure(103); imagesc(pad_crop(mp.P1.full.mask,mp.P3.full.Narr).*mp.P3.full.mask);axis image; colorbar; drawnow; end
     
     ## Take initial broadband image 
     
@@ -130,12 +130,12 @@ def loop(mp, out):
     
         #--Compute the DM surfaces
         if np.any(mp.dm_ind==1): 
-            DM1surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+            DM1surf =  falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
         else: 
             DM1surf = np.zeros((mp.dm1.compact.Ndm,mp.dm1.compact.Ndm))
     
         if np.any(mp.dm_ind==2): 
-            DM2surf =  falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
+            DM2surf =  falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
         else: 
             DM2surf = np.zeros((mp.dm2.compact.Ndm,mp.dm2.compact.Ndm))
     
@@ -151,9 +151,9 @@ def loop(mp, out):
         InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
         
         if(any(mp.dm_ind==1)):
-            mp.dm1 = falco.dms.falco_enforce_dm_constraints(mp.dm1)
+            mp.dm1 = falco.dms.enforce_constraints(mp.dm1)
         if(any(mp.dm_ind==2)):
-            mp.dm2 = falco.dms.falco_enforce_dm_constraints(mp.dm2)
+            mp.dm2 = falco.dms.enforce_constraints(mp.dm2)
         
         #--Plotting
         if(mp.flagPlot):
@@ -352,7 +352,7 @@ def loop(mp, out):
             RS = falco.utils.radial_grid(xs)
             rmsSurf_ele = np.logical_and(RS>=mp.P1.IDnorm/2., RS<=0.5)
             
-            DM1surf = falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+            DM1surf = falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
             out.dm1.Spv[Itr] = np.max(DM1surf)-np.min(DM1surf)
             out.dm1.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM1surf[rmsSurf_ele]) )**2))
             print('RMS surface of DM1 = %.1f nm' % (1e9*out.dm1.Srms[Itr]))
@@ -363,14 +363,14 @@ def loop(mp, out):
             RS = falco.utils.radial_grid(xs)
             rmsSurf_ele = np.logical_and(RS>=mp.P1.IDnorm/2., RS<=0.5)
             
-            DM2surf = falco.dms.falco_gen_dm_surf(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm)
+            DM2surf = falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm)
             out.dm2.Spv[Itr] = np.max(DM2surf)-np.min(DM2surf)
             out.dm2.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM2surf[rmsSurf_ele]) )**2))
             print('RMS surface of DM2 = %.1f nm' % (1e9*out.dm2.Srms[Itr]))
         
         #--Calculate sensitivities to 1nm RMS of Zernike phase aberrations at entrance pupil.
         if( (mp.eval.Rsens.size>0) and (mp.eval.indsZnoll.size>0) ):
-            out.Zsens[:,:,Itr] = falco.zernikes.falco_get_Zernike_sensitivities(mp)
+            out.Zsens[:,:,Itr] = falco.zern.calc_zern_sens(mp)
         
         # Take the next image to check the contrast level (in simulation only)
         with falco.utils.TicToc('Getting updated summed image'):

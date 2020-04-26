@@ -77,8 +77,8 @@ plt.figure(2); plt.imshow(DMSurf); plt.colorbar(); plt.gca().invert_yaxis()
 
 
 #--Fit the surface
-#DMSurf = falco.utils.padOrCropEven(DMSurf,500)
-Vout = falco.dms.falco_fit_dm_surf(dm,DMSurf)
+#DMSurf = falco.utils.pad_crop(DMSurf,500)
+Vout = falco.dms.fit_surf_to_act(dm,DMSurf)
 plt.figure(3); plt.imshow(Vout); plt.colorbar(); plt.gca().invert_yaxis()
 
 plt.figure(4); plt.imshow(Vout-H); plt.colorbar(); plt.gca().invert_yaxis()
