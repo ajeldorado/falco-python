@@ -131,7 +131,7 @@ for si in range(mp.Nsbp):
 #     Etemp = 0*fldC;
 #     Etemp[2:end,2:end] = rot90(fldC(2:end,2:end),2);
 #     mp.P1.compact.E[:,:,si] = Etemp
-    mp.P1.compact.E[:,:,si] = falco.propcustom.relay(fldC, 1, centering=mp.centering)
+    mp.P1.compact.E[:,:,si] = falco.prop.relay(fldC, 1, centering=mp.centering)
     
     
 
