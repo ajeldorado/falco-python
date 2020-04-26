@@ -5,9 +5,49 @@ import matplotlib.pyplot as plt
 import falco
 from falco import check
 
-def falco_get_PSF_norm_factor(mp):
+
+def calc_thput(mp):
     """
-    Function to get the intensity normalization factor for each model at each sub-band.
+    Calculate the off-axis throughput of the coronagraph.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+
+    Returns
+    -------
+    thput : float
+        Off-axis throughput of the coronagraph at the specified field location.
+    """
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
+
+    ImSimOffaxis = falco.imaging.get_sim_offaxis_image_compact(mp, mp.thput_eval_x, mp.thput_eval_y,isEvalMode=True)
+    #if(mp.flagPlot): figure(324); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,ImSimOffaxis); axis xy equal tight; title('Off-axis PSF for Throughput Calculation','Fontsize',20); set(gca,'Fontsize',20); colorbar; drawnow;  end
+
+    if(mp.thput_metric.lower()=='hmi'): #--Absolute energy within half-max isophote(s)
+        maskHM = np.zeros(mp.Fend.eval.RHOS.shape,dtype=bool)
+        maskHM[ImSimOffaxis>=0.5*np.max(ImSimOffaxis)] = True
+        # figure(325); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,maskHM); axis xy equal tight; drawnow;
+        thput = np.sum(ImSimOffaxis[maskHM==1])/mp.sumPupil*np.mean(mp.Fend.eval.I00);
+        print('Core throughput within the half-max isophote(s) = %.2f%% \tat separation = (%.1f, %.1f) lambda0/D.' % (100*thput,mp.thput_eval_x,mp.thput_eval_y))
+            
+    elif( (mp.thput_metric.lower()=='ee') or (mp.thput_metric.lower()=='e.e.') ): #--Absolute energy encircled within a given radius
+        # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
+        maskEE = np.zeros(mp.Fend.eval.RHOS.shape,dtype=bool)
+        maskEE[mp.Fend.eval.RHOS<=mp.thput_radius] = True
+        # figure(325); imagesc(mp.Fend.eval.xisDL,mp.Fend.eval.etasDL,maskEE); axis xy equal tight; drawnow;
+        thput = np.sum(ImSimOffaxis[maskEE==1])/mp.sumPupil*np.mean(mp.Fend.eval.I00);
+        print('E.E. throughput within a %.2f lambda/D radius = %.2f%% \tat separation = (%.1f, %.1f) lambda/D.\n'%(mp.thput_radius,100*thput,mp.thput_eval_x,mp.thput_eval_y))
+            
+    return thput,ImSimOffaxis
+
+
+def calc_psf_norm_factor(mp):
+    """
+    Get the intensity normalization factor for each model at each sub-band.
 
     Parameters
     ----------
@@ -96,7 +136,7 @@ def falco_get_PSF_norm_factor(mp):
 
 
 def _model_full_norm_wrapper(mp, ilist, inds_list):
-    """ Used only by falco_get_PSF_norm_factor for parallel processing """
+    """ Used only by calc_psf_norm_factor for parallel processing """
     
     si = inds_list[ilist][0]
     wi = inds_list[ilist][1]
@@ -111,7 +151,7 @@ def _model_full_norm_wrapper(mp, ilist, inds_list):
     return np.max(np.abs(Etemp)**2)
 
 
-def falco_get_summed_image(mp):
+def get_summed_image(mp):
     """
     Function to get the broadband image over the entire bandpass.
     
@@ -135,7 +175,7 @@ def falco_get_summed_image(mp):
     if not (mp.flagMultiproc and mp.flagSim): #
         Imean = 0
         for si in range(0,mp.Nsbp):
-            Imean += mp.sbp_weights[si]*falco_get_sbp_image(mp,si)
+            Imean += mp.sbp_weights[si]*get_sbp_image(mp,si)
             
     else: #--Compute simulated images in parallel
         
@@ -160,7 +200,7 @@ def falco_get_summed_image(mp):
    
          
 def _get_single_sim_full_image(mp, ilist, vals_list):
-    """ Function used only by falco_get_summed_image """
+    """ Function used only by get_summed_image """
     
     ilam = vals_list[ilist][0]
     pol = vals_list[ilist][1]
@@ -175,7 +215,7 @@ def _get_single_sim_full_image(mp, ilist, vals_list):
     return np.abs(Estar)**2 #--Apply spectral weighting outside this function
 
 
-def falco_get_sbp_image(mp, si):
+def get_sbp_image(mp, si):
     """
     Function to get an image in the specified sub-bandpass.
     
@@ -200,14 +240,14 @@ def falco_get_sbp_image(mp, si):
     check.nonnegative_scalar_integer(si, 'si', TypeError)
 
     if mp.flagSim:
-        Isbp = falco_get_sim_sbp_image(mp, si)
+        Isbp = get_sim_sbp_image(mp, si)
     else:
         Isbp = falco_get_testbed_sbp_image(mp, si)
 
     return Isbp
 
 
-def falco_get_sim_sbp_image(mp, si):
+def get_sim_sbp_image(mp, si):
     """
     Function to get a simulated image in the specified sub-bandpass.
 
@@ -278,7 +318,7 @@ def falco_get_sim_sbp_image(mp, si):
     
 def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
     """
-    Called only by falco_get_sim_sbp_image for parallel processing.
+    Called only by get_sim_sbp_image for parallel processing.
     
     Function to return the weighted, normalized intensity image at a
     given wavelength in the specified sub-bandpass.
@@ -312,9 +352,9 @@ def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
     return Iout
     
     
-def falco_get_expected_summed_image(mp, cvar, dDM):
+def get_expected_summed_image(mp, cvar, dDM):
     """
-    Function to generate the expected broadband image after a new DM command.
+    Generate the expected broadband image after a new DM command.
     
     Function to generate the expected broadband image over the entire bandpass
     by adding the model-based delta electric field on top of the current 
@@ -334,7 +374,6 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
     Ibandavg : numpy ndarray
         Expected bandpass-averaged image in units of normalized intensity
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
         
@@ -388,9 +427,9 @@ def falco_get_expected_summed_image(mp, cvar, dDM):
     return Ibandavg
 
 
-def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
+def get_sim_offaxis_image_compact(mp, x_offset, y_offset, isEvalMode=False):
     """
-    Function to return the broadband intensity for the compact model.
+    Return the broadband intensity for the compact model.
 
     Parameters
     ----------
@@ -411,7 +450,6 @@ def falco_sim_image_compact_offaxis(mp, x_offset, y_offset, isEvalMode=False):
     Iout : numpy ndarray
         Simulated bandpass-averaged intensity from the compact model
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     check.real_scalar(x_offset, 'x_offset', TypeError)
@@ -531,7 +569,6 @@ def falco_get_testbed_sbp_image(mp, si):
            by a photometry measurement at a single offset)
 
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     check.nonnegative_scalar_integer(si, 'si', TypeError)
@@ -558,7 +595,6 @@ def falco_get_gpct_sbp_image(mp, si):
         by a photometry measurement at a single offset)
 
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass
@@ -585,7 +621,6 @@ def falco_get_hcst_sbp_image(mp, si):
         by a photometry measurement at a single offset)
 
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     pass

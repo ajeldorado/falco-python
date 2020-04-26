@@ -38,7 +38,7 @@ def flesh_out_workspace(mp):
 
     falco_set_initial_Efields(mp)
 
-    falco.imaging.falco_get_PSF_norm_factor(mp)
+    falco.imaging.calc_psf_norm_factor(mp)
     # falco_gen_contrast_over_NI_map(mp) #--Contrast to Normalized Intensity Map Calculation (NOT INCLUDED YET)
 
     out = falco_init_storage_arrays(mp) #% Initialize Arrays to Store Performance History
