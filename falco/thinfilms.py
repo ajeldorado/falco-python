@@ -404,3 +404,128 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
         print('Saved complex transmission datacube: %s\n' % fn_cube_full)
     
     return complexTransCompact, complexTransFull
+
+
+# % Function to produce the complex transmission of a focal plane mask made
+# % of metal and dielectric layered on fused silica.
+
+def gen_hlc_fpm_complex_trans_mat(mp, si, wi, modelType):
+    """
+    Produce the complex transmission of an HLC focal plane mask.
+
+    Parameters
+    ----------
+    mp : TYPE
+        DESCRIPTION.
+    si : TYPE
+        DESCRIPTION.
+    wi : TYPE
+        DESCRIPTION.
+    modelType : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    FPMmat : numpy ndarray
+        2-D, complex-valued representation of the HLC FPM.
+
+    Notes
+    -----
+    In Matlab version is called falco_gen_HLC_FPM_complex_trans_mat.
+    """
+    # Different variables for compact and full models
+    if modelType.lower() == 'compact':
+        # size = (Ndiel, Nmetal, mp.Nsbp)
+        complexTransCube = mp.complexTransCompact
+        # Index of the wavelength in mp.sbp_centers
+        ilam = si
+    elif modelType.lower() == 'full':
+        # size = (Ndiel,Nmetal,mp.Nsbp*mp.Nwpsbp)
+        complexTransCube = mp.complexTransFull
+        # Index of the wavelength in mp.lam_array
+        ilam = (si-1)*mp.Nwpsbp + wi
+    else:
+        raise ValueError('modelType must specify full or compact model.')
+
+    t_diel_bias = mp.t_diel_bias_nm*1e-9  # bias thickness of dielectric [m]
+
+    # Generate thickness profiles of each layer
+    # Metal layer profile [m]
+    DM8surf = gen_hlc_fpm_surf_from_cube(mp.dm8, modelType)
+    # Dielectric layer profile [m]
+    DM9surf = t_diel_bias + gen_hlc_fpm_surf_from_cube(mp.dm9, modelType)
+    Nxi = DM8surf.shape[1]
+    Neta = DM8surf.shape[0]
+
+    if not (DM8surf.size == DM9surf.size):
+        raise ValueError('FPM surf arrays for DM 8 and 9 must be same size!')
+
+    # Obtain indices of nearest thickness values in the complex tran datacube.
+    DM8transInd = discretize_fpm_surf(DM8surf, mp.t_metal_nm_vec,
+                                      mp.dt_metal_nm)
+    DM9transInd = discretize_fpm_surf(DM9surf, mp.t_diel_nm_vec,
+                                      mp.dt_diel_nm)
+
+    # Look up values
+    FPMmat = np.zeros((Neta, Nxi))
+    for ix in range(Nxi):
+        for iy in range(Neta):
+            ind_metal = DM8transInd[iy, ix]
+            ind_diel = DM9transInd[iy, ix]
+            FPMmat[iy, ix] = complexTransCube(ind_diel, ind_metal, ilam)
+
+    return FPMmat
+
+
+def gen_hlc_fpm_surf_from_cube(dm, modelType):
+    """
+    Produce a FPM surface (in meters) with linear superposition.
+
+    Function to produce a FPM surface (in meters). Uses linear superposition
+    of a datacube of influence functions.
+
+    Parameters
+    ----------
+    dm : TYPE
+        DESCRIPTION.
+    modelType : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    fpmSurf : TYPE
+        DESCRIPTION.
+
+    Notes
+    -----
+    In Matlab version is called falco_gen_HLC_FPM_surf_from_cube.
+
+    """
+    if modelType.lower() == 'compact':
+        dmFullOrCompact = dm.compact
+    elif modelType.lower() == 'full':
+        dmFullOrCompact = dm
+    else:
+        raise ValueError('modelType must be full or compact.')
+
+    fpmSurf = np.zeros((dmFullOrCompact.NdmPad, dmFullOrCompact.NdmPad))
+    for iact in range(dm.NactTotal):
+        if (any(dmFullOrCompact.inf_datacube[:, :, iact].flatten()) and any(dm.VtoH.flatten()[iact])):
+            x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0, iact],
+                                  dmFullOrCompact.xy_box_lowerLeft_AS[0, iact]
+                                  + dmFullOrCompact.Nbox, dtype=np.int)
+            y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft_[1, iact],
+                                  dmFullOrCompact.xy_box_lowerLeft_AS[1, iact]
+                                  + dmFullOrCompact.Nbox, dtype=np.int)
+            fpmSurf[y_box_ind, x_box_ind] += dm.V.flatten()[iact] *\
+            dm.VtoH.flatten()[iact]*dmFullOrCompact.inf_datacube[:, :, iact]
+
+    # Non-negative values only
+    fpmSurf[fpmSurf < 0] = 0.
+
+    return fpmSurf

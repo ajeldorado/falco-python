@@ -300,6 +300,7 @@ FPM0 = np.fft.ifftshift(  np.fft.ifft2( np.fft.fft2(np.fft.fftshift(Window))*np.
 FPM0 = np.roll(FPM0, (1,1), axis=(0,1)) #--Undo a centering shift
 x1 = np.arange(-(N1-1)/2., (N1-1)/2.+1)*dx1 # (-(N1-1)/2:(N1-1)/2)*dx1;
 # [X1, Y1] = np.meshgrid(x1, x1)
+FPM0 = np.real(FPM0)
 interp_spline = RectBivariateSpline(x0, x0, FPM0) # RectBivariateSpline is faster in 2-D than interp2d
 FPM1 = interp_spline(x1, x1)
 # FPM1 = interp2(X0, Y0, FPM0, X1, Y1, 'cubic', 0); #--Downsample by interpolation

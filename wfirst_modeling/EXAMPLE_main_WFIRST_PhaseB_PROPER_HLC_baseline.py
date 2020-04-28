@@ -5,7 +5,7 @@
 # -------------------------------------------------------------------------
 
 # import sys
-# sys.path.append('../')
+# sys.path.append('/Users/ajriggs/Repos/proper-models/wfirst_cgi/models_phaseb/python/wfirst_phaseb_proper/examples')
 import numpy as np
 from astropy.io import fits
 from scipy.interpolate import RectBivariateSpline
@@ -81,7 +81,7 @@ for si in range(mp.Nsbp):
 
     # fn_p_r = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'real.fits'
     # fn_p_i = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'imag.fits'   
-    mp.compact.FPMcube[:,:,si] = falco.utils.pad_crop(fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i), mp.F3.compact.Nxi)
+    mp.compact.FPMcube[:, :, si] = falco.utils.pad_crop(fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i), mp.F3.compact.Nxi)
 
 
 #%% Visually check the FPM cropping
@@ -194,8 +194,8 @@ for si in range(mp.Nsbp):
 # mp.dm1.V = fitsread('hlc_dm1.fits')./mp.dm1.VtoH;
 # mp.dm2.V = fitsread('hlc_dm2.fits')./mp.dm2.VtoH;
 
-mp.dm1.V = fits.getdata('hlc_with_aberrations_dm1.fits')/mp.dm1.VtoH
-mp.dm2.V = fits.getdata('hlc_with_aberrations_dm2.fits')/mp.dm2.VtoH
+mp.dm1.V = fits.getdata('/Users/ajriggs/Repos/proper-models/wfirst_cgi/models_phaseb/python/wfirst_phaseb_proper/examples/hlc_with_aberrations_dm1.fits')/mp.dm1.VtoH
+mp.dm2.V = fits.getdata('/Users/ajriggs/Repos/proper-models/wfirst_cgi/models_phaseb/python/wfirst_phaseb_proper/examples/hlc_with_aberrations_dm2.fits')/mp.dm2.VtoH
 
 
 #%% Step 4: Generate the label associated with this trial
@@ -209,4 +209,4 @@ str(mp.Nsbp) + 'lams' + str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100
 ## Step 5: Perform the Wavefront Sensing and Control
 
 out = falco.setup.flesh_out_workspace(mp)
-# falco.wfsc.loop(mp, out)
+falco.wfsc.loop(mp, out)

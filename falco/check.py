@@ -46,27 +46,48 @@ def centering(var):
 
     """
     _VALID_CENTERING = ['pixel', 'interpixel']
-    _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
-    
+    _CENTERING_ERR = 'Invalid centering specification. Options: \{}'.format(_VALID_CENTERING)
+
     if not isinstance(var, str):
         raise TypeError("'centering' value must be a string'")
-    if not var in _VALID_CENTERING:
+    if not (var in _VALID_CENTERING):
         raise ValueError(_CENTERING_ERR)
     return var
 
 
 def dict(var, vname):
     """
-    Checks whether an object is a dictionary
+    Check whether an object is a dictionary.
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
+    Parameters
+    ----------
+     var: dict
+         variable to check
+     vname: str
+         string to output in case of error for debugging
      """
     _checkname(vname)
-    
+
     if not isinstance(var, type({})):
         raise TypeError(vname + 'must be a dictionary')
+    return var
+
+
+def is_bool(var, vname):
+    """
+    Check whether an object is a boolean.
+
+    Parameters
+    ----------
+    var : bool
+        variable to check
+    vname: str
+        string to output in case of error for debugging
+     """
+    _checkname(vname)
+
+    if not isinstance(var, bool):
+        raise TypeError(vname + 'must be a bool')
     return var
 
 
@@ -97,15 +118,18 @@ def real_positive_scalar(var, vname, vexc):
 
 def real_nonnegative_scalar(var, vname, vexc):
     """
-    Checks whether an object is a real nonnegative scalar
+    Check whether an object is a real nonnegative scalar.
 
-    Arguments:
+    Parameters
+    ----------
      var: variable to check
      vname: string to output in case of error for debugging
      vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+     var:
+         Same as input.
 
     """
     _checkname(vname)
@@ -122,7 +146,7 @@ def real_nonnegative_scalar(var, vname, vexc):
 
 def oneD_array(var, vname, vexc):
     """
-    Checks whether an object is a 1D numpy array, or castable to one
+    Check whether an object is a 1D numpy array, or castable to one.
 
     Arguments:
      var: variable to check

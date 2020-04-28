@@ -524,7 +524,7 @@ def falco_get_sim_sbp_image_fiber(mp, si):
     check.nonnegative_scalar_integer(si, 'si', TypeError)
 
     pass
-    
+
 
 def falco_get_summed_image_fiber(mp):
     """
@@ -540,7 +540,7 @@ def falco_get_summed_image_fiber(mp):
     -------
     TBD
         Total intensity across the bandpass from all fibers.
-    
+
     """
 
     if type(mp) is not falco.config.ModelParameters:
@@ -575,10 +575,10 @@ def falco_get_testbed_sbp_image(mp, si):
 
     pass
 
-    
+
 def falco_get_gpct_sbp_image(mp, si):
     """
-    Function to get an image in the specified sub-bandpass from the GPCT.
+    Get an image in the specified sub-bandpass from the GPCT.
 
     Parameters
     ----------

@@ -1764,7 +1764,7 @@ def falco_gen_pupil_LUVOIR_B(Nbeam):
     pupil = falco_gen_pupil_customHex(inputs)
         
     return pupil
-        
+
 
 def falco_gen_vortex_mask(charge, N):
     """
