@@ -2,8 +2,9 @@
 Fast Linearized Coronagraph Optimizer (FALCO) in Python 3
 
 **********************************************
-              UNDER DEVELOPMENT
-- If you want to get started with FALCO in Python now, use the branch named development.
-- The branch development will be merged into master once some more cleanup is performed.
-- The Lyot coronagraph and vortex coronagraph modes are now operational and have been validated against the MATLAB versions.
+### DOCUMENTATION UNDER DEVELOPMENT
+
+* The only non-standard library you need is PROPER, available only via download here: https://sourceforge.net/projects/proper-library/
+* To get started, add PROPER and falco-python to your PYTHONPATH. Then try running some scripts in the falco-python/examples/ folder starting with EXAMPLE_main* or demo_*.
+* The Lyot coronagraph and vortex coronagraph modes are now operational and have been validated against the MATLAB versions.
 **********************************************
