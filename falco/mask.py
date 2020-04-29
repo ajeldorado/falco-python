@@ -5,7 +5,7 @@ from scipy.interpolate import RectBivariateSpline
 import proper 
 import falco
 from . import check
-from falco.utils import ceil_even, cosd, sind
+from falco.util import ceil_even, cosd, sind
 
 
 def _init_proper(Dmask, dx, centering):
@@ -88,7 +88,7 @@ def falco_gen_pupil_WFIRST_CGI_20191009(Nbeam, centering, changes={}):
     """
     check.real_positive_scalar(Nbeam, 'Nbeam', TypeError)
     check.centering(centering)
-    check.dict(changes, 'changes')
+    check.is_dict(changes, 'changes')
     
     ## Define the best-fit values for ellipses and rectangles (DO NOT CHANGE)
     
@@ -410,7 +410,7 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     """    
     check.real_positive_scalar(Nbeam, 'Nbeam', TypeError)
     check.centering(centering)
-    check.dict(changes, 'changes')
+    check.is_dict(changes, 'changes')
     
     OD = 1.000130208333333
     xcOD = 8.680555555555557e-06
@@ -653,7 +653,7 @@ def falco_gen_SW_mask(inputs):
     xis: vector of coordinates along the horizontal axis (in lambda_c/D)
     etas: : vector of coordinates along the vertical axis (in lambda_c/D)
     """    
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
     
     #--Read in user inputs
     pixresFP = inputs["pixresFP"]    #--pixels per lambda_c/D
@@ -886,7 +886,7 @@ def falco_gen_bowtie_FPM(inputs):
      mask:    cropped-down, 2-D FPM representation. amplitude only 
      
     """
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
     
     # Set default values of input parameters
     flagRot180deg = False
@@ -981,7 +981,7 @@ def falco_gen_annular_FPM(inputs):
      mask:    cropped-down, 2-D FPM representation. amplitude only 
      
     """
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
 
     # Set default values of input parameters
     flagRot180deg = False
@@ -1064,7 +1064,7 @@ def falco_gen_bowtie_LS(inputs):
         2-D output mask.
 
     """
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
 
     Nbeam   = inputs["Nbeam"] # number of points across the incoming beam           
     ID = inputs["ID"]   # inner diameter of mask (in pupil diameters)
@@ -1165,7 +1165,7 @@ def falco_gen_pupil_LUVOIR_A_final(inputs, **kwargs):
         2-D output mask.
 
     """
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
     
     #--Optional inputs and their defaults
     flagRot180deg = True if 'ROT180' in kwargs and kwargs["ROT180"]==True else False
@@ -1544,7 +1544,7 @@ def falco_gen_pupil_Simple(inputs):
         2-D pupil mask
 
     """
-    check.dict(inputs, 'inputs')    
+    check.is_dict(inputs, 'inputs')    
 #% Inputs: 
 #% inputs["Npad"] #Number of samples in the padded array
 #% inputs["Nbeam"] - Number of samples across the beam 
@@ -1594,13 +1594,13 @@ def falco_gen_pupil_Simple(inputs):
         x = np.arange(-N/2,N/2)
     elif centering == 'interpixel':
         x = np.arange(-(N-1)/2,(N-1)/2+1)
-    RHO = falco.utils.radial_grid(x, xStretch=xStretch)
-    THETA = falco.utils.azimuthal_grid(x, xStretch=xStretch)
+    RHO = falco.util.radial_grid(x, xStretch=xStretch)
+    THETA = falco.util.azimuthal_grid(x, xStretch=xStretch)
     # if centering == 'pixel':
     #     [X,Y] = np.meshgrid( np.arange(-N/2,N/2), np.arange(-N/2,N/2) )
     # elif centering == 'interpixel':
     #     [X,Y] = np.meshgrid( np.arange(-(N-1)/2,(N-1)/2+1), np.arange(-(N-1)/2,(N-1)/2+1) )
-    # [RHO,THETA] = utils.cart2pol(X/xStretch, Y)
+    # [RHO,THETA] = util.cart2pol(X/xStretch, Y)
     
     # Make sure the inputs make sense
     if(ID > OD):
@@ -1674,7 +1674,7 @@ def falco_gen_pupil_customHex(inputs):
         2-D pupil mask
 
     """
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
     
     hg_expon = 1000 # hyper-gaussian exponent for anti-aliasing 
     hg_expon_spider = 100 # hyper-gaussian exponent for anti-aliasing 
@@ -1695,7 +1695,7 @@ def falco_gen_pupil_customHex(inputs):
     
     # Create coordinates
     [X,Y] = np.meshgrid(np.arange(-N/2,N/2),np.arange(-N/2,N/2))
-    [THETA,RHO] = falco.utils.cart2pol(X,Y)
+    [THETA,RHO] = falco.util.cart2pol(X,Y)
    
     inputs["apDia"] = inputs["Nbeam"];
     if('pistons' in inputs.keys()):
@@ -1748,7 +1748,7 @@ def falco_gen_pupil_LUVOIR_B(Nbeam):
     inputs["Nbeam"] = Nbeam/0.925 # number of points across the pupil diameter
     inputs["wGap"] = wGap*Nbeam # number of samples across segment gaps
     inputs["numRings"] = 4 # Number of rings in hexagonally segmented mirror 
-    inputs["Npad"] = int(2**(falco.utils.nextpow2(Nbeam)))
+    inputs["Npad"] = int(2**(falco.util.nextpow2(Nbeam)))
     inputs["ID"] = 0 # central obscuration radius 
     inputs["OD"] = 1 # pupil outer diameter, can be < 1
     # inputs["Nstrut"] = 0 # Number of struts 
@@ -1789,7 +1789,7 @@ def falco_gen_vortex_mask(charge, N):
     # [X, Y] = np.meshgrid(np.arange(-N/2,N/2),np.arange(-N/2,N/2))
     # vortex = np.exp(1j*charge*np.arctan2(Y,X))
     
-    return np.exp(1j*charge*falco.utils.azimuthal_grid(np.arange(-N/2., N/2.)))
+    return np.exp(1j*charge*falco.util.azimuthal_grid(np.arange(-N/2., N/2.)))
 
 
 def resample_spm(Ain, nBeamIn, nBeamOut, dx, dy, centering='pixel'):
@@ -1832,7 +1832,7 @@ def resample_spm(Ain, nBeamIn, nBeamOut, dx, dy, centering='pixel'):
         dxIn = 1./nBeamIn
         dxOut = 1./nBeamOut
         nArrayIn = Ain.shape[0]
-        nArrayOut = falco.utils.ceil_odd(nArrayIn*dxIn/dxOut + 2.*np.max((dx,dy)))
+        nArrayOut = falco.util.ceil_odd(nArrayIn*dxIn/dxOut + 2.*np.max((dx,dy)))
 
         x0 = np.arange(-(nArrayIn-1.)/2.,(nArrayIn)/2.,1)*dxIn #--array-centered coordinates of input matrix [pupil diameters]
         [X0,Y0] = np.meshgrid(x0,x0)
@@ -1872,7 +1872,7 @@ def falco_gen_ellipse(inputs):
         2-D output mask.
 
     """
-    check.dict(inputs, 'inputs')
+    check.is_dict(inputs, 'inputs')
     
     Nbeam = inputs['Nbeam']
     Narray = inputs['Narray']

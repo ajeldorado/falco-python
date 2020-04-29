@@ -29,7 +29,7 @@ def wrapper(mp, cvar, jacStruct):
 #        raise TypeError('Input "mp" must be of type ModelParameters')
 #    pass
 
-    #with falco.utils.TicToc('Using the Jacobian to make other matrices'):
+    #with falco.util.TicToc('Using the Jacobian to make other matrices'):
     print('Using the Jacobian to make other matrices...',end='')
     
     #--Compute matrices for linear control with regular EFC

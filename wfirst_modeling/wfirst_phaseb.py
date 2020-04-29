@@ -508,7 +508,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
     if use_aperture != 0: proper.prop_circular_aperture( wavefront, diam_oap2/2.0 )  
 
     proper.prop_propagate( wavefront, d_oap2_dm1, 'DM1' )
-    if use_dm1 != 0: falco.dms.propcustom_dm( wavefront, dm1_m, dm1_xc_act, dm1_yc_act, dm_sampling_m, XTILT=dm1_xtilt_deg, YTILT=dm1_ytilt_deg, ZTILT=dm1_ztilt_deg )
+    if use_dm1 != 0: falco.dm.propcustom_dm( wavefront, dm1_m, dm1_xc_act, dm1_yc_act, dm_sampling_m, XTILT=dm1_xtilt_deg, YTILT=dm1_ytilt_deg, ZTILT=dm1_ztilt_deg )
     if use_errors != 0: proper.prop_errormap( wavefront, map_dir+'wfirst_phaseb_DM1_phase_error_V1.0.fits', WAVEFRONT=True )
     if is_hlc == True and use_hlc_dm_patterns == 1:
         dm1wfe = proper.prop_fits_read( prefix+'dm1wfe.fits' )
@@ -516,7 +516,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         dm1wfe = 0
 
     proper.prop_propagate( wavefront, d_dm1_dm2, 'DM2' )
-    if use_dm2 == 1: falco.dms.propcustom_dm( wavefront, dm2_m, dm2_xc_act, dm2_yc_act, dm_sampling_m, XTILT=dm2_xtilt_deg, YTILT=dm2_ytilt_deg, ZTILT=dm2_ztilt_deg )
+    if use_dm2 == 1: falco.dm.propcustom_dm( wavefront, dm2_m, dm2_xc_act, dm2_yc_act, dm_sampling_m, XTILT=dm2_xtilt_deg, YTILT=dm2_ytilt_deg, ZTILT=dm2_ztilt_deg )
     if use_errors != 0: proper.prop_errormap( wavefront, map_dir+'wfirst_phaseb_DM2_phase_error_V1.0.fits', WAVEFRONT=True )
     if is_hlc == True:
         if use_hlc_dm_patterns == 1:

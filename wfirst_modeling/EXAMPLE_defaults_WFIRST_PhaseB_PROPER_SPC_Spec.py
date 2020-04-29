@@ -251,7 +251,7 @@ else:
     nBeamOut = mp.P1.compact.Nbeam
     dx = 0
     dy = 0
-    mp.P3.compact.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.compact.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 if(mp.P1.full.Nbeam == NbeamSP):
     mp.P3.full.mask = SP0
@@ -260,7 +260,7 @@ else:
     nBeamOut = mp.P1.full.Nbeam
     dx = 0
     dy = 0
-    mp.P3.full.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.full.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 
 #--Number of re-imaging relays between pupil planesin compact model. Needed
@@ -277,16 +277,16 @@ mp.F3.compact.res = 6;    # sampling of FPM for compact model [pixels per lambda
 
 #--Load and downsample the FPM. To get good grayscale edges, convolve with the correct window before downsampling. 
 FPM0 = fits.getdata('/Users/ajriggs/Repos/falco-python/data/WFIRST/PhaseB/FPM_res100_SPC-20190130.fits') #--Resolution of 100 pixels per lambda0/D
-FPM0 = falco.utils.pad_crop(FPM0, (1821, 1821))
+FPM0 = falco.util.pad_crop(FPM0, (1821, 1821))
 # figure(1); imagesc(FPM0); axis xy equal tight; colormap jet; colorbar;
 # figure(11); imagesc(FPM0-rot90(FPM0,2)); axis xy equal tight; colormap jet; colorbar;
 dx0 = 1/100.
 dx1 = 1/mp.F3.compact.res
 N0 = FPM0.shape[0]
 if mp.centering == 'pixel':
-    N1 = falco.utils.ceil_odd(N0*dx0/dx1)
+    N1 = falco.util.ceil_odd(N0*dx0/dx1)
 elif mp.centering == 'pixel':
-    N1 = falco.utils.ceil_even(N0*dx0/dx1)
+    N1 = falco.util.ceil_even(N0*dx0/dx1)
 
 x0 = np.arange(-(N0-1)/2., (N0-1)/2.+1)*dx0 #(-(N0-1)/2:(N0-1)/2)*dx0
 [X0, Y0] = np.meshgrid(x0, x0)
@@ -327,7 +327,7 @@ mp.full.flagPROPER = True #--Whether the full model is a PROPER prescription
 mp.P1.full.Nbeam = 1000
 mp.P1.full.Narr = 1002
 
-mp.full.output_dim = falco.utils.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV)); #  dimensions of output in pixels (overrides output_dim0)
+mp.full.output_dim = falco.util.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV)); #  dimensions of output in pixels (overrides output_dim0)
 mp.full.final_sampling_lam0 = 1/mp.Fend.res;	#   final sampling in lambda0/D
 
 mp.full.pol_conds = [10] # [-2,-1,1,2]; #--Which polarization states to use when creating an image.

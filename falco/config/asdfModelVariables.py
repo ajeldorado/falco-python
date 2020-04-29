@@ -1,5 +1,5 @@
-import falco.utils
-from falco.utils import _spec_arg
+import falco.util
+from falco.util import _spec_arg
 
 class ModelVariables:
 

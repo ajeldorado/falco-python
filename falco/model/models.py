@@ -87,7 +87,7 @@ def full(mp, modvar, isNorm=True):
         zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(mp.P1.full.Nbeam,
                                                            mp.centering,
                                                            indsZnoll))
-        zernMat = falco.utils.pad_crop(zernMat, mp.P1.full.Narr)
+        zernMat = falco.util.pad_crop(zernMat, mp.P1.full.Narr)
         Ein = Ein*zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
                                                      modvar.zernIndex]
 
@@ -147,9 +147,9 @@ def full(mp, modvar, isNorm=True):
 
         [Eout, sampling] = \
             proper.prop_run('wfirst_phaseb', wvl*1e6,
-                            int(2**falco.utils.nextpow2(mp.Fend.Nxi)),
+                            int(2**falco.util.nextpow2(mp.Fend.Nxi)),
                             QUIET=True, PASSVALUE=optval)
-        Eout = falco.utils.pad_crop(Eout, (mp.Fend.Nxi, mp.Fend.Nxi))
+        Eout = falco.util.pad_crop(Eout, (mp.Fend.Nxi, mp.Fend.Nxi))
 
         if not normFac == 0:
             Eout = Eout/np.sqrt(normFac)
@@ -186,7 +186,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
         2-D electric field in final focal plane
 
     """
-    check.bool(flagScaleFPM, 'flagScaleFPM')
+    check.is_bool(flagScaleFPM, 'flagScaleFPM')
 
     mirrorFac = 2  # Phase change is twice the DM surface height in reflection
     NdmPad = int(mp.full.NdmPad)
@@ -197,33 +197,33 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     """ Masks and DM surfaces """
     if any(mp.dm_ind == 1):
-        DM1surf = falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.dx, NdmPad)
+        DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, NdmPad)
 #        try:
-#            DM1surf = falco.utils.pad_crop(mp.dm1.surfM, NdmPad)
+#            DM1surf = falco.util.pad_crop(mp.dm1.surfM, NdmPad)
 #        except AttributeError:  # No surfM parameter exists, create DM surface
-#            DM1surf = falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.dx, NdmPad)
+#            DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, NdmPad)
     else:
         DM1surf = np.zeros((NdmPad, NdmPad))
 
     if any(mp.dm_ind == 2):
-        DM2surf = falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.dx, NdmPad)
+        DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.dx, NdmPad)
 #        try:
-#            DM2surf = falco.utils.pad_crop(mp.dm2.surfM, NdmPad)
+#            DM2surf = falco.util.pad_crop(mp.dm2.surfM, NdmPad)
 #        except AttributeError:  # No surfM parameter exists, create DM surface
-#            DM2surf = falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.dx, NdmPad)
+#            DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.dx, NdmPad)
     else:
         DM2surf = np.zeros((NdmPad, NdmPad))
 
-    pupil = falco.utils.pad_crop(mp.P1.full.mask, NdmPad)
-    Ein = falco.utils.pad_crop(Ein, NdmPad)
+    pupil = falco.util.pad_crop(mp.P1.full.mask, NdmPad)
+    Ein = falco.util.pad_crop(Ein, NdmPad)
 
     if mp.flagDM1stop:
-        DM1stop = falco.utils.pad_crop(mp.dm1.full.mask, NdmPad)
+        DM1stop = falco.util.pad_crop(mp.dm1.full.mask, NdmPad)
     else:
         DM1stop = np.ones((NdmPad, NdmPad))
 
     if mp.flagDM2stop:
-        DM2stop = falco.utils.pad_crop(mp.dm2.full.mask, NdmPad)
+        DM2stop = falco.util.pad_crop(mp.dm2.full.mask, NdmPad)
     else:
         DM2stop = np.ones((NdmPad, NdmPad))
 
@@ -264,7 +264,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     # Apply the apodizer mask (if there is one)
     if(mp.flagApod):
-        EP3 = mp.P3.full.mask*falco.utils.pad_crop(EP3, mp.P3.full.Narr)
+        EP3 = mp.P3.full.mask*falco.util.pad_crop(EP3, mp.P3.full.Narr)
 
     # Propagations Specific to the Coronagraph Type
     if mp.coro.upper() in ('LC', 'APLC', 'RODDIER'):
@@ -289,7 +289,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
                                            fpmScaleFac*mp.P4.full.dx,
                                            mp.P4.full.Narr, mp.centering)
         # Babinet's principle at P4
-        EP4 = falco.utils.pad_crop(EP4noFPM, mp.P4.full.Narr) - EP4subtrahend
+        EP4 = falco.util.pad_crop(EP4noFPM, mp.P4.full.Narr) - EP4subtrahend
 
     elif(mp.coro.upper() == 'SPLC' or mp.coro.upper() == 'FLC'):
         # MFT from apodizer plane to FPM (i.e., P3 to F3)
@@ -325,7 +325,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
                             numpy ndarray.")
             pass
         EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
-        EP4 = falco.utils.pad_crop(EP4, mp.P4.full.Narr)
+        EP4 = falco.util.pad_crop(EP4, mp.P4.full.Narr)
 
     else:
         log.warning('The chosen coronagraph type is not included yet.')
@@ -336,7 +336,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     if normFac == 0:
         if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
             EP4 = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
-            EP4 = falco.utils.pad_crop(EP4, mp.P4.full.Narr)
+            EP4 = falco.util.pad_crop(EP4, mp.P4.full.Narr)
             pass
         pass
 
@@ -452,7 +452,7 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False):
         zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(mp.P1.compact.Nbeam,
                                                            mp.centering,
                                                            indsZnoll))
-        zernMat = falco.utils.pad_crop(zernMat, mp.P1.compact.Narr)
+        zernMat = falco.util.pad_crop(zernMat, mp.P1.compact.Narr)
         Ein = Ein*zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
                                                         modvar.zernIndex]
 
@@ -460,7 +460,7 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False):
     mp.FPM = falco.config.Object()
     if mp.layout.lower() == 'fourier':
         if mp.coro.upper() in ('HLC',):
-            mp.FPM.mask = falco.thinfilms.gen_hlc_fpm_complex_trans_mat(mp, modvar.sbpIndex, modvar.wpsbpIndex, 'compact')
+            mp.FPM.mask = falco.thinfilm.gen_hlc_fpm_complex_trans_mat(mp, modvar.sbpIndex, modvar.wpsbpIndex, 'compact')
     elif mp.layout.lower() == 'wfirst_phaseb_proper':
         if mp.coro.upper() in ('HLC',):
             mp.FPM.mask = mp.compact.FPMcube[:, :, modvar.sbpIndex]
@@ -538,25 +538,25 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
     """ Masks and DM surfaces """
     # ompute the DM surfaces for the current DM commands
     if any(mp.dm_ind == 1):
-        DM1surf = falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx,
+        DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx,
                                               NdmPad)
     else:
         DM1surf = np.zeros((NdmPad, NdmPad))
     if any(mp.dm_ind == 2):
-        DM2surf = falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx,
+        DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx,
                                               NdmPad)
     else:
         DM2surf = np.zeros((NdmPad, NdmPad))
 
-    pupil = falco.utils.pad_crop(mp.P1.compact.mask, NdmPad)
-    Ein = falco.utils.pad_crop(Ein, NdmPad)
+    pupil = falco.util.pad_crop(mp.P1.compact.mask, NdmPad)
+    Ein = falco.util.pad_crop(Ein, NdmPad)
 
     if(mp.flagDM1stop):
-        DM1stop = falco.utils.pad_crop(mp.dm1.compact.mask, NdmPad)
+        DM1stop = falco.util.pad_crop(mp.dm1.compact.mask, NdmPad)
     else:
         DM1stop = np.ones((NdmPad, NdmPad))
     if(mp.flagDM2stop):
-        DM2stop = falco.utils.pad_crop(mp.dm2.compact.mask, NdmPad)
+        DM2stop = falco.util.pad_crop(mp.dm2.compact.mask, NdmPad)
     else:
         DM2stop = np.ones((NdmPad, NdmPad))
 
@@ -567,13 +567,13 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
     if mp.flagDMwfe:
         if any(mp.dm_ind == 1):
             Edm1WFE = np.exp(2*np.pi*1j/wvl *
-                             falco.utils.pad_crop(mp.dm1.compact.wfe,
+                             falco.util.pad_crop(mp.dm1.compact.wfe,
                                                   NdmPad, 'extrapval', 0))
         else:
             Edm1WFE = np.ones((NdmPad, NdmPad))
         if any(mp.dm_ind == 2):
             Edm2WFE = np.exp(2*np.pi*1j/wvl *
-                             falco.utils.pad_crop(mp.dm2.compact.wfe,
+                             falco.util.pad_crop(mp.dm2.compact.wfe,
                                                   NdmPad, 'extrapval', 0))
         else:
             Edm2WFE = np.ones((NdmPad, NdmPad))
@@ -611,7 +611,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
 
     # Apply apodizer mask.
     if(mp.flagApod):
-        EP3 = mp.P3.compact.mask*falco.utils.pad_crop(EP3, mp.P3.compact.Narr)
+        EP3 = mp.P3.compact.mask*falco.util.pad_crop(EP3, mp.P3.compact.Narr)
 
     """  Select propagation based on coronagraph type   """
     if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'RODDIER'):
@@ -635,7 +635,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
             EF3 = (1. - mp.F3.compact.ampMask)*EF3inc
         # Use Babinet's principle at the Lyot plane.
         EP4noFPM = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
-        EP4noFPM = falco.utils.pad_crop(EP4noFPM, mp.P4.compact.Narr)
+        EP4noFPM = falco.util.pad_crop(EP4noFPM, mp.P4.compact.Narr)
         if mp.coro.upper() == 'HLC':
             EP4noFPM = transOuterFPM*EP4noFPM
         # MFT from FPM to Lyot Plane (i.e., F3 to P4)
@@ -687,7 +687,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
                             ndarray.")
             pass
         EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
-        EP4 = falco.utils.pad_crop(EP4, mp.P4.compact.Narr)
+        EP4 = falco.util.pad_crop(EP4, mp.P4.compact.Narr)
 
     else:
         raise ValueError("Value of mp.coro not recognized.")
@@ -697,7 +697,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
     if normFac == 0:
         if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
             EP4 = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
-            EP4 = falco.utils.pad_crop(EP4, mp.P4.compact.Narr)
+            EP4 = falco.util.pad_crop(EP4, mp.P4.compact.Narr)
             pass
         pass
 
@@ -742,13 +742,13 @@ def jacobian(mp):
     # Pre-compute the DM surfaces to save time
     NdmPad = int(mp.compact.NdmPad)
     if any(mp.dm_ind == 1):
-        mp.dm1.compact.surfM = falco.dms.gen_surf_from_act(mp.dm1,
+        mp.dm1.compact.surfM = falco.dm.gen_surf_from_act(mp.dm1,
                                                            mp.dm1.compact.dx,
                                                            NdmPad)
     else:
         mp.dm1.compact.surfM = np.zeros((NdmPad, NdmPad))
     if any(mp.dm_ind == 2):
-        mp.dm2.compact.surfM = falco.dms.gen_surf_from_act(mp.dm2,
+        mp.dm2.compact.surfM = falco.dm.gen_surf_from_act(mp.dm2,
                                                            mp.dm2.compact.dx,
                                                            NdmPad)
     else:
@@ -773,7 +773,7 @@ def jacobian(mp):
         print('Computing control Jacobian matrices in parallel...', end='')
         pool = multiprocessing.Pool(processes=mp.Nthreads)
 
-        with falco.utils.TicToc():
+        with falco.util.TicToc():
 #            results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]        
             results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
             results = [pool.apply_async(_jac_middle_layer, args=(mp,im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]
@@ -794,7 +794,7 @@ def jacobian(mp):
 
     else:
         print('Computing control Jacobian matrices in serial:\n  ', end='')
-        with falco.utils.TicToc():
+        with falco.util.TicToc():
             for im in range(mp.jac.Nmode):
                 if(any(mp.dm_ind==1)):
                     print('mode%ddm%d...' % (im,1),end='')
@@ -810,7 +810,7 @@ def jacobian(mp):
     #the first actuator's column, and then zeroing out the 2nd actuator's column.
     if any(mp.dm_ind == 1):
         # Update the sets of tied actuators
-        mp.dm1 = falco.dms.enforce_constraints(mp.dm1)
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
         for ti in range(mp.dm1.tied.shape[0]):
             Index1all = mp.dm1.tied[ti, 0]  # Index of first tied actuator in whole actuator set. 
             Index2all = mp.dm1.tied[ti, 1]  # Index of second tied actuator in whole actuator set. 
@@ -820,7 +820,7 @@ def jacobian(mp):
             jacStruct.G1[:, Index2subset,:] = 0*jacStruct.G1[:, Index2subset, :] # zero out the 2nd actuator's column.
 
     if any(mp.dm_ind == 2):
-        mp.dm2 = falco.dms.enforce_constraints(mp.dm2) # Update the sets of tied actuators
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2) # Update the sets of tied actuators
         for ti in range(mp.dm2.tied.shape[0]):
             Index1all = mp.dm2.tied[ti,0] # Index of first tied actuator in whole actuator set. 
             Index2all = mp.dm2.tied[ti,1] # Index of second tied actuator in whole actuator set. 

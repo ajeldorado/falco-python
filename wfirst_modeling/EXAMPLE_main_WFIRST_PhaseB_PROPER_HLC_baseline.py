@@ -81,7 +81,7 @@ for si in range(mp.Nsbp):
 
     # fn_p_r = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'real.fits'
     # fn_p_i = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'imag.fits'   
-    mp.compact.FPMcube[:, :, si] = falco.utils.pad_crop(fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i), mp.F3.compact.Nxi)
+    mp.compact.FPMcube[:, :, si] = falco.util.pad_crop(fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i), mp.F3.compact.Nxi)
 
 
 #%% Visually check the FPM cropping
@@ -112,7 +112,7 @@ optval.use_fpm = False
 optval.use_hlc_dm_patterns = False
 nout = 1024 #512; 			# nout > pupil_daim_pix
 
-nArray = falco.utils.ceil_even(mp.P1.compact.Nbeam+1)
+nArray = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
 mp.P1.compact.E = np.ones( (nArray, nArray, mp.Nsbp), dtype=complex) #--Initialize
 for si in range(mp.Nsbp):
     # lambda_um = 1e6*mp.lambda0*lambdaFacs[si]
@@ -171,14 +171,14 @@ for si in range(mp.Nsbp):
     dxF = 1
     dxC = mp.P1.full.Nbeam/mp.P1.compact.Nbeam
     Nf = fldFull.shape[0] #--N full
-    Nc = falco.utils.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
+    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
     xF = np.arange(-Nf/2, Nf/2)*dxF
     xC = np.arange(-Nc/2, Nc/2)*dxC
     interp_spline_real = RectBivariateSpline(xF, xF, np.real(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     interp_spline_imag = RectBivariateSpline(xF, xF, np.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     fldC = interp_spline_real(xC, xC) + 1j*interp_spline_imag(xC, xC)
-    N = falco.utils.ceil_even(mp.P1.compact.Nbeam+1)
-    fldC = falco.utils.pad_crop(fldC, (N, N))
+    N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
+    fldC = falco.util.pad_crop(fldC, (N, N))
     if mp.flagPlot:
         plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
         plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        

@@ -1,7 +1,7 @@
 import numpy as np
 import logging
-from falco import utils, check
-from falco.masks import falco_gen_vortex_mask
+from falco import util, check
+from falco.mask import falco_gen_vortex_mask
 from scipy.signal import tukey
 
 log = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ def ptp(E_in, full_width, wavelength, dz):
              '''.format(N_critical, N))
 
     fx = np.arange(-N // 2, N // 2) / full_width
-    rho = utils.radial_grid(fx)  # Spatial frequency coordinate grid
+    rho = util.radial_grid(fx)  # Spatial frequency coordinate grid
 
     kernel = np.fft.fftshift(np.exp(-1j * np.pi * wavelength * dz * (rho ** 2)))
     intermediate = np.fft.fftn(np.fft.fftshift(E_in))
@@ -149,11 +149,11 @@ def mft_f2p(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
     dy = dx  # Assume equal sample spacing along both directions
 
     # Focal-plane coordinates
-    xi = utils.create_axis(Nxi, dxi, centering=centering)[:, None]  # Broadcast to column vector
-    eta = utils.create_axis(Neta, dxi, centering=centering)[None, :]  # Broadcast to row vector
+    xi = util.create_axis(Nxi, dxi, centering=centering)[:, None]  # Broadcast to column vector
+    eta = util.create_axis(Neta, dxi, centering=centering)[None, :]  # Broadcast to row vector
 
     # Pupil-plane coordinates
-    x = utils.create_axis(N, dx, centering=centering)[None, :]  # Broadcast to row vector
+    x = util.create_axis(N, dx, centering=centering)[None, :]  # Broadcast to row vector
     y = x.T  # Column vector
 
     # Fourier transform matrices
@@ -216,12 +216,12 @@ def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
         raise ValueError('Input array is not square')
 
     # Pupil-plane coordinates
-    x = utils.create_axis(N, dx, centering=centering)[:, None]  # Broadcast to column vector
+    x = util.create_axis(N, dx, centering=centering)[:, None]  # Broadcast to column vector
     y = x.T  # Row vector
 
     # Focal-plane coordinates
-    xi = utils.create_axis(Nxi, dxi, centering=centering)[None, :]  # Broadcast to row vector
-    eta = utils.create_axis(Neta, deta, centering=centering)[:, None]  # Broadcast to column vector
+    xi = util.create_axis(Nxi, dxi, centering=centering)[None, :]  # Broadcast to row vector
+    eta = util.create_axis(Neta, deta, centering=centering)[:, None]  # Broadcast to column vector
 
     # Fourier transform matrices
     pre = np.exp(-2 * np.pi * 1j * (eta * y) / (wavelength * fl))
@@ -270,11 +270,11 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal):
     lambdaOverD = 4. # samples per lambda/D
     
     NA = pupilPre.shape[1]
-    NB = utils.ceil_even(lambdaOverD*D)
+    NB = util.ceil_even(lambdaOverD*D)
     
     # [X,Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float),np.arange(-NB/2., NB/2., dtype=float))
-    # [RHO,THETA] = utils.cart2pol(Y,X)
-    RHO = utils.radial_grid(np.arange(-NB/2., NB/2., dtype=float))
+    # [RHO,THETA] = util.cart2pol(Y,X)
+    RHO = util.radial_grid(np.arange(-NB/2., NB/2., dtype=float))
    
     windowKnee = 1.-inVal/outVal
     

@@ -77,7 +77,7 @@ def gen_surf_from_act(dm, dx, N):
         H = dm.VtoH*dm.V
     
     #--Generate the DM surface
-    DMsurf = falco.dms.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, 
+    DMsurf = falco.dm.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, 
     dm.dm_spacing,XTILT=dm.xtilt,YTILT=dm.ytilt,ZTILT=dm.zrot,XYZ=flagXYZ,
     inf_sign=dm.inf_sign,inf_fn=dm.inf_fn);    
         
@@ -442,10 +442,10 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     x_inf0 = np.linspace( -(Ninf0-1)/2.,(Ninf0-1)/2.,Ninf0)*dm.dx_inf0 # True for even- or odd-sized influence function maps as long as they are centered on the array.
     [Xinf0,Yinf0] = np.meshgrid(x_inf0,x_inf0)
     
-    Ndm0 = falco.utils.ceil_even( Ninf0 + (dm.Nact - 1)*(dm.dm_spacing/dm.dx_inf0) ) #--Number of points across the DM surface at native influence function resolution
-    dm.NdmMin = falco.utils.ceil_even( Ndm0*(dm.dx_inf0/dm.dx))+2. #--Number of points across the (un-rotated) DM surface at new, desired resolution.
+    Ndm0 = falco.util.ceil_even( Ninf0 + (dm.Nact - 1)*(dm.dm_spacing/dm.dx_inf0) ) #--Number of points across the DM surface at native influence function resolution
+    dm.NdmMin = falco.util.ceil_even( Ndm0*(dm.dx_inf0/dm.dx))+2. #--Number of points across the (un-rotated) DM surface at new, desired resolution.
     #--Number of points across the array to fully contain the DM surface at new, desired resolution and z-rotation angle.
-    dm.Ndm = int(falco.utils.ceil_even( (abs(np.array([np.sqrt(2.)*cos(radians(45.-dm.zrot)),np.sqrt(2.)*sin(radians(45.-dm.zrot))])).max())*Ndm0*(dm.dx_inf0/dm.dx))+2) 
+    dm.Ndm = int(falco.util.ceil_even( (abs(np.array([np.sqrt(2.)*cos(radians(45.-dm.zrot)),np.sqrt(2.)*sin(radians(45.-dm.zrot))])).max())*Ndm0*(dm.dx_inf0/dm.dx))+2) 
     
     #--Compute list of initial actuator center coordinates (in actutor widths).
     if(dm.flag_hex_array): #--Hexagonal, hex-packed grid
@@ -515,7 +515,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
         dm.xy_cent_act[1,iact] = xyzValsRot[1].copy()
 
     N0 = dm.inf0.shape[0]
-    Npad = falco.utils.ceil_odd( np.sqrt(2.)*N0 )
+    Npad = falco.util.ceil_odd( np.sqrt(2.)*N0 )
     inf0pad = np.zeros((Npad,Npad))
     inf0pad[ int(np.ceil(Npad/2.)-np.floor(N0/2.)-1):int(np.ceil(Npad/2.)+np.floor(N0/2.)), int(np.ceil(Npad/2.)-np.floor(N0/2.)-1):int(np.ceil(Npad/2.)+np.floor(N0/2.)) ] = dm.inf0
 
@@ -567,11 +567,11 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     # actuator's location in the pixel grid 
 
     #--Compute the size of the postage stamps.
-    Nbox = falco.utils.ceil_even(Ninf0pad*dm.dx_inf0/dx_dm) # Number of points across the influence function array at the DM plane's resolution. Want as even
+    Nbox = falco.util.ceil_even(Ninf0pad*dm.dx_inf0/dx_dm) # Number of points across the influence function array at the DM plane's resolution. Want as even
     dm.Nbox = Nbox
     #--Also compute their padded sizes for the angular spectrum (AS) propagation between P2 and DM1 or between DM1 and DM2
     #--Minimum number of points across for accurate angular spectrum propagation
-    Nmin = falco.utils.ceil_even( np.max(mp.sbp_centers)*np.max(np.abs(np.array([mp.d_P2_dm1, mp.d_dm1_dm2,(mp.d_P2_dm1+mp.d_dm1_dm2)])))/dx_dm**2 ) 
+    Nmin = falco.util.ceil_even( np.max(mp.sbp_centers)*np.max(np.abs(np.array([mp.d_P2_dm1, mp.d_dm1_dm2,(mp.d_P2_dm1+mp.d_dm1_dm2)])))/dx_dm**2 ) 
     dm.NboxAS = np.max(np.array([Nbox,Nmin]))  #--Use a larger array if the max sampling criterion for angular spectrum propagation is violated
 
     # Pad the pupil to at least the size of the DM(s) surface(s) to allow all actuators to be located outside the pupil.
@@ -582,11 +582,11 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     dm.rmax = np.max(np.abs(dm.r_cent_act))
     NpixPerAct = dm.dm_spacing/dx_dm
     if(dm.flag_hex_array):
-        dm.NdmPad = falco.utils.ceil_even((2.*(dm.rmax+2))*NpixPerAct + 1) # padded 2 actuators past the last actuator center to avoid trying to index outside the array 
+        dm.NdmPad = falco.util.ceil_even((2.*(dm.rmax+2))*NpixPerAct + 1) # padded 2 actuators past the last actuator center to avoid trying to index outside the array 
     else: 
         # DM surface array padded by the width of the padded influence function to prevent indexing outside the array. 
         # The 1/2 term is because the farthest actuator center is still half an actuator away from the nominal array edge. 
-        dm.NdmPad = falco.utils.ceil_even( ( dm.NboxAS + 2.*(1+ (np.max(np.abs(dm.xy_cent_act.reshape(2*dm.NactTotal)))+0.5)*NpixPerAct)) ) 
+        dm.NdmPad = falco.util.ceil_even( ( dm.NboxAS + 2.*(1+ (np.max(np.abs(dm.xy_cent_act.reshape(2*dm.NactTotal)))+0.5)*NpixPerAct)) ) 
 
     #--Compute coordinates (in meters) of the full DM array
     if(dm.centering=='pixel'): 
@@ -813,7 +813,7 @@ def fit_surf_to_act(dm, surfaceToFit):
 
     #--Influence function resampled to actuator map resolution
     actres2 = 1. #--pixels per actuator width
-    N2 = falco.utils.ceil_even(N1*actres2/actres1)+1 #--Make odd to have peak of 1
+    N2 = falco.util.ceil_even(N1*actres2/actres1)+1 #--Make odd to have peak of 1
     xq = np.linspace(-(N2-1)/2,(N2-1)/2,N2)/actres2 #pixel-centered
     #[Xq,Yq] = np.meshgrid(xq)
     #inf2 = interp2(X,Y,inf1,Xq,Yq,'cubic',0); # MATLAB way
@@ -1106,10 +1106,10 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing, **kwa
 #         grid = grid.reshape([xdm.shape[1], xdm.shape[0]])
 #     else:
 #         grid = map_coordinates(dm_grid.T, [xdm, ydm], order = 3, mode = "nearest", prefilter = True)
-    dm_grid = falco.utils.pad_crop(surfaceToFit, xdm.shape[0])
+    dm_grid = falco.util.pad_crop(surfaceToFit, xdm.shape[0])
 
     # Derotate the DM surface
-    dm_grid = falco.utils.pad_crop(surfaceToFit, xdm.shape[0])
+    dm_grid = falco.util.pad_crop(surfaceToFit, xdm.shape[0])
     gridDerot = griddata( (xdm.flatten(),ydm.flatten()), dm_grid.flatten(), (xdm0, ydm0), method='cubic', fill_value=0.)
     #gridDerot(isnan(gridDerot)) = 0
 
@@ -1119,7 +1119,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing, **kwa
     xOffsetInAct = ((Nact/2 - 1/2) - dm_xc)
     yOffsetInAct = ((Nact/2 - 1/2) - dm_yc)
  
-    multipleOfCommandGrid = int(falco.utils.ceil_odd(spacing/dx))
+    multipleOfCommandGrid = int(falco.util.ceil_odd(spacing/dx))
     N1 = Nact*multipleOfCommandGrid
     N2 = dm_grid.shape[0]
     xs1 = np.linspace(-(N1-1)/2,(N1-1)/2,N1)/N1 #--interpixel centered

@@ -109,7 +109,7 @@ for si in range(mp.Nsbp):
     dxF = 1
     dxC = mp.P1.full.Nbeam/mp.P1.compact.Nbeam
     Nf = fldFull.shape[0] #--N full
-    Nc = falco.utils.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
+    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
     xF = np.arange(-Nf/2, Nf/2)*dxF
     xC = np.arange(-Nc/2, Nc/2)*dxC
 #     [Xf,Yf] = np.meshgrid(xF);
@@ -118,8 +118,8 @@ for si in range(mp.Nsbp):
     interp_spline_imag = RectBivariateSpline(xF, xF, np.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     fldC = interp_spline_real(xC, xC) + 1j*interp_spline_imag(xC, xC)
 #     fldC = interp2(Xf,Yf,fldFull,Xc,Yc,'cubic',0); #--Downsample by interpolation
-    N = falco.utils.ceil_even(mp.P1.compact.Nbeam+1)
-    fldC = falco.utils.pad_crop(fldC, (N, N))
+    N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
+    fldC = falco.util.pad_crop(fldC, (N, N))
     if mp.flagPlot:
         plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
         plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        

@@ -19,7 +19,7 @@ inputs["OD"] = 0.80#- Inner diameter (fraction of Nbeam)
 #inputs["stretch"] = 1.#- Create an elliptical aperture by changing Nbeam along the horizontal direction by a factor of stretch (PROPER version isn't implemented as of March 2019).
 #inputs["centering"] = 'pixel'
 
-pupil = falco.masks.falco_gen_pupil_Simple(inputs)
+pupil = falco.mask.falco_gen_pupil_Simple(inputs)
 
 plt.imshow(pupil); plt.colorbar(); plt.pause(0.1)
 

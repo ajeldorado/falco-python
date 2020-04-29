@@ -18,7 +18,7 @@ inputs["ang"] = 115
 #inputs['clocking'] = 30  #--Clocking of the mask [degrees]
 #inputs['magfac'] = 1.5 #--magnification factor of the pupil diameter
 
-LS = falco.masks.falco_gen_bowtie_LS(inputs)
+LS = falco.mask.falco_gen_bowtie_LS(inputs)
 
 plt.imshow(LS); plt.colorbar(); plt.pause(0.1)
 

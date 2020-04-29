@@ -130,12 +130,12 @@ def loop(mp, out):
     
         #--Compute the DM surfaces
         if np.any(mp.dm_ind==1): 
-            DM1surf =  falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+            DM1surf =  falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
         else: 
             DM1surf = np.zeros((mp.dm1.compact.Ndm,mp.dm1.compact.Ndm))
     
         if np.any(mp.dm_ind==2): 
-            DM2surf =  falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
+            DM2surf =  falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm);  
         else: 
             DM2surf = np.zeros((mp.dm2.compact.Ndm,mp.dm2.compact.Ndm))
     
@@ -151,9 +151,9 @@ def loop(mp, out):
         InormHist[Itr] = np.mean(Im[mp.Fend.corr.maskBool]);
         
         if(any(mp.dm_ind==1)):
-            mp.dm1 = falco.dms.enforce_constraints(mp.dm1)
+            mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
         if(any(mp.dm_ind==2)):
-            mp.dm2 = falco.dms.enforce_constraints(mp.dm2)
+            mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
         
         #--Plotting
         if(mp.flagPlot):
@@ -348,22 +348,22 @@ def loop(mp, out):
         if(any(mp.dm_ind==1)):
             # Pupil-plane coordinates
             dx_dm = mp.P2.compact.dx/mp.P2.D #--Normalized dx [Units of pupil diameters]
-            xs = falco.utils.create_axis(mp.dm1.compact.Ndm, dx_dm, centering=mp.centering)
-            RS = falco.utils.radial_grid(xs)
+            xs = falco.util.create_axis(mp.dm1.compact.Ndm, dx_dm, centering=mp.centering)
+            RS = falco.util.radial_grid(xs)
             rmsSurf_ele = np.logical_and(RS>=mp.P1.IDnorm/2., RS<=0.5)
             
-            DM1surf = falco.dms.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+            DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
             out.dm1.Spv[Itr] = np.max(DM1surf)-np.min(DM1surf)
             out.dm1.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM1surf[rmsSurf_ele]) )**2))
             print('RMS surface of DM1 = %.1f nm' % (1e9*out.dm1.Srms[Itr]))
         if(any(mp.dm_ind==2)):
             # Pupil-plane coordinates
             dx_dm = mp.P2.compact.dx/mp.P2.D #--Normalized dx [Units of pupil diameters]
-            xs = falco.utils.create_axis(mp.dm2.compact.Ndm, dx_dm, centering=mp.centering)
-            RS = falco.utils.radial_grid(xs)
+            xs = falco.util.create_axis(mp.dm2.compact.Ndm, dx_dm, centering=mp.centering)
+            RS = falco.util.radial_grid(xs)
             rmsSurf_ele = np.logical_and(RS>=mp.P1.IDnorm/2., RS<=0.5)
             
-            DM2surf = falco.dms.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm)
+            DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm)
             out.dm2.Spv[Itr] = np.max(DM2surf)-np.min(DM2surf)
             out.dm2.Srms[Itr] = np.sqrt(np.mean(np.abs( (DM2surf[rmsSurf_ele]) )**2))
             print('RMS surface of DM2 = %.1f nm' % (1e9*out.dm2.Srms[Itr]))
@@ -373,7 +373,7 @@ def loop(mp, out):
             out.Zsens[:,:,Itr] = falco.zern.calc_zern_sens(mp)
         
         # Take the next image to check the contrast level (in simulation only)
-        with falco.utils.TicToc('Getting updated summed image'):
+        with falco.util.TicToc('Getting updated summed image'):
             Im = falco.imaging.get_summed_image(mp);
         
         #--REPORTING NORMALIZED INTENSITY

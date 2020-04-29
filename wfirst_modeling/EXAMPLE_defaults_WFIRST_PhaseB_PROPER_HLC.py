@@ -251,7 +251,7 @@ mp.P4.compact.Nbeam = 309
 #     nBeamOut = mp.P1.compact.Nbeam
 #     dx = 0
 #     dy = 0
-#     mp.P3.compact.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+#     mp.P3.compact.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 # if(mp.P1.full.Nbeam == NbeamSP):
 #     mp.P3.full.mask = SP0
@@ -260,7 +260,7 @@ mp.P4.compact.Nbeam = 309
 #     nBeamOut = mp.P1.full.Nbeam
 #     dx = 0
 #     dy = 0
-#     mp.P3.full.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+#     mp.P3.full.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 
 #--Number of re-imaging relays between pupil planesin compact model. Needed
@@ -288,7 +288,7 @@ mp.full.flagPROPER = True #--Whether the full model is a PROPER prescription
 mp.P1.full.Nbeam = 309
 mp.P1.full.Narr = 310
 
-mp.full.output_dim = falco.utils.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV)); #  dimensions of output in pixels (overrides output_dim0)
+mp.full.output_dim = falco.util.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV)); #  dimensions of output in pixels (overrides output_dim0)
 mp.full.final_sampling_lam0 = 1/mp.Fend.res;	#   final sampling in lambda0/D
 
 mp.full.pol_conds = [10] # [-2,-1,1,2]; #--Which polarization states to use when creating an image.
@@ -339,10 +339,10 @@ mp.compact.flagGenFPM = False
 mp.compact.flagGenLS = False
 
 mp.P1.compact.mask = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_pupil.fits'));
-mp.P1.compact.mask = falco.utils.pad_crop(mp.P1.compact.mask, 310)
+mp.P1.compact.mask = falco.util.pad_crop(mp.P1.compact.mask, 310)
 
 mp.P4.compact.mask = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_lyot.fits'))
-mp.P4.compact.mask = falco.utils.pad_crop(mp.P4.compact.mask, 310)
+mp.P4.compact.mask = falco.util.pad_crop(mp.P4.compact.mask, 310)
 
 # mp.dm1.wfe = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_dm1wfe.fits'))
 # mp.dm2.wfe = fits.getdata((mp.full.data_dir+'hlc_20190210/run461_dm2wfe.fits'))

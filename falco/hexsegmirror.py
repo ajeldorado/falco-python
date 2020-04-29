@@ -2,7 +2,7 @@ import numpy as np
 import os
 import proper
 import math
-from . import utils
+# from . import util
 import falco
 
 def add_hex( centerRow, centerColumn, hexFlatDiam, arrayIn):
@@ -20,7 +20,7 @@ def add_hex( centerRow, centerColumn, hexFlatDiam, arrayIn):
 
     [X,Y] = np.meshgrid(np.arange(-cols/2.,cols/2.), np.arange(-rows/2.,rows/2.)) # Grids with Cartesian (x,y) coordinates 
 
-    [RHOprime,THETA] = falco.utils.cart2pol(X-centerColumn,Y-centerRow)
+    [RHOprime,THETA] = falco.util.cart2pol(X-centerColumn,Y-centerRow)
 #    RHOprime = np.sqrt((X-centerColumn)**2+(Y-centerRow)**2)
 #    THETA = np.arctan2(Y-centerRow,X-centerColumn)
 
@@ -104,7 +104,7 @@ def get_field( hexMirrorDict ):
     else:
         missingSegments = np.ones(count_segments( numRings ),)
     
-    N1 = 2**falco.utils.nextpow2(apDia)
+    N1 = 2**falco.util.nextpow2(apDia)
     OUT = np.zeros((N1,N1))
     
     hexFlatDiam = (apDia-numRings*2*wGap)/(2*numRings+1)
@@ -143,7 +143,7 @@ def get_field( hexMirrorDict ):
                     segNum += 1
                 stepnum += 1
 
-    return falco.utils.pad_crop(OUT,N)
+    return falco.util.pad_crop(OUT,N)
 
 
 def get_support( hexMirrorDict ):

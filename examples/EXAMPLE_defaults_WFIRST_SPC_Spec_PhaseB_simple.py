@@ -271,7 +271,7 @@ else:
     nBeamOut = mp.P1.compact.Nbeam
     dx = 0
     dy = 0
-    mp.P3.compact.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.compact.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 if(mp.P1.full.Nbeam == 1000):
     mp.P3.full.mask = SP0
@@ -280,7 +280,7 @@ else:
     nBeamOut = mp.P1.full.Nbeam
     dx = 0
     dy = 0
-    mp.P3.full.mask = falco.masks.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.full.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
 
 
 ##--Pupil definition
