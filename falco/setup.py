@@ -1,20 +1,16 @@
 import numpy as np
 import falco
 import os
-import pickle
+# import pickle
 import scipy
 import psutil # For checking number of cores available
-import multiprocessing
+# import multiprocessing
 from astropy.io import fits 
 import matplotlib.pyplot as plt 
 import copy
 
-#def flesh_out_workspace(mp, config=None):
-def flesh_out_workspace(mp):
 
-#     if config:
-#         with open(config, 'rb') as f:
-#             mp = pickle.load(f)
+def flesh_out_workspace(mp):
 
     falco_set_optional_variables(mp) # Optional/hidden boolean flags and variables
 
@@ -42,7 +38,7 @@ def flesh_out_workspace(mp):
 
     falco_set_initial_Efields(mp)
 
-    falco.imaging.falco_get_PSF_norm_factor(mp)
+    falco.imaging.calc_psf_norm_factor(mp)
     # falco_gen_contrast_over_NI_map(mp) #--Contrast to Normalized Intensity Map Calculation (NOT INCLUDED YET)
 
     out = falco_init_storage_arrays(mp) #% Initialize Arrays to Store Performance History
@@ -86,7 +82,9 @@ def falco_set_optional_variables(mp):
     if not hasattr(mp.path,'ws_inprogress'): 
         mp.path.ws_inprogress = mainPath + 'data' + filesep + 'ws_inprogress' + filesep # Store in progress workspace data here
     
-    ## Number of threads to use if doing multiprocessing
+    ## multiprocessing
+    if not hasattr(mp, "Nthreads"):
+        mp.flagMultiproc = False
     if not hasattr(mp, "Nthreads"):
         mp.Nthreads = psutil.cpu_count(logical=False) 
     
@@ -473,28 +471,28 @@ def falco_gen_chosen_pupil(mp):
         if mp.full.flagGenPupil:
             inputs['Nbeam'] = mp.P1.full.Nbeam
             inputs['Npad'] = 2**falco.nextpow2(mp.P1.full.Nbeam) 
-            mp.P1.full.mask = falco.masks.falco_gen_pupil_Simple(inputs)
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_Simple(inputs)
         
         #--Generate low-res input pupil for the 'compact' model
         if mp.compact.flagGenPupil:
             inputs['Nbeam'] = mp.P1.compact.Nbeam # number of points across usable pupil   
             inputs['Npad'] = 2**falco.nextpow2(mp.P1.compact.Nbeam) 
-            mp.P1.compact.mask = falco.masks.falco_gen_pupil_Simple(inputs)    
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)    
     
     
     elif whichPupil == 'WFIRST20191009':
         if mp.full.flagGenPupil:
-            mp.P1.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.full.Nbeam, mp.centering)
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.full.Nbeam, mp.centering)
 
         if mp.compact.flagGenPupil:
-            mp.P1.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.compact.Nbeam, mp.centering)
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.compact.Nbeam, mp.centering)
     
     elif whichPupil == 'WFIRST180718':
         if mp.full.flagGenPupil:
-            mp.P1.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.full.Nbeam, mp.centering)
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.full.Nbeam, mp.centering)
 
         if mp.compact.flagGenPupil:
-            mp.P1.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.compact.Nbeam, mp.centering)
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.compact.Nbeam, mp.centering)
             
     elif whichPupil == 'LUVOIRAFINAL':
 #        print('whichPupil = %s'%(whichPupil))
@@ -508,10 +506,10 @@ def falco_gen_chosen_pupil(mp):
     elif whichPupil == 'LUVOIR_B_OFFAXIS':
 #        print('whichPupil = %s'%(whichPupil))
         if mp.full.flagGenPupil:
-            mp.P1.full.mask = falco.masks.falco_gen_pupil_LUVOIR_B(mp.P1.full.Nbeam)
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_LUVOIR_B(mp.P1.full.Nbeam)
 
         if mp.compact.flagGenPupil:
-            mp.P1.compact.mask = falco.masks.falco_gen_pupil_LUVOIR_B(mp.P1.compact.Nbeam)
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_LUVOIR_B(mp.P1.compact.Nbeam)
     
         pass
     elif whichPupil == 'DST_LUVOIRB':
@@ -541,9 +539,9 @@ def falco_gen_chosen_pupil(mp):
     if not hasattr(mp.P1.full, 'Narr'):    
         if(mp.full.flagPROPER):
             if mp.centering.lower() == 'interpixel':
-                mp.P1.full.Narr = int(falco.utils.ceil_even(mp.P1.full.Nbeam))
+                mp.P1.full.Narr = int(falco.util.ceil_even(mp.P1.full.Nbeam))
             else:
-                mp.P1.full.Narr = int(2**falco.utils.nextpow2(mp.P1.full.Nbeam+1)) #falco.utils.ceil_even(mp.P1.full.Nbeam+1)
+                mp.P1.full.Narr = int(2**falco.util.nextpow2(mp.P1.full.Nbeam+1)) #falco.util.ceil_even(mp.P1.full.Nbeam+1)
         else:
             mp.P1.full.Narr = len(mp.P1.full.mask)  ##--Total number of pixels across array containing the pupil in the full model. Add 2 pixels to Nbeam when the beam is pixel-centered.
 
@@ -598,21 +596,21 @@ def falco_gen_chosen_apodizer(mp):
 
             #--Full model only
             inputs["Nbeam"] = mp.P1.full.Nbeam # number of points across incoming beam 
-            inputs["Npad"] = 2**(falco.utils.nextpow2(mp.P1.full.Nbeam)) 
+            inputs["Npad"] = 2**(falco.util.nextpow2(mp.P1.full.Nbeam)) 
             
             if(mp.full.flagGenApod):
-                mp.P3.full.mask = falco.masks.falco_gen_pupil_Simple( inputs );
+                mp.P3.full.mask = falco.mask.falco_gen_pupil_Simple( inputs );
             else:
-                disp('*** Simple aperture stop to be loaded instead of generated for full model. ***')
+                print('*** Simple aperture stop to be loaded instead of generated for full model. ***')
         
             # Compact model only 
             inputs["Nbeam"] = mp.P1.compact.Nbeam #--Number of pixels across the aperture or beam (independent of beam centering)
-            inputs["Npad"] = 2**(falco.utils.nextpow2(mp.P1.compact.Nbeam))
+            inputs["Npad"] = 2**(falco.util.nextpow2(mp.P1.compact.Nbeam))
             
             if(mp.compact.flagGenApod):
-                mp.P3.compact.mask = falco.masks.falco_gen_pupil_Simple( inputs );
+                mp.P3.compact.mask = falco.mask.falco_gen_pupil_Simple( inputs );
             else:
-                disp('*** Simple aperture stop to be loaded instead of generated for compact model. ***')
+                print('*** Simple aperture stop to be loaded instead of generated for compact model. ***')
             
 
     mp.P3.full.dummy = 1
@@ -664,11 +662,7 @@ def falco_gen_chosen_lyot_stop(mp):
 
     ### Changes to the pupil
     changes = {}
-#    class Changes(object):
-#        pass
-#    
-#    changes = Changes()
-    
+
     
     """
     % switch mp.layout
@@ -698,20 +692,20 @@ def falco_gen_chosen_lyot_stop(mp):
         if mp.full.flagGenLS:
             inputs['Nbeam'] = mp.P4.full.Nbeam
             inputs['Npad'] = 2**falco.nextpow2(mp.P4.full.Nbeam) 
-            mp.P4.full.mask = falco.masks.falco_gen_pupil_Simple(inputs)
+            mp.P4.full.mask = falco.mask.falco_gen_pupil_Simple(inputs)
         
         #--Generate low-res input pupil for the 'compact' model
         if mp.compact.flagGenLS:
             inputs['Nbeam'] = mp.P4.compact.Nbeam # number of points across usable pupil   
             inputs['Npad'] = 2**falco.nextpow2(mp.P4.compact.Nbeam) 
-            mp.P4.compact.mask = falco.masks.falco_gen_pupil_Simple(inputs)    
+            mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)    
         
         """
         if whichPupil in ('SIMPLEPROPER'):  
             inputs.flagPROPER = true
         
         inputs.Nbeam = mp.P4.full.Nbeam # number of points across incoming beam 
-        inputs.Npad = 2^(falco.utils.nextpow2nextpow2(mp.P4.full.Nbeam))
+        inputs.Npad = 2^(falco.util.nextpow2nextpow2(mp.P4.full.Nbeam))
         inputs.OD = mp.P4.ODnorm
         inputs.ID = mp.P4.IDnorm
         inputs.Nstrut = mp.P4.Nstrut
@@ -738,11 +732,11 @@ def falco_gen_chosen_lyot_stop(mp):
         
         #kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam,mp.centering,changes)
+            mp.P4.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam,mp.centering,changes)
         
         ##--Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam,mp.centering,changes)
+            mp.P4.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam,mp.centering,changes)
         
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()
@@ -763,12 +757,12 @@ def falco_gen_chosen_lyot_stop(mp):
                 
                 if(mp.full.flagGenLS):
                     inputs["Nbeam"] = mp.P4.full.Nbeam
-                    mp.P4.full.mask = falco.masks.falco_gen_bowtie_LS(inputs)
+                    mp.P4.full.mask = falco.mask.falco_gen_bowtie_LS(inputs)
                 
                 #--Make bowtie Lyot stop (LS) for the 'compact' model
                 if(mp.compact.flagGenLS):
                     inputs["Nbeam"] = mp.P4.compact.Nbeam
-                    mp.P4.compact.mask = falco.masks.falco_gen_bowtie_LS(inputs)
+                    mp.P4.compact.mask = falco.mask.falco_gen_bowtie_LS(inputs)
 
 
     elif whichPupil == 'WFIRST180718':
@@ -781,11 +775,11 @@ def falco_gen_chosen_lyot_stop(mp):
         
         #kwargs = changes.__dict__ #convert changes to dictionary to use as input to gen_pupil routine
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.full.Nbeam,mp.centering,changes)
+            mp.P4.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.full.Nbeam,mp.centering,changes)
         
         ##--Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.masks.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.compact.Nbeam,mp.centering,changes)
+            mp.P4.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_180718(mp.P4.compact.Nbeam,mp.centering,changes)
         
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()
@@ -806,12 +800,12 @@ def falco_gen_chosen_lyot_stop(mp):
                 
                 if(mp.full.flagGenLS):
                     inputs["Nbeam"] = mp.P4.full.Nbeam
-                    mp.P4.full.mask = falco.masks.falco_gen_bowtie_LS(inputs)
+                    mp.P4.full.mask = falco.mask.falco_gen_bowtie_LS(inputs)
                 
                 #--Make bowtie Lyot stop (LS) for the 'compact' model
                 if(mp.compact.flagGenLS):
                     inputs["Nbeam"] = mp.P4.compact.Nbeam
-                    mp.P4.compact.mask = falco.masks.falco_gen_bowtie_LS(inputs)
+                    mp.P4.compact.mask = falco.mask.falco_gen_bowtie_LS(inputs)
        
     elif whichPupil in ('LUVOIRAFINAL'):
         pass
@@ -860,12 +854,12 @@ def falco_gen_chosen_lyot_stop(mp):
         #                  version isn't implemented as of March 2019).
 
         inputs["Nbeam"] = mp.P4.compact.Nbeam #- Number of samples across the beam 
-        inputs["Npad"] = int(2**falco.utils.nextpow2( falco.utils.ceil_even(mp.P4.compact.Nbeam )))
-        mp.P4.compact.mask = falco.masks.falco_gen_pupil_Simple( inputs )
+        inputs["Npad"] = int(2**falco.util.nextpow2( falco.util.ceil_even(mp.P4.compact.Nbeam )))
+        mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple( inputs )
 
         inputs["Nbeam"] = mp.P4.full.Nbeam #- Number of samples across the beam 
-        inputs["Npad"] = int(2**falco.utils.nextpow2( falco.utils.ceil_even(mp.P4.full.Nbeam )))
-        mp.P4.full.mask = falco.masks.falco_gen_pupil_Simple( inputs )
+        inputs["Npad"] = int(2**falco.util.nextpow2( falco.util.ceil_even(mp.P4.full.Nbeam )))
+        mp.P4.full.mask = falco.mask.falco_gen_pupil_Simple( inputs )
 
 
         pass
@@ -958,10 +952,10 @@ def falco_gen_chosen_lyot_stop(mp):
             counter = 2
             while(np.abs(LSdiff) <= 1e-7):
                 mp.P4.full.Narr = len(mp.P4.full.mask)-counter
-                LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
+                LSdiff = LSsum - np.sum(falco.util.pad_crop(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
                 counter = counter + 2
             
-            mp.P4.full.croppedMask = falco.utils.padOrCropEven(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
+            mp.P4.full.croppedMask = falco.util.pad_crop(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
         
         ## --Crop down the low-resolution Lyot stop to get rid of extra zero padding. Speeds up the compact model.
         LSsum = np.sum(mp.P4.compact.mask)
@@ -969,10 +963,10 @@ def falco_gen_chosen_lyot_stop(mp):
         counter = 2
         while(abs(LSdiff) <= 1e-7):
             mp.P4.compact.Narr = len(mp.P4.compact.mask)-counter #--Number of points across the cropped-down Lyot stop
-            LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
+            LSdiff = LSsum - np.sum(falco.util.pad_crop(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
             counter = counter + 2
 
-        mp.P4.compact.croppedMask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
+        mp.P4.compact.croppedMask = falco.util.pad_crop(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
  
     #--(METERS) Lyot plane coordinates (over the cropped down to Lyot stop mask) for MFTs in the compact model from the FPM to the LS.
     if mp.centering == 'interpixel':
@@ -992,7 +986,7 @@ def falco_plot_superposed_pupil_masks(mp):
     #pupil and Lyot plane have the same resolution.
     if mp.coro.upper() in ['FOHLC','HLC','LC','APLC','VC','AVC', 'VORTEX']:
         if mp.flagPlot:
-            P4mask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P1.compact.Narr)
+            P4mask = falco.util.pad_crop(mp.P4.compact.mask,mp.P1.compact.Narr)
             P4mask = np.rot90(P4mask,2);
             if mp.centering.lower() == 'pixel':
                #P4mask = circshift(P4mask,[1 1]);
@@ -1002,7 +996,7 @@ def falco_plot_superposed_pupil_masks(mp):
             plt.figure(301); plt.imshow(P1andP4); plt.colorbar(); plt.title('Pupil and LS Superimposed'); plt.pause(1e-2)
 
             if mp.flagApod:
-                P1andP3 = mp.P1.compact.mask + falco.utils.padOrCropEven(mp.P3.compact.mask,len(mp.P1.compact.mask));
+                P1andP3 = mp.P1.compact.mask + falco.util.pad_crop(mp.P3.compact.mask,len(mp.P1.compact.mask));
                 plt.figure(302); plt.imshow(P1andP3); plt.colorbar(); plt.title('Pupil and Apod Superimposed'); plt.pause(1e-2)
     pass
 
@@ -1023,7 +1017,7 @@ def falco_gen_FPM(mp):
     
             ##--Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
             if mp.coro in ('HLC',):
-                [mp.complexTransCompact,mp.complexTransFull] = falco_gen_complex_trans_table(mp);
+                [mp.complexTransCompact,mp.complexTransFull] = gen_complex_trans_table(mp);
 
     ## Generate FPM
     if mp.coro.upper() in ['LC', 'APLC']: #--Occulting spot FPM (can be HLC-style and partially transmissive)
@@ -1115,7 +1109,7 @@ def falco_configure_dark_hole_region(mp):
         maskCorr.shape = mp.Fend.shape
     
     #--Compact Model: Generate Software Mask for Correction 
-    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.masks.falco_gen_SW_mask(maskCorr);
+    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.mask.falco_gen_SW_mask(maskCorr);
     mp.Fend.corr.settings = maskCorr; #--Store values for future reference
     #--Size of the output image 
     #--Need the sizes to be the same for the correction and scoring masks
@@ -1138,7 +1132,7 @@ def falco_configure_dark_hole_region(mp):
         maskLenslet["centering"] = mp.centering;
         maskLenslet["FOV"] = mp.Fend.FOV;
         maskLenslet["whichSide"] = mp.Fend.sides;
-        mp.Fend.lenslet.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(**maskLenslet);
+        mp.Fend.lenslet.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(**maskLenslet);
     
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
@@ -1150,7 +1144,7 @@ def falco_configure_dark_hole_region(mp):
         maskF5["centering"] = mp.centering;
         maskF5["FOV"] = mp.F5.FOV;
         maskF5["whichSide"] = mp.Fend.sides;
-        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.masks.falco_gen_SW_mask(maskF5);
+        mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.mask.falco_gen_SW_mask(maskF5);
     
         #--Size of the output image in F5
         mp.F5.Nxi = mp.F5.mask.shape[1] #size(mp.F5.mask, 2);
@@ -1168,7 +1162,7 @@ def falco_configure_dark_hole_region(mp):
         maskFiberCore["angDeg"] = 180;
         maskFiberCore["FOV"] = mp.F5.FOV;
         maskFiberCore["whichSide"] = mp.Fend.sides;
-        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCore);
+        mp.F5.fiberCore.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(maskFiberCore);
     
         maskFiberCladding["pixresFP"] = mp.F5.res;
         maskFiberCladding["rhoInner"] = mp.fiber.a;
@@ -1176,7 +1170,7 @@ def falco_configure_dark_hole_region(mp):
         maskFiberCladding["angDeg"] = 180;
         maskFiberCladding["FOV"] = mp.F5.FOV;
         maskFiberCladding["whichSide"] = mp.Fend.sides;
-        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCladding);
+        mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(maskFiberCladding);
     
         F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
     
@@ -1193,7 +1187,7 @@ def falco_configure_dark_hole_region(mp):
     #--Evaluation Model for Computing Throughput (same as Compact Model but
     # with different Fend.resolution)
     maskCorr["pixresFP"] = mp.Fend.eval.res; #--Assign the resolution
-    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.masks.falco_gen_SW_mask(maskCorr);  #--Generate the mask
+    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL = falco.mask.falco_gen_SW_mask(maskCorr);  #--Generate the mask
     mp.Fend.eval.Nxi  = mp.Fend.eval.mask.shape[1]
     mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
     mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res; # higher sampling at Fend.for evaulation [meters]
@@ -1221,7 +1215,7 @@ def falco_configure_dark_hole_region(mp):
         maskScore["shape"] = mp.Fend.shape
     #--Compact Model: Generate Software Mask for Scoring Contrast 
     maskScore["pixresFP"] = mp.Fend.res;
-    mp.Fend.score.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskScore);
+    mp.Fend.score.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(maskScore);
     mp.Fend.score.settings = maskScore; #--Store values for future reference
     
     #--Number of pixels used in the dark hole
@@ -1339,11 +1333,11 @@ def falco_configure_dm1_and_dm2(mp):
     mp.dm1.compact = copy.copy(mp.dm1)
     mp.dm1.dx = mp.P2.full.dx
     mp.dm1.compact.dx = mp.P2.compact.dx
-    falco.dms.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx, NOCUBE=True);
+    falco.dm.gen_poke_cube(mp.dm1, mp, mp.P2.full.dx, NOCUBE=True);
     if np.any(mp.dm_ind==1):
-        falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx)
+        falco.dm.gen_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx)
     else:        
-        falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
+        falco.dm.gen_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
     ## DM2
     mp.dm2.centering = mp.centering
@@ -1351,11 +1345,11 @@ def falco_configure_dm1_and_dm2(mp):
     mp.dm2.compact = copy.copy(mp.dm2)
     mp.dm2.dx = mp.P2.full.dx
     mp.dm2.compact.dx = mp.P2.compact.dx
-    falco.dms.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, NOCUBE=True)
+    falco.dm.gen_poke_cube(mp.dm2, mp, mp.P2.full.dx, NOCUBE=True)
     if np.any(mp.dm_ind==2):
-        falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx)
+        falco.dm.gen_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx)
     else:    
-        falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx, NOCUBE=True)
+        falco.dm.gen_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
     #--Initial DM voltages
     if not hasattr(mp.dm1,'V'):
@@ -1372,11 +1366,11 @@ def falco_gen_DM_stops(mp):
         mp.dm2.compact = falco.config.Object()
 
     if mp.flagDM1stop:
-        mp.dm1.full.mask = falco.masks.falco_gen_DM_stop(mp.P2.full.dx,mp.dm1.Dstop,mp.centering);
-        mp.dm1.compact.mask = falco.masks.falco_gen_DM_stop(mp.P2.compact.dx,mp.dm1.Dstop,mp.centering);
+        mp.dm1.full.mask = falco.mask.falco_gen_DM_stop(mp.P2.full.dx,mp.dm1.Dstop,mp.centering);
+        mp.dm1.compact.mask = falco.mask.falco_gen_DM_stop(mp.P2.compact.dx,mp.dm1.Dstop,mp.centering);
     if mp.flagDM2stop:
-        mp.dm2.full.mask = falco.masks.falco_gen_DM_stop(mp.P2.full.dx,mp.dm2.Dstop,mp.centering);
-        mp.dm2.compact.mask = falco.masks.falco_gen_DM_stop(mp.P2.compact.dx,mp.dm2.Dstop,mp.centering);
+        mp.dm2.full.mask = falco.mask.falco_gen_DM_stop(mp.P2.full.dx,mp.dm2.Dstop,mp.centering);
+        mp.dm2.compact.mask = falco.mask.falco_gen_DM_stop(mp.P2.compact.dx,mp.dm2.Dstop,mp.centering);
     pass
 
 
@@ -1423,8 +1417,17 @@ def falco_set_initial_Efields(mp):
     mp.Eplanet = mp.P1.full.E; #--Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
     
     if not hasattr(mp.P1.compact,'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp),dtype=complex)
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E,2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
+        mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
+    else:
+        if not mp.P1.compact.E.shape[0] == mp.P1.compact.Narr:
+            EcubeTemp = copy.copy(mp.P1.compact.E)
+            mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
+            for si in range(mp.Nsbp):
+                mp.P1.compact.E[:, :, si] = falco.util.pad_crop(EcubeTemp[:, :, si], (mp.P1.compact.Narr, mp.P1.compact.Narr))
+                pass
+            pass
+        pass
+    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(np.mean(mp.P1.compact.E, 2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
     
     pass
                 
@@ -1505,25 +1508,20 @@ def falco_gen_FPM_LC(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
-
-#    class FPMgenIn(object):
-#        pass
     
-    FPMgenInputs = {} #FPMgenIn()
     
     #--Make or read in focal plane mask (FPM) amplitude for the full model
-    #FPMgenInputs.flagRot180deg
+    FPMgenInputs = {}
     FPMgenInputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
     FPMgenInputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
     FPMgenInputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
     FPMgenInputs["FPMampFac"] = mp.FPMampFac # amplitude transmission of inner FPM spot
     FPMgenInputs["centering"] = mp.centering
-    #kwargs = FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.full,'mask'):
         mp.F3.full.mask = falco.config.Object()
         
-    mp.F3.full.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    mp.F3.full.ampMask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
 
     mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
     mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]  
@@ -1531,26 +1529,25 @@ def falco_gen_FPM_LC(mp):
     #--Number of points across the FPM in the compact model
     if(mp.F3.Rout==np.inf):
         if mp.centering == 'pixel':
-            mp.F3.compact.Nxi = falco.utils.ceil_even((2*(mp.F3.Rin*mp.F3.compact.res + 1/2)))
+            mp.F3.compact.Nxi = falco.util.ceil_even((2*(mp.F3.Rin*mp.F3.compact.res + 1/2)))
         else:
-            mp.F3.compact.Nxi = falco.utils.ceil_even((2*mp.F3.Rin*mp.F3.compact.res))
+            mp.F3.compact.Nxi = falco.util.ceil_even((2*mp.F3.Rin*mp.F3.compact.res))
             
     else:
         if mp.centering == 'pixel':
-            mp.F3.compact.Nxi = falco.utils.ceil_even((2*(mp.F3.Rout*mp.F3.compact.res + 1/2)))
+            mp.F3.compact.Nxi = falco.util.ceil_even((2*(mp.F3.Rout*mp.F3.compact.res + 1/2)))
         else: #case 'interpixel'
-            mp.F3.compact.Nxi = falco.utils.ceil_even((2*mp.F3.Rout*mp.F3.compact.res))
+            mp.F3.compact.Nxi = falco.util.ceil_even((2*mp.F3.Rout*mp.F3.compact.res))
 
     mp.F3.compact.Neta = mp.F3.compact.Nxi
     
     #--Make or read in focal plane mask (FPM) amplitude for the compact model
     FPMgenInputs["pixresFPM"] = mp.F3.compact.res #--pixels per lambda_c/D
-    #kwargs=FPMgenInputs.__dict__
     
     if not hasattr(mp.F3.compact,'mask'):
         mp.F3.compact.mask = falco.config.Object()
         
-    mp.F3.compact.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    mp.F3.compact.ampMask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
     
 
 def falco_gen_FPM_SPLC(mp):
@@ -1566,7 +1563,7 @@ def falco_gen_FPM_SPLC(mp):
         inputs["ang"] = mp.F3.ang # [degrees]
         inputs["centering"] = mp.centering;
         inputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
-        mp.F3.full.ampMask = falco.masks.falco_gen_bowtie_FPM(inputs);
+        mp.F3.full.ampMask = falco.mask.falco_gen_bowtie_FPM(inputs);
     
     if(mp.compact.flagGenFPM):
         #--Generate the FPM amplitude for the compact model
@@ -1576,7 +1573,7 @@ def falco_gen_FPM_SPLC(mp):
         inputs["ang"] = mp.F3.ang # [degrees]
         inputs["centering"] = mp.centering
         inputs["pixresFPM"] = mp.F3.compact.res
-        mp.F3.compact.ampMask = falco.masks.falco_gen_bowtie_FPM(inputs)        
+        mp.F3.compact.ampMask = falco.mask.falco_gen_bowtie_FPM(inputs)        
     
     if not mp.full.flagPROPER:
         mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]

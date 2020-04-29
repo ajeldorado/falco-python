@@ -6,7 +6,7 @@ from setuptools import setup, find_packages, Extension, Command
 from setuptools.command.test import test as TestCommand
 
 try:
-    from distutils.config import ConfigParser
+    from distutil.config import ConfigParser
 except ImportError:
     from configparser import ConfigParser
 

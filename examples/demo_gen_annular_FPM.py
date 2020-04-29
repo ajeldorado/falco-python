@@ -15,7 +15,7 @@ inputs["centering"] = 'pixel'
 # %% With Outer Ring
 
 inputs["rhoOuter"] = 20.0
-fpm = falco.masks.falco_gen_annular_FPM(inputs)
+fpm = falco.mask.falco_gen_annular_FPM(inputs)
 
 plt.imshow(fpm); plt.colorbar(); plt.pause(0.1)
 if("centering" in inputs.keys()): # Check symmetry
@@ -27,7 +27,7 @@ if("centering" in inputs.keys()): # Check symmetry
 # %% Without Outer Ring
         
 inputs["rhoOuter"] = np.Infinity
-fpm = falco.masks.falco_gen_annular_FPM(inputs)
+fpm = falco.mask.falco_gen_annular_FPM(inputs)
 
 plt.imshow(fpm); plt.colorbar(); plt.pause(0.1)
 if("centering" in inputs.keys()): # Check symmetry

@@ -39,15 +39,15 @@ out = falco.setup.flesh_out_workspace(mp)
 
 normFac = 1;
 mp.dm1.V = normFac*np.random.rand(mp.dm1.Nact,mp.dm1.Nact)
-DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
+DM1Surf =  falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
 
 if(flagPlotDebug):
     plt.figure(1); plt.imshow(mp.dm1.V); plt.colorbar(); plt.pause(0.1);
     plt.figure(2); plt.imshow(DM1Surf); plt.colorbar(); plt.pause(0.1);
 
 #--Fit the surface
-# DMSurf = padOrCropEven(DMSurf,500);
-Vout = falco.dms.falco_fit_dm_surf(mp.dm1,DM1Surf)/mp.dm1.VtoH
+# DMSurf = pad_crop(DMSurf,500);
+Vout = falco.dm.fit_surf_to_act(mp.dm1,DM1Surf)/mp.dm1.VtoH
 Verror = mp.dm1.V - Vout;
 rmsVError = np.sqrt(np.mean(Verror.flatten()**2))/normFac;
 print('RMS fitting error to voltage map is %.2f%%.\n'%(rmsVError*100))

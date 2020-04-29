@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 mp = DEFAULTS.mp
 
-flagPlotDebug = False
+flagPlotDebug = True
 
 mp.path = falco.config.Object()
 mp.path.falco = './'  #--Location of FALCO
@@ -19,6 +19,7 @@ mp.path.proper = './' #--Location of the MATLAB PROPER library
 mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
+mp.flagMultiproc = False
 
 ## Step 3: Overwrite default values as desired
 
@@ -39,7 +40,7 @@ out = falco.setup.flesh_out_workspace(mp)
 
 # Determine the region of the array corresponding to the DM surface for use in the fitting.
 mp.dm1.V = np.ones((mp.dm1.Nact,mp.dm1.Nact))
-testSurf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)
+testSurf =  falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)
 testArea = np.zeros(testSurf.shape)
 testArea[testSurf >= 0.5*np.max(testSurf)] = 1
 
@@ -58,9 +59,9 @@ if(flagPlotDebug):
     plt.figure(2); plt.imshow(errorMap); plt.colorbar(); plt.pause(0.1);
 
 #--Fit the surface
-Vout = falco.dms.falco_fit_dm_surf(mp.dm1,errorMap)/mp.dm1.VtoH
+Vout = falco.dm.fit_surf_to_act(mp.dm1,errorMap)/mp.dm1.VtoH
 mp.dm1.V = Vout
-DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)  
+DM1Surf =  falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)  
 surfError = errorMap - DM1Surf;
 rmsError = np.sqrt(np.mean((surfError[testArea==1].flatten()**2)))
 print('RMS fitting error to voltage map is %.2e meters.\n'%rmsError)

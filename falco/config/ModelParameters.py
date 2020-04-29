@@ -1,12 +1,12 @@
-import copy
+# import copy
 from numpy import inf
-import numpy as np
-import falco.masks
-import falco.utils
-from falco.utils import _spec_arg
-#from falco.config import DeformableMirrorParameters
-import collections
-from falco import model
+# import numpy as np
+# import falco.mask
+# import falco.util
+from falco.util import _spec_arg
+# from falco.config import DeformableMirrorParameters
+# import collections
+# from falco import model
 
 class Object(object):
     pass

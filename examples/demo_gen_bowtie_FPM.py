@@ -13,7 +13,7 @@ inputs["rhoInner"] = 2.6
 inputs["rhoOuter"] = 9.0
 inputs["centering"] = 'pixel'
 
-fpm = falco.masks.falco_gen_bowtie_FPM(inputs)
+fpm = falco.mask.falco_gen_bowtie_FPM(inputs)
 
 plt.imshow(fpm); plt.colorbar(); plt.pause(0.1)
 

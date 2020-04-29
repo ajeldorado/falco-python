@@ -22,7 +22,7 @@ mp = DEFAULTS.mp
 mp.path = falco.config.Object()
 mp.path.falco = '../'  #--Location of FALCO
 
-# Step 1: Set paths output if desired
+# Step 1: Set paths for output if desired
 
 # ##--Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
 # mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
@@ -109,7 +109,7 @@ for si in range(mp.Nsbp):
     dxF = 1
     dxC = mp.P1.full.Nbeam/mp.P1.compact.Nbeam
     Nf = fldFull.shape[0] #--N full
-    Nc = falco.utils.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
+    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
     xF = np.arange(-Nf/2, Nf/2)*dxF
     xC = np.arange(-Nc/2, Nc/2)*dxC
 #     [Xf,Yf] = np.meshgrid(xF);
@@ -118,8 +118,8 @@ for si in range(mp.Nsbp):
     interp_spline_imag = RectBivariateSpline(xF, xF, np.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     fldC = interp_spline_real(xC, xC) + 1j*interp_spline_imag(xC, xC)
 #     fldC = interp2(Xf,Yf,fldFull,Xc,Yc,'cubic',0); #--Downsample by interpolation
-    N = falco.utils.ceil_even(mp.P1.compact.Nbeam+1)
-    fldC = falco.utils.pad_crop(fldC, (N, N))
+    N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
+    fldC = falco.util.pad_crop(fldC, (N, N))
     if mp.flagPlot:
         plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
         plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        
@@ -131,7 +131,7 @@ for si in range(mp.Nsbp):
 #     Etemp = 0*fldC;
 #     Etemp[2:end,2:end] = rot90(fldC(2:end,2:end),2);
 #     mp.P1.compact.E[:,:,si] = Etemp
-    mp.P1.compact.E[:,:,si] = falco.propcustom.propcustom_relay(fldC, 1, centering=mp.centering)
+    mp.P1.compact.E[:,:,si] = falco.prop.relay(fldC, 1, centering=mp.centering)
     
     
 

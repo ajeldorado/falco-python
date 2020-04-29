@@ -65,7 +65,7 @@ bm  = proper.prop_begin(N*dx, wl_dummy, N, pupil_ratio)
 
 #--Generate the DM surface
 H = dm.VtoH*dm.V;
-DMSurf = falco.dms.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, 
+DMSurf = falco.dm.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, 
                        XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,XYZ=True,
                        inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
 
@@ -77,8 +77,8 @@ plt.figure(2); plt.imshow(DMSurf); plt.colorbar(); plt.gca().invert_yaxis()
 
 
 #--Fit the surface
-#DMSurf = falco.utils.padOrCropEven(DMSurf,500)
-Vout = falco.dms.falco_fit_dm_surf(dm,DMSurf)
+#DMSurf = falco.util.pad_crop(DMSurf,500)
+Vout = falco.dm.fit_surf_to_act(dm,DMSurf)
 plt.figure(3); plt.imshow(Vout); plt.colorbar(); plt.gca().invert_yaxis()
 
 plt.figure(4); plt.imshow(Vout-H); plt.colorbar(); plt.gca().invert_yaxis()

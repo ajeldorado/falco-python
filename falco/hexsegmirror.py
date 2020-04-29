@@ -2,10 +2,10 @@ import numpy as np
 import os
 import proper
 import math
-from . import utils
+# from . import util
 import falco
 
-def hexSegMirror_addHexagon( centerRow, centerColumn, hexFlatDiam, arrayIn):
+def add_hex( centerRow, centerColumn, hexFlatDiam, arrayIn):
 #%   This function adds hexagon to arrayIn, centered at (centerRow, 
 #    centerColumn), with segment width 'hexFlatDiam'.
 #%   Inputs:
@@ -20,7 +20,7 @@ def hexSegMirror_addHexagon( centerRow, centerColumn, hexFlatDiam, arrayIn):
 
     [X,Y] = np.meshgrid(np.arange(-cols/2.,cols/2.), np.arange(-rows/2.,rows/2.)) # Grids with Cartesian (x,y) coordinates 
 
-    [RHOprime,THETA] = falco.utils.cart2pol(X-centerColumn,Y-centerRow)
+    [RHOprime,THETA] = falco.util.cart2pol(X-centerColumn,Y-centerRow)
 #    RHOprime = np.sqrt((X-centerColumn)**2+(Y-centerRow)**2)
 #    THETA = np.arctan2(Y-centerRow,X-centerColumn)
 
@@ -32,8 +32,8 @@ def hexSegMirror_addHexagon( centerRow, centerColumn, hexFlatDiam, arrayIn):
 
     return arrayIn + HEX
 
-def hexSegMirror_addHexSegment( centerRow, centerColumn, numRings, apDia, wGap, piston, tiltx, tilty, arrayIn):
-#%hexSegMirror_addHexSegment Adds hexagonal mirror segment to arrayIn, 
+def add_hex_segment( centerRow, centerColumn, numRings, apDia, wGap, piston, tiltx, tilty, arrayIn):
+#%add_hex_segment Adds hexagonal mirror segment to arrayIn, 
 #% centered at (centerRow, centerColumn). The full mirror have numRings rings of 
 #% hexagonal segments, flat-to-flat diameter (in samples) of apDia, 
 #% wGap (in samples) between segments, and piston, tiltx, and tilty
@@ -79,7 +79,7 @@ def hexSegMirror_addHexSegment( centerRow, centerColumn, numRings, apDia, wGap, 
     return arrayIn + HEXamp*HEXphz
 
 
-def hexSegMirror_getField( hexMirrorDict ):
+def get_field( hexMirrorDict ):
 #% This function returns the complex reflectance of the pupil function defined 
 #% by a hexagonally segmented mirror 
 #%   Input: hexMirrorDict - Structure with the following variables 
@@ -102,9 +102,9 @@ def hexSegMirror_getField( hexMirrorDict ):
     if('missingSegments' in hexMirrorDict.keys()):
         missingSegments = hexMirrorDict["missingSegments"]
     else:
-        missingSegments = np.ones(hexSegMirror_numSegments( numRings ),)
+        missingSegments = np.ones(count_segments( numRings ),)
     
-    N1 = 2**falco.utils.nextpow2(apDia)
+    N1 = 2**falco.util.nextpow2(apDia)
     OUT = np.zeros((N1,N1))
     
     hexFlatDiam = (apDia-numRings*2*wGap)/(2*numRings+1)
@@ -117,7 +117,7 @@ def hexSegMirror_getField( hexMirrorDict ):
         cencol = 0
         
         if(missingSegments[segNum]==0):
-            OUT = hexSegMirror_addHexSegment( cenrow, cencol, numRings, apDia, 
+            OUT = add_hex_segment( cenrow, cencol, numRings, apDia, 
                                              wGap, pistons[segNum], tiltxs[segNum], tiltys[segNum], OUT)
         segNum = segNum + 1
         
@@ -137,17 +137,17 @@ def hexSegMirror_getField( hexMirrorDict ):
                     pass
                 else:
                     if(missingSegments[segNum]==0):
-                        OUT = hexSegMirror_addHexSegment( cenrow, cencol, numRings, apDia, 
+                        OUT = add_hex_segment( cenrow, cencol, numRings, apDia, 
                                                          wGap, pistons[segNum], tiltxs[segNum], tiltys[segNum], OUT);
                         pass
                     segNum += 1
                 stepnum += 1
 
-    return falco.utils.padOrCropEven(OUT,N)
+    return falco.util.pad_crop(OUT,N)
 
 
-def hexSegMirror_getSupport( hexMirrorDict ):
-#%hexSegMirror_getSupport Returns the support of the pupil function defined
+def get_support( hexMirrorDict ):
+#%get_support Returns the support of the pupil function defined
 #%by a hexagonally segmented mirror 
 #%   Input: hexMirrorDict - Dictionary with the following variables 
 #%   apDia - flat to flat aperture diameter (samples)
@@ -165,7 +165,7 @@ def hexSegMirror_getSupport( hexMirrorDict ):
     if('missingSegments' in hexMirrorDict.keys()):
         missingSegments = hexMirrorDict["missingSegments"]
     else:
-        missingSegments = np.ones(hexSegMirror_numSegments( numRings ),)
+        missingSegments = np.ones(count_segments( numRings ),)
         
     OUT = np.zeros((N,N))
     
@@ -184,7 +184,7 @@ def hexSegMirror_getSupport( hexMirrorDict ):
             cencol = cencol + offset[1]
         
         if(missingSegments[count]==1):
-            OUT = hexSegMirror_addHexagon( cenrow,cencol, hexFlatDiam, OUT )
+            OUT = add_hex( cenrow,cencol, hexFlatDiam, OUT )
 
         count += 1
         
@@ -204,15 +204,15 @@ def hexSegMirror_getSupport( hexMirrorDict ):
                     pass
                 else:
                     if(missingSegments[count]==1):
-                        OUT = hexSegMirror_addHexagon( cenrow,cencol, hexFlatDiam, OUT )
+                        OUT = add_hex( cenrow,cencol, hexFlatDiam, OUT )
                     count = count + 1
                 stepnum = stepnum + 1
 
     return OUT
 
 
-def hexSegMirror_numSegments( numRings ):
-#%hexSegMirror_numSegments Returns the number of segments in a hexagonal
+def count_segments( numRings ):
+#%count_segments Returns the number of segments in a hexagonal
 #%mirror with a given number of rings, 'numRings'
 #%   numRings - number of rings in the mirror
 #

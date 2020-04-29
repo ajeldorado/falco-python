@@ -1,10 +1,11 @@
-import falco
+"""Module for thin film functions."""
 import numpy as np
 from os.path import isfile
 
-def falco_discretize_FPM_surf(FPMsurf,t_nm_vec, dt_nm):
+
+def discretize_fpm_surf(FPMsurf, t_nm_vec, dt_nm):
     """
-     Function to discretize the surface profiles of the FPM materials.
+    Discretize the surface profiles of the FPM materials.
 
     Parameters
     ----------
@@ -35,44 +36,47 @@ def falco_discretize_FPM_surf(FPMsurf,t_nm_vec, dt_nm):
     return DMtransInd.astype(int)
    
     
-def falco_thin_film_solver(n,d0,theta,lam,tetm=0):
+def solver(n, d0, theta, lam, tetm=0):
     """
-    # Function from David Marx to compute thin film equations.
+    Solve the thin film equations for the given materials.
 
-    function [R, T, rr, tt] = falco_thin_film_solver(n,d,theta,lam,tetm)
-    % [R, T, rr, tt] = thin_film_filter_2(n,d,theta,lam,[tetm])
-    % n = index of refraction for each layer. 
-    %     n(1) = index of incident medium
-    %     n(N) = index of transmission medium
-    %     then length(n) must be >= 2
-    % d0 = thickness of each layer, not counting incident medium or transmission
-    %     medium. length(d) = length(n)-2
-    % theta = angle of incidence [rad], scalar only
-    % lam = wavelength (scalar only). units of lam must be same as d
-    % tetm: 0 => TE (default), 1 => TM
-    %
-    % outputs:
-    % R = normalized reflected intensity coefficient
-    % T =        "   transmitted     "
-    % rr = complex field reflection coefficient
-    % tt =      "        transmission "
+    Parameters
+    ----------
+    n : array_like
+        index of refraction for each layer.
+        n(1) = index of incident medium
+        n(N) = index of transmission medium
+        then length(n) must be >= 2
+    d0 : array_like
+        thickness of each layer, not counting incident medium or transmission
+        medium. length(d) = length(n)-2.
+    theta : float
+        angle of incidence [radians].
+    lam : float
+        wavelength. units of lam must be same as d0.
+    tetm : bool, optional
+        0 => TE, 1 => TM. The default is 0.
+
+    Returns
+    -------
+    R : numpy ndarray
+        normalized reflected intensity coefficient
+    T : numpy ndarray
+        normalized transmitted intensity coefficient
+    rr : numpy ndarray
+        complex field reflection coefficient
+    tt : numpy ndarray
+        complex field transmission coefficient
+
     """
-        
     N = len(n)
     if not (len(d0) == N-2):
-        # error('n and d mismatch')
+        raise ValueError('n and d size mismatch')
         pass
     
-    #n = n(:); 
     np.hstac
     d = np.hstack((0,d0.reshape(len(d0,)), 0))
-    
-#    #if nargin < 5, tetm = 0; end:
-#    if 'TE' in kwargs and kwargs["TE"]==True:
-#        tetm = 1
-#    else:
-#        tetm = 0
-    
+        
     kx = 2*np.pi*n[0]*np.sin(theta)/lam
     kz = -np.sqrt( (2*np.pi*n/lam)**2 - kx**2 ) # sign agrees with measurement convention
     
@@ -112,57 +116,55 @@ def falco_thin_film_solver(n,d0,theta,lam,tetm=0):
     
     return [R, T, rr, tt]
 
-def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, pol,**kwargs): #, varargin)
 
-#    % Copyright 2018, by the California Institute of Technology. ALL RIGHTS
-#    % RESERVED. United States Government Sponsorship acknowledged. Any
-#    % commercial use must be negotiated with the Office of Technology Transfer
-#    % at the California Institute of Technology.
-#    % -------------------------------------------------------------------------
-#    %
-#    % function [tCoef] = falco_thin_film_material_def(lam, aoi, t_Ni, t_PMGI, pol)
-#    %
-#    % Calculates the thin-film complex transmission for the provided
-#    % combinations of metal and dielectric thicknesses and list of wavelengths.
-#    %
-#    % INPUTS:
-#    %   lam: Wavelength [m]
-#    %   aoi:    Angle of incidense [deg]
-#    %   t_Ni:   Nickel layer thickness [m]
-#    %   t_PMGI: PMGI layer thickness [m]
-#    %   pol: = 0 for TE(s) polarization, = 1 for TM(p) polarization, 2 for mean
-#    %   of s and p polarizations
-#    %
-#    % OUTPUTS:
-#    %   cMask(t_PMGI,t_ni): complex field transmission coeffient. Scalar,
-#    %   complex value.
-#    %
-#    % REVISION HISTORY:
-#    % Modified on 2019-01-28 by A.J. Riggs to:
-#    %  -Allow for returning the mean transmission for different polarizations
-#    %  -Add optional keyword input for OPD or non-OPD phase convention choice
-#    %  -Add optional keyword input for substrate material choice.
-#    %  -Cleaned up the code.
-#    % Modified on 2018-05-01 by A.J. Riggs.
-#    % Created on 2017-12-11 by Erkin Sidick.
-#    % 1/25/2019: Erkin replaced Ni, Ti and Fused-Silica indices with Dwight's.
-#    % -------------------------------------------------------------------------
-#    
-#    function [tCoef, rCoef] = falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, pol, varargin)
-#    
-    # Optional Keyword Inputs
-    flagOPD = True if ("OPD" in kwargs) and (kwargs["OPD"]==True) else False # OPD phase sign convention        
-    substrate = kwargs["SUBSTRATE"] if "SUBSTRATE" in kwargs else "FS"
+def define_materials(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, \
+                                 d0, pol, flagOPD=False, SUBSTRATE='FS'): 
+    """
+    Calculate the thin-film complex transmission and reflectance.
     
-    # Define Material Properties
-    
+    Calculates the thin-film complex transmission and reflectance for the
+    provided combinations of metal and dielectric thicknesses and list of
+    wavelengths.
+
+    Parameters
+    ----------
+    lam : float
+        Wavelength in meters.
+    aoi : flaot
+        Angle of incidence in degrees.
+    t_Ti_base : float
+        Thickness of the titanium layer between the glass and metal in meters.
+    t_Ni_vec : array_like
+        1-D array of nickel thicknesses in meters.
+    t_PMGI_vec : array_like
+        1-D array of PMGI thicknesses in meters.
+    d0 : TYPE
+        DESCRIPTION.
+    pol : {0, 1, 2}
+        Polarization state to compute values for. 
+        0 for TE(s) polarization,
+        1 for TM(p) polarization,
+        2 for mean of s and p polarizations
+    flagOPD : bool, optional
+        Flag to use the OPD convention. The default is False.
+    SUBSTRATE : str, optional
+        Material to use as the substrate. The default is 'FS'.
+
+    Returns
+    -------
+    tCoef : numpy ndarray
+        2-D array of complex transmission amplitude values.
+    rCoef : numpy ndarray
+        2-D array of complex reflection amplitude values.
+    """
     lam_nm = lam * 1.0e9 # m --> nm
     lam_u = lam*1.0e6; # m --> microns
-    theta  = aoi*np.pi/180. #     % deg --> rad
+    theta  = aoi*(np.pi/180.) #     % deg --> rad
     
+    # Define Material Properties    
     # ---------------------------------------------
     #--Substrate properties
-    if "FS" in substrate.upper():
+    if 'FS' in SUBSTRATE.upper():
         # ----------- Fused Silica from Dwight Moody------------------
         lamFS = 1e9*np.array([0.4e-6, 0.5e-6, .51e-6, .52e-6, .53e-6, .54e-6, .55e-6, .56e-6, .57e-6, .58e-6, .59e-6, .6e-6, .72e-6, .76e-6, 0.8e-6, 0.88e-6, 0.90e-6, 1.04e-6])    
         nFS = np.array([ 1.47012, 1.462, 1.462,  1.461,  1.461,  1.460,  1.460,  1.460,  1.459,  1.459,  1.458,  1.458, 1.45485, 1.45404, 1.45332, 1.45204, 1.45175, 1.44992])
@@ -171,7 +173,7 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
         #n_silica   = vsilica[:,1]
         n_substrate = np.interp(lam_nm,lamFS,nFS) #interp1(lam_silica, n_silica, lam_nm, 'linear');        
         pass 
-    elif "BK7" in substrate.upper():
+    elif 'BK7' in SUBSTRATE.upper():
         B1 = 1.03961212
         B2 = 0.231792344
         B3 = 1.01046945
@@ -248,15 +250,15 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
     lam_ti = titanium[:,0] # nm
     n_ti   = titanium[:,1]
     k_ti   = titanium[:,2]
-    nti = np.interp(lam_nm,lam_ti,n_ti)
-    kti = np.interp(lam_nm,lam_ti,k_ti)
+    nti = np.interp(lam_nm, lam_ti ,n_ti)
+    kti = np.interp(lam_nm, lam_ti, k_ti)
 #    nti    = interp1(lam_ti, n_ti, lam_nm, 'linear');
 #    kti    = interp1(lam_ti, k_ti, lam_nm, 'linear');
     # ---------------------------------------------
     
     # Compute the complex transmission
-    tCoef = np.zeros((Ndiel,Nmetal)) #--initialize
-    rCoef = np.zeros((Ndiel,Nmetal)) #--initialize
+    tCoef = np.zeros((Ndiel, Nmetal)) #--initialize
+    rCoef = np.zeros((Ndiel, Nmetal)) #--initialize
     for jj in range(Ndiel):
         dpm = t_PMGI_vec[jj]
         
@@ -269,64 +271,61 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
             
             #--Choose polarization
             if(pol==2): #--Mean of the two
-                [dummy1, dummy2, rr0, tt0] = falco_thin_film_solver(nvec, dvec, theta, lam, 0)
-                [dummy1, dummy2, rr1, tt1] = falco_thin_film_solver(nvec, dvec, theta, lam, 1)
+                [dummy1, dummy2, rr0, tt0] = solver(nvec, dvec, theta, lam, 0)
+                [dummy1, dummy2, rr1, tt1] = solver(nvec, dvec, theta, lam, 1)
                 rr = (rr0+rr1)/2.;
                 tt = (tt0+tt1)/2.;
             elif(pol==0 or pol==1):
-                [dumm1, dummy2, rr, tt] = falco_thin_film_solver(nvec, dvec, theta, lam, pol)
+                [dumm1, dummy2, rr, tt] = solver(nvec, dvec, theta, lam, pol)
             else:
-                #error('falco_thin_film_material_def.m: Wrong input value for polarization.')
+                #error('define_materials.m: Wrong input value for polarization.')
                 pass
 
             #--Choose phase convention
-            if(flagOPD==False):
-                tCoef[jj,ii] = np.conj(tt) #--Complex field transmission coeffient, changed by erkin
-                rCoef[jj,ii] = np.conj(rr) #--Complex field reflection coeffient, changed by erkin
+            if not flagOPD:
+                tCoef[jj,ii] = np.conj(tt) #--Complex field transmission coeffient
+                rCoef[jj,ii] = np.conj(rr) #--Complex field reflection coeffient
             else: #--OPD phase convention is negative of oppositive convention
-                tCoef[jj,ii] = tt #--Complex field transmission coeffient, changed by erkin
-                rCoef[jj,ii] = rr #--Complex field reflection coeffient, changed by erkin
-                pass
+                tCoef[jj,ii] = tt #--Complex field transmission coeffient
+                rCoef[jj,ii] = rr #--Complex field reflection coeffient
     
-    return [tCoef, rCoef]
+    return tCoef, rCoef
 
 
-def falco_gen_complex_trans_table(mp,**kwargs):
-
-#% Calculate thin-film complex transmission data cube. The three dimensions
-#% are for metal thickness, dielectric thickness, and wavelength.
-#%
-#% function [complexTrans] = falco_gen_complex_trans_table(mp,varargin)%
-#%
-#% REQUIRED INPUT:
-#% -mp = structure of model parameters
-#%
-#% OPTIONAL INPUT:
-#% -'reflection','refl','lowfs','lowfsc' = keyword to return the complex 
-#% reflection coefficient instead of the complex transmission coefficient.
-#%
-#% OUTPUTS:
-#% -complexTransCompact = complex field reflection coefficients sampled within the
-#%   possible thicknesses of metal and dielectric and at the chosen
-#%   wavelengths. For compact model.
-#% -complexTransFull = same as above, but for full model.
-#
-#function [complexTransCompact, complexTransFull] = falco_gen_complex_trans_table(mp,varargin)
-
-    # Optional Inputs
-    substrate = kwargs["SUBSTRATE"] if "SUBSTRATE" in kwargs else "FS"
-    flagRefl = True if "REFLECTION" in kwargs and kwargs["REFLECTION"]==True else False # flag to take the value in reflection instead of transmission
+def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
+    """
+    Calculate 3-D look-up table for thin film transmission data.
     
+    Calculate thin-film complex transmission data cube. The three dimensions
+    are for metal thickness, dielectric thickness, and wavelength.
+    
+    Parameters
+    ----------
+    mp : ModelParameters
+        Model parameters object.
+    flagRefl : TYPE, optional
+        Compute the thin film properties in reflection. The default is False.
+    SUBSTRATE : TYPE, optional
+        Change the substrate material. The default is 'FS'. The only other
+        option is 'BK7'.
+
+    Returns
+    -------
+    complexTransCompact : numpy ndarray
+        Complex transmission datacube for FALCO's compact model.
+    complexTransFull : numpy ndarray
+        Complex transmission datacube for FALCO's full model.
+    """
     mp.F3.metal = 'Ni'
     mp.F3.diel = 'PMGI'
     
     fn_cube_compact = print('%s/data/material/ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1fN%d_%.1fdeg_compact.npy' %
-        (mp.path.falco,substrate,mp.t_Ti_nm,mp.F3.metal,min(mp.t_metal_nm_vec), max(mp.t_metal_nm_vec), mp.dt_metal_nm,
+        (mp.path.falco,SUBSTRATE,mp.t_Ti_nm,mp.F3.metal,min(mp.t_metal_nm_vec), max(mp.t_metal_nm_vec), mp.dt_metal_nm,
         mp.F3.diel, min(mp.t_diel_nm_vec),  max(mp.t_diel_nm_vec),  mp.dt_diel_nm,
         (1e9*mp.lambda0),100*mp.fracBW,mp.Nsbp,mp.aoi))
     
     fn_cube_full = print('%s/data/material/ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1f_%dN%d_%.1fdeg_full.npy' %
-        (mp.path.falco,substrate,mp.t_Ti_nm,mp.F3.metal,min(mp.t_metal_nm_vec), max(mp.t_metal_nm_vec), mp.dt_metal_nm, 
+        (mp.path.falco,SUBSTRATE,mp.t_Ti_nm,mp.F3.metal,min(mp.t_metal_nm_vec), max(mp.t_metal_nm_vec), mp.dt_metal_nm, 
         mp.F3.diel, min(mp.t_diel_nm_vec),  max(mp.t_diel_nm_vec),  mp.dt_diel_nm,
         (1e9*mp.lambda0),100*mp.fracBW,mp.Nsbp,mp.Nwpsbp,mp.aoi))
     
@@ -336,7 +335,6 @@ def falco_gen_complex_trans_table(mp,**kwargs):
     
     t_Ti_m = 1e-9*mp.t_Ti_nm #--Static base layer of titanium beneath any nickel.
     aoi = mp.aoi
-    d0fac = mp.FPM.d0fac
     Nsbp = mp.Nsbp
     t_diel_m_vec = 1e-9*mp.t_diel_nm_vec #--PMGI thickness range
     t_metal_m_vec = 1e-9*mp.t_metal_nm_vec #--nickel thickness range
@@ -361,7 +359,7 @@ def falco_gen_complex_trans_table(mp,**kwargs):
         for si in range(Nsbp):
             lam = sbp_centers[si]
             d0 = lam * mp.FPM.d0fac # Max thickness of PMGI + Ni
-            [tCoef,rCoef] = falco_thin_film_material_def(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2) 
+            [tCoef,rCoef] = define_materials(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2) 
             if(flagRefl):
                 complexTransCompact[:,:,si] = rCoef     
             else:
@@ -393,7 +391,7 @@ def falco_gen_complex_trans_table(mp,**kwargs):
             for li in range(len(lambdas)):
                 lam = lambdas[li]
                 d0 = lam * mp.FPM.d0fac # Max thickness of PMGI + Ni
-                [tCoef,rCoef] = falco_thin_film_material_def(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
+                [tCoef,rCoef] = define_materials(lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
                 if(flagRefl):
                     complexTransFull[:,:,li] = rCoef
                 else:
@@ -405,4 +403,129 @@ def falco_gen_complex_trans_table(mp,**kwargs):
         np.save(fn_cube_full,complexTransFull)
         print('Saved complex transmission datacube: %s\n' % fn_cube_full)
     
-    return [complexTransCompact, complexTransFull]
+    return complexTransCompact, complexTransFull
+
+
+# % Function to produce the complex transmission of a focal plane mask made
+# % of metal and dielectric layered on fused silica.
+
+def gen_hlc_fpm_complex_trans_mat(mp, si, wi, modelType):
+    """
+    Produce the complex transmission of an HLC focal plane mask.
+
+    Parameters
+    ----------
+    mp : TYPE
+        DESCRIPTION.
+    si : TYPE
+        DESCRIPTION.
+    wi : TYPE
+        DESCRIPTION.
+    modelType : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    FPMmat : numpy ndarray
+        2-D, complex-valued representation of the HLC FPM.
+
+    Notes
+    -----
+    In Matlab version is called falco_gen_HLC_FPM_complex_trans_mat.
+    """
+    # Different variables for compact and full models
+    if modelType.lower() == 'compact':
+        # size = (Ndiel, Nmetal, mp.Nsbp)
+        complexTransCube = mp.complexTransCompact
+        # Index of the wavelength in mp.sbp_centers
+        ilam = si
+    elif modelType.lower() == 'full':
+        # size = (Ndiel,Nmetal,mp.Nsbp*mp.Nwpsbp)
+        complexTransCube = mp.complexTransFull
+        # Index of the wavelength in mp.lam_array
+        ilam = (si-1)*mp.Nwpsbp + wi
+    else:
+        raise ValueError('modelType must specify full or compact model.')
+
+    t_diel_bias = mp.t_diel_bias_nm*1e-9  # bias thickness of dielectric [m]
+
+    # Generate thickness profiles of each layer
+    # Metal layer profile [m]
+    DM8surf = gen_hlc_fpm_surf_from_cube(mp.dm8, modelType)
+    # Dielectric layer profile [m]
+    DM9surf = t_diel_bias + gen_hlc_fpm_surf_from_cube(mp.dm9, modelType)
+    Nxi = DM8surf.shape[1]
+    Neta = DM8surf.shape[0]
+
+    if not (DM8surf.size == DM9surf.size):
+        raise ValueError('FPM surf arrays for DM 8 and 9 must be same size!')
+
+    # Obtain indices of nearest thickness values in the complex tran datacube.
+    DM8transInd = discretize_fpm_surf(DM8surf, mp.t_metal_nm_vec,
+                                      mp.dt_metal_nm)
+    DM9transInd = discretize_fpm_surf(DM9surf, mp.t_diel_nm_vec,
+                                      mp.dt_diel_nm)
+
+    # Look up values
+    FPMmat = np.zeros((Neta, Nxi))
+    for ix in range(Nxi):
+        for iy in range(Neta):
+            ind_metal = DM8transInd[iy, ix]
+            ind_diel = DM9transInd[iy, ix]
+            FPMmat[iy, ix] = complexTransCube(ind_diel, ind_metal, ilam)
+
+    return FPMmat
+
+
+def gen_hlc_fpm_surf_from_cube(dm, modelType):
+    """
+    Produce a FPM surface (in meters) with linear superposition.
+
+    Function to produce a FPM surface (in meters). Uses linear superposition
+    of a datacube of influence functions.
+
+    Parameters
+    ----------
+    dm : TYPE
+        DESCRIPTION.
+    modelType : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    fpmSurf : TYPE
+        DESCRIPTION.
+
+    Notes
+    -----
+    In Matlab version is called falco_gen_HLC_FPM_surf_from_cube.
+
+    """
+    if modelType.lower() == 'compact':
+        dmFullOrCompact = dm.compact
+    elif modelType.lower() == 'full':
+        dmFullOrCompact = dm
+    else:
+        raise ValueError('modelType must be full or compact.')
+
+    fpmSurf = np.zeros((dmFullOrCompact.NdmPad, dmFullOrCompact.NdmPad))
+    for iact in range(dm.NactTotal):
+        if (any(dmFullOrCompact.inf_datacube[:, :, iact].flatten()) and any(dm.VtoH.flatten()[iact])):
+            x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0, iact],
+                                  dmFullOrCompact.xy_box_lowerLeft_AS[0, iact]
+                                  + dmFullOrCompact.Nbox, dtype=np.int)
+            y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft_[1, iact],
+                                  dmFullOrCompact.xy_box_lowerLeft_AS[1, iact]
+                                  + dmFullOrCompact.Nbox, dtype=np.int)
+            fpmSurf[y_box_ind, x_box_ind] += dm.V.flatten()[iact] *\
+            dm.VtoH.flatten()[iact]*dmFullOrCompact.inf_datacube[:, :, iact]
+
+    # Non-negative values only
+    fpmSurf[fpmSurf < 0] = 0.
+
+    return fpmSurf

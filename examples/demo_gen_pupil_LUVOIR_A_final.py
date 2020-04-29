@@ -11,7 +11,7 @@ inputs["Nbeam"] = 1000
 inputs["magfacD"] = 1.
 inputs["wStrut"] = 0.01
 
-pupil = falco.masks.falco_gen_pupil_LUVOIR_A_final(inputs)
+pupil = falco.mask.falco_gen_pupil_LUVOIR_A_final(inputs)
 
 plt.imshow(pupil); plt.colorbar(); plt.pause(0.1)
 
