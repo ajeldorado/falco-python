@@ -251,7 +251,7 @@ else:
     nBeamOut = mp.P1.compact.Nbeam
     dx = 0
     dy = 0
-    mp.P3.compact.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.compact.mask = falco.mask.rotate_shift_downsample_pupil_mask(SP0, nBeamIn, nBeamOut, dx, dy, 0.)
 
 if(mp.P1.full.Nbeam == NbeamSP):
     mp.P3.full.mask = SP0
@@ -260,7 +260,7 @@ else:
     nBeamOut = mp.P1.full.Nbeam
     dx = 0
     dy = 0
-    mp.P3.full.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.full.mask = falco.mask.rotate_shift_downsample_pupil_mask(SP0, nBeamIn, nBeamOut, dx, dy, 0.)
 
 
 #--Number of re-imaging relays between pupil planesin compact model. Needed

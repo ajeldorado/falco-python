@@ -20,31 +20,31 @@ import EXAMPLE_defaults_WFIRST_PhaseB_PROPER_SPC_Spec as DEFAULTS
 mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
-mp.path.falco = '../'  #--Location of FALCO
+mp.path.falco = '../'  # Location of FALCO
 
 # Step 1: Set paths for output if desired
 
-# ##--Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
-# mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
+# ## Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
+# mp.path.config = './' # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 # mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
 
 # Step 2: Overwrite default values as desired
 
-# ##--Special Computational Settings
+# ## Special Computational Settings
 mp.flagPlot = True;
-mp.flagMultiproc = False; #--whether to use multiprocessing to parallelize some large computations
-#mp.Nthreads = 2         #--Number of threads to use when using multiprocessing. If undefined, it is set to the 
+mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
+#mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
-#--Record Keeping
+# Record Keeping
 mp.SeriesNum = 1;
 mp.TrialNum = 1;
 
-# #--DEBUGGING:
-mp.fracBW = 0.01       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
-mp.Nsbp = 1            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
-mp.Nwpsbp = 1          #--Number of wavelengths to used to approximate an image in each sub-bandpass
-# # mp.flagParfor = false; #--whether to use parfor for Jacobian calculation
+# # DEBUGGING:
+mp.fracBW = 0.01       # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.Nsbp = 1            # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+mp.Nwpsbp = 1          # Number of wavelengths to used to approximate an image in each sub-bandpass
+# # mp.flagParfor = false; # whether to use parfor for Jacobian calculation
 
 # mp.controller = 'plannedEFC';
 # mp.ctrl.sched_mat = [...
@@ -80,8 +80,8 @@ else:
     lambdaFacs = np.linspace(1-mp.fracBW/2., 1+mp.fracBW/2., mp.Nsbp)
 
 
-#--Get the Input Pupil's E-field
-mp.P1.compact.E = np.ones((mp.P1.compact.Nbeam+2, mp.P1.compact.Nbeam+2, mp.Nsbp), dtype=complex) #--Initialize
+# Get the Input Pupil's E-field
+mp.P1.compact.E = np.ones((mp.P1.compact.Nbeam+2, mp.P1.compact.Nbeam+2, mp.Nsbp), dtype=complex) # Initialize
 for si in range(mp.Nsbp):
     lambda_um = 1e6*mp.lambda0*lambdaFacs[si]
 
@@ -105,11 +105,11 @@ for si in range(mp.Nsbp):
     hduImag.writeto(fnImag,overwrite=True)
     
 
-    #--Downsampling for the compact model
+    # Downsampling for the compact model
     dxF = 1
     dxC = mp.P1.full.Nbeam/mp.P1.compact.Nbeam
-    Nf = fldFull.shape[0] #--N full
-    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
+    Nf = fldFull.shape[0] # N full
+    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) # N compact
     xF = np.arange(-Nf/2, Nf/2)*dxF
     xC = np.arange(-Nc/2, Nc/2)*dxC
 #     [Xf,Yf] = np.meshgrid(xF);
@@ -117,7 +117,7 @@ for si in range(mp.Nsbp):
     interp_spline_real = RectBivariateSpline(xF, xF, np.real(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     interp_spline_imag = RectBivariateSpline(xF, xF, np.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     fldC = interp_spline_real(xC, xC) + 1j*interp_spline_imag(xC, xC)
-#     fldC = interp2(Xf,Yf,fldFull,Xc,Yc,'cubic',0); #--Downsample by interpolation
+#     fldC = interp2(Xf,Yf,fldFull,Xc,Yc,'cubic',0); # Downsample by interpolation
     N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
     fldC = falco.util.pad_crop(fldC, (N, N))
     if mp.flagPlot:
@@ -127,7 +127,7 @@ for si in range(mp.Nsbp):
 #         figure(608); imagesc(abs(fldC)); axis xy equal tight; colorbar; colormap parula; drawnow;
         pass
         
-    #--Assign to initial E-field in compact model.
+    # Assign to initial E-field in compact model.
 #     Etemp = 0*fldC;
 #     Etemp[2:end,2:end] = rot90(fldC(2:end,2:end),2);
 #     mp.P1.compact.E[:,:,si] = Etemp

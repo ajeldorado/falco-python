@@ -12,29 +12,29 @@ mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
 
-mp.path.falco = '../'  #--Location of FALCO
+mp.path.falco = '../'  # Location of FALCO
 
-##--Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
-mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
+## Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
+mp.path.config = './' # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
 
 ## Step 3: Overwrite default values as desired
 
-# ##--Special Computational Settings
+# ## Special Computational Settings
 mp.flagPlot = True;
-mp.flagMultiproc = False; #--whether to use multiprocessing to parallelize some large computations
-#mp.Nthreads = 2         #--Number of threads to use when using multiprocessing. If undefined, it is set to the 
+mp.flagMultiproc = False; # whether to use multiprocessing to parallelize some large computations
+#mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
 #mp.propMethodPTP = 'mft';
 
-#--Record Keeping
+# Record Keeping
 mp.TrialNum = 1;
 mp.SeriesNum = 1;
 
-#--Use just 1 wavelength for initial debugging of code
-mp.fracBW = 0.01;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
-mp.Nsbp = 1;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+# Use just 1 wavelength for initial debugging of code
+mp.fracBW = 0.01;       # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.Nsbp = 1;            # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1;
 
 
