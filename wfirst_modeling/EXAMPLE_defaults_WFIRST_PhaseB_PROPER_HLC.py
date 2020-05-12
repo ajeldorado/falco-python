@@ -238,30 +238,6 @@ mp.P1.compact.Nbeam = 309
 # mp.P3.compact.Nbeam = 386;
 mp.P4.compact.Nbeam = 309
 
-#--Shaped Pupil Mask: Load and downsample.
-# mp.compact.flagGenApod = False
-# mp.full.flagGenApod = False
-# # mp.SPname = 'SPC-20190130';
-# SP0 = fits.getdata('../data/WFIRST/PhaseB/SPM_SPC-20190130.fits', ext=0)
-# NbeamSP = 1000
-# if(mp.P1.compact.Nbeam == NbeamSP):
-#     mp.P3.compact.mask = SP0
-# else:
-#     nBeamIn = NbeamSP
-#     nBeamOut = mp.P1.compact.Nbeam
-#     dx = 0
-#     dy = 0
-#     mp.P3.compact.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
-
-# if(mp.P1.full.Nbeam == NbeamSP):
-#     mp.P3.full.mask = SP0
-# else:
-#     nBeamIn = NbeamSP
-#     nBeamOut = mp.P1.full.Nbeam
-#     dx = 0
-#     dy = 0
-#     mp.P3.full.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
-
 
 #--Number of re-imaging relays between pupil planesin compact model. Needed
 #to keep track of 180-degree rotations and (1/1j)^2 factors compared to the

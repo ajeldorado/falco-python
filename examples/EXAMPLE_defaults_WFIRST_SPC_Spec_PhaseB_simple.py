@@ -271,7 +271,8 @@ else:
     nBeamOut = mp.P1.compact.Nbeam
     dx = 0
     dy = 0
-    mp.P3.compact.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.compact.mask = falco.mask.rotate_shift_downsample_pupil_mask(SP0, nBeamIn,
+                                                                       nBeamOut, dx, dy, 0.)
 
 if(mp.P1.full.Nbeam == 1000):
     mp.P3.full.mask = SP0
@@ -280,7 +281,8 @@ else:
     nBeamOut = mp.P1.full.Nbeam
     dx = 0
     dy = 0
-    mp.P3.full.mask = falco.mask.resample_spm(SP0, nBeamIn, nBeamOut, dx, dy, centering = 'pixel')
+    mp.P3.full.mask = falco.mask.rotate_shift_downsample_pupil_mask(SP0, nBeamIn,
+                                                                    nBeamOut, dx, dy, 0.)
 
 
 ##--Pupil definition
@@ -301,7 +303,4 @@ mp.F3.Rin = 2.6;    # maximum radius of inner part of the focal plane mask [lamb
 #mp.F3.RinA = 2.6;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
 mp.F3.Rout = 9.0;   # radius of outer opaque edge of FPM [lambda0/D]
 mp.F3.ang = 65;    # on each side, opening angle [degrees]
-
-mp.FPMampFac = 0;#10^(-3.7); # amplitude transmission of the FPM
-
 

@@ -56,10 +56,10 @@ def wrapper(mp, cvar, jacStruct):
     #--Make the regularization matrix. (Define only the diagonal here to save RAM.)
     cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
     cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
-    print('done.') #fprintf(' done. Time: %.3f\n',toc);
+    print('done.')
 
     #--Call the Controller Function
-    print('Control beginning ...') # tic
+    print('Control beginning ...')
     #--Established, conventional controllers
     if(mp.controller.lower()=='plannedefc'): #--EFC regularization is scheduled ahead of time
         dDM = planned_efc(mp, cvar)
@@ -112,7 +112,7 @@ def cull_actuators(mp, cvar, jacStruct):
     #--Reduce the number of actuators used based on their relative strength in the Jacobian
     if(cvar.flagCullAct and cvar.flagRelin):
         
-        print('Weeding out weak actuators from the control Jacobian...'); 
+        print('Weeding out weak actuators from the control Jacobian...')
         if(any(mp.dm_ind==1)):
             G1intNorm = np.sum( np.mean(np.abs(jacStruct.G1)**2,axis=2), axis=0)
             G1intNorm = G1intNorm/np.max(G1intNorm)
@@ -231,34 +231,34 @@ def grid_search_efc(mp, cvar):
         if(any(mp.dm_ind==8)): dDM8V_store[:,ni] = dDM_temp.dDM8V
         if(any(mp.dm_ind==9)): dDM9V_store[:,ni] = dDM_temp.dDM9V
 
-    #--Print out results to the command line
-    print('Scaling factor:\t',end='')
-    for ni in range(Nvals): print('%.2f\t\t' % (vals_list[ni][1]),end='')
+    # Print out results to the command line
+    print('Scaling factor:\t', end='')
+    for ni in range(Nvals): print('%.2f\t\t' % (vals_list[ni][1]), end='')
 
-    print('\nlog10reg:\t',end='')
-    for ni in range(Nvals): print('%.1f\t\t' % (vals_list[ni][0]),end='')
+    print('\nlog10reg:\t', end='')
+    for ni in range(Nvals): print('%.1f\t\t' % (vals_list[ni][0]), end='')
     
-    print('\nInorm:  \t',end='')
-    for ni in range(Nvals):  print('%.2e\t' % (InormVec[ni]),end='')
-    print('\n',end='')
+    print('\nInorm:  \t', end='')
+    for ni in range(Nvals): print('%.2e\t' % (InormVec[ni]), end='')
+    print('\n', end='')
 
-    #--Find the best scaling factor and Lagrange multiplier pair based on the best contrast.
-    #[cvar.cMin,indBest] = np.min(InormVec)
+    # Find the best scaling factor and Lagrange multiplier pair based on the best contrast.
+    # [cvar.cMin,indBest] = np.min(InormVec)
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
     dDM = falco.config.Object()
-    #--delta voltage commands
-    if(any(mp.dm_ind==1)): dDM.dDM1V = np.squeeze(dDM1V_store[:,:,indBest])
-    if(any(mp.dm_ind==2)): dDM.dDM2V = np.squeeze(dDM2V_store[:,:,indBest])
-    if(any(mp.dm_ind==8)): dDM.dDM8V = np.squeeze(dDM8V_store[:,indBest])
-    if(any(mp.dm_ind==9)): dDM.dDM9V = np.squeeze(dDM9V_store[:,indBest])
+    # delta voltage commands
+    if(any(mp.dm_ind==1)): dDM.dDM1V = np.squeeze(dDM1V_store[:, :, indBest])
+    if(any(mp.dm_ind==2)): dDM.dDM2V = np.squeeze(dDM2V_store[:, :, indBest])
+    if(any(mp.dm_ind==8)): dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
+    if(any(mp.dm_ind==9)): dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
 
     cvar.log10regUsed = vals_list[indBest][0]
     dmfacBest = vals_list[indBest][1]
     if(mp.ctrl.flagUseModel):
-        print('Model-based grid search gives log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e contrast.' % (cvar.log10regUsed, dmfacBest, cvar.cMin) )
+        print('Model-based grid search expects log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e normalized intensity.' % (cvar.log10regUsed, dmfacBest, cvar.cMin) )
     else:
-        print('Empirical grid search gives log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e contrast.' % (cvar.log10regUsed, dmfacBest, cvar.cMin) )
+        print('Empirical grid search finds log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e normalized intensity.' % (cvar.log10regUsed, dmfacBest, cvar.cMin) )
     
     return dDM
 

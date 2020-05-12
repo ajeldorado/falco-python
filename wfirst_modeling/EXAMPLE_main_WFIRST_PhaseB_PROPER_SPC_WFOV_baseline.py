@@ -16,7 +16,7 @@ import proper
 import wfirst_phaseb_proper
 
 # Load defaults
-import EXAMPLE_defaults_WFIRST_PhaseB_PROPER_SPC_Spec as DEFAULTS
+import EXAMPLE_defaults_WFIRST_PhaseB_PROPER_SPC_WFOV as DEFAULTS
 mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
@@ -28,13 +28,12 @@ mp.path.falco = '../'  # Location of FALCO
 # mp.path.config = './' # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 # mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
-
 # Step 2: Overwrite default values as desired
 
 # ## Special Computational Settings
 mp.flagPlot = True;
 mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
-#mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
+# mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
 # Record Keeping
 mp.SeriesNum = 1;
@@ -76,6 +75,7 @@ optval.output_dim = 1024  # Get the Input Pupil's E-field
 
 optval.use_pupil_mask = False  # No SP for getting initial phase
 
+
 if(mp.Nsbp == 1):
     lambdaFacs = np.array([1.])
 else:
@@ -83,60 +83,44 @@ else:
 
 
 # Get the Input Pupil's E-field
-mp.P1.compact.E = np.ones((mp.P1.compact.Nbeam+2, mp.P1.compact.Nbeam+2, mp.Nsbp), dtype=complex) # Initialize
+N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
+mp.P1.compact.E = np.ones((N, N, mp.Nsbp), dtype=complex)  # Initialize
 for si in range(mp.Nsbp):
     lambda_um = 1e6*mp.lambda0*lambdaFacs[si]
 
-    fldFull, sampling = proper.prop_run('wfirst_phaseb', lambda_um, nout,  QUIET=True, PASSVALUE=optval.__dict__)
+    fldFull, sampling = proper.prop_run('wfirst_phaseb', lambda_um, nout, QUIET=True, PASSVALUE=optval.__dict__)
     if(mp.flagPlot):
         plt.figure(1); plt.imshow(np.angle(fldFull)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
         plt.figure(2); plt.imshow(np.abs(fldFull)); plt.colorbar(); plt.magma(); plt.pause(0.5)
-        # figure(605); imagesc(angle(fldFull)); axis xy equal tight; colorbar; colormap hsv; drawnow;
-#         figure(606); imagesc(abs(fldFull)); axis xy equal tight; colorbar; colormap parula; drawnow;
-        pass
 
-    lams = '%6.4f' % lambda_um 
-    pols = 'polaxis%s' % optval.polaxis #['polaxis'  num2str(optval.polaxis,2)];
+    lams = '%6.4f' % lambda_um
+    pols = 'polaxis%s' % optval.polaxis
     fnReal = (mp.full.input_field_rootname + '_' + lams + 'um_' + pols + '_real.fits')
     fnImag = (mp.full.input_field_rootname + '_' + lams + 'um_' + pols + '_imag.fits')
-#    fitswrite(real(fldFull), [mp.full.input_field_rootname '_' lams 'um_' pols '_real.fits' ]);
-#    fitswrite(imag(fldFull), [mp.full.input_field_rootname '_' lams 'um_' pols '_imag.fits' ]);
     hduReal = fits.PrimaryHDU(np.real(fldFull))
-    hduReal.writeto(fnReal,overwrite=True)
+    hduReal.writeto(fnReal, overwrite=True)
     hduImag = fits.PrimaryHDU(np.imag(fldFull))
-    hduImag.writeto(fnImag,overwrite=True)
+    hduImag.writeto(fnImag, overwrite=True)
     
 
     # Downsampling for the compact model
     dxF = 1
     dxC = mp.P1.full.Nbeam/mp.P1.compact.Nbeam
-    Nf = fldFull.shape[0] # N full
-    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) # N compact
+    Nf = fldFull.shape[0]  # N full
+    Nc = falco.util.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf )  # N compact
     xF = np.arange(-Nf/2, Nf/2)*dxF
     xC = np.arange(-Nc/2, Nc/2)*dxC
-#     [Xf,Yf] = np.meshgrid(xF);
-#     [Xc,Yc] = np.meshgrid(xC);
     interp_spline_real = RectBivariateSpline(xF, xF, np.real(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     interp_spline_imag = RectBivariateSpline(xF, xF, np.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     fldC = interp_spline_real(xC, xC) + 1j*interp_spline_imag(xC, xC)
-#     fldC = interp2(Xf,Yf,fldFull,Xc,Yc,'cubic',0); # Downsample by interpolation
     N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
     fldC = falco.util.pad_crop(fldC, (N, N))
     if mp.flagPlot:
         plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
-        plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        
-        # figure(607+si-1); imagesc(angle(fldC)); axis xy equal tight; colorbar; colormap hsv; drawnow;
-#         figure(608); imagesc(abs(fldC)); axis xy equal tight; colorbar; colormap parula; drawnow;
-        pass
+        plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.1)
         
     # Assign to initial E-field in compact model.
-#     Etemp = 0*fldC;
-#     Etemp[2:end,2:end] = rot90(fldC(2:end,2:end),2);
-#     mp.P1.compact.E[:,:,si] = Etemp
-    mp.P1.compact.E[:,:,si] = falco.prop.relay(fldC, 1, centering=mp.centering)
-    
-    
-
+    mp.P1.compact.E[:, :, si] = falco.prop.relay(fldC, 1, centering=mp.centering)
 
 # Step 4: Generate the label associated with this trial
 mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)) + '_Trial' + ('%04d_'%(mp.TrialNum)) + mp.coro + \
@@ -145,9 +129,8 @@ str(mp.d_dm1_dm2) + '_IWA' + str(mp.Fend.corr.Rin) + '_OWA' + str(mp.Fend.corr.R
 str(mp.Nsbp) + 'lams' + str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100) + '_' + mp.controller
 
 
-## Step 5: Perform the Wavefront Sensing and Control
+# Step 5: Perform the Wavefront Sensing and Control
 
 out = falco.setup.flesh_out_workspace(mp)
-falco.wfsc.loop(mp, out)
 
-# print('END OF MAIN: ', mp)
+falco.wfsc.loop(mp, out)
