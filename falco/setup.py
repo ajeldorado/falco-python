@@ -109,7 +109,7 @@ def falco_set_optional_variables(mp):
         # Store in progress workspace data here
 
     # multiprocessing
-    if not hasattr(mp, "Nthreads"):
+    if not hasattr(mp, "flagMultiproc"):
         mp.flagMultiproc = False
     if not hasattr(mp, "Nthreads"):
         mp.Nthreads = psutil.cpu_count(logical=False)
