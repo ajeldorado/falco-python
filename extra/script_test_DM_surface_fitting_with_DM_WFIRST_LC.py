@@ -1,3 +1,4 @@
+import cupy as cp
 import sys
 sys.path.insert(0,"../")
 sys.path.insert(0,"../tests/")
@@ -38,7 +39,7 @@ out = falco.setup.flesh_out_workspace(mp)
 # %% Generate a DM surface and try to re-create the actuator commands
 
 normFac = 1;
-mp.dm1.V = normFac*np.random.rand(mp.dm1.Nact,mp.dm1.Nact)
+mp.dm1.V = normFac*cp.random.rand(mp.dm1.Nact,mp.dm1.Nact)
 DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
 
 if(flagPlotDebug):
@@ -49,7 +50,7 @@ if(flagPlotDebug):
 # DMSurf = padOrCropEven(DMSurf,500);
 Vout = falco.dms.falco_fit_dm_surf(mp.dm1,DM1Surf)/mp.dm1.VtoH
 Verror = mp.dm1.V - Vout;
-rmsVError = np.sqrt(np.mean(Verror.flatten()**2))/normFac;
+rmsVError = cp.sqrt(cp.mean(Verror.flatten()**2))/normFac;
 print('RMS fitting error to voltage map is %.2f%%.\n'%(rmsVError*100))
 
 if(flagPlotDebug):

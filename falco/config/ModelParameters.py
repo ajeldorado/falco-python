@@ -1,3 +1,4 @@
+import cupy as cp
 import copy
 from numpy import inf
 import numpy as np
@@ -153,7 +154,7 @@ class ModelParameters:
         print('--------------------------\n')
         print('Number of keys: %d\n\n'%(len(self.__dict__.keys())))
         #for k in self.__dict__:
-        #    if type(self.__dict__[k]) in [str, int, bool, float] or type(self.__dict__[k]) not np.array:
+        #    if type(self.__dict__[k]) in [str, int, bool, float] or type(self.__dict__[k]) not cp.array:
         #        print('%s: %s\n'%(k, str(type(self.__dict__[k])), str(self.__dict__[k])))
         #    else:
         #        print('%s: \ttype:%s value:\n'%(k, str(type(self.__dict__[k]))))

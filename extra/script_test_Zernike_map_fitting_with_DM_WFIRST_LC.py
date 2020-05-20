@@ -1,3 +1,4 @@
+import cupy as cp
 import sys
 sys.path.insert(0,"../")
 sys.path.insert(0,"../tests/")
@@ -41,10 +42,10 @@ out = falco.setup.flesh_out_workspace(mp)
 ## Step 5
 
 # Determine the region of the array corresponding to the DM surface for use in the fitting.
-mp.dm1.V = np.ones((mp.dm1.Nact,mp.dm1.Nact))
+mp.dm1.V = cp.ones((mp.dm1.Nact,mp.dm1.Nact))
 testSurf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)
-testArea = np.zeros(testSurf.shape)
-testArea[testSurf >= 0.5*np.max(testSurf)] = 1
+testArea = cp.zeros(testSurf.shape)
+testArea[testSurf >= 0.5*cp.max(testSurf)] = 1
 
 #--PROPER initialization
 pupil_ratio = 1 # beam diameter fraction
@@ -57,8 +58,8 @@ wavefront = proper.prop_begin(mp.dm1.compact.NdmPad*mp.dm1.dx, wl_dummy, mp.dm1.
 #errorMap = proper.prop_psd_errormap( wavefront, amp, b, c, TPF=True )
 #errorMap = errorMap*testArea;
 
-zSet = np.arange(3,12)
-zCoef = 1e-9*np.random.rand(len(zSet))
+zSet = cp.arange(3,12)
+zCoef = 1e-9*cp.random.rand(len(zSet))
 errorMap = proper.prop_zernikes(wavefront, zSet, zCoef)
 errorMap = errorMap*testArea;
 
@@ -71,7 +72,7 @@ Vout = falco.dms.falco_fit_dm_surf(mp.dm1,errorMap)/mp.dm1.VtoH
 mp.dm1.V = Vout
 DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)  
 surfError = (errorMap - DM1Surf)*testArea;
-rmsError = np.sqrt(np.mean((surfError[testArea==1].flatten()**2)))
+rmsError = cp.sqrt(cp.mean((surfError[testArea==1].flatten()**2)))
 print('RMS fitting error to voltage map is %.2e meters.\n'%rmsError)
 
 if(flagPlotDebug):

@@ -1,3 +1,4 @@
+import cupy as cp
 import sys
 sys.path.insert(0,"../")
 import pytest
@@ -40,7 +41,7 @@ def test_fit_DM_surface_with_DM():
     ## Generate a DM surface and try to re-create the actuator commands
     
     normFac = 1;
-    mp.dm1.V = normFac*np.random.rand(mp.dm1.Nact,mp.dm1.Nact)
+    mp.dm1.V = normFac*cp.random.rand(mp.dm1.Nact,mp.dm1.Nact)
     DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
     
     if(flagPlotDebug):
@@ -51,7 +52,7 @@ def test_fit_DM_surface_with_DM():
     # DMSurf = padOrCropEven(DMSurf,500);
     Vout = falco.dms.falco_fit_dm_surf(mp.dm1,DM1Surf)/mp.dm1.VtoH
     Verror = mp.dm1.V - Vout;
-    rmsVError = np.sqrt(np.mean(Verror.flatten()**2))/normFac;
+    rmsVError = cp.sqrt(cp.mean(Verror.flatten()**2))/normFac;
     print('RMS fitting error to voltage map is %.2f%%.\n'%(rmsVError*100))
     
     if(flagPlotDebug):
@@ -94,10 +95,10 @@ def test_fit_PSD_error_map_with_DM():
     ## Step 5
     
     # Determine the region of the array corresponding to the DM surface for use in the fitting.
-    mp.dm1.V = np.ones((mp.dm1.Nact,mp.dm1.Nact))
+    mp.dm1.V = cp.ones((mp.dm1.Nact,mp.dm1.Nact))
     testSurf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)
-    testArea = np.zeros(testSurf.shape)
-    testArea[testSurf >= 0.5*np.max(testSurf)] = 1
+    testArea = cp.zeros(testSurf.shape)
+    testArea[testSurf >= 0.5*cp.max(testSurf)] = 1
     
     #--PROPER initialization
     pupil_ratio = 1 # beam diameter fraction
@@ -118,7 +119,7 @@ def test_fit_PSD_error_map_with_DM():
     mp.dm1.V = Vout
     DM1Surf =  falco.dms.falco_gen_dm_surf(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.NdmPad)  
     surfError = errorMap - DM1Surf;
-    rmsError = np.sqrt(np.mean((surfError[testArea==1].flatten()**2)))
+    rmsError = cp.sqrt(cp.mean((surfError[testArea==1].flatten()**2)))
     print('RMS fitting error to voltage map is %.2e meters.\n'%rmsError)
     
     if(flagPlotDebug):

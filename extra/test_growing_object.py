@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 import sys
 sys.path.append('/Users/sfregoso/Documents/old_mac/MacPro_2012thru2015/Santos/Work/FelipeStuff/FALCO/git_repos/public/falco-python/')

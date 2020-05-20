@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -33,4 +34,4 @@ LS = falco.masks.falco_gen_pupil_WFIRST_CGI_20191009(Nbeam, centering, changes);
 plt.figure(2); plt.imshow(LS); plt.colorbar(); plt.pause(1)
 
 croppedLS = LS[1::,1::]
-plt.figure(3); plt.imshow(croppedLS - np.fliplr(croppedLS)); plt.colorbar(); plt.pause(1)
+plt.figure(3); plt.imshow(croppedLS - cp.fliplr(croppedLS)); plt.colorbar(); plt.pause(1)

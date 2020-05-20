@@ -1,3 +1,4 @@
+import cupy as cp
 """ 
 Wrapper for the MKL FFT routines. This implements very fast FFT on Intel
 processors, much faster than the stock fftpack routines in numpy/scipy.
@@ -64,18 +65,18 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
     assert (axis < a.ndim and axis >= -1)
     assert (direction == 'forward' or direction == 'backward')
 
-    # Convert input to complex data type if real (also memory copy)
-    if direction == 'forward' and a.dtype != np.float32 and a.dtype != np.float64:
-        if a.dtype == np.int64 or a.dtype == np.uint64:
-            a = np.array(a, dtype=np.float64)
+    # Convert icp.t to complex data type if real (also memory copy)
+    if direction == 'forward' and a.dtype != cp.float32 and a.dtype != cp.float64:
+        if a.dtype == cp.int64 or a.dtype == cp.uint64:
+            a = cp.array(a, dtype=cp.float64)
         else:
-            a = np.array(a, dtype=np.float32)
+            a = cp.array(a, dtype=cp.float32)
 
-    elif direction == 'backward' and a.dtype != np.complex128 and a.dtype != np.complex64:
-        if a.dtype == np.int64 or a.dtype == np.uint64 or a.dtype == np.float64:
-            a = np.array(a, dtype=np.complex128)
+    elif direction == 'backward' and a.dtype != cp.complex128 and a.dtype != cp.complex64:
+        if a.dtype == cp.int64 or a.dtype == cp.uint64 or a.dtype == cp.float64:
+            a = cp.array(a, dtype=cp.complex128)
         else:
-            a = np.array(a, dtype=np.complex64)
+            a = cp.array(a, dtype=cp.complex64)
 
 
     order = 'C'
@@ -87,13 +88,13 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
         m = n if direction == 'forward' else (n // 2 + 1)
         if a.shape[axis] < m:
             # pad axis with zeros
-            pad_width = np.zeros((a.ndim, 2), dtype=np.int)
+            pad_width = cp.zeros((a.ndim, 2), dtype=cp.int)
             pad_width[axis,1] = m - a.shape[axis]
-            a = np.pad(a, pad_width, mode='constant')
+            a = cp.pad(a, pad_width, mode='constant')
         elif a.shape[axis] > m:
             # truncate along axis
-            b = np.swapaxes(a, axis, 0)[:m,]
-            a = np.swapaxes(b, 0, axis).copy()
+            b = cp.swapaxes(a, axis, 0)[:m,]
+            a = cp.swapaxes(b, 0, axis).copy()
 
     elif direction == 'forward':
         n = a.shape[axis]
@@ -104,13 +105,13 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
 
     # determine output type
     if direction == 'backward':
-        out_type = np.float64
-        if a.dtype == np.complex64:
-            out_type = np.float32
+        out_type = cp.float64
+        if a.dtype == cp.complex64:
+            out_type = cp.float32
     elif direction == 'forward':
-        out_type = np.complex128
-        if a.dtype == np.float32:
-            out_type = np.complex64
+        out_type = cp.complex128
+        if a.dtype == cp.float32:
+            out_type = cp.complex64
 
     # Configure output array
     assert a is not out
@@ -123,15 +124,15 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
             assert (n // 2 + 1) == out.shape[axis]
         else:
             assert out.shape[axis] == n
-        assert not np.may_share_memory(a, out)
+        assert not cp.may_share_memory(a, out)
     else:
         size = list(a.shape)
         size[axis] = n // 2 + 1 if direction == 'forward' else n
-        out = np.empty(size, dtype=out_type, order=order)
+        out = cp.empty(size, dtype=out_type, order=order)
 
     # Define length, number of transforms strides
     length = _ctypes.c_int(n)
-    n_transforms = _ctypes.c_int(np.prod(a.shape) // a.shape[axis])
+    n_transforms = _ctypes.c_int(cp.prod(a.shape) // a.shape[axis])
 
     # For strides, the C type used *must* be long
     strides = (_ctypes.c_long*2)(0, a.strides[axis] // a.itemsize)
@@ -144,7 +145,7 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
             out_distance = _ctypes.c_int(out.strides[0] // out.itemsize)
 
     double_precision = True
-    if (direction == 'forward' and a.dtype == np.float32) or (direction == 'backward' and a.dtype == np.complex64):
+    if (direction == 'forward' and a.dtype == cp.float32) or (direction == 'backward' and a.dtype == cp.complex64):
         double_precision = False
 
     # Create the description handle
@@ -159,7 +160,7 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
 
     # set normalization factor
     if norm == 'ortho':
-        scale = _ctypes.c_double(1 / np.sqrt(n))
+        scale = _ctypes.c_double(1 / cp.sqrt(n))
         mkl.DftiSetValue(Desc_Handle, DFTI_FORWARD_SCALE, scale)
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
     elif norm is None:
@@ -216,43 +217,43 @@ def mkl_fft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scramb
     # Add zero padding if needed (incurs memory copy)
     '''
     if n is not None and n != a.shape[axis]:
-        pad_width = np.zeros((a.ndim, 2), dtype=np.int)
+        pad_width = cp.zeros((a.ndim, 2), dtype=cp.int)
         pad_width[axis,1] = n - a.shape[axis]
-        a = np.pad(a, pad_width, mode='constant')
+        a = cp.pad(a, pad_width, mode='constant')
     '''
 
     if n is not None:
         if a.shape[axis] < n:
             # pad axis with zeros
-            pad_width = np.zeros((a.ndim, 2), dtype=np.int)
+            pad_width = cp.zeros((a.ndim, 2), dtype=cp.int)
             pad_width[axis,1] = n - a.shape[axis]
-            a = np.pad(a, pad_width, mode='constant')
+            a = cp.pad(a, pad_width, mode='constant')
         elif a.shape[axis] > n:
             # truncate along axis
-            b = np.swapaxes(a, axis, -1)[...,:n]
-            a = np.swapaxes(b, -1, axis).copy()
+            b = cp.swapaxes(a, axis, -1)[...,:n]
+            a = cp.swapaxes(b, -1, axis).copy()
 
-    # Convert input to complex data type if real (also memory copy)
-    if a.dtype != np.complex128 and a.dtype != np.complex64:
-        if a.dtype == np.int64 or a.dtype == np.uint64 or a.dtype == np.float64:
-            a = np.array(a, dtype=np.complex128)
+    # Convert icp.t to complex data type if real (also memory copy)
+    if a.dtype != cp.complex128 and a.dtype != cp.complex64:
+        if a.dtype == cp.int64 or a.dtype == cp.uint64 or a.dtype == cp.float64:
+            a = cp.array(a, dtype=cp.complex128)
         else:
-            a = np.array(a, dtype=np.complex64)
+            a = cp.array(a, dtype=cp.complex64)
 
     # Configure in-place vs out-of-place
-    inplace = False
+    icp.ace = False
     if out is a:
-        inplace = True
+        icp.ace = True
     elif out is not None:
         assert out.dtype == a.dtype
         assert a.shape == out.shape
-        assert not np.may_share_memory(a, out)
+        assert not cp.may_share_memory(a, out)
     else:
-        out = np.empty_like(a)
+        out = cp.empty_like(a)
 
     # Define length, number of transforms strides
     length = _ctypes.c_int(a.shape[axis])
-    n_transforms = _ctypes.c_int(np.prod(a.shape) // a.shape[axis])
+    n_transforms = _ctypes.c_int(cp.prod(a.shape) // a.shape[axis])
     
     # For strides, the C type used *must* be long
     strides = (_ctypes.c_long*2)(0, a.strides[axis] // a.itemsize)
@@ -264,21 +265,21 @@ def mkl_fft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scramb
 
     # Create the description handle
     Desc_Handle = _ctypes.c_void_p(0)
-    if a.dtype == np.complex64:
+    if a.dtype == cp.complex64:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_SINGLE, DFTI_COMPLEX, _ctypes.c_int(1), length)
-    elif a.dtype == np.complex128:
+    elif a.dtype == cp.complex128:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_DOUBLE, DFTI_COMPLEX, _ctypes.c_int(1), length)
 
     # Set normalization factor
     if norm == 'ortho':
-        if a.dtype == np.complex64:
-            scale = _ctypes.c_float(1 / np.sqrt(a.shape[axis]))
+        if a.dtype == cp.complex64:
+            scale = _ctypes.c_float(1 / cp.sqrt(a.shape[axis]))
         else:
-            scale = _ctypes.c_double(1 / np.sqrt(a.shape[axis]))
+            scale = _ctypes.c_double(1 / cp.sqrt(a.shape[axis]))
         mkl.DftiSetValue(Desc_Handle, DFTI_FORWARD_SCALE, scale)
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
     elif norm is None:
-        if a.dtype == np.complex64:
+        if a.dtype == cp.complex64:
             scale = _ctypes.c_float(1. / a.shape[axis])
         else:
             scale = _ctypes.c_double(1. / a.shape[axis])
@@ -303,7 +304,7 @@ def mkl_fft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scramb
     else:
         assert False
 
-    if inplace:
+    if icp.ace:
         # In-place FFT
         mkl.DftiCommitDescriptor(Desc_Handle)
         fft_func(Desc_Handle, a.ctypes.data_as(_ctypes.c_void_p) )
@@ -334,8 +335,8 @@ def proper_fft2(a, norm=None, direction='forward', mkl_dir=None, fft_nthreads=0)
 
     """
 
-    # input must be complex!  Not exceptions
-    if a.dtype != np.complex128 and a.dtype != np.complex64:
+    # icp.t must be complex!  Not exceptions
+    if a.dtype != cp.complex128 and a.dtype != cp.complex64:
         raise ValueError('prop_fftw: Unsupported data type.  Must be complex64 or complex128.')
 
 
@@ -343,29 +344,29 @@ def proper_fft2(a, norm=None, direction='forward', mkl_dir=None, fft_nthreads=0)
     Desc_Handle = _ctypes.c_void_p(0)
     dims = (_ctypes.c_int64*2)(*a.shape)
    
-    if a.dtype == np.complex64:
+    if a.dtype == cp.complex64:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_SINGLE, DFTI_COMPLEX, _ctypes.c_int(2), dims)
-    elif a.dtype == np.complex128:
+    elif a.dtype == cp.complex128:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_DOUBLE, DFTI_COMPLEX, _ctypes.c_int(2), dims)
 
 
     # Set normalization factor
     if norm == 'ortho':
-        if a.dtype == np.complex64:
-            scale = _ctypes.c_float(1.0 / np.sqrt(np.prod(a.shape)))
+        if a.dtype == cp.complex64:
+            scale = _ctypes.c_float(1.0 / cp.sqrt(cp.prod(a.shape)))
         else:
-            scale = _ctypes.c_double(1.0 / np.sqrt(np.prod(a.shape)))
+            scale = _ctypes.c_double(1.0 / cp.sqrt(cp.prod(a.shape)))
         mkl.DftiSetValue(Desc_Handle, DFTI_FORWARD_SCALE, scale)
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
     elif norm is None:
-        if a.dtype == np.complex64:
-            scale = _ctypes.c_float(1.0 / np.prod(a.shape))
+        if a.dtype == cp.complex64:
+            scale = _ctypes.c_float(1.0 / cp.prod(a.shape))
         else:
-            scale = _ctypes.c_double(1.0 / np.prod(a.shape))
+            scale = _ctypes.c_double(1.0 / cp.prod(a.shape))
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
 
 
-    # Set input strides if necessary
+    # Set icp.t strides if necessary
     if not a.flags['C_CONTIGUOUS']:
         in_strides = (_ctypes.c_int*3)(0, a.strides[0] // a.itemsize, a.strides[1] // a.itemsize)
         mkl.DftiSetValue(Desc_Handle, DFTI_INPUT_STRIDES, _ctypes.byref(in_strides))
@@ -400,42 +401,42 @@ def mkl_fft2(a, norm=None, direction='forward', out=None):
 
     """
 
-    # convert input to complex data type if real (also memory copy)
-    if a.dtype != np.complex128 and a.dtype != np.complex64:
-        if a.dtype == np.int64 or a.dtype == np.uint64 or a.dtype == np.float64:
-            a = np.array(a, dtype=np.complex128)
+    # convert icp.t to complex data type if real (also memory copy)
+    if a.dtype != cp.complex128 and a.dtype != cp.complex64:
+        if a.dtype == cp.int64 or a.dtype == cp.uint64 or a.dtype == cp.float64:
+            a = cp.array(a, dtype=cp.complex128)
         else:
-            a = np.array(a, dtype=np.complex64)
+            a = cp.array(a, dtype=cp.complex64)
 
     # Configure in-place vs out-of-place
-    inplace = False
+    icp.ace = False
     if out is a:
-        inplace = True
+        icp.ace = True
     elif out is not None:
         assert out.dtype == a.dtype
         assert a.shape == out.shape
-        assert not np.may_share_memory(a, out)
+        assert not cp.may_share_memory(a, out)
     else:
-        out = np.empty_like(a)
+        out = cp.empty_like(a)
 
     # Create the description handle
     Desc_Handle = _ctypes.c_void_p(0)
     dims = (_ctypes.c_long*2)(*a.shape)
    
-    if a.dtype == np.complex64:
+    if a.dtype == cp.complex64:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_SINGLE, DFTI_COMPLEX, _ctypes.c_int(2), dims)
-    elif a.dtype == np.complex128:
+    elif a.dtype == cp.complex128:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_DOUBLE, DFTI_COMPLEX, _ctypes.c_int(2), dims)
 
 
     # Set normalization factor
     if norm == 'ortho':
-        scale = _ctypes.c_double(1.0 / np.sqrt(np.prod(a.shape)))
+        scale = _ctypes.c_double(1.0 / cp.sqrt(cp.prod(a.shape)))
         mkl.DftiSetValue(Desc_Handle, DFTI_FORWARD_SCALE, scale)
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
 
     elif norm is None:
-        scale = _ctypes.c_double(1.0 / np.prod(a.shape))
+        scale = _ctypes.c_double(1.0 / cp.prod(a.shape))
         mkl.DftiSetValue(Desc_Handle, DFTI_FORWARD_SCALE, _ctypes.c_double(1.0))
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
 
@@ -443,7 +444,7 @@ def mkl_fft2(a, norm=None, direction='forward', out=None):
         mkl.DftiGetValue(Desc_Handle, DFTI_BACKWARD_SCALE, _ctypes.byref(scale))
 
 
-    # Set input strides if necessary
+    # Set icp.t strides if necessary
     if not a.flags['C_CONTIGUOUS']:
         in_strides = (_ctypes.c_long*3)(0, a.strides[0] // a.itemsize, a.strides[1] // a.itemsize)
         mkl.DftiSetValue(Desc_Handle, DFTI_INPUT_STRIDES, _ctypes.byref(in_strides))
@@ -455,7 +456,7 @@ def mkl_fft2(a, norm=None, direction='forward', out=None):
     else:
         assert False
 
-    if inplace:
+    if icp.ace:
         # In-place FFT
         mkl.DftiCommitDescriptor(Desc_Handle)
         fft_func(Desc_Handle, a.ctypes.data_as(_ctypes.c_void_p) )
@@ -482,10 +483,10 @@ def cce2full(A):
 
     N = A.shape
     N_half = N[0]//2 + 1
-    out = np.empty((A.shape[0], A.shape[0]), dtype=A.dtype)
+    out = cp.empty((A.shape[0], A.shape[0]), dtype=A.dtype)
     out[:, :N_half] = A
 
-    out[1:, N_half:] = np.rot90(A[1:, 1:-1], 2).conj()
+    out[1:, N_half:] = cp.rot90(A[1:, 1:-1], 2).conj()
 
     # Complete the first row
     out[0, N_half:] = A[0, -2:0:-1].conj()
@@ -503,11 +504,11 @@ def mkl_rfft2(a, norm=None, direction='forward', out=None):
 
     """
 
-    assert (a.dtype == np.float32) or (a.dtype == np.float64)
+    assert (a.dtype == cp.float32) or (a.dtype == cp.float64)
 
-    out_type = np.complex128
-    if a.dtype == np.float32:
-        out_type = np.complex64
+    out_type = cp.complex128
+    if a.dtype == cp.float32:
+        out_type = cp.complex64
 
     n = a.shape[1]
 
@@ -515,19 +516,19 @@ def mkl_rfft2(a, norm=None, direction='forward', out=None):
     if out is not None:
         assert out.dtype == out_type
         assert out.shape[1] == n // 2 + 1
-        assert not np.may_share_memory(a, out)
+        assert not cp.may_share_memory(a, out)
     else:
         size = list(a.shape)
         size[1] = n // 2 + 1
-        out = np.empty(size, dtype=out_type)
+        out = cp.empty(size, dtype=out_type)
 
     # Create the description handle
     Desc_Handle = _ctypes.c_void_p(0)
     dims = (_ctypes.c_long*2)(*a.shape)
    
-    if a.dtype == np.float32:
+    if a.dtype == cp.float32:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_SINGLE, DFTI_REAL, _ctypes.c_int(2), dims)
-    elif a.dtype == np.float64:
+    elif a.dtype == cp.float64:
         mkl.DftiCreateDescriptor(_ctypes.byref(Desc_Handle), DFTI_DOUBLE, DFTI_REAL, _ctypes.c_int(2), dims)
 
     # Set the storage type
@@ -535,18 +536,18 @@ def mkl_rfft2(a, norm=None, direction='forward', out=None):
 
     # Set normalization factor
     if norm == 'ortho':
-        if a.dtype == np.float32:
-            scale = _ctypes.c_float(1.0 / np.sqrt(np.prod(a.shape)))
+        if a.dtype == cp.float32:
+            scale = _ctypes.c_float(1.0 / cp.sqrt(cp.prod(a.shape)))
         else:
-            scale = _ctypes.c_double(1.0 / np.sqrt(np.prod(a.shape)))
+            scale = _ctypes.c_double(1.0 / cp.sqrt(cp.prod(a.shape)))
         
         mkl.DftiSetValue(Desc_Handle, DFTI_FORWARD_SCALE, scale)
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
     elif norm is None:
-        if a.dtype == np.float64:
-            scale = _ctypes.c_float(1.0 / np.prod(a.shape))
+        if a.dtype == cp.float64:
+            scale = _ctypes.c_float(1.0 / cp.prod(a.shape))
         else:
-            scale = _ctypes.c_double(1.0 / np.prod(a.shape))
+            scale = _ctypes.c_double(1.0 / cp.prod(a.shape))
         
         mkl.DftiSetValue(Desc_Handle, DFTI_BACKWARD_SCALE, scale)
     
@@ -588,7 +589,7 @@ def rfft(a, n=None, axis=-1, norm=None, out=None, scrambled=False):
     Parameters 
     ----------
     a : ndarray
-        Input array to transform. It must be real.
+        Icp.t array to transform. It must be real.
     n : int
         Size of the transform.
     axis : int
@@ -620,7 +621,7 @@ def irfft(a, n=None, axis=-1, norm=None, out=None, scrambled=False):
     Parameters
     ----------
     a : ndarray
-        Input array to transform. It should be stored in the conjugate-even
+        Icp.t array to transform. It should be stored in the conjugate-even
         format (i.e. like output of rfft).
     n : int
         Size of the transform.
@@ -635,7 +636,7 @@ def irfft(a, n=None, axis=-1, norm=None, out=None, scrambled=False):
         in-place transform is desired. Default is None, meaning that the
         memory is allocated for the output array of the same shape as a.
     scrambled: bool, optional (default False)
-        Allows the input of the iFFT to be out of order if set to true. This
+        Allows the icp.t of the iFFT to be out of order if set to true. This
         can sometimes lead to better performance.
 
     Returns
@@ -651,7 +652,7 @@ def fft(a, n=None, axis=-1, norm=None, out=None, scrambled=False):
     Parameters
     ----------
     a : ndarray
-        Input array to transform.
+        Icp.t array to transform.
     n : int
         Size of the transform.
     axis : int
@@ -681,7 +682,7 @@ def ifft(a, n=None, axis=-1, norm=None, out=None, scrambled=False):
     Parameters
     ----------
     a : ndarray
-        Input array to transform.
+        Icp.t array to transform.
     n : int
         Size of the transform.
     axis : int
@@ -695,7 +696,7 @@ def ifft(a, n=None, axis=-1, norm=None, out=None, scrambled=False):
         in-place transform is desired. Default is None, meaning that the
         memory is allocated for the output array of the same shape as a.
     scrambled: bool, optional (default False)
-        Allows the input of the iFFT to be out of order if set to true. This
+        Allows the icp.t of the iFFT to be out of order if set to true. This
         can sometimes lead to better performance.
 
     Returns
@@ -711,7 +712,7 @@ def fft2(a, norm=None, out=None):
     Parameters
     ----------
     a : ndarray
-        Input array to transform.
+        Icp.t array to transform.
     norm : {None, 'ortho'}
         Normalization of the transform. None (default) is same as numpy;
         'ortho' gives an orthogonal (norm-preserving) transform.
@@ -735,7 +736,7 @@ def ifft2(a, norm=None, out=None):
     Parameters
     ----------
     a : ndarray
-        Input array to transform.
+        Icp.t array to transform.
     norm : {None, 'ortho'}
         Normalization of the transform. None (default) is same as numpy;
         'ortho' gives an orthogonal (norm-preserving) transform.
@@ -764,7 +765,7 @@ def rfft2(a, norm=None, out=None):
     Parameters
     ----------
     a : ndarray
-        Input array to transform. It must be real.
+        Icp.t array to transform. It must be real.
     norm : {None, 'ortho'}
         Normalization of the transform. None (default) is same as numpy;
         'ortho' gives an orthogonal (norm-preserving) transform.
@@ -791,7 +792,7 @@ def irfft2(a, norm=None, out=None):
     Parameters
     ----------
     a : ndarray
-        Input array to transform. It should be stored in the conjugate-even
+        Icp.t array to transform. It should be stored in the conjugate-even
         format (i.e. like output of rfft2).
     norm : {None, 'ortho'}
         Normalization of the transform. None (default) is same as numpy;
@@ -821,7 +822,7 @@ def fftshift(x, additional_shift=None, axes=None):
     Parameters
     ----------
     x : array_like
-        Input array.
+        Icp.t array.
     additional_shift : list of length ``M``
         Desired additional shifts in ``x`` and ``y`` directions respectively
     axes : int or shape tuple, optional
@@ -832,7 +833,7 @@ def fftshift(x, additional_shift=None, axes=None):
     y : `~numpy.ndarray`
         The shifted array.
     """
-    tmp = np.asarray(x)
+    tmp = cp.asarray(x)
     ndim = len(tmp.shape)
     if axes is None:
         axes = list(range(ndim))
@@ -850,8 +851,8 @@ def fftshift(x, additional_shift=None, axes=None):
             p2 = (n+1)//2 - extra_shift
         else:
             p2 = abs(extra_shift) - (n+1)//2
-        mylist = np.concatenate((np.arange(p2, n), np.arange(0, p2)))
-        y = np.take(y, mylist, k)
+        mylist = cp.concatenate((cp.arange(p2, n), cp.arange(0, p2)))
+        y = cp.take(y, mylist, k)
     return y
 
 
@@ -862,27 +863,27 @@ if __name__ == "__main__":
     n_iter = 200
     N = 256
 
-    np.seterr(all='raise')
+    cp.seterr(all='raise')
 
     algos = {
-            'Numpy fft2 complex128': {'transform': np.fft.fft2, 'dtype': np.complex128},
-            'MKL fft2 complex128': {'transform': fft2, 'dtype': np.complex128},
-            'Numpy fft2 complex64': {'transform': np.fft.fft2, 'dtype': np.complex64},
-            'MKL fft2 complex64': {'transform': fft2, 'dtype': np.complex64},
-            'Numpy fft complex128': {'transform': np.fft.fft, 'dtype': np.complex128},
-            'MKL fft complex128': {'transform': fft, 'dtype': np.complex128},
-            'Numpy fft complex64': {'transform': np.fft.fft, 'dtype': np.complex64},
-            'MKL fft complex64': {'transform': fft, 'dtype': np.complex64},
-            'Numpy rfft float64': {'transform': np.fft.rfft, 'dtype': np.float64},
-            'MKL rfft float64': {'transform': rfft, 'dtype': np.float64},
-            'Numpy rfft float32': {'transform': np.fft.rfft, 'dtype': np.float32},
-            'MKL rfft float32': {'transform': rfft, 'dtype': np.float32},
+            'Numpy fft2 complex128': {'transform': cp.fft.fft2, 'dtype': cp.complex128},
+            'MKL fft2 complex128': {'transform': fft2, 'dtype': cp.complex128},
+            'Numpy fft2 complex64': {'transform': cp.fft.fft2, 'dtype': cp.complex64},
+            'MKL fft2 complex64': {'transform': fft2, 'dtype': cp.complex64},
+            'Numpy fft complex128': {'transform': cp.fft.fft, 'dtype': cp.complex128},
+            'MKL fft complex128': {'transform': fft, 'dtype': cp.complex128},
+            'Numpy fft complex64': {'transform': cp.fft.fft, 'dtype': cp.complex64},
+            'MKL fft complex64': {'transform': fft, 'dtype': cp.complex64},
+            'Numpy rfft float64': {'transform': cp.fft.rfft, 'dtype': cp.float64},
+            'MKL rfft float64': {'transform': rfft, 'dtype': cp.float64},
+            'Numpy rfft float32': {'transform': cp.fft.rfft, 'dtype': cp.float32},
+            'MKL rfft float32': {'transform': rfft, 'dtype': cp.float32},
             }
 
     for algo in algos.keys():
 
-        A = algos[algo]['dtype'](np.random.randn(N, N))
-        #C = np.zeros((N, N), dtype='complex128')
+        A = algos[algo]['dtype'](cp.random.randn(N, N))
+        #C = cp.zeros((N, N), dtype='complex128')
         start_time = time.time()
         for i in range(n_iter):
             algos[algo]['transform'](A)

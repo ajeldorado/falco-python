@@ -10,69 +10,69 @@
 # % binary-valued, higher-resolution sub-array of each pixel along the edge 
 # % of the ellipse.
 # %
-# %--Required Inputs in the structure "inputs"
-# % inputs['Nbeam % max aperture radius in samples
-# % inputs['Narray % Number of samples across in square output array
-# % inputs['radiusX % x-radius of ellipse [pupil diameters]
-# % inputs['radiusY % y-radius of ellipse [pupil diameters]
-# % inputs['clockingDegrees % clocking of the pupil [degrees]
+# %--Required Icp.ts in the structure "icp.ts"
+# % icp.ts['Nbeam % max aperture radius in samples
+# % icp.ts['Narray % Number of samples across in square output array
+# % icp.ts['radiusX % x-radius of ellipse [pupil diameters]
+# % icp.ts['radiusY % y-radius of ellipse [pupil diameters]
+# % icp.ts['clockingDegrees % clocking of the pupil [degrees]
 # %
-# %--Optional Inputs
-# % inputs['centering
-# % inputs['xShear % x-shear of ellipse [pupil diameters]
-# % inputs['yShear % y-shear of ellipse [pupil diameters]
-# % inputs['magFac % magnification factor
+# %--Optional Icp.ts
+# % icp.ts['centering
+# % icp.ts['xShear % x-shear of ellipse [pupil diameters]
+# % icp.ts['yShear % y-shear of ellipse [pupil diameters]
+# % icp.ts['magFac % magnification factor
 
 
-def falco_gen_ellipse(inputs):
+def falco_gen_ellipse(icp.ts):
     
-    #--Required Inputs
-    Nbeam = inputs['Nbeam']  # max aperture radius in samples
-    Narray = inputs['Narray'] # Number of samples across in square output array
-    radiusX = inputs['radiusX'] # x-radius of ellipse [pupil diameters]
-    radiusY = inputs['radiusY'] # y-radius of ellipse [pupil diameters]
-    clockingRadians = np.pi/180.*inputs['clockingDegrees']
+    #--Required Icp.ts
+    Nbeam = icp.ts['Nbeam']  # max aperture radius in samples
+    Narray = icp.ts['Narray'] # Number of samples across in square output array
+    radiusX = icp.ts['radiusX'] # x-radius of ellipse [pupil diameters]
+    radiusY = icp.ts['radiusY'] # y-radius of ellipse [pupil diameters]
+    clockingRadians = cp.pi/180.*icp.ts['clockingDegrees']
     
-    #--Optional inputs
-    if not 'centering' in inputs.keys(): inputs['centering'] = 'pixel'
-    if not 'xShear' in inputs.keys(): inputs['xShear'] = 0.
-    if not 'yShear' in inputs.keys(): inputs['yShear'] = 0.
-    if not 'magFac' in inputs.keys(): inputs['magFac'] = 1.
-    centering = inputs['centering']
-    xShear = inputs['xShear']
-    yShear = inputs['yShear']
-    magFac = inputs['magFac']
+    #--Optional icp.ts
+    if not 'centering' in icp.ts.keys(): icp.ts['centering'] = 'pixel'
+    if not 'xShear' in icp.ts.keys(): icp.ts['xShear'] = 0.
+    if not 'yShear' in icp.ts.keys(): icp.ts['yShear'] = 0.
+    if not 'magFac' in icp.ts.keys(): icp.ts['magFac'] = 1.
+    centering = icp.ts['centering']
+    xShear = icp.ts['xShear']
+    yShear = icp.ts['yShear']
+    magFac = icp.ts['magFac']
     
     if centering == 'pixel':
-        x = np.linspace(-Narray/2., Narray/2. - 1, Narray)/float(Nbeam)
+        x = cp.linspace(-Narray/2., Narray/2. - 1, Narray)/float(Nbeam)
     elif centering == 'interpixel':
-        x = np.linspace(-(Narray-1)/2., (Narray-1)/2., Narray)/float(Nbeam)
+        x = cp.linspace(-(Narray-1)/2., (Narray-1)/2., Narray)/float(Nbeam)
     
     y = x
     x = x - xShear
     y = y - yShear
-    [X, Y] = np.meshgrid(x,y)
+    [X, Y] = cp.meshgrid(x,y)
     dx = x[1] - x[0]
     radius = 0.5
 
-    RHO = 1/magFac*0.5*np.sqrt(
-        1/(radiusX)**2*(np.cos(clockingRadians)*X + np.sin(clockingRadians)*Y)**2
-        + 1/(radiusY)**2*(np.sin(clockingRadians)*X - np.cos(clockingRadians)*Y)**2
+    RHO = 1/magFac*0.5*cp.sqrt(
+        1/(radiusX)**2*(cp.cos(clockingRadians)*X + cp.sin(clockingRadians)*Y)**2
+        + 1/(radiusY)**2*(cp.sin(clockingRadians)*X - cp.cos(clockingRadians)*Y)**2
         )
 
-    halfWindowWidth = np.max(np.abs((RHO[1, 0]-RHO[0, 0], RHO[0, 1] - RHO[0, 0])))
-    pupil = -1*np.ones(RHO.shape)
-    pupil[np.abs(RHO) < radius - halfWindowWidth] = 1
-    pupil[np.abs(RHO) > radius + halfWindowWidth] = 0
-    grayInds = np.array(np.nonzero(pupil==-1))
+    halfWindowWidth = cp.max(cp.abs((RHO[1, 0]-RHO[0, 0], RHO[0, 1] - RHO[0, 0])))
+    pupil = -1*cp.ones(RHO.shape)
+    pupil[cp.abs(RHO) < radius - halfWindowWidth] = 1
+    pupil[cp.abs(RHO) > radius + halfWindowWidth] = 0
+    grayInds = cp.array(cp.nonzero(pupil==-1))
     # print('Number of grayscale points = %d' % grayInds.shape[1])
 
     upsampleFactor = 100
     dxUp = dx/float(upsampleFactor)
-    xUp = np.linspace(-(upsampleFactor-1)/2., (upsampleFactor-1)/2., upsampleFactor)*dxUp
-    [Xup, Yup] = np.meshgrid(xUp, xUp)
+    xUp = cp.linspace(-(upsampleFactor-1)/2., (upsampleFactor-1)/2., upsampleFactor)*dxUp
+    [Xup, Yup] = cp.meshgrid(xUp, xUp)
 
-    subpixel = np.zeros((upsampleFactor,upsampleFactor))
+    subpixel = cp.zeros((upsampleFactor,upsampleFactor))
 
     for iInterior in range(grayInds.shape[1]):
 
@@ -80,13 +80,13 @@ def falco_gen_ellipse(inputs):
 
         xCenter = X[grayInds[0, iInterior], grayInds[1, iInterior]]
         yCenter = Y[grayInds[0, iInterior], grayInds[1, iInterior]]
-        RHOup = 0.5*np.sqrt(
-        1/(radiusX)**2*(np.cos(clockingRadians)*(Xup+xCenter) + np.sin(clockingRadians)*(Yup+yCenter))**2
-        + 1/(radiusY)**2*(np.sin(clockingRadians)*(Xup+xCenter) - np.cos(clockingRadians)*(Yup+yCenter))**2 
+        RHOup = 0.5*cp.sqrt(
+        1/(radiusX)**2*(cp.cos(clockingRadians)*(Xup+xCenter) + cp.sin(clockingRadians)*(Yup+yCenter))**2
+        + 1/(radiusY)**2*(cp.sin(clockingRadians)*(Xup+xCenter) - cp.cos(clockingRadians)*(Yup+yCenter))**2 
         )
 
         subpixel[RHOup <= radius] = 1
-        pixelValue = np.sum(subpixel)/float(upsampleFactor**2)
+        pixelValue = cp.sum(subpixel)/float(upsampleFactor**2)
         pupil[grayInds[0, iInterior], grayInds[1, iInterior]] = pixelValue
 
     #plt.figure(2); plt.imshow(pupil); plt.colorbar(); plt.pause(0.1)

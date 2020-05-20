@@ -1,3 +1,4 @@
+import cupy as cp
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -35,7 +36,7 @@ dm.dx_inf0 = 1e-4;
 orderOfOps = 'XYZ';
 dm.inf_sign = '+';
 dm.inf_fn = falco.INFLUENCE_XINETICS #'influence_dm5v2.fits';
-dm.inf0 = np.squeeze(fits.getdata(dm.inf_fn, ext=0))
+dm.inf0 = cp.squeeze(fits.getdata(dm.inf_fn, ext=0))
 #dm.inf0 = fitsread(dm.inf_fn);
 cshift = 0
 dx = 2e-4# # [meters]
@@ -46,10 +47,10 @@ dm.yc = dm.Nact/2 - 1/2
 #dm.xc = dm.Nact/2 - 1/2 + 1;
 #dm.yc = dm.Nact/2 - 1/2 - 1;
 
-dm.VtoH = 1e-9*np.ones((dm.Nact,dm.Nact))
+dm.VtoH = 1e-9*cp.ones((dm.Nact,dm.Nact))
 
-#dm.V = np.eye(dm.Nact)
-dm.V = np.zeros((dm.Nact,dm.Nact))
+#dm.V = cp.eye(dm.Nact)
+dm.V = cp.zeros((dm.Nact,dm.Nact))
 dm.V[0,0] = 1; dm.V[0,-1]= 1; dm.V[-1,0] = 1;  dm.V[-1,-1] = 1;
 dm.V[9,9] = 2;
 dm.V[29,9] = 2;
@@ -82,7 +83,7 @@ Vout = falco.dms.falco_fit_dm_surf(dm,DMSurf)
 plt.figure(3); plt.imshow(Vout); plt.colorbar(); plt.gca().invert_yaxis()
 
 plt.figure(4); plt.imshow(Vout-H); plt.colorbar(); plt.gca().invert_yaxis()
-print(np.max(np.abs(Vout-H)))
+print(cp.max(cp.abs(Vout-H)))
 
 hdu = fits.PrimaryHDU(Vout-H)
 hdu.writeto('/Users/ajriggs/Downloads/diff_python.fits',overwrite=True)

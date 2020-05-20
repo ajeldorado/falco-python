@@ -1,3 +1,4 @@
+import cupy as cp
 #   Copyright 2019 California Institute of Technology
 # ------------------------------------------------------------------
 
@@ -50,14 +51,14 @@ import wfirst_phaseb_proper
 
 ###############################################################################33
 def radius( n ):
-    x = np.arange( n ) - int(n)//2
-    r = np.sqrt( x*x + x[:,np.newaxis]**2 )
+    x = cp.arange( n ) - int(n)//2
+    r = cp.sqrt( x*x + x[:,cp.newaxis]**2 )
     return r
 
 ###############################################################################33
 def angle( n ):
-    x = np.arange( n ) - int(n)//2
-    return np.arctan2( x[:,np.newaxis], x ) * (180 / np.pi)
+    x = cp.arange( n ) - int(n)//2
+    return cp.arctan2( x[:,cp.newaxis], x ) * (180 / cp.pi)
 
 
 ###############################################################################33
@@ -89,8 +90,8 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
                                 #     6 = mean of modes -2 & +2 (Y channel polarizer)
                                 #    10 = mean of all modes (no polarization filtering)
     use_errors = 1              # use optical surface phase errors? 1 or 0 
-    zindex = np.array([0,0])    # array of Zernike polynomial indices
-    zval_m = np.array([0,0])    # array of Zernike coefficients (meters RMS WFE)
+    zindex = cp.array([0,0])    # array of Zernike polynomial indices
+    zval_m = cp.array([0,0])    # array of Zernike coefficients (meters RMS WFE)
     use_aperture = 0            # use apertures on all optics? 1 or 0
     cgi_x_shift_pupdiam = 0     # X,Y shear of wavefront at FSM (bulk displacement of CGI); normalized relative to pupil diameter
     cgi_y_shift_pupdiam = 0          
@@ -173,7 +174,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
                         '5.89375e-07', '5.90972222222e-07', '5.94166666667e-07', '5.965625e-07', '5.97361111111e-07', '6.00555555556e-07', '6.0375e-07' ]
         lam_occs = [ prefix + 'occ_lam' + s + 'theta6.69polp_' for s in lam_occs ]
         # find nearest matching FPM wavelength
-        wlam = (np.abs(lambda_m-np.array(lam_occ))).argmin()
+        wlam = (cp.abs(lambda_m-cp.array(lam_occ))).argmin()
         occulter_file_r = lam_occs[wlam] + 'real.fits'
         occulter_file_i = lam_occs[wlam] + 'imag.fits'
         n_default = 1024                # gridsize in non-critical areas
@@ -199,7 +200,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
                         '5.9097e-07', '5.9417e-07', '5.9736e-07', '6.0056e-07', '6.0375e-07' ]
         lam_occs = [ prefix + 'occ_lam' + s + 'theta6.69pols_' for s in lam_occs ]
         # find nearest matching FPM wavelength
-        wlam = (np.abs(lambda_m-np.array(lam_occ))).argmin()
+        wlam = (cp.abs(lambda_m-cp.array(lam_occ))).argmin()
         occulter_file_r = lam_occs[wlam] + 'real_rotated.fits'
         occulter_file_i = lam_occs[wlam] + 'imag_rotated.fits'
         n_default = 1024                # gridsize in non-critical areas
@@ -261,15 +262,15 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
     if 'PASSVALUE' in locals():
         if 'lam0' in PASSVALUE: lamba0_m = PASSVALUE['lam0'] * 1.0e-6
         if 'lambda0_m' in PASSVALUE: lambda0_m = PASSVALUE['lambda0_m']
-        mas_per_lamD = lambda0_m * 360.0 * 3600.0 / (2 * np.pi * 2.363) * 1000    # mas per lambda0/D
+        mas_per_lamD = lambda0_m * 360.0 * 3600.0 / (2 * cp.pi * 2.363) * 1000    # mas per lambda0/D
         if 'source_x_offset' in PASSVALUE: source_x_offset = PASSVALUE['source_x_offset']
         if 'source_y_offset' in PASSVALUE: source_y_offset = PASSVALUE['source_y_offset']
         if 'source_x_offset_mas' in PASSVALUE: source_x_offset = PASSVALUE['source_x_offset_mas'] / mas_per_lamD
         if 'source_y_offset_mas' in PASSVALUE: source_y_offset = PASSVALUE['source_y_offset_mas'] / mas_per_lamD
         if 'use_errors' in PASSVALUE: use_errors = PASSVALUE['use_errors']
         if 'polaxis' in PASSVALUE: polaxis = PASSVALUE['polaxis'] 
-        if 'zindex' in PASSVALUE: zindex = np.array( PASSVALUE['zindex'] )
-        if 'zval_m' in PASSVALUE: zval_m = np.array( PASSVALUE['zval_m'] )
+        if 'zindex' in PASSVALUE: zindex = cp.array( PASSVALUE['zindex'] )
+        if 'zval_m' in PASSVALUE: zval_m = cp.array( PASSVALUE['zval_m'] )
         if 'end_at_fsm' in PASSVALUE: end_at_fsm = PASSVALUE['end_at_fsm']
         if 'cgi_x_shift_pupdiam' in PASSVALUE: cgi_x_shift_pupdiam = PASSVALUE['cgi_x_shift_pupdiam']
         if 'cgi_y_shift_pupdiam' in PASSVALUE: cgi_y_shift_pupdiam = PASSVALUE['cgi_y_shift_pupdiam']
@@ -414,9 +415,9 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         # compute tilted wavefront to offset source by xoffset,yoffset lambda0_m/D
         xtilt_lam = -source_x_offset * lambda0_m / lambda_m
         ytilt_lam = -source_y_offset * lambda0_m / lambda_m
-        x = np.tile( (np.arange(n)-n//2)/(pupil_diam_pix/2.0), (n,1) )
-        y = np.transpose(x)
-        proper.prop_multiply( wavefront, np.exp(complex(0,1) * np.pi * (xtilt_lam * x + ytilt_lam * y)) )
+        x = cp.tile( (cp.arange(n)-n//2)/(pupil_diam_pix/2.0), (n,1) )
+        y = cp.transpose(x)
+        proper.prop_multiply( wavefront, cp.exp(complex(0,1) * cp.pi * (xtilt_lam * x + ytilt_lam * y)) )
         x = 0
         y = 0
     if zindex[0] != 0: proper.prop_zernikes( wavefront, zindex, zval_m )
@@ -468,14 +469,14 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
             d_m = proper.prop_get_sampling(wavefront) 
             xt = -cgi_x_shift_m / d_m * float(pupil_diam_pix)/n 
             yt = -cgi_y_shift_m / d_m * float(pupil_diam_pix)/n 
-        x = np.tile( (np.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
-        y = np.transpose(x)
-        tilt = complex(0,1) * np.pi * (x*xt + y*yt)
+        x = cp.tile( (cp.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
+        y = cp.transpose(x)
+        tilt = complex(0,1) * cp.pi * (x*xt + y*yt)
         x = 0
         y = 0
         wavefront0 = proper.prop_get_wavefront(wavefront)
         wavefront0 = ffts( wavefront0, -1 )
-        wavefront0 *= np.exp(tilt)
+        wavefront0 *= cp.exp(tilt)
         wavefront0 = ffts( wavefront0, 1 )
         tilt = 0
         wavefront.wfarr[:,:] = proper.prop_shift_center(wavefront0)
@@ -486,9 +487,9 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         # compute tilted wavefront to offset source by fsm_x_offset,fsm_y_offset lambda0_m/D
         xtilt_lam = fsm_x_offset * lambda0_m / lambda_m
         ytilt_lam = fsm_y_offset * lambda0_m / lambda_m
-        x = np.tile( (np.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
-        y = np.transpose(x)
-        proper.prop_multiply( wavefront, np.exp(complex(0,1) * np.pi * (xtilt_lam * x + ytilt_lam * y)) )
+        x = cp.tile( (cp.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
+        y = cp.transpose(x)
+        proper.prop_multiply( wavefront, cp.exp(complex(0,1) * cp.pi * (xtilt_lam * x + ytilt_lam * y)) )
         x = 0
         y = 0
 
@@ -554,13 +555,13 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
                 d_m = proper.prop_get_sampling(wavefront)
                 xt = -mask_x_shift_m / d_m * float(pupil_diam_pix)/n
                 yt = -mask_y_shift_m / d_m * float(pupil_diam_pix)/n
-            x = np.tile( (np.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
-            y = np.transpose(x)
-            tilt = complex(0,1) * np.pi * (x*xt + y*yt)
+            x = cp.tile( (cp.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
+            y = cp.transpose(x)
+            tilt = complex(0,1) * cp.pi * (x*xt + y*yt)
             x = 0
             y = 0
             pupil_mask = ffts( pupil_mask, -1 )
-            pupil_mask *= np.exp(tilt)
+            pupil_mask *= cp.exp(tilt)
             pupil_mask = ffts( pupil_mask, 1 )
             pupil_mask = pupil_mask.real
             tilt = 0
@@ -594,21 +595,21 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
                 d_m = proper.prop_get_sampling(wavefront)
                 x_offset_lamD = fpm_x_offset_m / d_m * float(pupil_diam_pix)/n
                 y_offset_lamD = fpm_y_offset_m / d_m * float(pupil_diam_pix)/n
-            x = np.tile( (np.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
-            y = np.transpose(x)
-            tilt = complex(0,1) * np.pi * (x*x_offset_lamD + y*y_offset_lamD)
+            x = cp.tile( (cp.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
+            y = cp.transpose(x)
+            tilt = complex(0,1) * cp.pi * (x*x_offset_lamD + y*y_offset_lamD)
             x = 0
             y = 0
             wavefront0 = proper.prop_get_wavefront(wavefront)
             wavefront0 = ffts( wavefront0, -1 )
-            wavefront0 *= np.exp(tilt)
+            wavefront0 *= cp.exp(tilt)
             wavefront0 = ffts( wavefront0, 1 )
             wavefront.wfarr[:,:] = proper.prop_shift_center(wavefront0)
             wavefront0 = 0
         if is_hlc == True:
             occ_r = proper.prop_fits_read( occulter_file_r )
             occ_i = proper.prop_fits_read( occulter_file_i )
-            occ = np.array( occ_r + 1j * occ_i, dtype=np.complex128 )
+            occ = cp.array( occ_r + 1j * occ_i, dtype=cp.complex128 )
             proper.prop_multiply( wavefront, trim(occ,n) )
             occ_r = 0
             occ_i = 0
@@ -631,7 +632,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         if fpm_x_offset != 0 or fpm_y_offset != 0 or fpm_x_offset_m != 0 or fpm_y_offset_m != 0:
             wavefront0 = proper.prop_get_wavefront(wavefront)
             wavefront0 = ffts( wavefront0, -1 )
-            wavefront0 *= np.exp(-tilt)
+            wavefront0 *= cp.exp(-tilt)
             wavefront0 = ffts( wavefront0, 1 )
             wavefront.wfarr[:,:] = proper.prop_shift_center(wavefront0)
             wavefront0 = 0
@@ -650,7 +651,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         m = dx_pinhole_lamD * n_in * float(n_out) / pupil_diam_pix
         wavefront0 = mft2( wavefront0, dx_pinhole_lamD, pupil_diam_pix, n_out, -1)        # MFT to highly-sampled focal plane
         p = (radius(n_out)*dx_pinhole_diam_m) <= (pinhole_diam_m/2.0)
-        p = p.astype(np.int)
+        p = p.astype(cp.int)
         wavefront0 *= p
         p = 0
         wavefront0 = mft2( wavefront0, dx_pinhole_lamD, pupil_diam_pix, n, +1)            # MFT back to virtual pupil
@@ -673,10 +674,10 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         lams = format( lambda_m*1e6, "6.4f" )
         pols = format( int(round(polaxis)) )
         hdu = pyfits.PrimaryHDU()
-        hdu.data = np.real(wavefront)
+        hdu.data = cp.real(wavefront)
         hdu.writeto( output_field_rootname+'_'+lams+'um_'+pols+'_real.fits', overwrite=True )
         hdu = pyfits.PrimaryHDU()
-        hdu.data = np.imag(wavefront)
+        hdu.data = cp.imag(wavefront)
         hdu.writeto( output_field_rootname+'_'+lams+'um_'+pols+'_imag.fits', overwrite=True )
     if end_at_fpm_exit_pupil == 1:
         return wavefront, dx
@@ -699,13 +700,13 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
                 d_m = proper.prop_get_sampling(wavefront)
                 xt = -lyot_x_shift_m / d_m * float(pupil_diam_pix)/n
                 yt = -lyot_y_shift_m / d_m * float(pupil_diam_pix)/n
-            x = np.tile( (np.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
-            y = np.transpose(x)
-            tilt = complex(0,1) * np.pi * (x*xt + y*yt)
+            x = cp.tile( (cp.arange(n)-n//2) / (pupil_diam_pix/2.0), (n,1) )
+            y = cp.transpose(x)
+            tilt = complex(0,1) * cp.pi * (x*xt + y*yt)
             x = 0
             y = 0
             lyot = ffts(lyot,-1)
-            lyot *= np.exp(tilt)
+            lyot *= cp.exp(tilt)
             lyot = ffts( lyot, 1 )
             lyot = lyot.real
             tilt = 0
@@ -751,10 +752,10 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         if use_errors != 0: proper.prop_errormap( wavefront, map_dir+'wfirst_phaseb_PUPILLENS_phase_error_V1.0.fits', WAVEFRONT=True )
     else:
         # table is waves P-V @ 575 nm
-        z4_pv_waves = np.array( [-9.0545,-8.5543,-8.3550,-8.0300,-7.54500,-7.03350,-6.03300,-5.03300,-4.02000,
+        z4_pv_waves = cp.array( [-9.0545,-8.5543,-8.3550,-8.0300,-7.54500,-7.03350,-6.03300,-5.03300,-4.02000,
                                  -2.51980,0.00000000,3.028000,4.95000,6.353600,8.030000,10.10500,12.06000,
                                  14.06000,20.26000,28.34000,40.77500,56.65700] )
-        fl_defocus_lens = np.array( [5.09118,1.89323,1.54206,1.21198,0.914799,0.743569,0.567599,0.470213,0.406973,
+        fl_defocus_lens = cp.array( [5.09118,1.89323,1.54206,1.21198,0.914799,0.743569,0.567599,0.470213,0.406973,
                                      0.350755,0.29601868,0.260092,0.24516,0.236606,0.228181,0.219748,0.213278,
                                      0.207816,0.195536,0.185600,0.176629,0.169984] )
         # subtract ad-hoc function to make z4 vs f_length more accurately spline interpolatible
@@ -763,7 +764,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         z4t = z4_pv_waves - (0.005*(f0-f-40))/f**2/0.575e-6
         if use_defocus_lens != 0: 
             # use one of 4 defocusing lenses
-            defocus = np.array([ 18.0, 9.0, -4.0, -8.0 ])    # waves P-V @ 575 nm
+            defocus = cp.array([ 18.0, 9.0, -4.0, -8.0 ])    # waves P-V @ 575 nm
             f = interp1d( z4_pv_waves, z4t, kind='cubic' )
             z4x = f( defocus )
             f = interp1d( z4t, fl_defocus_lens, kind='cubic' )
@@ -786,7 +787,7 @@ def wfirst_phaseb( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
     if use_aperture != 0: proper.prop_circular_aperture( wavefront, diam_fold4/2.0 ) 
 
     if defocus != 0 or use_defocus_lens != 0:
-        if np.abs(defocus) <= 4:
+        if cp.abs(defocus) <= 4:
             proper.prop_propagate( wavefront, d_fold4_image, 'IMAGE', TO_PLANE=True )
         else:
             proper.prop_propagate( wavefront, d_fold4_image, 'IMAGE' )

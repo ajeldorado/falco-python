@@ -1,3 +1,4 @@
+import cupy as cp
 import scipy.io
 import numpy as np
 from numpy import inf
@@ -33,7 +34,7 @@ def loadmat(filename):
             elem = matobj.__dict__[strg]
             if isinstance(elem, scipy.io.matlab.mio5_params.mat_struct):
                 d[strg] = _todict(elem)
-            elif isinstance(elem, np.ndarray):
+            elif isinstance(elem, cp.ndarray):
                 d[strg] = _tolist(elem)
             else:
                 d[strg] = elem
@@ -49,7 +50,7 @@ def loadmat(filename):
         for sub_elem in ndarray:
             if isinstance(sub_elem, scipy.io.matlab.mio5_params.mat_struct):
                 elem_list.append(_todict(sub_elem))
-            elif isinstance(sub_elem, np.ndarray):
+            elif isinstance(sub_elem, cp.ndarray):
                 elem_list.append(_tolist(sub_elem))
             else:
                 elem_list.append(sub_elem)

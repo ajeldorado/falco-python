@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 import logging
 from falco import utils
@@ -19,28 +20,28 @@ def propcustom_relay(E_in, Nrelay,centering='pixel'):
     Parameters
     ----------
     E_in : array_like
-        Input electric field
+        Icp.t electric field
     Nrelay: int
         Number of times to relay (and rotate by 180 degrees)
     centering : string
-        Whether the input field is pixel-centered or inter-pixel-centered. If the array is 
+        Whether the icp.t field is pixel-centered or inter-pixel-centered. If the array is 
         pixel-centered, the output is shifted by 1 pixel in both axes after an odd number 
-        of relays to ensure that the origin remains at the same pixel as in the input array.
+        of relays to ensure that the origin remains at the same pixel as in the icp.t array.
 
     Returns
     -------
     array_like
-        The input array, after propagation with two Fourier transforms.
+        The icp.t array, after propagation with two Fourier transforms.
 
     """
     if centering not in _VALID_CENTERING:
         raise ValueError(_CENTERING_ERR)
 
     #--Only rotate if an odd number of 180-degree rotations. If even, no change.
-    if(np.mod(Nrelay,2)==1):
-        E_out = E_in[::-1, ::-1]  # Reverse and scale input to account for propagation
+    if(cp.mod(Nrelay,2)==1):
+        E_out = E_in[::-1, ::-1]  # Reverse and scale icp.t to account for propagation
         if centering == 'pixel':
-            E_out = np.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
+            E_out = cp.roll(E_out, (1, 1), axis=(0, 1))  # Move the DC pixel back to the right place
     else:
         E_out = E_in
         
@@ -54,7 +55,7 @@ def propcustom_PTP(E_in, full_width, wavelength, dz):
     Parameters
     ----------
     E_in : array_like
-        Square (i.e. NxN) input array.
+        Square (i.e. NxN) icp.t array.
     full_width : float
         The width along each side of the array [meters]
     wavelength : float
@@ -70,26 +71,26 @@ def propcustom_PTP(E_in, full_width, wavelength, dz):
     """
     M, N = E_in.shape
     dx = full_width / N
-    N_critical = int(np.floor(wavelength * np.abs(dz) / (dx ** 2)))  # Critical sampling
+    N_critical = int(cp.floor(wavelength * cp.abs(dz) / (dx ** 2)))  # Critical sampling
 
-    if M != N:  # Input array is not square
-        raise ValueError('Input array is not square')
+    if M != N:  # Icp.t array is not square
+        raise ValueError('Icp.t array is not square')
 
     elif N < N_critical:
         log.warning(
              '''
-             Input array is undersampled.
+             Icp.t array is undersampled.
                 Minimum required samples:  {}
                                   Actual:  {}
              '''.format(N_critical, N))
 
-    fx = np.arange(-N // 2, N // 2) / full_width
+    fx = cp.arange(-N // 2, N // 2) / full_width
     rho = utils.radial_grid(fx)  # Spatial frequency coordinate grid
 
-    kernel = np.fft.fftshift(np.exp(-1j * np.pi * wavelength * dz * (rho ** 2)))
-    intermediate = np.fft.fftn(np.fft.fftshift(E_in))
+    kernel = cp.fft.fftshift(cp.exp(-1j * cp.pi * wavelength * dz * (rho ** 2)))
+    intermediate = cp.fft.fftn(cp.fft.fftshift(E_in))
 
-    return np.fft.ifftshift(np.fft.ifftn(kernel * intermediate))
+    return cp.fft.ifftshift(cp.fft.ifftn(kernel * intermediate))
 
 
 def propcustom_mft_FtoP(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
@@ -114,7 +115,7 @@ def propcustom_mft_FtoP(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixe
     N : int
         Number of datapoints along each side of the pupil-plane (output) array
     centering : string
-        Whether the input and output arrays are pixel-centered or inter-pixel-centered.
+        Whether the icp.t and output arrays are pixel-centered or inter-pixel-centered.
         Possible values: 'pixel', 'interpixel'
 
     Returns
@@ -138,13 +139,13 @@ def propcustom_mft_FtoP(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixe
     y = x.T  # Column vector
 
     # Fourier transform matrices
-    pre = np.exp(-2 * np.pi * 1j * (y * eta) / (wavelength * fl))
-    post = np.exp(-2 * np.pi * 1j * (xi * x) / (wavelength * fl))
+    pre = cp.exp(-2 * cp.pi * 1j * (y * eta) / (wavelength * fl))
+    post = cp.exp(-2 * cp.pi * 1j * (xi * x) / (wavelength * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
+    scaling = cp.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
 
-    return scaling * np.linalg.multi_dot([pre, E_foc, post])
+    return scaling * cp.dot(cp.dot(pre, E_foc), post)
 
 
 def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
@@ -171,7 +172,7 @@ def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centeri
     Neta : int
         Number of samples along vertical axis of focal plane.
     centering : string
-        Whether the input and output arrays are pixel-centered or inter-pixel-centered.
+        Whether the icp.t and output arrays are pixel-centered or inter-pixel-centered.
         Possible values: 'pixel', 'interpixel'
 
     Returns
@@ -187,7 +188,7 @@ def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centeri
     dy = dx
 
     if M != N:
-        raise ValueError('Input array is not square')
+        raise ValueError('Icp.t array is not square')
 
     # Pupil-plane coordinates
     x = utils.create_axis(N, dx, centering=centering)[:, None]  # Broadcast to column vector
@@ -198,13 +199,13 @@ def propcustom_mft_PtoF(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centeri
     eta = utils.create_axis(Neta, deta, centering=centering)[:, None]  # Broadcast to column vector
 
     # Fourier transform matrices
-    pre = np.exp(-2 * np.pi * 1j * (eta * y) / (wavelength * fl))
-    post = np.exp(-2 * np.pi * 1j * (x * xi) / (wavelength * fl))
+    pre = cp.exp(-2 * cp.pi * 1j * (eta * y) / (wavelength * fl))
+    post = cp.exp(-2 * cp.pi * 1j * (x * xi) / (wavelength * fl))
 
     # Constant scaling factor in front of Fourier transform
-    scaling = np.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
+    scaling = cp.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
 
-    return scaling * np.linalg.multi_dot([pre, E_pup, post])
+    return scaling * cp.dot(cp.dot(pre, E_pup), post)
 
 
 def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
@@ -221,7 +222,7 @@ def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
     NA = IN.shape[1]
     NB = lambdaOverD*D
     
-    [X,Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float),np.arange(-NB/2., NB/2., dtype=float))
+    [X,Y] = cp.meshgrid(cp.arange(-NB/2., NB/2., dtype=float),cp.arange(-NB/2., NB/2., dtype=float))
     [RHO,THETA] = utils.cart2pol(Y,X)    
    
     windowKnee = 1.-inVal/outVal
@@ -230,9 +231,9 @@ def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
     windowMASK2 = falco_gen_Tukey4vortex(NB, RHO, windowKnee)
 
     # DFT vectors 
-    x = np.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D
-    u1 = np.arange(-NB/2,NB/2,dtype=float)/lambdaOverD #(-NB/2:NB/2-1)/lambdaOverD
-    u2 = np.arange(-NB/2,NB/2,dtype=float)*2*outVal/NB # (-NB/2:NB/2-1)*2*outVal/N
+    x = cp.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D
+    u1 = cp.arange(-NB/2,NB/2,dtype=float)/lambdaOverD #(-NB/2:NB/2-1)/lambdaOverD
+    u2 = cp.arange(-NB/2,NB/2,dtype=float)*2*outVal/NB # (-NB/2:NB/2-1)*2*outVal/N
     
     FPM = falco_gen_vortex_mask( charge, NB )
 
@@ -240,17 +241,17 @@ def propcustom_mft_Pup2Vortex2Pup( IN, charge, apRad,  inVal, outVal):
 
     ## Low-sampled DFT of entire region
 
-    FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*np.outer(u1,x)) @ IN @ np.exp(-1j*2*np.pi*np.outer(x,u1))
+    FP1 = 1/(1*D*lambdaOverD)*cp.exp(-1j*2*cp.pi*cp.outer(u1,x)) @ IN @ cp.exp(-1j*2*cp.pi*cp.outer(x,u1))
     #if showPlots2debug; figure;imagesc(log10(abs(FP1).^2));axis image;colorbar; title('Large scale DFT'); end;
 
-    LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*2*np.pi*np.outer(x,u1)) @ (FP1*FPM*(1-windowMASK1)) @ np.exp(-1j*2*np.pi*np.outer(u1,x))
+    LP1 = 1/(1*D*lambdaOverD)*cp.exp(-1j*2*cp.pi*cp.outer(x,u1)) @ (FP1*FPM*(1-windowMASK1)) @ cp.exp(-1j*2*cp.pi*cp.outer(u1,x))
     #if showPlots2debug; figure;imagesc(abs(FP1.*(1-windowMASK1)));axis image;colorbar; title('Large scale DFT (windowed)'); end;
     
     ## Fine sampled DFT of innter region
-    FP2 = 2*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*np.outer(u2,x)) @ IN @ np.exp(-1j*2*np.pi*np.outer(x,u2))
+    FP2 = 2*outVal/(1*D*NB)*cp.exp(-1j*2*cp.pi*cp.outer(u2,x)) @ IN @ cp.exp(-1j*2*cp.pi*cp.outer(x,u2))
     #if showPlots2debug; figure;imagesc(log10(abs(FP2).^2));axis image;colorbar; title('Fine sampled DFT'); end;
     FPM = falco_gen_vortex_mask(charge, NB)
-    LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*2*np.pi*np.outer(x,u2)) @ (FP2*FPM*windowMASK2) @ np.exp(-1j*2*np.pi*np.outer(u2,x))       
+    LP2 = 2.0*outVal/(1*D*NB)*cp.exp(-1j*2*cp.pi*cp.outer(x,u2)) @ (FP2*FPM*windowMASK2) @ cp.exp(-1j*2*cp.pi*cp.outer(u2,x))       
     #if showPlots2debug; figure;imagesc(abs(FP2.*windowMASK2));axis image;colorbar; title('Fine sampled DFT (windowed)'); end;
     OUT = LP1 + LP2;
     #if showPlots2debug; figure;imagesc(abs(OUT));axis image;colorbar; title('Lyot plane'); end;
@@ -272,9 +273,9 @@ def falco_gen_Tukey4vortex( Nwindow, RHO, alpha ):
 #function w = falco_gen_Tukey4vortex( Nwindow, RHO, alpha )
 
     Nlut = int(10*Nwindow)
-    rhos0 = np.linspace(-Nwindow/2,Nwindow/2,Nlut)
+    rhos0 = cp.linspace(-Nwindow/2,Nwindow/2,Nlut)
     lut = tukey(Nlut,alpha)#,left=0,right=0)
     
-    w = np.interp(RHO,rhos0,lut)
+    w = cp.interp(RHO,rhos0,lut)
 
     return w

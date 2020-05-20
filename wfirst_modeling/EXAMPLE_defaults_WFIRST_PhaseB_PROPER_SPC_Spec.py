@@ -1,4 +1,5 @@
-import numpy as np
+import cupy as cp
+import numpy as cp.
 import sys
 #sys.path.append('../')
 #sys.path.append('~/Repos/falco-python/data/WFIRST/PhaseB/')
@@ -76,18 +77,18 @@ mp.logGmin = -6 # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobians
 
 #--Zernikes to suppress with controller
 mp.jac = falco.config.Object()
-mp.jac.zerns = np.array([1])  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
-mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
+mp.jac.zerns = cp.array([1])  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
+mp.jac.Zcoef = 1e-9*cp.ones(cp.size(mp.jac.zerns)); #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
        
 #--Zernikes to compute sensitivities for
 mp.eval = falco.config.Object()
-mp.eval.indsZnoll = np.array([2, 3]) #--Noll indices of Zernikes to compute values for
+mp.eval.indsZnoll = cp.array([2, 3]) #--Noll indices of Zernikes to compute values for
 #--Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
-mp.eval.Rsens = np.array([[3., 4.], [4., 5.], [5., 8.], [8., 9.]]);  # [2-D ndarray]
+mp.eval.Rsens = cp.array([[3., 4.], [4., 5.], [5., 8.], [8., 9.]]);  # [2-D ndarray]
 
 #--Grid- or Line-Search Settings
-mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
-mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
+mp.ctrl.log10regVec = cp.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
+mp.ctrl.dmfacVec = cp.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 # # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
 #--Spatial pixel weighting
@@ -112,12 +113,12 @@ mp.controller = 'gridsearchEFC';
 # # # # GRID SEARCH EFC DEFAULTS     
 #--WFSC Iterations and Control Matrix Relinearization
 mp.Nitr = 5; #--Number of estimation+control iterations to perform
-mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
-mp.dm_ind = np.array([1, 2]) #--Which DMs to use [1-D ndarray]
+mp.relinItrVec = cp.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
+mp.dm_ind = cp.array([1, 2]) #--Which DMs to use [1-D ndarray]
 
 # # PLANNED SEARCH EFC DEFAULTS     
-#mp.dm_ind = np.array([1, 2]) # vector of DMs used in controller at ANY time (not necessarily all at once or all the time). 
-#mp.ctrl.dmfacVec = np.array([1.])
+#mp.dm_ind = cp.array([1, 2]) # vector of DMs used in controller at ANY time (not necessarily all at once or all the time). 
+#mp.ctrl.dmfacVec = cp.array([1.])
 
 #--CONTROL SCHEDULE. Columns of mp.ctrl.sched_mat are: 
     # Column 1: # of iterations, 
@@ -164,7 +165,7 @@ mp.dm2.inf_sign = '+';
 
 ##--DM1 parameters
 mp.dm1.Nact = 48;               # # of actuators across DM array
-mp.dm1.VtoH = 1e-9*np.ones((48,48))  # gains of all actuators [nm/V of free stroke]
+mp.dm1.VtoH = 1e-9*cp.ones((48,48))  # gains of all actuators [nm/V of free stroke]
 mp.dm1.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm1.ytilt = 5.7               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm1.zrot = 0;                # clocking of DM surface [degrees]
@@ -174,7 +175,7 @@ mp.dm1.edgeBuffer = 1;          # max radius (in actuator spacings) outside of b
 
 ##--DM2 parameters
 mp.dm2.Nact = 48;               # # of actuators across DM array
-mp.dm2.VtoH = 1e-9*np.ones((48,48))  # gains of all actuators [nm/V of free stroke]
+mp.dm2.VtoH = 1e-9*cp.ones((48,48))  # gains of all actuators [nm/V of free stroke]
 mp.dm2.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm2.ytilt = 5.7               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm2.zrot = 0;              # clocking of DM surface [degrees]
@@ -288,23 +289,23 @@ if mp.centering == 'pixel':
 elif mp.centering == 'pixel':
     N1 = falco.utils.ceil_even(N0*dx0/dx1)
 
-x0 = np.arange(-(N0-1)/2., (N0-1)/2.+1)*dx0 #(-(N0-1)/2:(N0-1)/2)*dx0
-[X0, Y0] = np.meshgrid(x0, x0)
-R0 = np.sqrt(X0**2 + Y0**2);
+x0 = cp.arange(-(N0-1)/2., (N0-1)/2.+1)*dx0 #(-(N0-1)/2:(N0-1)/2)*dx0
+[X0, Y0] = cp.meshgrid(x0, x0)
+R0 = cp.sqrt(X0**2 + Y0**2);
 Window = 0*R0
 Window[R0 <= dx1/2.] = 1
-Window = Window/np.sum(Window)
+Window = Window/cp.sum(Window)
 # figure(10); imagesc(Window); axis xy equal tight; colormap jet; colorbar;
 #--To get good grayscale edges, convolve with the correct window before downsampling.
-FPM0 = np.fft.ifftshift(  np.fft.ifft2( np.fft.fft2(np.fft.fftshift(Window))*np.fft.fft2(np.fft.fftshift(FPM0)) )) 
-FPM0 = np.roll(FPM0, (1,1), axis=(0,1)) #--Undo a centering shift
-x1 = np.arange(-(N1-1)/2., (N1-1)/2.+1)*dx1 # (-(N1-1)/2:(N1-1)/2)*dx1;
-# [X1, Y1] = np.meshgrid(x1, x1)
+FPM0 = cp.fft.ifftshift(  cp.fft.ifft2( cp.fft.fft2(cp.fft.fftshift(Window))*cp.fft.fft2(cp.fft.fftshift(FPM0)) )) 
+FPM0 = cp.roll(FPM0, (1,1), axis=(0,1)) #--Undo a centering shift
+x1 = cp.arange(-(N1-1)/2., (N1-1)/2.+1)*dx1 # (-(N1-1)/2:(N1-1)/2)*dx1;
+# [X1, Y1] = cp.meshgrid(x1, x1)
 interp_spline = RectBivariateSpline(x0, x0, FPM0) # RectBivariateSpline is faster in 2-D than interp2d
 FPM1 = interp_spline(x1, x1)
 # FPM1 = interp2(X0, Y0, FPM0, X1, Y1, 'cubic', 0); #--Downsample by interpolation
 if mp.centering == 'pixel':
-        mp.F3.compact.ampMask = np.zeros((N1+1, N1+1))
+        mp.F3.compact.ampMask = cp.zeros((N1+1, N1+1))
         mp.F3.compact.ampMask[1::, 1::] = FPM1
 elif mp.centering == 'interpixel':    
         mp.F3.compact.ampMask = FPM1
@@ -330,14 +331,14 @@ mp.full.output_dim = falco.utils.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV)); #  
 mp.full.final_sampling_lam0 = 1/mp.Fend.res;	#   final sampling in lambda0/D
 
 mp.full.pol_conds = [10] # [-2,-1,1,2]; #--Which polarization states to use when creating an image.
-mp.full.polaxis = 10                #   polarization condition (only used with input_field_rootname)
+mp.full.polaxis = 10                #   polarization condition (only used with icp.t_field_rootname)
 mp.full.use_errors = True
 
 mp.full.zindex = [4]
 mp.full.zval_m = [0.19e-9]
 mp.full.use_hlc_dm_patterns = False # whether to use design WFE maps for HLC
 mp.full.lambda0_m = mp.lambda0
-mp.full.input_field_rootname = ''	#   rootname of files containing aberrated pupil
+mp.full.icp.t_field_rootname = ''	#   rootname of files containing aberrated pupil
 mp.full.use_dm1 = 0;                #   use DM1? 1 or 0
 mp.full.use_dm2 = 0;                #   use DM2? 1 or 0
 mp.full.dm_sampling_m = 0.9906e-3     #   actuator spacing in meters; default is 1 mm

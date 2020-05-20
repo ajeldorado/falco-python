@@ -1,3 +1,4 @@
+import cupy as cp
 import falco
 import numpy as np
 from os.path import isfile
@@ -26,11 +27,11 @@ def falco_discretize_FPM_surf(FPMsurf,t_nm_vec, dt_nm):
     FPMsurf = 1e9*FPMsurf
 
     #--Stay within the thickness range since material properties are not defined outside it
-    FPMsurf[FPMsurf<np.min(t_nm_vec)] = np.min(t_nm_vec)
-    FPMsurf[FPMsurf>np.max(t_nm_vec)] = np.max(t_nm_vec)
+    FPMsurf[FPMsurf<cp.min(t_nm_vec)] = cp.min(t_nm_vec)
+    FPMsurf[FPMsurf>cp.max(t_nm_vec)] = cp.max(t_nm_vec)
 
     #--Discretize to find the index the the complex transmission array
-    DMtransInd = 0 + np.round(1/dt_nm*(FPMsurf - np.min(t_nm_vec)));
+    DMtransInd = 0 + cp.round(1/dt_nm*(FPMsurf - cp.min(t_nm_vec)));
 
     return DMtransInd.astype(int)
    
@@ -64,8 +65,8 @@ def falco_thin_film_solver(n,d0,theta,lam,tetm=0):
         pass
     
     #n = n(:); 
-    np.hstac
-    d = np.hstack((0,d0.reshape(len(d0,)), 0))
+    cp.hstac
+    d = cp.hstack((0,d0.reshape(len(d0,)), 0))
     
 #    #if nargin < 5, tetm = 0; end:
 #    if 'TE' in kwargs and kwargs["TE"]==True:
@@ -73,8 +74,8 @@ def falco_thin_film_solver(n,d0,theta,lam,tetm=0):
 #    else:
 #        tetm = 0
     
-    kx = 2*np.pi*n[0]*np.sin(theta)/lam
-    kz = -np.sqrt( (2*np.pi*n/lam)**2 - kx**2 ) # sign agrees with measurement convention
+    kx = 2*cp.pi*n[0]*cp.sin(theta)/lam
+    kz = -cp.sqrt( (2*cp.pi*n/lam)**2 - kx**2 ) # sign agrees with measurement convention
     
     if (tetm == 1):
        kzz = kz/(n**2)
@@ -83,32 +84,32 @@ def falco_thin_film_solver(n,d0,theta,lam,tetm=0):
        pass
     
 
-    eep = np.exp(-1j*kz*d)
-    eem = np.exp(1j*kz*d)
+    eep = cp.exp(-1j*kz*d)
+    eem = cp.exp(1j*kz*d)
     
-    i1  = np.arange(N-1) #1:N-1; 
-    i2  = np.arange(1,N) #2:N;
+    i1  = cp.arange(N-1) #1:N-1; 
+    i2  = cp.arange(1,N) #2:N;
     tin = 0.5*(kzz[i1] + kzz[i2])/kzz[i1]
     ri  = (kzz[i1] - kzz[i2])/(kzz[i1] + kzz[i2])
     
-    A = np.eye(2)
+    A = cp.eye(2)
     for i in range(N-1):
-    	A = A * np.array( [tin[i]*[eep[i], ri[i]*eep[i]], [ri[i]*eem[i], eem[i]]])
+    	A = A * cp.array( [tin[i]*[eep[i], ri[i]*eep[i]], [ri[i]*eem[i], eem[i]]])
     
     rr = A[1,0]/A[0,0] #A(2,1)/A(1,1);
     tt = 1/A[0,0]
     
     # transmitted power flux (Poynting vector . surface) depends on index of the
     # substrate and angle
-    R = np.abs(rr)**2
+    R = cp.abs(rr)**2
     if tetm == 1:
-    	Pn = np.real( (kz[N-1]/(n[N-1]**2)) / (kz[0]/(n[0]**2)) );
+    	Pn = cp.real( (kz[N-1]/(n[N-1]**2)) / (kz[0]/(n[0]**2)) );
     else:
-        Pn = np.real((kz(N)/kz[0]))
+        Pn = cp.real((kz(N)/kz[0]))
         pass
     
     T = Pn*abs(tt)**2
-    tt= np.sqrt[Pn]*tt
+    tt= cp.sqrt[Pn]*tt
     
     return [R, T, rr, tt]
 
@@ -140,8 +141,8 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
 #    % REVISION HISTORY:
 #    % Modified on 2019-01-28 by A.J. Riggs to:
 #    %  -Allow for returning the mean transmission for different polarizations
-#    %  -Add optional keyword input for OPD or non-OPD phase convention choice
-#    %  -Add optional keyword input for substrate material choice.
+#    %  -Add optional keyword icp.t for OPD or non-OPD phase convention choice
+#    %  -Add optional keyword icp.t for substrate material choice.
 #    %  -Cleaned up the code.
 #    % Modified on 2018-05-01 by A.J. Riggs.
 #    % Created on 2017-12-11 by Erkin Sidick.
@@ -150,7 +151,7 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
 #    
 #    function [tCoef, rCoef] = falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, pol, varargin)
 #    
-    # Optional Keyword Inputs
+    # Optional Keyword Icp.ts
     flagOPD = True if ("OPD" in kwargs) and (kwargs["OPD"]==True) else False # OPD phase sign convention        
     substrate = kwargs["SUBSTRATE"] if "SUBSTRATE" in kwargs else "FS"
     
@@ -158,18 +159,18 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
     
     lam_nm = lam * 1.0e9 # m --> nm
     lam_u = lam*1.0e6; # m --> microns
-    theta  = aoi*np.pi/180. #     % deg --> rad
+    theta  = aoi*cp.pi/180. #     % deg --> rad
     
     # ---------------------------------------------
     #--Substrate properties
     if "FS" in substrate.upper():
         # ----------- Fused Silica from Dwight Moody------------------
-        lamFS = 1e9*np.array([0.4e-6, 0.5e-6, .51e-6, .52e-6, .53e-6, .54e-6, .55e-6, .56e-6, .57e-6, .58e-6, .59e-6, .6e-6, .72e-6, .76e-6, 0.8e-6, 0.88e-6, 0.90e-6, 1.04e-6])    
-        nFS = np.array([ 1.47012, 1.462, 1.462,  1.461,  1.461,  1.460,  1.460,  1.460,  1.459,  1.459,  1.458,  1.458, 1.45485, 1.45404, 1.45332, 1.45204, 1.45175, 1.44992])
-        #vsilica = np.hstack((lamm, nx))
+        lamFS = 1e9*cp.array([0.4e-6, 0.5e-6, .51e-6, .52e-6, .53e-6, .54e-6, .55e-6, .56e-6, .57e-6, .58e-6, .59e-6, .6e-6, .72e-6, .76e-6, 0.8e-6, 0.88e-6, 0.90e-6, 1.04e-6])    
+        nFS = cp.array([ 1.47012, 1.462, 1.462,  1.461,  1.461,  1.460,  1.460,  1.460,  1.459,  1.459,  1.458,  1.458, 1.45485, 1.45404, 1.45332, 1.45204, 1.45175, 1.44992])
+        #vsilica = cp.hstack((lamm, nx))
         #lam_silica = vsilica[:,0]  # nm
         #n_silica   = vsilica[:,1]
-        n_substrate = np.interp(lam_nm,lamFS,nFS) #interp1(lam_silica, n_silica, lam_nm, 'linear');        
+        n_substrate = cp.interp(lam_nm,lamFS,nFS) #interp1(lam_silica, n_silica, lam_nm, 'linear');        
         pass 
     elif "BK7" in substrate.upper():
         B1 = 1.03961212
@@ -180,12 +181,12 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
         C3 = 103.560653
     
         wvl_um = lam_u
-        n_substrate = np.sqrt(1 + (B1*(wvl_um)**2/((wvl_um)**2 - C1)) + (B2*(wvl_um)**2/((wvl_um)**2 - C2)) + (B3*(wvl_um)**2/((wvl_um)**2 - C3)))
+        n_substrate = cp.sqrt(1 + (B1*(wvl_um)**2/((wvl_um)**2 - C1)) + (B2*(wvl_um)**2/((wvl_um)**2 - C2)) + (B3*(wvl_um)**2/((wvl_um)**2 - C3)))
         pass
     
     #---------------------------------------------
     #--Dielectric properties
-    npmgi = 1.524 + 5.176e-03/lam_u**2 + 2.105e-4/lam_u**4
+    cp.gi = 1.524 + 5.176e-03/lam_u**2 + 2.105e-4/lam_u**4
     Ndiel  = len(t_PMGI_vec)
     
     #---------------------------------------------
@@ -195,7 +196,7 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
     #layer thickness.
     
     Nmetal = len(t_Ni_vec);
-    t_Ti_vec = np.zeros(Nmetal,)
+    t_Ti_vec = cp.zeros(Nmetal,)
     
     for ii in range(Nmetal):
         if(t_Ni_vec[ii] > t_Ti_base): #--For thicker layers
@@ -213,18 +214,18 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
 #    %     t_Ti = t_Ni;
 #    %     t_Ni = 0;
     
-    vnickel = np.loadtxt("nickel_data_from_Palik_via_Bala_wvlNM_n_k.txt",delimiter="\t", unpack=False,comments="#") 
+    vnickel = cp.loadtxt("nickel_data_from_Palik_via_Bala_wvlNM_n_k.txt",delimiter="\t", ucp.ck=False,comments="#") 
     lam_nickel = vnickel[:,0]  # nm
     n_nickel   = vnickel[:,1]
     k_nickel   = vnickel[:,2]
-    nnickel = np.interp(lam_nm,lam_nickel,n_nickel)
-    knickel = np.interp(lam_nm,lam_nickel,k_nickel)
+    nnickel = cp.interp(lam_nm,lam_nickel,n_nickel)
+    knickel = cp.interp(lam_nm,lam_nickel,k_nickel)
 #    nnickel    = interp1(lam_nickel, n_nickel, lam_nm, 'linear');
 #    knickel    = interp1(lam_nickel, k_nickel, lam_nm, 'linear');
     
     # ---------------------------------------------
     # from D Moody
-    titanium =np.array([ 
+    titanium =cp.array([ 
         [397,          2.08,          2.95],
         [413,          2.14,          2.98],
         [431,          2.21,          3.01],
@@ -248,15 +249,15 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
     lam_ti = titanium[:,0] # nm
     n_ti   = titanium[:,1]
     k_ti   = titanium[:,2]
-    nti = np.interp(lam_nm,lam_ti,n_ti)
-    kti = np.interp(lam_nm,lam_ti,k_ti)
+    nti = cp.interp(lam_nm,lam_ti,n_ti)
+    kti = cp.interp(lam_nm,lam_ti,k_ti)
 #    nti    = interp1(lam_ti, n_ti, lam_nm, 'linear');
 #    kti    = interp1(lam_ti, k_ti, lam_nm, 'linear');
     # ---------------------------------------------
     
     # Compute the complex transmission
-    tCoef = np.zeros((Ndiel,Nmetal)) #--initialize
-    rCoef = np.zeros((Ndiel,Nmetal)) #--initialize
+    tCoef = cp.zeros((Ndiel,Nmetal)) #--initialize
+    rCoef = cp.zeros((Ndiel,Nmetal)) #--initialize
     for jj in range(Ndiel):
         dpm = t_PMGI_vec[jj]
         
@@ -264,8 +265,8 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
             dni = t_Ni_vec[ii]
             dti = t_Ti_vec[ii]
             
-            nvec = np.array([1, 1, npmgi, nnickel-1j*knickel, nti-1j*kti, n_substrate],dtype=complex)
-            dvec = np.array([d0-dpm-dni-dti, dpm, dni, dti])
+            nvec = cp.array([1, 1, cp.gi, nnickel-1j*knickel, nti-1j*kti, n_substrate],dtype=complex)
+            dvec = cp.array([d0-dpm-dni-dti, dpm, dni, dti])
             
             #--Choose polarization
             if(pol==2): #--Mean of the two
@@ -276,13 +277,13 @@ def falco_thin_film_material_def(lam, aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, d0, 
             elif(pol==0 or pol==1):
                 [dumm1, dummy2, rr, tt] = falco_thin_film_solver(nvec, dvec, theta, lam, pol)
             else:
-                #error('falco_thin_film_material_def.m: Wrong input value for polarization.')
+                #error('falco_thin_film_material_def.m: Wrong icp.t value for polarization.')
                 pass
 
             #--Choose phase convention
             if(flagOPD==False):
-                tCoef[jj,ii] = np.conj(tt) #--Complex field transmission coeffient, changed by erkin
-                rCoef[jj,ii] = np.conj(rr) #--Complex field reflection coeffient, changed by erkin
+                tCoef[jj,ii] = cp.conj(tt) #--Complex field transmission coeffient, changed by erkin
+                rCoef[jj,ii] = cp.conj(rr) #--Complex field reflection coeffient, changed by erkin
             else: #--OPD phase convention is negative of oppositive convention
                 tCoef[jj,ii] = tt #--Complex field transmission coeffient, changed by erkin
                 rCoef[jj,ii] = rr #--Complex field reflection coeffient, changed by erkin
@@ -313,19 +314,19 @@ def falco_gen_complex_trans_table(mp,**kwargs):
 #
 #function [complexTransCompact, complexTransFull] = falco_gen_complex_trans_table(mp,varargin)
 
-    # Optional Inputs
+    # Optional Icp.ts
     substrate = kwargs["SUBSTRATE"] if "SUBSTRATE" in kwargs else "FS"
     flagRefl = True if "REFLECTION" in kwargs and kwargs["REFLECTION"]==True else False # flag to take the value in reflection instead of transmission
     
     mp.F3.metal = 'Ni'
     mp.F3.diel = 'PMGI'
     
-    fn_cube_compact = print('%s/data/material/ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1fN%d_%.1fdeg_compact.npy' %
+    fn_cube_compact = print('%s/data/material/ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1fN%d_%.1fdeg_compact.cp.' %
         (mp.path.falco,substrate,mp.t_Ti_nm,mp.F3.metal,min(mp.t_metal_nm_vec), max(mp.t_metal_nm_vec), mp.dt_metal_nm,
         mp.F3.diel, min(mp.t_diel_nm_vec),  max(mp.t_diel_nm_vec),  mp.dt_diel_nm,
         (1e9*mp.lambda0),100*mp.fracBW,mp.Nsbp,mp.aoi))
     
-    fn_cube_full = print('%s/data/material/ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1f_%dN%d_%.1fdeg_full.npy' %
+    fn_cube_full = print('%s/data/material/ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1f_%dN%d_%.1fdeg_full.cp.' %
         (mp.path.falco,substrate,mp.t_Ti_nm,mp.F3.metal,min(mp.t_metal_nm_vec), max(mp.t_metal_nm_vec), mp.dt_metal_nm, 
         mp.F3.diel, min(mp.t_diel_nm_vec),  max(mp.t_diel_nm_vec),  mp.dt_diel_nm,
         (1e9*mp.lambda0),100*mp.fracBW,mp.Nsbp,mp.Nwpsbp,mp.aoi))
@@ -346,12 +347,12 @@ def falco_gen_complex_trans_table(mp,**kwargs):
     
     #--Compact Model: Load the data if it has been generated before; otherwise generate it.
     if(isfile(fn_cube_compact)):
-        complexTransCompact = np.load(fn_cube_compact)
+        complexTransCompact = cp.load(fn_cube_compact)
         print('Loaded complex transmission datacube for compact model: %s' % fn_cube_compact)    
     else:
     
         print('Computing thin film equations for compact model:')
-        complexTransCompact = np.zeros((Ndiel,Nmetal,mp.Nsbp))
+        complexTransCompact = cp.zeros((Ndiel,Nmetal,mp.Nsbp))
         sbp_centers = mp.sbp_centers
         
         #--Parallel/distributed computing
@@ -370,20 +371,20 @@ def falco_gen_complex_trans_table(mp,**kwargs):
             print('\tDone computing wavelength %d of %d.\n' % (si,Nsbp))
 
         #--Save out for future use
-        np.save(fn_cube_compact,complexTransCompact)
+        cp.save(fn_cube_compact,complexTransCompact)
         print('Saved complex transmission datacube: %s' % fn_cube_compact)
         pass
     
     #--Full Model: Load the data if it has been generated before; otherwise generate it.
     if(isfile(fn_cube_full)):
-        complexTransFull = np.load(fn_cube_full)
+        complexTransFull = cp.load(fn_cube_full)
         print('Loaded complex transmission datacube for full model: %s' % fn_cube_full)    
     else:
         print('Computing thin film equations for full model:')
         if(mp.Nwpsbp==1):
             complexTransFull = complexTransCompact
         else:
-            complexTransFull = np.zeros((Ndiel,Nmetal,mp.Nsbp*mp.Nwpsbp))
+            complexTransFull = cp.zeros((Ndiel,Nmetal,mp.Nsbp*mp.Nwpsbp))
             lambdas = mp.full.lambdas
             
             #--Parallel/distributed computing
@@ -402,7 +403,7 @@ def falco_gen_complex_trans_table(mp,**kwargs):
                 print('\tDone computing wavelength %d of %d.\n' % (li,len(lambdas)))
         
         #--Save out for future use
-        np.save(fn_cube_full,complexTransFull)
+        cp.save(fn_cube_full,complexTransFull)
         print('Saved complex transmission datacube: %s\n' % fn_cube_full)
     
     return [complexTransCompact, complexTransFull]

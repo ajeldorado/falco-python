@@ -1,3 +1,4 @@
+import cupy as cp
 import sys
 sys.path.insert(0,"../")
 import falco
@@ -22,7 +23,7 @@ mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [m
 ## Step 3: Overwrite default values as desired
 
 # ##--Special Computational Settings
-mp.flagPlot = True;
+mp.flagPlot = False;
 mp.flagMultiproc = False; #--whether to use multiprocessing to parallelize some large computations
 #mp.Nthreads = 2         #--Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
@@ -48,7 +49,7 @@ mp.P4.ODnorm = 0.78; #--Lyot stop OD [Dtelescope]
 
 ## Step 4: Generate the label associated with this trial
 
-mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)) + '_Trial' + ('%04d_'%(mp.TrialNum)) + mp.coro + '_' + mp.whichPupil + '_' + str(np.size(mp.dm_ind)) + 'DM' + str(mp.dm1.Nact) + '_z' + str(mp.d_dm1_dm2) + '_IWA' + str(mp.Fend.corr.Rin) + '_OWA' + str(mp.Fend.corr.Rout) + '_' + str(mp.Nsbp) + 'lams' + str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100) + '_' + mp.controller
+mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)) + '_Trial' + ('%04d_'%(mp.TrialNum)) + mp.coro + '_' + mp.whichPupil + '_' + str(cp.size(mp.dm_ind)) + 'DM' + str(mp.dm1.Nact) + '_z' + str(mp.d_dm1_dm2) + '_IWA' + str(mp.Fend.corr.Rin) + '_OWA' + str(mp.Fend.corr.Rout) + '_' + str(mp.Nsbp) + 'lams' + str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100) + '_' + mp.controller
               
 
 #mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)),'_Trial',num2str(mp.TrialNum,'#04d_'),...

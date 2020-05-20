@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 import falco
 import os
@@ -144,7 +145,7 @@ def falco_set_optional_variables(mp):
     
     ## Optional/Hidden variables
     if not hasattr(mp.full,'pol_conds'):  
-        mp.full.pol_conds = np.array([0])  #--Vector of which polarization state(s) to use when creating images from the full model. Currently only used with PROPER full models from John Krist.
+        mp.full.pol_conds = cp.array([0])  #--Vector of which polarization state(s) to use when creating images from the full model. Currently only used with PROPER full models from John Krist.
     if not hasattr(mp,'propMethodPTP'):
         mp.propMethodPTP = 'fft' #--Propagation method for postage stamps around the influence functions. 'mft' or 'fft'
     if not hasattr(mp,'apodType'):  
@@ -154,9 +155,9 @@ def falco_set_optional_variables(mp):
     if not hasattr(mp.full,'ZrmsVal'): 
         mp.full.ZrmsVal = 1e-9 #--Amount of RMS Zernike mode used to calculate aberration sensitivities [meters]. WFIRST CGI uses 1e-9, and LUVOIR and HabEx use 1e-10. 
     if not hasattr(mp.full,'Rsens'): 
-        mp.full.Rsens = np.array([])
+        mp.full.Rsens = cp.array([])
     if not hasattr(mp.full,'indsZnoll'): 
-        mp.full.indsZnoll = np.array([2, 3])
+        mp.full.indsZnoll = cp.array([2, 3])
     
     ## DM Initialization
     if not hasattr(mp,'dm1'):
@@ -190,11 +191,11 @@ def falco_set_optional_variables(mp):
     if not hasattr(mp.dm1,'Vmax'):  
         mp.dm1.Vmax = 1000. #--Max allowed voltage command
     if not hasattr(mp.dm1,'pinned'):  
-        mp.dm1.pinned = np.array([]) #--Indices of pinned actuators
+        mp.dm1.pinned = cp.array([]) #--Indices of pinned actuators
     if not hasattr(mp.dm1,'Vpinned'):  
-        mp.dm1.Vpinned = np.array([]) #--(Fixed) voltage commands of pinned actuators
+        mp.dm1.Vpinned = cp.array([]) #--(Fixed) voltage commands of pinned actuators
     if not hasattr(mp.dm1,'tied'):  
-        mp.dm1.tied = np.zeros((0,2)) #--Indices of paired actuators. Two indices per row       
+        mp.dm1.tied = cp.zeros((0,2)) #--Indices of paired actuators. Two indices per row       
     if not hasattr(mp.dm1,'flagNbrRule'):
         mp.dm1.flagNbrRule = False #--Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm1.dVnbr
     #--DM2
@@ -203,11 +204,11 @@ def falco_set_optional_variables(mp):
     if not hasattr(mp.dm2,'Vmax'):  
         mp.dm2.Vmax = 1000. #--Max allowed voltage command
     if not hasattr(mp.dm2,'pinned'):  
-        mp.dm2.pinned = np.array([]) #--Indices of pinned actuators
+        mp.dm2.pinned = cp.array([]) #--Indices of pinned actuators
     if not hasattr(mp.dm2,'Vpinned'):  
-        mp.dm2.Vpinned = np.array([]) #--(Fixed) voltage commands of pinned actuators
+        mp.dm2.Vpinned = cp.array([]) #--(Fixed) voltage commands of pinned actuators
     if not hasattr(mp.dm2,'tied'):  
-        mp.dm2.tied = np.zeros((0,2)) #--Indices of paired actuators. Two indices per row       
+        mp.dm2.tied = cp.zeros((0,2)) #--Indices of paired actuators. Two indices per row       
     if not hasattr(mp.dm2,'flagNbrRule'):  
         mp.dm2.flagNbrRule = False;  #--Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm2.dVnbr
 
@@ -221,37 +222,37 @@ def falco_set_optional_variables(mp):
 
     ## Intialize delta DM voltages. Needed for Kalman filters.
     ##--Save the delta from the previous command
-    if np.any(mp.dm_ind==1):
+    if cp.any(mp.dm_ind==1):
         mp.dm1.dV = 0
-    if np.any(mp.dm_ind==2):  
+    if cp.any(mp.dm_ind==2):  
         mp.dm2.dV = 0
-    if np.any(mp.dm_ind==3): 
+    if cp.any(mp.dm_ind==3): 
         mp.dm3.dV = 0
-    if np.any(mp.dm_ind==4): 
+    if cp.any(mp.dm_ind==4): 
         mp.dm4.dV = 0
-    if np.any(mp.dm_ind==5):  
+    if cp.any(mp.dm_ind==5):  
         mp.dm5.dV = 0
-    if np.any(mp.dm_ind==6):
+    if cp.any(mp.dm_ind==6):
         mp.dm6.dV = 0
-    if np.any(mp.dm_ind==7): 
+    if cp.any(mp.dm_ind==7): 
         mp.dm7.dV = 0
-    if np.any(mp.dm_ind==8):  
+    if cp.any(mp.dm_ind==8):  
         mp.dm8.dV = 0
-    if np.any(mp.dm_ind==9):  
+    if cp.any(mp.dm_ind==9):  
         mp.dm9.dV = 0
     
 #    #--First delta DM settings are zero (for covariance calculation in Kalman filters or robust controllers)
-#    mp.dm1.dV = np.zeros((mp.dm1.Nact,mp.dm1.Nact)); # delta voltage on DM1;
-#    mp.dm2.dV = np.zeros((mp.dm2.Nact,mp.dm2.Nact)); # delta voltage on DM2;
-#    mp.dm8.dV = np.zeros((mp.dm8.NactTotal,1)); # delta voltage on DM8;
-#    mp.dm9.dV = np.zeros((mp.dm9.NactTotal,1)); # delta voltage on DM9;
+#    mp.dm1.dV = cp.zeros((mp.dm1.Nact,mp.dm1.Nact)); # delta voltage on DM1;
+#    mp.dm2.dV = cp.zeros((mp.dm2.Nact,mp.dm2.Nact)); # delta voltage on DM2;
+#    mp.dm8.dV = cp.zeros((mp.dm8.NactTotal,1)); # delta voltage on DM8;
+#    mp.dm9.dV = cp.zeros((mp.dm9.NactTotal,1)); # delta voltage on DM9;
 
     ## Control
     if not hasattr(mp, 'WspatialDef'):
-        mp.WspatialDef = np.array([]) #--spatial weight matrix for the Jacobian
+        mp.WspatialDef = cp.array([]) #--spatial weight matrix for the Jacobian
 
     ## Performance Evaluation
-    mp.mas2lam0D = 1/(mp.lambda0/mp.P1.D*180/np.pi*3600*1000); #--Conversion factor: milliarcseconds (mas) to lambda0/D
+    mp.mas2lam0D = 1/(mp.lambda0/mp.P1.D*180/cp.pi*3600*1000); #--Conversion factor: milliarcseconds (mas) to lambda0/D
     if not hasattr(mp.Fend, 'eval'): #--Initialize the structure if it doesn't exist.
         mp.Fend.eval = falco.config.Object()
     if not hasattr(mp.Fend.eval,'res'):  
@@ -271,19 +272,19 @@ def falco_set_spectral_properties(mp):
 
     #--Center-ish wavelength indices (ref = reference)(Only the center if
     #  an odd number of wavelengths is used.)
-    mp.si_ref = np.floor(mp.Nsbp/2).astype(int)
+    mp.si_ref = cp.floor(mp.Nsbp/2).astype(int)
 
     #--Wavelengths used for Compact Model (and Jacobian Model)
-    mp.sbp_weights = np.ones((mp.Nsbp,1));
+    mp.sbp_weights = cp.ones((mp.Nsbp,1));
     if mp.Nwpsbp==1: #--Set ctrl wavelengths evenly between endpoints (inclusive) of the total bandpass.
         if mp.Nsbp==1:
-            mp.sbp_centers = np.array([mp.lambda0])
+            mp.sbp_centers = cp.array([mp.lambda0])
         else:
-            mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBW/2,1+mp.fracBW/2,mp.Nsbp);
+            mp.sbp_centers = mp.lambda0*cp.linspace(1-mp.fracBW/2,1+mp.fracBW/2,mp.Nsbp);
     else:#--For cases with multiple sub-bands: Choose wavelengths to be at subbandpass centers since the wavelength samples will span to the full extent of the sub-bands.
         mp.fracBWcent2cent = mp.fracBW*(1-1/mp.Nsbp); #--Bandwidth between centers of endpoint subbandpasses.
-        mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2,1+mp.fracBWcent2cent/2,mp.Nsbp); #--Space evenly at the centers of the subbandpasses.
-    mp.sbp_weights = mp.sbp_weights/np.sum(mp.sbp_weights); #--Normalize the sum of the weights
+        mp.sbp_centers = mp.lambda0*cp.linspace(1-mp.fracBWcent2cent/2,1+mp.fracBWcent2cent/2,mp.Nsbp); #--Space evenly at the centers of the subbandpasses.
+    mp.sbp_weights = mp.sbp_weights/cp.sum(mp.sbp_weights); #--Normalize the sum of the weights
     
     print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f%% total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW));
     print('Sub-bandpasses are centered at wavelengths [nm]:\t ',end='')
@@ -293,10 +294,10 @@ def falco_set_spectral_properties(mp):
     ## Bandwidth and Wavelength Specs: Full Model
     
     #--Center(-ish) wavelength indices (ref = reference). (Only the center if an odd number of wavelengths is used.)
-    mp.wi_ref = np.floor(mp.Nwpsbp/2).astype(int)
+    mp.wi_ref = cp.floor(mp.Nwpsbp/2).astype(int)
 
     #--Wavelength factors/weights within sub-bandpasses in the full model
-    mp.full.lambda_weights = np.ones((mp.Nwpsbp,1)); #--Initialize as all ones. Weights within a single sub-bandpass
+    mp.full.lambda_weights = cp.ones((mp.Nwpsbp,1)); #--Initialize as all ones. Weights within a single sub-bandpass
     if mp.Nwpsbp==1:
         mp.full.dlam = 0; #--Delta lambda between every wavelength in the sub-band in the full model
     else:
@@ -305,35 +306,36 @@ def falco_set_spectral_properties(mp):
         mp.full.lambda_weights[-1] = 1/2; #--Include end wavelengths with half weights
         mp.fracBWsbp = mp.fracBW/mp.Nsbp; #--Bandwidth per sub-bandpass
         #--Indexing of wavelengths in each sub-bandpass
-        sbp_facs = np.linspace(1-mp.fracBWsbp/2,1+mp.fracBWsbp/2,mp.Nwpsbp); #--Factor applied to lambda0 only
+        sbp_facs = cp.linspace(1-mp.fracBWsbp/2,1+mp.fracBWsbp/2,mp.Nwpsbp); #--Factor applied to lambda0 only
         mp.full.dlam = (sbp_facs[1] - sbp_facs[0])*mp.lambda0; #--Delta lambda between every wavelength in the full model 
     
-    mp.full.lambda_weights = mp.full.lambda_weights/np.sum(mp.full.lambda_weights); #--Normalize sum of the weights (within the sub-bandpass)
+    mp.full.lambda_weights = mp.full.lambda_weights/cp.sum(mp.full.lambda_weights); #--Normalize sum of the weights (within the sub-bandpass)
 
     #--Make vector of all wavelengths and weights used in the full model
-    lambdas = np.zeros((mp.Nsbp*mp.Nwpsbp,))
-    lambda_weights_all = np.zeros((mp.Nsbp*mp.Nwpsbp,))
-    mp.full.lambdasMat = np.zeros((mp.Nsbp,mp.Nwpsbp))
-    mp.full.indsLambdaMat = np.zeros((mp.Nsbp*mp.Nwpsbp,2),dtype=int)
+    lambdas = cp.zeros((mp.Nsbp*mp.Nwpsbp,))
+    lambda_weights_all = cp.zeros((mp.Nsbp*mp.Nwpsbp,))
+    mp.full.lambdasMat = cp.zeros((mp.Nsbp,mp.Nwpsbp))
+    mp.full.indsLambdaMat = cp.zeros((mp.Nsbp*mp.Nwpsbp,2),dtype=int)
     counter = 0;
     for si in range(mp.Nsbp):
         if(mp.Nwpsbp==1):
             mp.full.lambdasMat[si,0] = mp.sbp_centers[si]
         else:
-            mp.full.lambdasMat[si,:] = np.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp+1)/2)*mp.full.dlam + mp.sbp_centers[si]
-        np.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp-1)/2)*mp.full.dlam# + mp.sbp_centers[si];
+            mp.full.lambdasMat[si,:] = cp.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp+1)/2)*mp.full.dlam + mp.sbp_centers[si]
+        cp.arange(-(mp.Nwpsbp-1)/2,(mp.Nwpsbp-1)/2)*mp.full.dlam# + mp.sbp_centers[si];
         for wi in range(mp.Nwpsbp):
             lambdas[counter] = mp.full.lambdasMat[si,wi];
-            lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi];
-            mp.full.indsLambdaMat[counter,:] = [si,wi]
+            lambda_weights_all[counter] = mp.sbp_weights[si,0]*mp.full.lambda_weights[wi,0];
+            mp.full.indsLambdaMat[counter,0] = si
+            mp.full.indsLambdaMat[counter,1] = wi
             counter = counter+1;
             
     #--Get rid of redundant wavelengths in the complete list, and sum weights for repeated wavelengths
     # indices of unique wavelengths
-    unused_1, inds_unique = np.unique(np.round(1e12*lambdas), return_index=True); #--Check equality at the picometer level for wavelength
+    unused_1, inds_unique = cp.unique(cp.around(1e12*lambdas), return_index=True); #--Check equality at the picometer level for wavelength
     mp.full.indsLambdaUnique = inds_unique;
     # indices of duplicate wavelengths
-    duplicate_inds = np.setdiff1d( np.arange(len(lambdas),dtype=int) , inds_unique);
+    duplicate_inds = cp.asarray(np.setdiff1d( cp.asnumpy(cp.arange(len(lambdas),dtype=int)) , cp.asnumpy(inds_unique)));
     # duplicate weight values
     duplicate_values = lambda_weights_all[duplicate_inds]
 
@@ -343,7 +345,7 @@ def falco_set_spectral_properties(mp):
     for idup in range(len(duplicate_inds)):
         wvl = lambdas[duplicate_inds[idup]];
         weight = lambda_weights_all[duplicate_inds[idup]];
-        ind = np.where(np.abs(mp.full.lambdas-wvl)<=1e-11)
+        ind = cp.where(cp.abs(mp.full.lambdas-wvl)<=1e-11)
         print(ind)
         mp.full.lambda_weights_all[ind] = mp.full.lambda_weights_all[ind] + weight;
     mp.full.NlamUnique = len(inds_unique)
@@ -378,18 +380,18 @@ def falco_set_jacobian_weights(mp):
     
     #--Which Zernike modes to include in Jacobian. Given as a vector of Noll indices. 1 is the on-axis piston mode.
     if not hasattr(mp.jac, 'zerns'):
-        mp.jac.zerns = np.array([1])
-        mp.jac.Zcoef = np.array([1.])
+        mp.jac.zerns = cp.array([1])
+        mp.jac.Zcoef = cp.array([1.])
         
-    mp.jac.Nzern = np.size(mp.jac.zerns)
-    mp.jac.Zcoef[np.nonzero(mp.jac.zerns==1)][0] = 1.; #--Reset coefficient for piston term to 1
+    mp.jac.Nzern = cp.size(mp.jac.zerns)
+    mp.jac.Zcoef[cp.nonzero(mp.jac.zerns==1)][0] = 1.; #--Reset coefficient for piston term to 1
     
     #--Initialize weighting matrix of each Zernike-wavelength mode for the controller
-    mp.jac.weightMat = np.zeros((mp.Nsbp,mp.jac.Nzern)); 
+    mp.jac.weightMat = cp.zeros((mp.Nsbp,mp.jac.Nzern)); 
     for izern in range(0,mp.jac.Nzern):
         whichZern = mp.jac.zerns[izern];
         if whichZern==1:
-            mp.jac.weightMat[:,0] = np.ones(mp.Nsbp) #--Include all wavelengths for piston Zernike mode
+            mp.jac.weightMat[:,0] = cp.ones(mp.Nsbp) #--Include all wavelengths for piston Zernike mode
         else: #--Include just middle and end wavelengths for Zernike mode 2 and up
             mp.jac.weightMat[0,izern] = 1
             mp.jac.weightMat[mp.si_ref,izern] = 1
@@ -402,7 +404,7 @@ def falco_set_jacobian_weights(mp):
     
     #--Normalize the summed weights of each column separately
     for izern in range(mp.jac.Nzern):
-        colSum = np.double(sum(mp.jac.weightMat[:,izern]))
+        colSum = cp.double(sum(mp.jac.weightMat[:,izern]))
         mp.jac.weightMat[:,izern] = mp.jac.weightMat[:,izern]/colSum
 
     #--Zero out columns for which the RMS Zernike value is zero
@@ -410,16 +412,16 @@ def falco_set_jacobian_weights(mp):
         if mp.jac.Zcoef[izern]==0:
             mp.jac.weightMat[:,izern] = 0*mp.jac.weightMat[:,izern]
 
-    mp.jac.weightMat_ele = np.nonzero(mp.jac.weightMat>0) #--Indices of the non-zero control Jacobian modes in the weighting matrix
+    mp.jac.weightMat_ele = cp.nonzero(mp.jac.weightMat>0) #--Indices of the non-zero control Jacobian modes in the weighting matrix
     mp.jac.weights = mp.jac.weightMat[mp.jac.weightMat_ele] #--Vector of control Jacobian mode weights
-    mp.jac.Nmode = np.size(mp.jac.weights) #--Number of (Zernike-wavelength pair) modes in the control Jacobian
+    mp.jac.Nmode = cp.size(mp.jac.weights) #--Number of (Zernike-wavelength pair) modes in the control Jacobian
 
     #--Get the wavelength indices for the nonzero values in the weight matrix. 
-    tempMat = np.tile( np.arange(mp.Nsbp).reshape((mp.Nsbp,1)), (1,mp.jac.Nzern) )
+    tempMat = cp.tile( cp.arange(mp.Nsbp).reshape((mp.Nsbp,1)), (1,mp.jac.Nzern) )
     mp.jac.sbp_inds = tempMat[mp.jac.weightMat_ele];
 
     #--Get the Zernike indices for the nonzero elements in the weight matrix. 
-    tempMat = np.tile(mp.jac.zerns,(mp.Nsbp,1));
+    tempMat = cp.tile(mp.jac.zerns,(mp.Nsbp,1));
     mp.jac.zern_inds = tempMat[mp.jac.weightMat_ele];
 
     pass
@@ -531,12 +533,12 @@ def falco_gen_chosen_pupil(mp):
     
     ##--NORMALIZED (in pupil diameter) coordinate grids in the input pupil for making the tip/tilted input wavefront within the compact model
     if mp.centering.lower() == ('interpixel'):
-        mp.P2.compact.xsDL = np.linspace(-(mp.P1.compact.Narr-1)/2, (mp.P1.compact.Narr-1)/2,mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
+        mp.P2.compact.xsDL = cp.linspace(-(mp.P1.compact.Narr-1)/2, (mp.P1.compact.Narr-1)/2,mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
     else:
-        mp.P2.compact.xsDL = np.linspace(-mp.P1.compact.Narr/2, (mp.P1.compact.Narr/2-1),mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
+        mp.P2.compact.xsDL = cp.linspace(-mp.P1.compact.Narr/2, (mp.P1.compact.Narr/2-1),mp.P1.compact.Narr)*mp.P2.compact.dx/mp.P2.D
 
 
-    [mp.P2.compact.XsDL,mp.P2.compact.YsDL] = np.meshgrid(mp.P2.compact.xsDL,mp.P2.compact.xsDL)
+    [mp.P2.compact.XsDL,mp.P2.compact.YsDL] = cp.meshgrid(mp.P2.compact.xsDL,mp.P2.compact.xsDL)
 
     if not hasattr(mp.P1.full, 'Narr'):    
         if(mp.full.flagPROPER):
@@ -550,11 +552,11 @@ def falco_gen_chosen_pupil(mp):
 
     #--NORMALIZED (in pupil diameter) coordinate grids in the input pupil for making the tip/tilted input wavefront within the full model
     if mp.centering.lower() == ('interpixel'):
-        mp.P2.full.xsDL = np.linspace(-(mp.P1.full.Narr-1)/2, (mp.P1.full.Narr-1)/2,mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
+        mp.P2.full.xsDL = cp.linspace(-(mp.P1.full.Narr-1)/2, (mp.P1.full.Narr-1)/2,mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
     else:
-        mp.P2.full.xsDL = np.linspace(-mp.P1.full.Narr/2, (mp.P1.full.Narr/2-1),mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
+        mp.P2.full.xsDL = cp.linspace(-mp.P1.full.Narr/2, (mp.P1.full.Narr/2-1),mp.P1.full.Narr)*mp.P2.full.dx/mp.P2.D
 
-    [mp.P2.full.XsDL,mp.P2.full.YsDL] = np.meshgrid(mp.P2.full.xsDL,mp.P2.full.xsDL)
+    [mp.P2.full.XsDL,mp.P2.full.YsDL] = cp.meshgrid(mp.P2.full.xsDL,mp.P2.full.xsDL)
     pass
 
 
@@ -586,7 +588,7 @@ def falco_gen_chosen_apodizer(mp):
     if mp.flagApod:
         #--mp.apodType is used only when generating certain types of analytical apodizers
         if mp.apodType.lower() in ('simple'): #--A simple, circular aperture stop
-            #--Inputs common to both the compact and full models
+            #--inputs common to both the compact and full models
             inputs = {}
             inputs["ID"] = mp.P3.IDnorm
             inputs["OD"] = mp.P3.ODnorm
@@ -853,8 +855,8 @@ def falco_gen_chosen_lyot_stop(mp):
         inputs["ID"] = mp.P4.IDnorm #- Outer diameter (fraction of Nbeam)
         inputs["OD"] = mp.P4.ODnorm#- Inner diameter (fraction of Nbeam)
 #        inputs["Nstrut"] = 0 #- Number of struts
-#        inputs["angStrut"] = np.array([])#- Array of struct angles (deg)
-#        inputs["wStrut"] = np.array([]) #- Strut widths (fraction of Nbeam)
+#        inputs["angStrut"] = cp.array([])#- Array of struct angles (deg)
+#        inputs["wStrut"] = cp.array([]) #- Strut widths (fraction of Nbeam)
 #        inputs["stretch"] = 1.#- Create an elliptical aperture by changing Nbeam along
         #                  the horizontal direction by a factor of stretch (PROPER
         #                  version isn't implemented as of March 2019).
@@ -953,23 +955,23 @@ def falco_gen_chosen_lyot_stop(mp):
     else:
         if(mp.full.flagPROPER==False):
             #--Crop down the high-resolution Lyot stop to get rid of extra zero padding
-            LSsum = np.sum(mp.P4.full.mask)
+            LSsum = cp.sum(mp.P4.full.mask)
             LSdiff = 0 
             counter = 2
-            while(np.abs(LSdiff) <= 1e-7):
+            while(cp.abs(LSdiff) <= 1e-7):
                 mp.P4.full.Narr = len(mp.P4.full.mask)-counter
-                LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
+                LSdiff = LSsum - cp.sum(falco.utils.padOrCropEven(mp.P4.full.mask, mp.P4.full.Narr-2)) #--Subtract an extra 2 to negate the extra step that overshoots.
                 counter = counter + 2
             
             mp.P4.full.croppedMask = falco.utils.padOrCropEven(mp.P4.full.mask,mp.P4.full.Narr) #--The cropped-down Lyot stop for the full model. 
         
         ## --Crop down the low-resolution Lyot stop to get rid of extra zero padding. Speeds up the compact model.
-        LSsum = np.sum(mp.P4.compact.mask)
+        LSsum = cp.sum(mp.P4.compact.mask)
         LSdiff= 0
         counter = 2
         while(abs(LSdiff) <= 1e-7):
             mp.P4.compact.Narr = len(mp.P4.compact.mask)-counter #--Number of points across the cropped-down Lyot stop
-            LSdiff = LSsum - np.sum(falco.utils.padOrCropEven(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
+            LSdiff = LSsum - cp.sum(falco.utils.padOrCropEven(mp.P4.compact.mask, mp.P4.compact.Narr-2))  #--Subtract an extra 2 to negate the extra step that overshoots.
             counter = counter + 2
 
         mp.P4.compact.croppedMask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P4.compact.Narr) #--The cropped-down Lyot stop for the compact model
@@ -977,12 +979,12 @@ def falco_gen_chosen_lyot_stop(mp):
     #--(METERS) Lyot plane coordinates (over the cropped down to Lyot stop mask) for MFTs in the compact model from the FPM to the LS.
     if mp.centering == 'interpixel':
         #mp.P4.compact.xs = (-(mp.P4.compact.Narr-1)/2:(mp.P4.compact.Narr-1)/2)*mp.P4.compact.dx
-        mp.P4.compact.xs = np.linspace(-(mp.P4.compact.Narr-1)/2, (mp.P4.compact.Narr-1)/2,mp.P4.compact.Narr)*mp.P4.compact.dx
+        mp.P4.compact.xs = cp.linspace(-(mp.P4.compact.Narr-1)/2, (mp.P4.compact.Narr-1)/2,mp.P4.compact.Narr)*mp.P4.compact.dx
     else:
         #mp.P4.compact.xs = (-mp.P4.compact.Narr/2:(mp.P4.compact.Narr/2-1))*mp.P4.compact.dx
-        mp.P4.compact.xs = np.linspace(-mp.P4.compact.Narr/2, (mp.P4.compact.Narr/2-1),mp.P4.compact.Narr)*mp.P4.compact.dx
+        mp.P4.compact.xs = cp.linspace(-mp.P4.compact.Narr/2, (mp.P4.compact.Narr/2-1),mp.P4.compact.Narr)*mp.P4.compact.dx
     
-    mp.P4.compact.ys = np.transpose(mp.P4.compact.xs) #transpose of array (196x1)
+    mp.P4.compact.ys = cp.transpose(mp.P4.compact.xs) #transpose of array (196x1)
     pass
 
 
@@ -993,11 +995,10 @@ def falco_plot_superposed_pupil_masks(mp):
     if mp.coro.upper() in ['FOHLC','HLC','LC','APLC','VC','AVC', 'VORTEX']:
         if mp.flagPlot:
             P4mask = falco.utils.padOrCropEven(mp.P4.compact.mask,mp.P1.compact.Narr)
-            P4mask = np.rot90(P4mask,2);
+            P4mask = cp.rot90(P4mask,2);
             if mp.centering.lower() == 'pixel':
                #P4mask = circshift(P4mask,[1 1]);
-               print(type(P4mask))
-               P4mask = np.roll(P4mask,(1,1),(0,1))
+               P4mask = cp.roll(P4mask,(1,1),(0,1))
             P1andP4 = mp.P1.compact.mask + P4mask;
             plt.figure(301); plt.imshow(P1andP4); plt.colorbar(); plt.title('Pupil and LS Superimposed'); plt.pause(1e-2)
 
@@ -1055,30 +1056,30 @@ def falco_get_FPM_coordinates(mp):
     
         #--Coordinates in FPM plane in the compact model [meters]
         if mp.centering.lower() == 'interpixel' or mp.F3.compact.Nxi%2 == 1:
-            mp.F3.compact.xis  = np.arange(-(mp.F3.compact.Nxi-1)/2,(mp.F3.compact.Nxi-1)/2)*mp.F3.compact.dxi;
-            mp.F3.compact.etas = np.arange(-(mp.F3.compact.Neta-1)/2,(mp.F3.compact.Neta-1)/2)*mp.F3.compact.deta;
+            mp.F3.compact.xis  = cp.arange(-(mp.F3.compact.Nxi-1)/2,(mp.F3.compact.Nxi-1)/2)*mp.F3.compact.dxi;
+            mp.F3.compact.etas = cp.arange(-(mp.F3.compact.Neta-1)/2,(mp.F3.compact.Neta-1)/2)*mp.F3.compact.deta;
         else:
-            mp.F3.compact.xis  = np.arange(-mp.F3.compact.Nxi/2, (mp.F3.compact.Nxi/2))*mp.F3.compact.dxi;
-            mp.F3.compact.etas = np.arange(-mp.F3.compact.Neta/2,(mp.F3.compact.Neta/2))*mp.F3.compact.deta;
+            mp.F3.compact.xis  = cp.arange(-mp.F3.compact.Nxi/2, (mp.F3.compact.Nxi/2))*mp.F3.compact.dxi;
+            mp.F3.compact.etas = cp.arange(-mp.F3.compact.Neta/2,(mp.F3.compact.Neta/2))*mp.F3.compact.deta;
 
         if mp.layout in ['wfirst_phaseb_simple','wfirst_phaseb_proper']:
             pass
         else:
             #--Coordinates (dimensionless [DL]) for the FPMs in the full model
             if mp.centering.lower() == 'interpixel' or mp.F3.full.Nxi%2==1:
-                mp.F3.full.xisDL  = np.arange(-(mp.F3.full.Nxi-1)/2,(mp.F3.full.Nxi-1)/2)/mp.F3.full.res;
-                mp.F3.full.etasDL = np.arange(-(mp.F3.full.Neta-1)/2, (mp.F3.full.Neta-1)/2)/mp.F3.full.res;
+                mp.F3.full.xisDL  = cp.arange(-(mp.F3.full.Nxi-1)/2,(mp.F3.full.Nxi-1)/2)/mp.F3.full.res;
+                mp.F3.full.etasDL = cp.arange(-(mp.F3.full.Neta-1)/2, (mp.F3.full.Neta-1)/2)/mp.F3.full.res;
             else:
-                mp.F3.full.xisDL  = np.arange(-mp.F3.full.Nxi/2,(mp.F3.full.Nxi/2-1))/mp.F3.full.res;
-                mp.F3.full.etasDL = np.arange(-mp.F3.full.Neta/2,(mp.F3.full.Neta/2-1))/mp.F3.full.res;
+                mp.F3.full.xisDL  = cp.arange(-mp.F3.full.Nxi/2,(mp.F3.full.Nxi/2-1))/mp.F3.full.res;
+                mp.F3.full.etasDL = cp.arange(-mp.F3.full.Neta/2,(mp.F3.full.Neta/2-1))/mp.F3.full.res;
 
         #--Coordinates (dimensionless [DL]) for the FPMs in the compact model
         if mp.centering.lower() == 'interpixel' or mp.F3.compact.Nxi%2==1:
-            mp.F3.compact.xisDL  = np.arange(-(mp.F3.compact.Nxi-1)/2,(mp.F3.compact.Nxi-1)/2)/mp.F3.compact.res;
-            mp.F3.compact.etasDL = np.arange(-(mp.F3.compact.Neta-1)/2,(mp.F3.compact.Neta-1)/2)/mp.F3.compact.res;
+            mp.F3.compact.xisDL  = cp.arange(-(mp.F3.compact.Nxi-1)/2,(mp.F3.compact.Nxi-1)/2)/mp.F3.compact.res;
+            mp.F3.compact.etasDL = cp.arange(-(mp.F3.compact.Neta-1)/2,(mp.F3.compact.Neta-1)/2)/mp.F3.compact.res;
         else:
-            mp.F3.compact.xisDL  = np.arange(-mp.F3.compact.Nxi/2,(mp.F3.compact.Nxi/2-1))/mp.F3.compact.res;
-            mp.F3.compact.etasDL = np.arange(-mp.F3.compact.Neta/2,(mp.F3.compact.Neta/2-1))/mp.F3.compact.res;
+            mp.F3.compact.xisDL  = cp.arange(-mp.F3.compact.Nxi/2,(mp.F3.compact.Nxi/2-1))/mp.F3.compact.res;
+            mp.F3.compact.etasDL = cp.arange(-mp.F3.compact.Neta/2,(mp.F3.compact.Neta/2-1))/mp.F3.compact.res;
     pass
 
 
@@ -1102,7 +1103,7 @@ def falco_configure_dark_hole_region(mp):
     #% Software Mask for Correction (corr) and Scoring (score)
     ## Software Mask for Correction (corr) and Scoring (score)
     
-    #--Set Inputs:
+    #--Set inputs:
     maskCorr = {}
     maskCorr["pixresFP"] = mp.Fend.res;
     maskCorr["rhoInner"] = mp.Fend.corr.Rin #--lambda0/D
@@ -1122,8 +1123,8 @@ def falco_configure_dark_hole_region(mp):
     mp.Fend.Nxi  = mp.Fend.corr.mask.shape[1] #size(mp.Fend.corr.mask,2);
     mp.Fend.Neta = mp.Fend.corr.mask.shape[0] #size(mp.Fend.corr.mask,1);
 
-    XIS, ETAS = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
-    mp.Fend.RHOS = np.sqrt(XIS**2 + ETAS**2)
+    XIS, ETAS = cp.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
+    mp.Fend.RHOS = cp.sqrt(XIS**2 + ETAS**2)
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
@@ -1160,7 +1161,7 @@ def falco_configure_dark_hole_region(mp):
     
         V = 2*pi/mp.lambda0*mp.fiber.a*mp.fiber.NA;
         W = 1.1428*V - 0.996;
-        U = np.sqrt(V**2 - W**2);
+        U = cp.sqrt(V**2 - W**2);
     
         maskFiberCore["pixresFP"] = mp.F5.res;
         maskFiberCore["rhoInner"] = 0;
@@ -1178,14 +1179,14 @@ def falco_configure_dark_hole_region(mp):
         maskFiberCladding["whichSide"] = mp.Fend.sides;
         mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.masks.falco_gen_SW_mask(maskFiberCladding);
     
-        F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
+        F5XIS, F5ETAS = cp.meshgrid(mp.F5.xisDL, mp.F5.etasDL);
     
-        mp.F5.RHOS = np.sqrt((F5XIS - mp.F5.fiberPos[0])**2 + (F5ETAS - mp.F5.fiberPos[1])**2);
+        mp.F5.RHOS = cp.sqrt((F5XIS - mp.F5.fiberPos[0])**2 + (F5ETAS - mp.F5.fiberPos[1])**2);
         mp.F5.fiberCore.mode = mp.F5.fiberCore.mask*scipy.special.j0(U*mp.F5.RHOS/mp.fiber.a)/scipy.special.j0(0,U);
         mp.F5.fiberCladding.mode = mp.F5.fiberCladding.mask*scipy.special.k0(W*mp.F5.RHOS/mp.fiber.a)/scipy.special.k0(W);
-        mp.F5.fiberCladding.mode[np.isnan(mp.F5.fiberCladding.mode)] = 0;
+        mp.F5.fiberCladding.mode[cp.isnan(mp.F5.fiberCladding.mode)] = 0;
         mp.F5.fiberMode = mp.F5.fiberCore.mode + mp.F5.fiberCladding.mode;
-        fiberModeNorm = np.sqrt(np.sum(np.sum(np.abs(mp.F5.fiberMode)**2)));
+        fiberModeNorm = cp.sqrt(cp.sum(cp.sum(cp.abs(mp.F5.fiberMode)**2)));
         mp.F5.fiberMode = mp.F5.fiberMode/fiberModeNorm;
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1200,16 +1201,16 @@ def falco_configure_dark_hole_region(mp):
     mp.Fend.eval.deta = mp.Fend.eval.dxi; # higher sampling at Fend.for evaulation [meters]   
     
     # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
-    XIS,ETAS = np.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x, mp.Fend.eval.etasDL - mp.thput_eval_y);
-    mp.Fend.eval.RHOS = np.sqrt(XIS**2 + ETAS**2);
+    XIS,ETAS = cp.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x, mp.Fend.eval.etasDL - mp.thput_eval_y);
+    mp.Fend.eval.RHOS = cp.sqrt(XIS**2 + ETAS**2);
     
     #--Storage array for throughput at each iteration
-    mp.thput_vec = np.zeros((mp.Nitr+1,1));
+    mp.thput_vec = cp.zeros((mp.Nitr+1,1));
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
     #--Software Mask for Scoring Contrast 
-    #--Set Inputs
+    #--Set inputs
     maskScore = {}
     maskScore["rhoInner"] = mp.Fend.score.Rin; #--lambda0/D
     maskScore["rhoOuter"] = mp.Fend.score.Rout ; #--lambda0/D
@@ -1225,25 +1226,25 @@ def falco_configure_dark_hole_region(mp):
     mp.Fend.score.settings = maskScore; #--Store values for future reference
     
     #--Number of pixels used in the dark hole
-    mp.Fend.corr.Npix = int(np.sum(np.sum(mp.Fend.corr.mask)));
-    mp.Fend.score.Npix = int(np.sum(np.sum(mp.Fend.score.mask)));
+    mp.Fend.corr.Npix = int(cp.sum(cp.sum(mp.Fend.corr.mask)));
+    mp.Fend.score.Npix = int(cp.sum(cp.sum(mp.Fend.score.mask)));
     
     #--Indices of dark hole pixels and logical masks
     if mp.flagFiber:
-        #mp.Fend.corr.inds = find(np.sum(mp.Fend.lenslet.mask,3)~=0);
+        #mp.Fend.corr.inds = find(cp.sum(mp.Fend.lenslet.mask,3)~=0);
         #mp.Fend.corr.maskBool = logical(mp.Fend.corr.mask);
-        mp.Fend.corr.inds = np.where(np.sum(mp.Fend.lenslet.mask,3)!=0);
-        mp.Fend.corr.maskBool = np.array(mp.Fend.corr.mask, dtype=bool)
+        mp.Fend.corr.inds = cp.where(cp.sum(mp.Fend.lenslet.mask,3)!=0);
+        mp.Fend.corr.maskBool = cp.array(mp.Fend.corr.mask, dtype=bool)
     else:
         #mp.Fend.corr.inds = find(mp.Fend.corr.mask~=0);
         #mp.Fend.corr.maskBool = logical(mp.Fend.corr.mask);
-        mp.Fend.corr.inds = np.where(mp.Fend.corr.mask!=0);
-        mp.Fend.corr.maskBool = np.array(mp.Fend.corr.mask, dtype=bool)
+        mp.Fend.corr.inds = cp.where(mp.Fend.corr.mask!=0);
+        mp.Fend.corr.maskBool = cp.array(mp.Fend.corr.mask, dtype=bool)
     
     #mp.Fend.score.inds = find(mp.Fend.score.mask~=0)
     #mp.Fend.score.maskBool = logical(mp.Fend.score.mask);
-    mp.Fend.score.inds = np.where(mp.Fend.score.mask!=0)
-    mp.Fend.score.maskBool = np.array(mp.Fend.score.mask, dtype=bool)
+    mp.Fend.score.inds = cp.where(mp.Fend.score.mask!=0)
+    mp.Fend.score.maskBool = cp.array(mp.Fend.score.mask, dtype=bool)
     pass
 
 
@@ -1269,18 +1270,18 @@ def falco_set_spatial_weights(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     #--Define 2-D coordinate grid
-    [XISLAMD,ETASLAMD] = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
-    RHOS = np.sqrt(XISLAMD**2+ETASLAMD**2)
+    [XISLAMD,ETASLAMD] = cp.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
+    RHOS = cp.sqrt(XISLAMD**2+ETASLAMD**2)
     mp.Wspatial = mp.Fend.corr.mask #--Convert from boolean to float
     if hasattr(mp, 'WspatialDef'): #--Do only if spatial weights are defined
         if(np.size(mp.WspatialDef)>0): #--Do only if variable is not empty
             for kk in range(0,mp.WspatialDef.shape[0]): #--Increment through the rows
-                Wannulus = 1. + (np.sqrt(mp.WspatialDef[kk,2])-1.)*((RHOS>=mp.WspatialDef[kk,0]) & (RHOS<mp.WspatialDef[kk,1]))
+                Wannulus = 1. + (cp.sqrt(mp.WspatialDef[kk,2])-1.)*((RHOS>=mp.WspatialDef[kk,0]) & (RHOS<mp.WspatialDef[kk,1]))
                 mp.Wspatial = mp.Wspatial*Wannulus
                 
     mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]
     if(mp.flagFiber and mp.flagLenslet):
-        mp.WspatialVec = np.ones((mp.Fend.Nlens,))
+        mp.WspatialVec = cp.ones((mp.Fend.Nlens,))
                 
     pass
 
@@ -1301,7 +1302,8 @@ def falco_configure_dm1_and_dm2(mp):
             dx1 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
             pitch1 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
     
-            mp.dm1.inf0 = np.squeeze(hdul[0].data) #hdul[0].data[0,:,:]
+            mp.dm1.inf0 = cp.asarray(np.squeeze(np.float32(hdul[0].data))) #hdul[0].data[0,:,:]
+
         mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1);
     
         if mp.dm1.inf_sign[0] in ['-', 'n', 'm']:
@@ -1323,7 +1325,7 @@ def falco_configure_dm1_and_dm2(mp):
             dx2 = PrimaryData['P2PDX_M'] # pixel width of the influence function IN THE FILE [meters];
             pitch2 = PrimaryData['C2CDX_M'] # actuator spacing x (m)
     
-            mp.dm2.inf0 = np.squeeze(hdul[0].data)
+            mp.dm2.inf0 = cp.asarray(np.squeeze(np.float32(hdul[0].data)))
         mp.dm2.dx_inf0 = mp.dm2.dm_spacing*(dx2/pitch2);
     
         if mp.dm2.inf_sign[0] in ['-','n','m']:
@@ -1340,7 +1342,7 @@ def falco_configure_dm1_and_dm2(mp):
     mp.dm1.dx = mp.P2.full.dx
     mp.dm1.compact.dx = mp.P2.compact.dx
     falco.dms.falco_gen_dm_poke_cube(mp.dm1, mp, mp.P2.full.dx, NOCUBE=True);
-    if np.any(mp.dm_ind==1):
+    if cp.any(mp.dm_ind==1):
         falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx)
     else:        
         falco.dms.falco_gen_dm_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
@@ -1352,16 +1354,16 @@ def falco_configure_dm1_and_dm2(mp):
     mp.dm2.dx = mp.P2.full.dx
     mp.dm2.compact.dx = mp.P2.compact.dx
     falco.dms.falco_gen_dm_poke_cube(mp.dm2, mp, mp.P2.full.dx, NOCUBE=True)
-    if np.any(mp.dm_ind==2):
+    if cp.any(mp.dm_ind==2):
         falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx)
     else:    
         falco.dms.falco_gen_dm_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
     #--Initial DM voltages
     if not hasattr(mp.dm1,'V'):
-        mp.dm1.V = np.zeros((mp.dm1.Nact,mp.dm1.Nact))
+        mp.dm1.V = cp.zeros((mp.dm1.Nact,mp.dm1.Nact))
     if not hasattr(mp.dm2,'V'): 
-        mp.dm2.V = np.zeros((mp.dm2.Nact,mp.dm2.Nact))
+        mp.dm2.V = cp.zeros((mp.dm2.Nact,mp.dm2.Nact))
     pass
 
 
@@ -1385,30 +1387,30 @@ def falco_set_dm_surface_padding(mp):
     ## Array Sizes for Angular Spectrum Propagation with FFTs
     
     #--Compact Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
-    if np.any(mp.dm_ind==1) and np.any(mp.dm_ind==2):
+    if cp.any(mp.dm_ind==1) and cp.any(mp.dm_ind==2):
         NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.compact.NdmPad,mp.dm2.compact.NdmPad])));
-    elif np.any(mp.dm_ind==1):
-        NdmPad = 2**np.ceil(1 + np.log2(mp.dm1.compact.NdmPad));
-    elif np.any(mp.dm_ind==2):
-        NdmPad = 2**np.ceil(1 + np.log2(mp.dm2.compact.NdmPad));
+    elif cp.any(mp.dm_ind==1):
+        NdmPad = 2**np.ceil(1 + np.log2(np.dm1.compact.NdmPad));
+    elif cp.any(mp.dm_ind==2):
+        NdmPad = 2**np.ceil(1 + np.log2(np.dm2.compact.NdmPad));
     else:
         NdmPad = 2*mp.P1.compact.Nbeam;
 
-    while (NdmPad < np.min(mp.sbp_centers)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.sbp_centers)*np.abs(mp.d_P2_dm1)/mp.P2.compact.dx**2): 
+    while (NdmPad < cp.min(mp.sbp_centers)*cp.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < cp.min(mp.sbp_centers)*cp.abs(mp.d_P2_dm1)/mp.P2.compact.dx**2): 
         #--Double the zero-padding until the angular spectrum sampling requirement is not violated
         NdmPad = 2*NdmPad;
     mp.compact.NdmPad = NdmPad;
     
     #--Full Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
-    if np.any(mp.dm_ind==1) and np.any(mp.dm_ind==2):
+    if cp.any(mp.dm_ind==1) and cp.any(mp.dm_ind==2):
         NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.NdmPad,mp.dm2.NdmPad])));
-    elif np.any(mp.dm_ind==1):
+    elif cp.any(mp.dm_ind==1):
         NdmPad = 2**np.ceil(1 + np.log2(mp.dm1.NdmPad))
-    elif np.any(mp.dm_ind==2):
+    elif cp.any(mp.dm_ind==2):
         NdmPad = 2**np.ceil(1 + np.log2(mp.dm2.NdmPad))
     else:
         NdmPad = 2*mp.P1.full.Nbeam;
-    while (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): #--Double the zero-padding until the angular spectrum sampling requirement is not violated
+    while (NdmPad < cp.min(mp.full.lambdas)*cp.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < cp.min(mp.full.lambdas)*cp.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): #--Double the zero-padding until the angular spectrum sampling requirement is not violated
         NdmPad = 2*NdmPad;
     mp.full.NdmPad = NdmPad;
     pass
@@ -1418,13 +1420,13 @@ def falco_set_initial_Efields(mp):
     ## Initial Electric Fields for Star and Exoplanet
     
     if not hasattr(mp.P1.full,'E'):
-        mp.P1.full.E  = np.ones((mp.P1.full.Narr,mp.P1.full.Narr,mp.Nwpsbp,mp.Nsbp),dtype=complex); # Input E-field at entrance pupil
+        mp.P1.full.E  = cp.ones((mp.P1.full.Narr,mp.P1.full.Narr,mp.Nwpsbp,mp.Nsbp),dtype=complex); # Input E-field at entrance pupil
     
     mp.Eplanet = mp.P1.full.E; #--Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
     
     if not hasattr(mp.P1.compact,'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp),dtype=complex)
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(np.mean(mp.P1.compact.E,2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
+        mp.P1.compact.E = cp.ones((mp.P1.compact.Narr,mp.P1.compact.Narr,mp.Nsbp),dtype=complex)
+    mp.sumPupil = cp.sum(cp.sum(cp.abs(mp.P1.compact.mask*falco.utils.padOrCropEven(cp.mean(mp.P1.compact.E,2),mp.P1.compact.mask.shape[0] ))**2)); #--Throughput is computed with the compact model
     
     pass
                 
@@ -1440,25 +1442,25 @@ def falco_init_storage_arrays(mp):
 
     ## Storage Arrays for DM Metrics
     #--EFC regularization history
-    out.log10regHist = np.zeros((mp.Nitr,1))
+    out.log10regHist = cp.zeros((mp.Nitr,1))
     
     #--Peak-to-Valley DM voltages
-    out.dm1.Vpv = np.zeros((mp.Nitr,1))
-    out.dm2.Vpv = np.zeros((mp.Nitr,1))
-    out.dm8.Vpv = np.zeros((mp.Nitr,1))
-    out.dm9.Vpv = np.zeros((mp.Nitr,1))
+    out.dm1.Vpv = cp.zeros((mp.Nitr,1))
+    out.dm2.Vpv = cp.zeros((mp.Nitr,1))
+    out.dm8.Vpv = cp.zeros((mp.Nitr,1))
+    out.dm9.Vpv = cp.zeros((mp.Nitr,1))
     
     #--Peak-to-Valley DM surfaces
-    out.dm1.Spv = np.zeros((mp.Nitr,1))
-    out.dm2.Spv = np.zeros((mp.Nitr,1))
-    out.dm8.Spv = np.zeros((mp.Nitr,1))
-    out.dm9.Spv = np.zeros((mp.Nitr,1))
+    out.dm1.Spv = cp.zeros((mp.Nitr,1))
+    out.dm2.Spv = cp.zeros((mp.Nitr,1))
+    out.dm8.Spv = cp.zeros((mp.Nitr,1))
+    out.dm9.Spv = cp.zeros((mp.Nitr,1))
     
     #--RMS DM surfaces
-    out.dm1.Srms = np.zeros((mp.Nitr,1))
-    out.dm2.Srms = np.zeros((mp.Nitr,1))
-    out.dm8.Srms = np.zeros((mp.Nitr,1))
-    out.dm9.Srms = np.zeros((mp.Nitr,1))
+    out.dm1.Srms = cp.zeros((mp.Nitr,1))
+    out.dm2.Srms = cp.zeros((mp.Nitr,1))
+    out.dm8.Srms = cp.zeros((mp.Nitr,1))
+    out.dm9.Srms = cp.zeros((mp.Nitr,1))
     
     #--Zernike sensitivities to 1nm RMS
     if not hasattr(mp.eval,'Rsens'): 
@@ -1467,21 +1469,21 @@ def falco_init_storage_arrays(mp):
         mp.eval.indsZnoll = [1,2]
     Nannuli = mp.eval.Rsens.shape[0]
     Nzern = len(mp.eval.indsZnoll)
-    out.Zsens = np.zeros((Nzern,Nannuli,mp.Nitr));
+    out.Zsens = cp.zeros((Nzern,Nannuli,mp.Nitr));
 
     #--Store the DM commands at each iteration
     if hasattr(mp,'dm1'): 
         if hasattr(mp.dm1,'V'):  
-            out.dm1.Vall = np.zeros((mp.dm1.Nact,mp.dm1.Nact,mp.Nitr+1))
+            out.dm1.Vall = cp.zeros((mp.dm1.Nact,mp.dm1.Nact,mp.Nitr+1))
     if hasattr(mp,'dm2'): 
         if hasattr(mp.dm2,'V'):  
-            out.dm2.Vall = np.zeros((mp.dm2.Nact,mp.dm2.Nact,mp.Nitr+1))
+            out.dm2.Vall = cp.zeros((mp.dm2.Nact,mp.dm2.Nact,mp.Nitr+1))
     if hasattr(mp,'dm8'): 
         if hasattr(mp.dm8,'V'):  
-            out.dm8.Vall = np.zeros((mp.dm8.NactTotal,mp.Nitr+1))
+            out.dm8.Vall = cp.zeros((mp.dm8.NactTotal,mp.Nitr+1))
     if hasattr(mp,'dm9'): 
         if hasattr(mp.dm9,'V'):  
-            out.dm9.Vall = np.zeros((mp.dm9.NactTotal,mp.Nitr+1))
+            out.dm9.Vall = cp.zeros((mp.dm9.NactTotal,mp.Nitr+1))
 
     return out
 
@@ -1509,27 +1511,27 @@ def falco_gen_FPM_LC(mp):
 #    class FPMgenIn(object):
 #        pass
     
-    FPMgenInputs = {} #FPMgenIn()
+    FPMgeninputs = {} #FPMgenIn()
     
     #--Make or read in focal plane mask (FPM) amplitude for the full model
-    #FPMgenInputs.flagRot180deg
-    FPMgenInputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
-    FPMgenInputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
-    FPMgenInputs["FPMampFac"] = mp.FPMampFac # amplitude transmission of inner FPM spot
-    FPMgenInputs["centering"] = mp.centering
-    #kwargs = FPMgenInputs.__dict__
+    #FPMgeninputs.flagRot180deg
+    FPMgeninputs["pixresFPM"] = mp.F3.full.res #--pixels per lambda_c/D
+    FPMgeninputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
+    FPMgeninputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
+    FPMgeninputs["FPMampFac"] = mp.FPMampFac # amplitude transmission of inner FPM spot
+    FPMgeninputs["centering"] = mp.centering
+    #kwargs = FPMgeninputs.__dict__
     
     if not hasattr(mp.F3.full,'mask'):
         mp.F3.full.mask = falco.config.Object()
         
-    mp.F3.full.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    mp.F3.full.ampMask = falco.masks.falco_gen_annular_FPM(FPMgeninputs)
 
     mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
     mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]  
     
     #--Number of points across the FPM in the compact model
-    if(mp.F3.Rout==np.inf):
+    if(mp.F3.Rout==cp.inf):
         if mp.centering == 'pixel':
             mp.F3.compact.Nxi = falco.utils.ceil_even((2*(mp.F3.Rin*mp.F3.compact.res + 1/2)))
         else:
@@ -1544,13 +1546,13 @@ def falco_gen_FPM_LC(mp):
     mp.F3.compact.Neta = mp.F3.compact.Nxi
     
     #--Make or read in focal plane mask (FPM) amplitude for the compact model
-    FPMgenInputs["pixresFPM"] = mp.F3.compact.res #--pixels per lambda_c/D
-    #kwargs=FPMgenInputs.__dict__
+    FPMgeninputs["pixresFPM"] = mp.F3.compact.res #--pixels per lambda_c/D
+    #kwargs=FPMgeninputs.__dict__
     
     if not hasattr(mp.F3.compact,'mask'):
         mp.F3.compact.mask = falco.config.Object()
         
-    mp.F3.compact.ampMask = falco.masks.falco_gen_annular_FPM(FPMgenInputs)
+    mp.F3.compact.ampMask = falco.masks.falco_gen_annular_FPM(FPMgeninputs)
     
 
 def falco_gen_FPM_SPLC(mp):

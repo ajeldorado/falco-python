@@ -1,3 +1,4 @@
+import cupy as cp
 # Copyright 2018-2020 by the California Institute of Technology. ALL RIGHTS
 # RESERVED. United States Government Sponsorship acknowledged. Any
 # commercial use must be negotiated with the Office of Technology Transfer
@@ -58,7 +59,7 @@ mp.Nwpsbp = 1          #--Number of wavelengths to used to approximate an image 
 
 # Step 3: Obtain the phase retrieval phase.
 
-mp.full.input_field_rootname = '/Users/ajriggs/Repos/falco-matlab/data/maps/input_full';
+mp.full.icp.t_field_rootname = '/Users/ajriggs/Repos/falco-matlab/data/maps/icp.t_full';
 optval = copy.copy(mp.full)
 #optval = copy.copy(vars(mp.full))
 optval.source_x_offset = 0
@@ -68,40 +69,40 @@ optval.dm1_m = mp.full.dm1.flatmap #fits.getdata('errors_polaxis10_dm.fits');
 optval.use_dm1 = True
 
 optval.end_at_fpm_exit_pupil = True
-#optval.output_field_rootname = [fileparts(mp.full.input_field_rootname) filesep 'fld_at_xtPup'];
+#optval.output_field_rootname = [fileparts(mp.full.icp.t_field_rootname) filesep 'fld_at_xtPup'];
 optval.use_fpm = False
 optval.use_hlc_dm_patterns = False
 nout = 1024 #512; 			# nout > pupil_daim_pix
-optval.output_dim = 1024 # Get the Input Pupil's E-field
+optval.output_dim = 1024 # Get the Icp.t Pupil's E-field
 
 if(mp.Nsbp==1):
-    lambdaFacs = np.array([1.])
+    lambdaFacs = cp.array([1.])
 else:
-    lambdaFacs = np.linspace(1-mp.fracBW/2., 1+mp.fracBW/2., mp.Nsbp)
+    lambdaFacs = cp.linspace(1-mp.fracBW/2., 1+mp.fracBW/2., mp.Nsbp)
 
 
-#--Get the Input Pupil's E-field
-mp.P1.compact.E = np.ones((mp.P1.compact.Nbeam+2, mp.P1.compact.Nbeam+2, mp.Nsbp), dtype=complex) #--Initialize
+#--Get the Icp.t Pupil's E-field
+mp.P1.compact.E = cp.ones((mp.P1.compact.Nbeam+2, mp.P1.compact.Nbeam+2, mp.Nsbp), dtype=complex) #--Initialize
 for si in range(mp.Nsbp):
     lambda_um = 1e6*mp.lambda0*lambdaFacs[si]
 
     fldFull, sampling = proper.prop_run('wfirst_phaseb', lambda_um, nout,  QUIET=True, PASSVALUE=optval.__dict__)
     if(mp.flagPlot):
-        plt.figure(1); plt.imshow(np.angle(fldFull)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
-        plt.figure(2); plt.imshow(np.abs(fldFull)); plt.colorbar(); plt.magma(); plt.pause(0.5)
+        plt.figure(1); plt.imshow(cp.angle(fldFull)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
+        plt.figure(2); plt.imshow(cp.abs(fldFull)); plt.colorbar(); plt.magma(); plt.pause(0.5)
         # figure(605); imagesc(angle(fldFull)); axis xy equal tight; colorbar; colormap hsv; drawnow;
 #         figure(606); imagesc(abs(fldFull)); axis xy equal tight; colorbar; colormap parula; drawnow;
         pass
 
     lams = '%6.4f' % lambda_um 
     pols = 'polaxis%s' % optval.polaxis #['polaxis'  num2str(optval.polaxis,2)];
-    fnReal = (mp.full.input_field_rootname + '_' + lams + 'um_' + pols + '_real.fits')
-    fnImag = (mp.full.input_field_rootname + '_' + lams + 'um_' + pols + '_imag.fits')
-#    fitswrite(real(fldFull), [mp.full.input_field_rootname '_' lams 'um_' pols '_real.fits' ]);
-#    fitswrite(imag(fldFull), [mp.full.input_field_rootname '_' lams 'um_' pols '_imag.fits' ]);
-    hduReal = fits.PrimaryHDU(np.real(fldFull))
+    fnReal = (mp.full.icp.t_field_rootname + '_' + lams + 'um_' + pols + '_real.fits')
+    fnImag = (mp.full.icp.t_field_rootname + '_' + lams + 'um_' + pols + '_imag.fits')
+#    fitswrite(real(fldFull), [mp.full.icp.t_field_rootname '_' lams 'um_' pols '_real.fits' ]);
+#    fitswrite(imag(fldFull), [mp.full.icp.t_field_rootname '_' lams 'um_' pols '_imag.fits' ]);
+    hduReal = fits.PrimaryHDU(cp.real(fldFull))
     hduReal.writeto(fnReal,overwrite=True)
-    hduImag = fits.PrimaryHDU(np.imag(fldFull))
+    hduImag = fits.PrimaryHDU(cp.imag(fldFull))
     hduImag.writeto(fnImag,overwrite=True)
     
 
@@ -110,19 +111,19 @@ for si in range(mp.Nsbp):
     dxC = mp.P1.full.Nbeam/mp.P1.compact.Nbeam
     Nf = fldFull.shape[0] #--N full
     Nc = falco.utils.ceil_even( (mp.P1.compact.Nbeam/mp.P1.full.Nbeam)*Nf ) #--N compact
-    xF = np.arange(-Nf/2, Nf/2)*dxF
-    xC = np.arange(-Nc/2, Nc/2)*dxC
-#     [Xf,Yf] = np.meshgrid(xF);
-#     [Xc,Yc] = np.meshgrid(xC);
-    interp_spline_real = RectBivariateSpline(xF, xF, np.real(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
-    interp_spline_imag = RectBivariateSpline(xF, xF, np.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
+    xF = cp.arange(-Nf/2, Nf/2)*dxF
+    xC = cp.arange(-Nc/2, Nc/2)*dxC
+#     [Xf,Yf] = cp.meshgrid(xF);
+#     [Xc,Yc] = cp.meshgrid(xC);
+    interp_spline_real = RectBivariateSpline(xF, xF, cp.real(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
+    interp_spline_imag = RectBivariateSpline(xF, xF, cp.imag(fldFull)) # RectBivariateSpline is faster in 2-D than interp2d
     fldC = interp_spline_real(xC, xC) + 1j*interp_spline_imag(xC, xC)
 #     fldC = interp2(Xf,Yf,fldFull,Xc,Yc,'cubic',0); #--Downsample by interpolation
     N = falco.utils.ceil_even(mp.P1.compact.Nbeam+1)
     fldC = falco.utils.pad_crop(fldC, (N, N))
     if mp.flagPlot:
-        plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
-        plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        
+        plt.figure(11); plt.imshow(cp.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
+        plt.figure(12); plt.imshow(cp.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        
         # figure(607+si-1); imagesc(angle(fldC)); axis xy equal tight; colorbar; colormap hsv; drawnow;
 #         figure(608); imagesc(abs(fldC)); axis xy equal tight; colorbar; colormap parula; drawnow;
         pass
@@ -138,7 +139,7 @@ for si in range(mp.Nsbp):
 
 # Step 4: Generate the label associated with this trial
 mp.runLabel = 'Series' + ('%04d'%(mp.SeriesNum)) + '_Trial' + ('%04d_'%(mp.TrialNum)) + mp.coro + \
-'_' + mp.whichPupil + '_' + str(np.size(mp.dm_ind)) + 'DM' + str(mp.dm1.Nact) + '_z' + \
+'_' + mp.whichPupil + '_' + str(cp.size(mp.dm_ind)) + 'DM' + str(mp.dm1.Nact) + '_z' + \
 str(mp.d_dm1_dm2) + '_IWA' + str(mp.Fend.corr.Rin) + '_OWA' + str(mp.Fend.corr.Rout) + '_' + \
 str(mp.Nsbp) + 'lams' + str(round(1e9*mp.lambda0)) + 'nm_BW' + str(mp.fracBW*100) + '_' + mp.controller
 

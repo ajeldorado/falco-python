@@ -1,9 +1,10 @@
+import cupy as cp
 import falco
 import numpy as np
 import multiprocessing
 import copy
 import math
-
+import pdb
 import proper
 
 _VALID_CENTERING = ['pixel', 'interpixel']
@@ -29,10 +30,10 @@ def falco_get_Zernike_sensitivities(mp):
     Nzern = indsZnoll.size
  
     #--Make scoring masks
-    maskCube = np.zeros((mp.Fend.Neta,mp.Fend.Nxi, Nannuli)) 
+    maskCube = cp.zeros((mp.Fend.Neta,mp.Fend.Nxi, Nannuli)) 
     for ni in range(Nannuli):
         #--Make scoring masks for the annular regions
-        #--Set Inputs:
+        #--Set Icp.ts:
         maskDict = {}
         maskDict["pixresFP"] = mp.Fend.res;
         maskDict["rhoInner"] = Rsens[ni,0] # [lambda0/D]
@@ -47,12 +48,13 @@ def falco_get_Zernike_sensitivities(mp):
 
     if not mp.full.flagPROPER:  #--When using full models completely made with PROPER
         #--Generate Zernike map datacube
+
         ZmapCube = falco.zernikes.falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,indsZnoll) #--Cube of normalized (RMS = 1) Zernike modes.
         #--Make sure ZmapCube is padded or cropped to the right array size
         if not ZmapCube.shape[0]==mp.P1.full.Narr:
-            ZmapCubeTemp = np.zeros((mp.P1.full.Narr,mp.P1.full.Narr,Nzern))
+            ZmapCubeTemp = cp.zeros((mp.P1.full.Narr,mp.P1.full.Narr,Nzern))
             for zi in range(Nzern):
-                ZmapCubeTemp[:,:,zi] = falco.utils.padOrCropEven(np.squeeze(ZmapCube[:,:,zi]),mp.P1.full.Narr)
+                ZmapCubeTemp[:,:,zi] = falco.utils.padOrCropEven(cp.squeeze(ZmapCube[:,:,zi]),mp.P1.full.Narr)
             ZmapCube = ZmapCubeTemp 
             del ZmapCubeTemp
 
@@ -66,13 +68,13 @@ def falco_get_Zernike_sensitivities(mp):
 
     ## Get unaberrated E-fields
     #--Loop over all wavelengths and polarizations  
-    inds_list = [(x,y) for x in np.arange(mp.full.NlamUnique) for y in np.arange(Npol)] #--Make all combinations of the values      
+    inds_list = [(x,y) for x in cp.arange(mp.full.NlamUnique) for y in cp.arange(Npol)] #--Make all combinations of the values      
     #inds_list = allcomb(1:mp.full.NlamUnique,1:Npol) #--dimensions: [2 x mp.full.NlamUnique*Npol ]
     Nvals = mp.full.NlamUnique*Npol
     
     #--Get nominal, unaberrated final E-field at each wavelength and polarization
-    E0array = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol),dtype=complex) #--initialize
-    Eunab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nvals), dtype=complex) #--Temporary array
+    E0array = cp.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol),dtype=complex) #--initialize
+    Eunab = cp.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nvals), dtype=complex) #--Temporary array
 
     print('Computing unaberrated E-fields for Zernike sensitivities...\t',end='')
     if mp.flagMultiproc:
@@ -102,8 +104,8 @@ def falco_get_Zernike_sensitivities(mp):
     NvalsZern = mp.full.NlamUnique*Npol*Nzern
 
     #--Get nominal, unaberrated final E-field at each wavelength and polarization
-    dEZarray = np.zeros((mp.Fend.Neta,mp.Fend.Nxi,mp.full.NlamUnique,Npol,Nzern),dtype=complex) #--initialize 
-    Eab = np.zeros((mp.Fend.Neta,mp.Fend.Nxi,NvalsZern),dtype=complex) # temporary array for linear indexing
+    dEZarray = cp.zeros((mp.Fend.Neta,mp.Fend.Nxi,mp.full.NlamUnique,Npol,Nzern),dtype=complex) #--initialize 
+    Eab = cp.zeros((mp.Fend.Neta,mp.Fend.Nxi,NvalsZern),dtype=complex) # temporary array for linear indexing
     
     print('Computing aberrated E-fields for Zernike sensitivities...\t',end='')
     if mp.flagMultiproc:
@@ -129,16 +131,16 @@ def falco_get_Zernike_sensitivities(mp):
     del Eab
     
     #--Compute Zernike sensitivity values averaged across each annulus (or annular sector) in the dark hole
-    dE2cube = np.squeeze(np.mean(np.mean(np.abs(dEZarray)**2,axis=3),axis=2)) # |dE|^2 averaged over wavelength and polarization state
-    dE2mat = np.zeros((Nzern,Nannuli))
+    dE2cube = cp.squeeze(cp.mean(cp.mean(cp.abs(dEZarray)**2,axis=3),axis=2)) # |dE|^2 averaged over wavelength and polarization state
+    dE2mat = cp.zeros((Nzern,Nannuli))
     for iz in range(Nzern):
-       dEtemp = np.squeeze(dE2cube[:,:,iz])
+       dEtemp = cp.squeeze(dE2cube[:,:,iz])
        for ia in range(Nannuli):  
-           dE2mat[iz,ia] = np.mean(dEtemp[ (np.squeeze(maskCube[:,:,ia])==1) ] )
+           dE2mat[iz,ia] = cp.mean(dEtemp[ (cp.squeeze(maskCube[:,:,ia])==1) ] )
 
     #--Print Zernike sensitivity results to command line
     for iz in range(Nzern):
-        print('|dE|^2 at %dnm with %dnm RMS of    Z%d ='%(np.round(mp.lambda0*1e9),np.round(1e9*mp.full.ZrmsVal),indsZnoll[iz]),end='')
+        print('|dE|^2 at %dnm with %dnm RMS of    Z%d ='%(cp.around(mp.lambda0*1e9),cp.around(1e9*mp.full.ZrmsVal),indsZnoll[iz]),end='')
         for ia in range(Nannuli):
            print('\t%.2e (%.1f-%.1f l/D)'%(dE2mat[iz,ia],Rsens[ia,0], Rsens[ia,1]),end='')
         print('\n',end='')
@@ -208,7 +210,7 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
     izern = inds_list_zern[ni][2]
     
     indsZnoll = mp.eval.indsZnoll
-    
+
     #--Get the stellar E-field
     si = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],0]
     wi = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],1]
@@ -218,14 +220,14 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
     mp.full.polaxis = mp.full.pol_conds[ipol]
     modvar.whichSource = 'star'
     
-    #--Save the original input E-field as E0 to reset it later
+    #--Save the original icp.t E-field as E0 to reset it later
     E = mp.P1.full.E
     E0 = E.copy()
     
     #--Initialize the Zernike modes to include as empty if the variable doesn't exist already
     if not hasattr(mp.full,'zindex'):  
-        mp.full.zindex = np.array([])  
-        mp.full.zval_m = np.array([])  
+        mp.full.zindex = cp.array([])  
+        mp.full.zval_m = cp.array([])  
     zindex0 = copy.copy(mp.full.zindex) #--Save the original
     zval_m0 = copy.copy(mp.full.zval_m) #--Save the original
     
@@ -233,17 +235,17 @@ def falco_get_single_sim_Efield_LamPolZern(ni,inds_list_zern,mp):
 
         #--Put the Zernike index and coefficent in the vectors used by the PROPER full model
         if(any(zindex0==indsZnoll[izern])): #--Add the delta to an existing entry
-            zind = np.nonzero(zindex0==indsZnoll[izern])[0]
+            zind = cp.nonzero(zindex0==indsZnoll[izern])[0]
             mp.full.zval_m[zind] = mp.full.zval_m[zind] + mp.full.ZrmsVal
         else: #--Concatenate the Zenike modes to the vector if it isn't included already
-            mp.full.zindex = np.concatenate((zindex0, np.array([indsZnoll[izern]]))).astype(int)
-            mp.full.zval_m = np.concatenate((zval_m0, np.array([mp.full.ZrmsVal]))) # [meters]
+            mp.full.zindex = cp.concatenate((zindex0, cp.array([indsZnoll[izern]]))).astype(int)
+            mp.full.zval_m = cp.concatenate((zval_m0, cp.array([mp.full.ZrmsVal]))) # [meters]
         mp.full.zval = mp.full.zval_m # for PROPER models defined differently
         
-    else: #--Include the Zernike map at the input pupil for the FALCO full model
-        ZernMap = np.squeeze(falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,np.array([indsZnoll[izern]]))) #--2-D map of the normalized (RMS = 1) Zernike mode
+    else: #--Include the Zernike map at the icp.t pupil for the FALCO full model
+        ZernMap = cp.squeeze(falco_gen_norm_zernike_maps(mp.P1.full.Nbeam,mp.centering,np.array([indsZnoll[izern]]))) #--2-D map of the normalized (RMS = 1) Zernike mode
         ZernMap = falco.utils.padOrCropEven(ZernMap, mp.P1.full.Narr) #--Adjust zero padding if necessary
-        mp.P1.full.E[:,:,wi,si] = np.exp(1j*2*np.pi/mp.full.lambdasMat[si,wi]*mp.full.ZrmsVal*ZernMap)*np.squeeze(mp.P1.full.E[:,:,wi,si])
+        mp.P1.full.E[:,:,wi,si] = cp.exp(1j*2*cp.pi/mp.full.lambdasMat[si,wi]*mp.full.ZrmsVal*ZernMap)*cp.squeeze(mp.P1.full.E[:,:,wi,si])
         
     Estar = falco.model.full(mp,modvar)
     mp.P1.full.E = E0 # Reset to original value
@@ -296,7 +298,7 @@ def falco_gen_norm_zernike_maps(Nbeam,centering,indsZnoll):
 
     #--Use modified PROPER function to generate the Zernike datacube
     Nzern = indsZnoll.size
-    ZmapCube = np.zeros((Narray,Narray,Nzern))
+    ZmapCube = cp.zeros((Narray,Narray,Nzern))
     
     bm.centering = centering;
     for iz in range(Nzern):
@@ -421,7 +423,7 @@ def propcustom_zernikes(a, zernike_num, zernike_val, eps = 0., **kwargs):
     if eps != 0. and max_z > 22:
         raise ValueError("PROP_ZERNIKES: Maximum index for an obscured Zernike polynomial is 22.")
         
-    dmap = np.zeros([n,n], dtype = np.float64)
+    dmap = cp.zeros([n,n], dtype = cp.float64)
     
     if not "RADIUS" in kwargs:
         beam_radius = proper.prop_get_beamradius(a)
@@ -441,18 +443,17 @@ def propcustom_zernikes(a, zernike_num, zernike_val, eps = 0., **kwargs):
             y_offset = dx/2.
 
 
-    x = (np.arange(n, dtype = np.float64) - n//2) * dx + x_offset
-#    x_pow_2 = x**2
-    
+    x = (cp.arange(n, dtype = cp.float64) - n//2) * dx + x_offset
+
     if (eps == 0.):
         # get list of executable equations defining Zernike polynomials
         zlist, maxrp, maxtc = proper.prop_noll_zernikes(max_z, COMPACT = True, EXTRA_VALUES = True)
         
         for j in range(n):
-            ab = np.zeros(n, dtype = np.float64)
+            ab = cp.zeros(n, dtype = cp.float64)
             y = (j - n//2) * dx + y_offset
-            r = np.sqrt(x**2 + y**2)
-            t = np.arctan2(y,x)
+            r = cp.sqrt(x**2 + y**2)
+            t = cp.arctan2(y,x)
         
             # predefine r**power, cos(const*theta), sin(const*theta) vectors
             for i in range(2, maxrp+1):
@@ -462,9 +463,9 @@ def propcustom_zernikes(a, zernike_num, zernike_val, eps = 0., **kwargs):
             
             for i in range(1, maxtc+1):
                 tcs = str(i).strip()
-                cmd = "cos" + tcs + "t = np.cos(i*t)"
+                cmd = "cos" + tcs + "t = cp.cos(i*t)"
                 exec(cmd)
-                cmd = "sin" + tcs + "t = np.sin(i*t)"
+                cmd = "sin" + tcs + "t = cp.sin(i*t)"
                 exec(cmd)
            
             # assemble aberrations
@@ -478,58 +479,58 @@ def propcustom_zernikes(a, zernike_num, zernike_val, eps = 0., **kwargs):
         
         for j in range(n):
             y = (j-n//2) * dx + y_offset
-            r = np.sqrt(x**2 + y**2)
+            r = cp.sqrt(x**2 + y**2)
             r2 = r**2
             r3 = r**3
             r4 = r**4
             r5 = r**5
-            t = np.arctan2(y,x)
+            t = cp.arctan2(y,x)
             
             for iz in range(len(zernike_num)):
                 if zernike_num[iz] == 1:
                     ab = 1.
                 elif zernike_num[iz] == 2:
-                    ab = (2*r*np.cos(t))/np.sqrt(1 + eps**2)
+                    ab = (2*r*cp.cos(t))/cp.sqrt(1 + eps**2)
                 elif zernike_num[iz] == 3:
-                    ab = (2*r*np.sin(t))/np.sqrt(1 + eps**2)
+                    ab = (2*r*cp.sin(t))/cp.sqrt(1 + eps**2)
                 elif zernike_num[iz] == 4:
-                    ab = (np.sqrt(3)*(1 + eps**2 - 2*r2))/(-1 + eps**2)
+                    ab = (cp.sqrt(3)*(1 + eps**2 - 2*r2))/(-1 + eps**2)
                 elif zernike_num[iz] == 5:
-                    ab = (np.sqrt(6)*r2*np.sin(2*t))/np.sqrt(1 + eps**2 + eps**4)
+                    ab = (cp.sqrt(6)*r2*cp.sin(2*t))/cp.sqrt(1 + eps**2 + eps**4)
                 elif zernike_num[iz] == 6:
-                    ab = (np.sqrt(6)*r2*np.cos(2*t))/np.sqrt(1 + eps**2 + eps**4)
+                    ab = (cp.sqrt(6)*r2*cp.cos(2*t))/cp.sqrt(1 + eps**2 + eps**4)
                 elif zernike_num[iz] == 7:
-                    ab = (2*np.sqrt(2)*r*(2 + 2*eps**4 - 3*r2 + eps**2*(2 - 3*r2))*np.sin(t))/((-1 + eps**2)*np.sqrt(1 + 5*eps**2 + 5*eps**4 + eps**6))
+                    ab = (2*cp.sqrt(2)*r*(2 + 2*eps**4 - 3*r2 + eps**2*(2 - 3*r2))*cp.sin(t))/((-1 + eps**2)*cp.sqrt(1 + 5*eps**2 + 5*eps**4 + eps**6))
                 elif zernike_num[iz] == 8:
-                    ab = (2*np.sqrt(2)*r*(2 + 2*eps**4 - 3*r2 + eps**2*(2 - 3*r2))*np.cos(t))/((-1 + eps**2)*np.sqrt(1 + 5*eps**2 + 5*eps**4 + eps**6))
+                    ab = (2*cp.sqrt(2)*r*(2 + 2*eps**4 - 3*r2 + eps**2*(2 - 3*r2))*cp.cos(t))/((-1 + eps**2)*cp.sqrt(1 + 5*eps**2 + 5*eps**4 + eps**6))
                 elif zernike_num[iz] == 9:
-                    ab = (2*np.sqrt(2)*r3*np.sin(3*t))/np.sqrt(1 + eps**2 + eps**4 + eps**6)
+                    ab = (2*cp.sqrt(2)*r3*cp.sin(3*t))/cp.sqrt(1 + eps**2 + eps**4 + eps**6)
                 elif zernike_num[iz] == 10:
-                    ab = (2*np.sqrt(2)*r3*np.cos(3*t))/np.sqrt(1 + eps**2 + eps**4 + eps**6)
+                    ab = (2*cp.sqrt(2)*r3*cp.cos(3*t))/cp.sqrt(1 + eps**2 + eps**4 + eps**6)
                 elif zernike_num[iz] == 11:
-                    ab = (np.sqrt(5)*(1 + eps**4 - 6*r2 + 6*r4 + eps**2*(4 - 6*r2)))/ (-1 + eps**2)**2
+                    ab = (cp.sqrt(5)*(1 + eps**4 - 6*r2 + 6*r4 + eps**2*(4 - 6*r2)))/ (-1 + eps**2)**2
                 elif zernike_num[iz] == 12:
-                    ab = (np.sqrt(10)*r2*(3 + 3*eps**6 - 4*r2 + eps**2*(3 - 4*r2) + eps**4*(3 - 4*r2))*np.cos(2*t))/ ((-1 + eps**2)*np.sqrt((1 + eps**2 + eps**4)*(1 + 4*eps**2 + 10*eps**4 + 4*eps**6 + eps**8)))
+                    ab = (cp.sqrt(10)*r2*(3 + 3*eps**6 - 4*r2 + eps**2*(3 - 4*r2) + eps**4*(3 - 4*r2))*cp.cos(2*t))/ ((-1 + eps**2)*cp.sqrt((1 + eps**2 + eps**4)*(1 + 4*eps**2 + 10*eps**4 + 4*eps**6 + eps**8)))
                 elif zernike_num[iz] == 13:
-                    ab = (np.sqrt(10)*r2*(3 + 3*eps**6 - 4*r2 + eps**2*(3 - 4*r2) + eps**4*(3 - 4*r2))*np.sin(2*t))/ ((-1 + eps**2)*np.sqrt((1 + eps**2 + eps**4)*(1 + 4*eps**2 + 10*eps**4 + 4*eps**6 + eps**8)))
+                    ab = (cp.sqrt(10)*r2*(3 + 3*eps**6 - 4*r2 + eps**2*(3 - 4*r2) + eps**4*(3 - 4*r2))*cp.sin(2*t))/ ((-1 + eps**2)*cp.sqrt((1 + eps**2 + eps**4)*(1 + 4*eps**2 + 10*eps**4 + 4*eps**6 + eps**8)))
                 elif zernike_num[iz] == 14:
-                    ab = (np.sqrt(10)*r4*np.cos(4*t))/np.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8)                    
+                    ab = (cp.sqrt(10)*r4*cp.cos(4*t))/cp.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8)                    
                 elif zernike_num[iz] == 15:
-                    ab = (np.sqrt(10)*r4*np.sin(4*t))/np.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8)
+                    ab = (cp.sqrt(10)*r4*cp.sin(4*t))/cp.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8)
                 elif zernike_num[iz] == 16:
-                    ab = (2*np.sqrt(3)*r*(3 + 3*eps**8 - 12*r2 + 10*r4 - 12*eps**6*(-1 + r2) + 2*eps**4*(15 - 24*r2 + 5*r4) + 4*eps**2*(3 - 12*r2 + 10*r4))*np.cos(t))/((-1 + eps**2)**2*np.sqrt((1 + 4*eps**2 + eps**4)* (1 + 9*eps**2 + 9*eps**4 + eps**6)))
+                    ab = (2*cp.sqrt(3)*r*(3 + 3*eps**8 - 12*r2 + 10*r4 - 12*eps**6*(-1 + r2) + 2*eps**4*(15 - 24*r2 + 5*r4) + 4*eps**2*(3 - 12*r2 + 10*r4))*cp.cos(t))/((-1 + eps**2)**2*cp.sqrt((1 + 4*eps**2 + eps**4)* (1 + 9*eps**2 + 9*eps**4 + eps**6)))
                 elif zernike_num[iz] == 17:
-                    ab = (2*np.sqrt(3)*r*(3 + 3*eps**8 - 12*r2 + 10*r4 - 12*eps**6*(-1 + r2) + 2*eps**4*(15 - 24*r2 + 5*r4) + 4*eps**2*(3 - 12*r2 + 10*r4))*np.sin(t))/((-1 + eps**2)**2*np.sqrt((1 + 4*eps**2 + eps**4)* (1 + 9*eps**2 + 9*eps**4 + eps**6)))
+                    ab = (2*cp.sqrt(3)*r*(3 + 3*eps**8 - 12*r2 + 10*r4 - 12*eps**6*(-1 + r2) + 2*eps**4*(15 - 24*r2 + 5*r4) + 4*eps**2*(3 - 12*r2 + 10*r4))*cp.sin(t))/((-1 + eps**2)**2*cp.sqrt((1 + 4*eps**2 + eps**4)* (1 + 9*eps**2 + 9*eps**4 + eps**6)))
                 elif zernike_num[iz] == 18:
-                    ab = (2*np.sqrt(3)*r3*(4 + 4*eps**8 - 5*r2 + eps**2*(4 - 5*r2) + eps**4*(4 - 5*r2) + eps**6*(4 - 5*r2))*np.cos(3*t))/ ((-1 + eps**2)*np.sqrt((1 + eps**2 + eps**4 + eps**6)*(1 + 4*eps**2 + 10*eps**4 + 20*eps**6 + 10*eps**8 + 4*eps**10 + eps**12)))
+                    ab = (2*cp.sqrt(3)*r3*(4 + 4*eps**8 - 5*r2 + eps**2*(4 - 5*r2) + eps**4*(4 - 5*r2) + eps**6*(4 - 5*r2))*cp.cos(3*t))/ ((-1 + eps**2)*cp.sqrt((1 + eps**2 + eps**4 + eps**6)*(1 + 4*eps**2 + 10*eps**4 + 20*eps**6 + 10*eps**8 + 4*eps**10 + eps**12)))
                 elif zernike_num[iz] == 19:
-                    ab = (2*np.sqrt(3)*r3*(4 + 4*eps**8 - 5*r2 + eps**2*(4 - 5*r2) + eps**4*(4 - 5*r2) + eps**6*(4 - 5*r2))*np.sin(3*t))/ ((-1 + eps**2)*np.sqrt((1 + eps**2 + eps**4 + eps**6)*(1 + 4*eps**2 + 10*eps**4 + 20*eps**6 + 10*eps**8 + 4*eps**10 + eps**12)))
+                    ab = (2*cp.sqrt(3)*r3*(4 + 4*eps**8 - 5*r2 + eps**2*(4 - 5*r2) + eps**4*(4 - 5*r2) + eps**6*(4 - 5*r2))*cp.sin(3*t))/ ((-1 + eps**2)*cp.sqrt((1 + eps**2 + eps**4 + eps**6)*(1 + 4*eps**2 + 10*eps**4 + 20*eps**6 + 10*eps**8 + 4*eps**10 + eps**12)))
                 elif zernike_num[iz] == 20:
-                    ab = (2*np.sqrt(3)*r5*np.cos(5*t))/ np.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8 + eps**10)
+                    ab = (2*cp.sqrt(3)*r5*cp.cos(5*t))/ cp.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8 + eps**10)
                 elif zernike_num[iz] == 21:
-                    ab = (2*np.sqrt(3)*r5*np.sin(5*t))/ np.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8 + eps**10)
+                    ab = (2*cp.sqrt(3)*r5*cp.sin(5*t))/ cp.sqrt(1 + eps**2 + eps**4 + eps**6 + eps**8 + eps**10)
                 elif zernike_num[iz] == 22:
-                    ab = (np.sqrt(7)*(1 + eps**6 - 12*r2 + 30*r4 - 20*r**6 + eps**4*(9 - 12*r2) + eps**2*(9 - 36*r2 + 30*r4)))/ (-1 + eps**2)**3
+                    ab = (cp.sqrt(7)*(1 + eps**6 - 12*r2 + 30*r4 - 20*r**6 + eps**4*(9 - 12*r2) + eps**2*(9 - 36*r2 + 30*r4)))/ (-1 + eps**2)**3
                     
             dmap[j,:] += zernike_val[iz] * ab
             
@@ -538,7 +539,7 @@ def propcustom_zernikes(a, zernike_num, zernike_val, eps = 0., **kwargs):
             a.wfarr *= proper.prop_shift_center(dmap)
         else:
             i = complex(0,1)
-            a.wfarr *= np.exp(i*2*np.pi/a.lamda*proper.prop_shift_center(dmap))
+            a.wfarr *= cp.exp(i*2*cp.pi/a.lamda*proper.prop_shift_center(dmap))
             
     return dmap
 

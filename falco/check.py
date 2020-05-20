@@ -1,5 +1,6 @@
+import cupy as cp
 """
-Module to hold input-checking functions to minimize repetition
+Module to hold icp.t-checking functions to minimize repetition
 """
 
 import numpy as np
@@ -46,9 +47,9 @@ def real_positive_scalar(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    if not np.isscalar(var):
+    if not cp.isscalar(var):
         raise vexc(vname + ' must be real positive scalar')
-    if not np.isreal(var):
+    if not cp.isreal(var):
         raise vexc(vname + ' must be real positive scalar')
     if var <= 0:
         raise vexc(vname + ' must be real positive scalar')
@@ -71,10 +72,10 @@ def twoD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = cp.array(var) # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a real or complex 2D array')
-    if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
+    if (not cp.isrealobj(var)) and (not cp.iscomplexobj(var)):
         raise vexc(vname + ' must be a real or complex 2D array')
     return var
 
@@ -95,10 +96,10 @@ def threeD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = cp.array(var) # cast to array
     if len(var.shape) != 3:
         raise vexc(vname + ' must be a real or complex 2D array')
-    if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
+    if (not cp.isrealobj(var)) and (not cp.iscomplexobj(var)):
         raise vexc(vname + ' must be a real or complex 2D array')
     return var
 
@@ -120,9 +121,9 @@ def real_scalar(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    if not np.isscalar(var):
+    if not cp.isscalar(var):
         raise vexc(vname + ' must be real scalar')
-    if not np.isreal(var):
+    if not cp.isreal(var):
         raise vexc(vname + ' must be real scalar')
     return var
 
@@ -143,9 +144,9 @@ def positive_scalar_integer(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    if not np.isscalar(var):
+    if not cp.isscalar(var):
         raise vexc(vname + ' must be positive scalar integer')
-    if not isinstance(var, (int, np.integer)):
+    if not isinstance(var, (int, cp.integer)):
         raise vexc(vname + ' must be positive scalar integer')
     if var <= 0:
         raise vexc(vname + ' must be positive scalar integer')
@@ -168,9 +169,9 @@ def nonnegative_scalar_integer(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    if not np.isscalar(var):
+    if not cp.isscalar(var):
         raise vexc(vname + ' must be nonnegative scalar integer')
-    if not isinstance(var, (int, np.integer)):
+    if not isinstance(var, (int, cp.integer)):
         raise vexc(vname + ' must be nonnegative scalar integer')
     if var < 0:
         raise vexc(vname + ' must be nonnegative scalar integer')
@@ -193,8 +194,8 @@ def scalar_integer(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    if not np.isscalar(var):
+    if not cp.isscalar(var):
         raise vexc(vname + ' must be scalar integer')
-    if not isinstance(var, (int, np.integer)):
+    if not isinstance(var, (int, cp.integer)):
         raise vexc(vname + ' must be scalar integer')
     return var

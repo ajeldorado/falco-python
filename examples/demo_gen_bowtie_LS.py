@@ -1,3 +1,4 @@
+import cupy as cp
 import sys
 sys.path.insert(0,"../")
 import falco
@@ -5,25 +6,25 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-inputs = {}
-inputs["Nbeam"] = 100
-inputs["ID"] = 0.38
-inputs["OD"] = 0.92
-inputs["ang"] = 115
+icp.ts = {}
+icp.ts["Nbeam"] = 100
+icp.ts["ID"] = 0.38
+icp.ts["OD"] = 0.92
+icp.ts["ang"] = 115
 
-#--Optional Inputs
-#inputs['centering'] = 'pixel'
-#inputs['xShear'] = 0. #--x-axis shear of mask [pupil diameters]
-#inputs['yShear'] = 0.5 #--y-axis shear of mask [pupil diameters]
-#inputs['clocking'] = 30  #--Clocking of the mask [degrees]
-#inputs['magfac'] = 1.5 #--magnification factor of the pupil diameter
+#--Optional Icp.ts
+#icp.ts['centering'] = 'pixel'
+#icp.ts['xShear'] = 0. #--x-axis shear of mask [pupil diameters]
+#icp.ts['yShear'] = 0.5 #--y-axis shear of mask [pupil diameters]
+#icp.ts['clocking'] = 30  #--Clocking of the mask [degrees]
+#icp.ts['magfac'] = 1.5 #--magnification factor of the pupil diameter
 
-LS = falco.masks.falco_gen_bowtie_LS(inputs)
+LS = falco.masks.falco_gen_bowtie_LS(icp.ts)
 
 plt.imshow(LS); plt.colorbar(); plt.pause(0.1)
 
-if("centering" in inputs.keys()):
-    if inputs["centering"]=='pixel':
-        plt.imshow(LS[1::,1::]-np.fliplr(LS[1::,1::])); plt.colorbar(); plt.pause(0.1) #--Check centering
-    elif inputs["centering"]=='interpixel':
-        plt.imshow(LS-np.fliplr(LS)); plt.colorbar(); plt.pause(0.1) #--Check centering
+if("centering" in icp.ts.keys()):
+    if icp.ts["centering"]=='pixel':
+        plt.imshow(LS[1::,1::]-cp.fliplr(LS[1::,1::])); plt.colorbar(); plt.pause(0.1) #--Check centering
+    elif icp.ts["centering"]=='interpixel':
+        plt.imshow(LS-cp.fliplr(LS)); plt.colorbar(); plt.pause(0.1) #--Check centering

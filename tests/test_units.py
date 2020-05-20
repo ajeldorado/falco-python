@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 import pytest
 import sys
@@ -62,40 +63,40 @@ class TestUtils:
         assert ret != pytest.approx(0)
 
 
-    @pytest.mark.parametrize("test_input, expected", [(0, 1), (90, 0), (180, -1), (270, 0), (360, 1)])
-    def test_cosd(cls, test_input, expected):
-        ret = falco.utils.cosd(test_input)
+    @pytest.mark.parametrize("test_icp.t, expected", [(0, 1), (90, 0), (180, -1), (270, 0), (360, 1)])
+    def test_cosd(cls, test_icp.t, expected):
+        ret = falco.utils.cosd(test_icp.t)
         assert ret == pytest.approx(expected)
 
-    @pytest.mark.parametrize("test_input, expected", [(2, 1.0), (100, 7.0), (-2, 1.0), (-100, 7.0), (0, -np.inf)])
-    def test_nextpow2(cls, test_input, expected):
-        ret = falco.utils.nextpow2(test_input)
+    @pytest.mark.parametrize("test_icp.t, expected", [(2, 1.0), (100, 7.0), (-2, 1.0), (-100, 7.0), (0, -cp.inf)])
+    def test_nextpow2(cls, test_icp.t, expected):
+        ret = falco.utils.nextpow2(test_icp.t)
         assert ret == expected
 
-    @pytest.mark.parametrize("test_input, expected", [(0, 0.0), (5, 6.0), (-2, -2), (-1, 0.0)])
-    def test_ceil_even(cls, test_input, expected):
-        ret = falco.utils.ceil_even(test_input)
+    @pytest.mark.parametrize("test_icp.t, expected", [(0, 0.0), (5, 6.0), (-2, -2), (-1, 0.0)])
+    def test_ceil_even(cls, test_icp.t, expected):
+        ret = falco.utils.ceil_even(test_icp.t)
         assert ret % 2 == 0
         assert ret == expected;
 
-    @pytest.mark.parametrize("test_input, expected", [(6, 7.0), (5, 5.0), (-2, -1), (-1, -1.0)])
-    def test_ceil_odd(cls, test_input, expected):
-        ret = falco.utils.ceil_odd(test_input)
+    @pytest.mark.parametrize("test_icp.t, expected", [(6, 7.0), (5, 5.0), (-2, -1), (-1, -1.0)])
+    def test_ceil_odd(cls, test_icp.t, expected):
+        ret = falco.utils.ceil_odd(test_icp.t)
         assert ret % 2 != 0
         assert ret == expected;
 
     def test_padOrCropEven(cls):
-        test_input = np.zeros((10,10))
-        ret = falco.utils.padOrCropEven(test_input, 20)
+        test_icp.t = cp.zeros((10,10))
+        ret = falco.utils.padOrCropEven(test_icp.t, 20)
 
         assert ret.shape[0] == 20
 
-        test_input = np.zeros((5, 6))
+        test_icp.t = cp.zeros((5, 6))
         with pytest.raises(ValueError):
-            ret = falco.utils.padOrCropEven(test_input, 20)
-        test_input = np.zeros((8, 6))
+            ret = falco.utils.padOrCropEven(test_icp.t, 20)
+        test_icp.t = cp.zeros((8, 6))
         with pytest.raises(ValueError):
-            ret = falco.utils.padOrCropEven(test_input, 20)
+            ret = falco.utils.padOrCropEven(test_icp.t, 20)
 
 
     def test_allcomb(cls):
@@ -130,7 +131,7 @@ class TestUtils:
         assert val == -6
 
     def test_broadcast(cls):
-        a = np.zeros((10,))
+        a = cp.zeros((10,))
         x, y = falco.utils.broadcast(a)
         assert x.shape[0] == 1
         assert x.shape[1] == 10
