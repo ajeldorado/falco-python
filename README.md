@@ -30,12 +30,21 @@ All in all, a smashing success, I'd say.  'Least it runs.  Anyway, making this w
 TL;DR Don't ever merge this crap into master without putting in A LOT of extra work.
 
 Oh God, what have I done.
+
 .
+
 .
+
 .
+
 .
+
 .
+
 .
+
 .
+
 .
+
 P.S.  If for godforsaken reason you ACTUALLY want to run this, start with EXAMPLE_main_WFIRST_LC.py.  That's what I used for all my testing, and you should at least make it through with no errors.
