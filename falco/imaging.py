@@ -173,14 +173,14 @@ def get_summed_image(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
    
-    if not (mp.flagMultiproc and mp.flagSim): #
+    if not (mp.flagMultiproc and mp.flagSim):
         Imean = 0
         for si in range(0,mp.Nsbp):
-            Imean += mp.sbp_weights[si]*get_sbp_image(mp,si)
+            Imean += mp.sbp_weights[si]*get_sbp_image(mp, si)
             
-    else: # Compute simulated images in parallel
+    else:  # Compute simulated images in parallel
         
-        # Initializations    
+        # Initializations
         vals_list = [(ilam, pol) for ilam in range(mp.full.NlamUnique) for pol in mp.full.pol_conds]
         Nvals = mp.full.NlamUnique*len(mp.full.pol_conds)
             
@@ -250,7 +250,7 @@ def get_sbp_image(mp, si):
 
 def get_sim_sbp_image(mp, si):
     """
-    Function to get a simulated image in the specified sub-bandpass.
+    Get a simulated image in the specified sub-bandpass.
 
     Parameters
     ----------

@@ -237,13 +237,17 @@ def loop(mp, out):
         # Wavefront Estimation
         if mp.estimator.lower() in ['perfect']:
             EfieldVec = falco.est.perfect(mp)
-        elif mp.estimator.lower in ['pwp-bp', 'pwp-kf']:
+        elif mp.estimator.lower() in ['pwp-bp', 'pwp-kf']:
+            if Itr == 0:
+                ev = falco.config.Object()
+            ev.Itr = Itr
+                
             if mp.est.flagUseJac:  # Send in the Jacobian if true
-                ev = falco.est.pairwise_probing(mp, jacStruct)
+                falco.est.pairwise_probing(mp, ev, jacStruct=jacStruct)
             else:  # Otherwise don't pass the Jacobian
-                ev = falco.est.pairwise_probing(mp)
+                falco.est.pairwise_probing(mp, ev)
             EfieldVec = ev.Eest
-            # IincoVec = ev.IincoEst
+            IincoVec = ev.IincoEst
                 
         # Add spatially-dependent weighting to the control Jacobians
         if np.any(mp.dm_ind == 1):

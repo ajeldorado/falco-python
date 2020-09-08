@@ -786,7 +786,7 @@ def enforce_constraints(dm):
 
 def fit_surf_to_act(dm, surfaceToFit):
     """
-    Function to fit a surface to a deformable mirror (DM) commands.
+    Compute the deformable mirror (DM) commands to best fit a given surface.
 
     Parameters
     ----------
@@ -804,29 +804,29 @@ def fit_surf_to_act(dm, surfaceToFit):
     
     [mSurface, nSurface] = surfaceToFit.shape
 
-    #--Starting influence function (must be square)
+    # Starting influence function (must be square)
     inf1 = dm.inf0
     N1 = inf1.shape[0]
     actres1 = dm.dm_spacing/dm.dx_inf0
     x = np.linspace(-(N1-1.)/2.,(N1-1.)/2.,N1)/actres1
     [X,Y] = np.meshgrid(x,x)
 
-    #--Influence function resampled to actuator map resolution
-    actres2 = 1. #--pixels per actuator width
-    N2 = falco.util.ceil_even(N1*actres2/actres1)+1 #--Make odd to have peak of 1
-    xq = np.linspace(-(N2-1)/2,(N2-1)/2,N2)/actres2 #pixel-centered
-    #[Xq,Yq] = np.meshgrid(xq)
-    #inf2 = interp2(X,Y,inf1,Xq,Yq,'cubic',0); # MATLAB way
+    # Influence function resampled to actuator map resolution
+    actres2 = 1.  # pixels per actuator width
+    N2 = falco.util.ceil_even(N1*actres2/actres1)+1 # Make odd to have peak of 1
+    xq = np.linspace(-(N2-1)/2,(N2-1)/2,N2)/actres2 # pixel-centered
+    # [Xq,Yq] = np.meshgrid(xq)
+    # inf2 = interp2(X,Y,inf1,Xq,Yq,'cubic',0); # MATLAB way
     interp_spline = RectBivariateSpline(x, x, inf1) # RectBivariateSpline is faster in 2-D than interp2d
     infFuncAtActRes = interp_spline(xq,xq)
             
-    #--Set the order of operations
+    # Set the order of operations
     flagXYZ = True
-    if(hasattr(dm,'flagZYX')):
+    if(hasattr(dm, 'flagZYX')):
         if(dm.flagZYX):
             flagXYZ = False
             
-    #--Perform the fit
+    # Perform the fit
     if(nSurface == dm.Nact):
         gridDerotAtActRes = surfaceToFit
     
@@ -836,14 +836,14 @@ def fit_surf_to_act(dm, surfaceToFit):
         wArray = nSurface*dm.dx
         cshift = -wArray/2./nSurface/dm.dm_spacing if(dm.centering == 'interpixel') else 0.
     
-        gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx, 
+        gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
         dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt,
-        ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn); 
+        ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
     
     elif(nSurface < dm.Nact):
         raise ValueError('surfaceToFit cannot be smaller than [Nact x Nact].')
     
-    [Vout, surfaceOut] = proper.prop_fit_dm(gridDerotAtActRes, infFuncAtActRes) 
+    [Vout, surfaceOut] = proper.prop_fit_dm(gridDerotAtActRes, infFuncAtActRes)
 
     return Vout
 
