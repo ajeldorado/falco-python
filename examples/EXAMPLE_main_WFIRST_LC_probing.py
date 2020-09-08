@@ -5,7 +5,7 @@ import numpy as np
 
 import falco
 
-import EXAMPLE_defaults_WFIRST_LC as DEFAULTS
+import EXAMPLE_defaults_WFIRST_LC_probing as DEFAULTS
 mp = DEFAULTS.mp
 
 
@@ -22,11 +22,11 @@ mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [m
 ## Step 3: Overwrite default values as desired
 
 # ##--Special Computational Settings
-mp.flagPlot = True;
+mp.flagPlot = False #True;
 mp.flagMultiproc = False; #--whether to use multiprocessing to parallelize some large computations
-mp.Nthreads = 4         #--Number of threads to use when using multiprocessing. If undefined, it is set to the max number of cores
+mp.Nthreads = 4         #--Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
-# mp.propMethodPTP = 'mft';
+mp.propMethodPTP = 'mft';
 
 #--Record Keeping
 mp.TrialNum = 1;

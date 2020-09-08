@@ -1514,7 +1514,7 @@ def falco_gen_pupil_Simple(inputs):
     check.is_dict(inputs, 'inputs')
 # % Inputs:
 # % inputs["Npad"] #Number of samples in the padded array
-# % inputs["Nbeam"] - Number of samples across the beam 
+# % inputs["Nbeam"] - Number of samples across the beam
 # % inputs["OD"] - Outer diameter (fraction of Nbeam)
 # % inputs["ID"] - Inner diameter (fraction of Nbeam)
 # % inputs["Nstrut"] - Number of struts
@@ -1524,92 +1524,127 @@ def falco_gen_pupil_Simple(inputs):
 # %                   the horizontal direction by a factor of stretch (PROPER
 # %                   version isn't implemented as of March 2019).
 
-    hg_expon = 1000  # hyper-gaussian exponent for anti-aliasing
-    hg_expon_spider = 100  # hyper-gaussian exponent for anti-aliasing
+    # Required dictionary keys
+    Nbeam = inputs["Nbeam"]  # Aperture diameter in pixel widths
+    Narray = inputs["Npad"]  # Number of points across 2-D, NxN output array
+    OD = inputs["OD"]  # pupil outer diameter, can be < 1
 
     # Optional dictionary keys
-    centering = inputs["centering"] if('centering' in inputs) else 'pixel'
-    xStretch = inputs["stretch"] if('stretch' in inputs) else 1.
-    ID = inputs["ID"] if('ID' in inputs) else 0.  # central obscuration diameter
-    flagPROPER = inputs["flagPROPER"] if 'flagPROPER' in inputs else False
-    if not isinstance(flagPROPER, bool):
-        raise TypeError("inputs['flagPROPER'] must be a bool")
-
+    ID = inputs["ID"] if('ID' in inputs) else 0.  # central obscuration diam
     if 'wStrut' in inputs:
-        wStrut = inputs["wStrut"]  # width of all struts [pupil diameters], float
-        check.real_nonnegative_scalar(wStrut, 'wStrut', TypeError)
-        angStrutVec = inputs["angStrut"] # Azimuthal locations of the radial struts, array_like
+        wStrut = inputs["wStrut"]  # width of all struts [pupil diameters]
+        
     else:
         wStrut = 0
+    if 'angStrut' in inputs:
+        angStrutVec = inputs["angStrut"]  # Azimuthal locations of the radial struts
+        angStrutVec = np.array(angStrutVec)
+    else:
+        angStrutVec = np.array([])
+        wStrut = 0
+    centering = inputs["centering"] if('centering' in inputs) else 'pixel'
+    xStretch = inputs["stretch"] if('stretch' in inputs) else 1.
+    clocking = inputs["clocking"] if('clocking' in inputs) else 0.  # [deg]
+    xShear = inputs["xShear"] if('xShear' in inputs) else 0.  # [pupil diam]
+    yShear = inputs["yShear"] if('yShear' in inputs) else 0.  # [pupil diam]
+    flagHG = inputs["flagHG"] if 'flagHG' in inputs else False
 
-    # Required dictionary keys
-    N = inputs["Npad"]  # Number of samples in NxN grid
-    OD = inputs["OD"]  # pupil outer diameter, can be < 1
-    Nbeam = inputs["Nbeam"]  # Aperture diameter in pixels
-    apRad = Nbeam/2.  # aperture radius in samples
-
-    # Create coordinates
+    # Input checks
+    check.real_nonnegative_scalar(wStrut, 'wStrut', TypeError)
     check.centering(centering)
-    if centering == 'pixel':
-        x = np.arange(-N/2, N/2)
-    elif centering == 'interpixel':
-        x = np.arange(-(N-1)/2, (N-1)/2+1)
-    RHO = falco.util.radial_grid(x, xStretch=xStretch)
-    THETA = falco.util.azimuthal_grid(x, xStretch=xStretch)
-
-    # Make sure the inputs make sense
+    if not isinstance(flagHG, bool):
+        raise TypeError("inputs['flagHG'] must be a bool")
     if(ID > OD):
-        raise ValueError("Inner diameter larger than outer diameter.")
+        raise ValueError("Inner diameter cannot be larger than outer diameter.")
 
-    # Create inner and outer circles
-    if not flagPROPER:
+    # By default, don't use hyger-gaussians for anti-aliasing the edges.
+    if not flagHG:
+
+        # Create outer aperture
+        inpOuter = {}
+        inpOuter["Nbeam"] = Nbeam
+        inpOuter["Narray"] = Narray
+        inpOuter["radiusX"] = xStretch*0.5*OD
+        inpOuter["radiusY"] = 0.5*OD
+        inpOuter["centering"] = centering
+        inpOuter["clockingDegrees"] = clocking
+        inpOuter["xShear"] = xShear
+        inpOuter["yShear"] = yShear
+        apOuter = gen_ellipse(inpOuter)
+
+        # Create inner aperture
+        if ID > 0:
+            inpInner = {}
+            inpInner["Nbeam"] = Nbeam
+            inpInner["Narray"] = Narray
+            inpInner["radiusX"] = xStretch*0.5*ID
+            inpInner["radiusY"] = 0.5*ID
+            inpInner["centering"] = centering
+            inpInner["clockingDegrees"] = clocking
+            inpInner["xShear"] = xShear
+            inpInner["yShear"] = yShear
+            apInner = 1.0 - gen_ellipse(inpInner)
+        else:
+            apInner = 1
+
+        # STRUTS
+        if angStrutVec.size == 0:
+            apStruts = 1
+        else:
+            # INITIALIZE PROPER
+            Dbeam = 1.0  # diameter of beam (normalized to itself)
+            dx = Dbeam/Nbeam
+            Darray = Narray*dx
+            wl_dummy = 1e-6  # dummy value
+            bdf = Dbeam/Darray  # beam diameter fraction
+            if(centering == 'pixel'):
+                cshift = 0
+            elif(centering == 'interpixel'):
+                cshift = -dx/2.
+            bm = proper.prop_begin(Dbeam, wl_dummy, Narray, bdf)
+            
+            # STRUTS
+            lStrut = 0.6  # [pupil diameters]
+            rcStrut0 = lStrut / 2.0
+            for iStrut in range(angStrutVec.size):
+                ang = angStrutVec[iStrut] + clocking
+                proper.prop_rectangular_obscuration(bm, lStrut, wStrut,
+                                        xc=rcStrut0*cosd(ang)+cshift+xShear,
+                                        yc=rcStrut0*sind(ang)+cshift+yShear,
+                                        ROTATION=ang)
+            apStruts = np.fft.ifftshift(np.abs(bm.wfarr))
+        
+        # Combine all features
+        pupil = apOuter*apInner*apStruts
+    
+    else:
+        hg_expon = 1000  # hyper-gaussian exponent for anti-aliasing
+        hg_expon_spider = 100  # hyper-gaussian exponent for anti-aliasing
+        apRad = Nbeam/2.  # aperture radius in samples
+        
+        # Create coordinates
+        if centering == 'pixel':
+            x = np.arange(-Narray/2, Narray/2)
+        elif centering == 'interpixel':
+            x = np.arange(-(Narray-1)/2, (Narray-1)/2+1)
+        RHO = falco.util.radial_grid(x, xStretch=xStretch)
+        THETA = falco.util.azimuthal_grid(x, xStretch=xStretch)
+    
         if(ID > 0):
-            pupil = np.exp(-(RHO/(apRad*OD))**hg_expon) - np.exp(-(RHO/(apRad*ID))**hg_expon)
+            pupil = np.exp(-(RHO/(apRad*OD))**hg_expon) - \
+                np.exp(-(RHO/(apRad*ID))**hg_expon)
         else:
             pupil = np.exp(-(RHO/(apRad*OD))**hg_expon)
-
-    else:  # OVERWRITE if PROPER is specified
-
-        # INITIALIZE PROPER
-        Dbeam = 1  # diameter of beam (normalized to itself)
-        dx = Dbeam/inputs["Nbeam"]
-        Narray = N
-        Darray = Narray*dx
-        wl_dummy = 1e-6  # dummy value
-        bdf = Dbeam/Darray # beam diameter fraction
-        xshift = 0  # x-shear of pupil
-        yshift = 0  # y-shear of pupil
-        bm = proper.prop_begin(Dbeam, wl_dummy, Narray,bdf);
-
-        if(centering == 'pixel'):
-            cshift = 0
-        elif(centering == 'interpixel'):
-            cshift = -dx/2.
-
-        # PRIMARY MIRROR (OUTER DIAMETER)
-        ra_OD = OD/2
-        cx_OD = 0 + cshift + xshift
-        cy_OD = 0 + cshift + yshift
-        proper.prop_circular_aperture(bm, ra_OD,cx_OD,cy_OD)
-
-        if(ID > 0):
-            # SECONDARY MIRROR (INNER DIAMETER)
-            ra_ID = ID/2.
-            cx_ID = 0 + cshift + xshift
-            cy_ID = 0 + cshift + yshift
-            proper.prop_circular_obscuration(bm, ra_ID, cx_ID, cy_ID)
-
-        pupil = np.fft.ifftshift(np.abs(bm.wfarr))
-
-    # Create spiders
-    if wStrut > 0:
-        try:
-            halfwidth = wStrut*2*apRad
-            for ang in angStrutVec:
-                pupil *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider) *
-                          (RHO*np.cos(THETA-ang*np.pi/180) > 0))
-        except:
-            raise TypeError("inputs['angStrut'] must be an iterable")
+            
+        # Create spiders
+        if wStrut > 0:
+            try:
+                halfwidth = wStrut*apRad
+                for ang in angStrutVec:
+                    pupil *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider) *
+                              (RHO*np.cos(THETA-ang*np.pi/180) > 0))
+            except:
+                raise TypeError("inputs['angStrut'] must be an iterable")
 
     return pupil
 
@@ -1737,6 +1772,13 @@ def falco_gen_vortex_mask(charge, N):
     check.real_scalar(charge, 'charge', TypeError)
     check.positive_scalar_integer(N, 'N', TypeError)
     return np.exp(1j*charge*falco.util.azimuthal_grid(np.arange(-N/2., N/2.)))
+
+
+def gen_ellipse(inputs):
+    
+    pupil = falco_gen_ellipse(inputs)
+    
+    return pupil
 
 
 def falco_gen_ellipse(inputs):
