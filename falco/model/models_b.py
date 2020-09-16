@@ -615,93 +615,99 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
     if(mp.flagApod):
         EP3 = mp.P3.compact.mask*falco.util.pad_crop(EP3, mp.P3.compact.Narr)
 
-    """  Select propagation based on coronagraph type   """
-    if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'RODDIER'):
-        # MFT from SP to FPM (i.e., P3 to F3)
-        # E-field incident upon the FPM
-        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
-                                    fpmScaleFac*mp.F3.compact.dxi,
-                                    mp.F3.compact.Nxi,
-                                    fpmScaleFac*mp.F3.compact.deta,
-                                    mp.F3.compact.Neta, mp.centering)
-        # Apply (1-FPM) for Babinet's principle later
-        if mp.coro.upper() == 'RODDIER':
-            pass
-        elif mp.coro.upper() == 'HLC':
-            FPM = mp.FPM.mask  # Complex transmission of the FPM
-            transOuterFPM = FPM[0, 0]  # Complex trans of points outside FPM
-            EF3 = (transOuterFPM - FPM)*EF3inc
-            # transOuterFPM instead of 1 because of the complex transmission of
-            # the glass as well as the arbitrary phase shift.
-        else:
-            EF3 = (1. - mp.F3.compact.ampMask)*EF3inc
-        # Use Babinet's principle at the Lyot plane.
-        EP4noFPM = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
-        EP4noFPM = falco.util.pad_crop(EP4noFPM, mp.P4.compact.Narr)
-        if mp.coro.upper() == 'HLC':
-            EP4noFPM = transOuterFPM*EP4noFPM
-        # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        # Subtrahend term for Babinet's principle
-        EP4sub = falco.prop.mft_f2p(EF3, mp.fl, wvl,
-                                    fpmScaleFac*mp.F3.compact.dxi,
-                                    fpmScaleFac*mp.F3.compact.deta,
-                                    mp.P4.compact.dx, mp.P4.compact.Narr,
-                                    mp.centering)
-        EP4subRelay = falco.prop.relay(EP4sub, mp.Nrelay3to4-1, mp.centering)
-        # Babinet's principle at P4
-        EP4 = (EP4noFPM-EP4subRelay)
 
-    elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
-        # MFT from SP to FPM (i.e., P3 to F3)
-        # E-field incident upon the FPM
-        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
-                                    mp.F3.compact.dxi, mp.F3.compact.Nxi,
-                                    mp.F3.compact.deta, mp.F3.compact.Neta,
-                                    mp.centering)
-
-        # Apply FPM
-        EF3 = mp.F3.compact.ampMask * EF3inc
-
-        # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi,
-                                 mp.F3.compact.deta, mp.P4.compact.dx,
-                                 mp.P4.compact.Narr, mp.centering)
-        EP4 = falco.prop.relay(EP4, mp.Nrelay3to4-1, mp.centering)
-
-    elif mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
-
-        # Get FPM charge
-        if isinstance(mp.F3.VortexCharge, np.ndarray):
-            # Passing an array for mp.F3.VortexCharge with
-            # corresponding wavelengths mp.F3.VortexCharge_lambdas
-            # represents a chromatic vortex FPM
-            if mp.F3.VortexCharge.size == 1:
-                charge = mp.F3.VortexCharge
-            else:
-                np.interp(wvl, mp.F3.VortexCharge_lambdas, mp.F3.VortexCharge,
-                          'linear', 'extrap')
-
-        elif isinstance(mp.F3.VortexCharge, (int, float)):
-            # single value indicates fully achromatic mask
-            charge = mp.F3.VortexCharge
-        else:
-            raise TypeError("mp.F3.VortexCharge must be int, float or numpy\
-                            ndarray.")
-            pass
-        EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
-        EP4 = falco.util.pad_crop(EP4, mp.P4.compact.Narr)
-
-    else:
-        raise ValueError("Value of mp.coro not recognized.")
-        pass
-
-    # Remove FPM completely if normalization value is being found for vortex
+# Remove FPM completely if normalization value is being found for vortex
     if normFac == 0:
-        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC', 'LC', 'APLC'):
             EP4 = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
             EP4 = falco.util.pad_crop(EP4, mp.P4.compact.Narr)
+            
+        elif mp.coro.upper() in ('HLC'):
+            EP4noFPM = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
+            EP4 = falco.util.pad_crop(EP4noFPM, mp.P4.compact.Narr)
+            FPM = mp.FPM.mask  # Complex transmission of the FPM
+            transOuterFPM = FPM[0, 0]  # Complex trans of points outside FPM
+            EP4 *= transOuterFPM
+    
+    else:
+
+        """  Select propagation based on coronagraph type   """
+        if mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+            # MFT from SP to FPM (i.e., P3 to F3)
+            # E-field incident upon the FPM
+            EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
+                                        fpmScaleFac*mp.F3.compact.dxi,
+                                        mp.F3.compact.Nxi,
+                                        fpmScaleFac*mp.F3.compact.deta,
+                                        mp.F3.compact.Neta, mp.centering)
+            # Apply (1-FPM) for Babinet's principle later
+            if mp.coro.upper() == 'HLC':
+                FPM = mp.FPM.mask  # Complex transmission of the FPM
+                transOuterFPM = FPM[0, 0]  # Complex trans of points outside FPM
+                EF3 = (transOuterFPM - FPM)*EF3inc
+                # transOuterFPM instead of 1 because of the complex transmission of
+                # the glass as well as the arbitrary phase shift.
+            else:
+                EF3 = (1. - mp.F3.compact.ampMask)*EF3inc
+            # Use Babinet's principle at the Lyot plane.
+            EP4noFPM = falco.prop.relay(EP3, mp.Nrelay3to4, mp.centering)
+            EP4noFPM = falco.util.pad_crop(EP4noFPM, mp.P4.compact.Narr)
+            if mp.coro.upper() == 'HLC':
+                EP4noFPM = transOuterFPM*EP4noFPM
+            # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+            # Subtrahend term for Babinet's principle
+            EP4sub = falco.prop.mft_f2p(EF3, mp.fl, wvl,
+                                        fpmScaleFac*mp.F3.compact.dxi,
+                                        fpmScaleFac*mp.F3.compact.deta,
+                                        mp.P4.compact.dx, mp.P4.compact.Narr,
+                                        mp.centering)
+            EP4subRelay = falco.prop.relay(EP4sub, mp.Nrelay3to4-1, mp.centering)
+            # Babinet's principle at P4
+            EP4 = (EP4noFPM-EP4subRelay)
+    
+        elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
+            # MFT from SP to FPM (i.e., P3 to F3)
+            # E-field incident upon the FPM
+            EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
+                                        mp.F3.compact.dxi, mp.F3.compact.Nxi,
+                                        mp.F3.compact.deta, mp.F3.compact.Neta,
+                                        mp.centering)
+    
+            # Apply FPM
+            EF3 = mp.F3.compact.ampMask * EF3inc
+    
+            # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+            EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi,
+                                     mp.F3.compact.deta, mp.P4.compact.dx,
+                                     mp.P4.compact.Narr, mp.centering)
+            EP4 = falco.prop.relay(EP4, mp.Nrelay3to4-1, mp.centering)
+    
+        elif mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+    
+            # Get FPM charge
+            if isinstance(mp.F3.VortexCharge, np.ndarray):
+                # Passing an array for mp.F3.VortexCharge with
+                # corresponding wavelengths mp.F3.VortexCharge_lambdas
+                # represents a chromatic vortex FPM
+                if mp.F3.VortexCharge.size == 1:
+                    charge = mp.F3.VortexCharge
+                else:
+                    np.interp(wvl, mp.F3.VortexCharge_lambdas, mp.F3.VortexCharge,
+                              'linear', 'extrap')
+    
+            elif isinstance(mp.F3.VortexCharge, (int, float)):
+                # single value indicates fully achromatic mask
+                charge = mp.F3.VortexCharge
+            else:
+                raise TypeError("mp.F3.VortexCharge must be int, float or numpy\
+                                ndarray.")
+                pass
+            EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
+            EP4 = falco.util.pad_crop(EP4, mp.P4.compact.Narr)
+    
+        else:
+            raise ValueError("Value of mp.coro not recognized.")
             pass
-        pass
 
     """  Back to common propagation any coronagraph type   """
     # Apply the Lyot stop

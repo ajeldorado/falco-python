@@ -59,7 +59,7 @@ def loop(mp, out):
     for Itr in range(mp.Nitr):
     
         # Start of new estimation+control iteration
-        print('Iteration: %d / %d\n' % (Itr, mp.Nitr), end='')
+        print('Iteration: %d / %d\n' % (Itr, mp.Nitr-1), end='')
         
         # Re-normalize PSF after latest DM commands
         falco.imaging.calc_psf_norm_factor(mp)
@@ -166,13 +166,22 @@ def loop(mp, out):
         
         # Actuator Culling: Initialization of Flag and Which Actuators
         
-        # If new actuators are added, perform a new cull of actuators.
+        # If set of DMs changes or Itr is 0, perform a new cull of actuators.
         cvar = falco.config.Object()
         if Itr == 0:
             cvar.flagCullAct = True
         else:
             if hasattr(mp, 'dm_ind_sched'):
-                cvar.flagCullAct = np.not_equal(mp.dm_ind_sched[Itr], mp.dm_ind_sched[Itr-1])
+                schedPre = np.sort(mp.dm_ind_sched[Itr-1])
+                schedNow = np.sort(mp.dm_ind_sched[Itr])
+                if not schedPre.size == schedNow.size:
+                    cvar.flagCullAct = True
+                else:  # when they are same size
+                    doesEachValueMatch = np.not_equal(schedNow, schedPre)
+                    if all(doesEachValueMatch):
+                        cvar.flagCullAct = False
+                    else:
+                        cvar.flagCullAct = True
             else:
                 cvar.flagCullAct = False
         

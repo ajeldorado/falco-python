@@ -1609,8 +1609,8 @@ def falco_gen_pupil_Simple(inputs):
             for iStrut in range(angStrutVec.size):
                 ang = angStrutVec[iStrut] + clocking
                 proper.prop_rectangular_obscuration(bm, lStrut, wStrut,
-                                        xc=rcStrut0*cosd(ang)+cshift+xShear,
-                                        yc=rcStrut0*sind(ang)+cshift+yShear,
+                                        rcStrut0*cosd(ang)+cshift+xShear,
+                                        rcStrut0*sind(ang)+cshift+yShear,
                                         ROTATION=ang)
             apStruts = np.fft.ifftshift(np.abs(bm.wfarr))
         
