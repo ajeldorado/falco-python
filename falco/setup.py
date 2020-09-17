@@ -1516,7 +1516,7 @@ def falco_gen_FPM_LC(mp):
     FPMgenInputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
     FPMgenInputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
     FPMgenInputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-    if 'FPMampFac' in FPMgenInputs:
+    if hasattr(mp, 'FPMampFac'):
         FPMgenInputs["FPMampFac"] = mp.FPMampFac  # amplitude transmission of inner FPM spot
     else:
         FPMgenInputs["FPMampFac"] = 0.0

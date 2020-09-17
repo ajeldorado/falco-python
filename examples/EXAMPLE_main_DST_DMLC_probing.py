@@ -1,5 +1,5 @@
-# import sys
-# sys.path.insert(0,"../")
+import sys
+sys.path.insert(0,"../")
 
 import numpy as np
 
@@ -11,41 +11,33 @@ mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
 
-mp.path.falco = './'  #--Location of FALCO
-mp.path.proper = './' #--Location of the MATLAB PROPER library
+mp.path.falco = './'  # Location of FALCO
+mp.path.proper = './'  # Location of the MATLAB PROPER library
 
-##--Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
-mp.path.config = './' #--Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
-mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
+## Output Data Directories (Comment these lines out to use defaults within falco-matlab/data/ directory.)
+mp.path.config = './'  # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
+mp.path.ws = './'  # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
 
 ## Step 3: Overwrite default values as desired
 
-# ##--Special Computational Settings
-mp.flagPlot = False #True;
-mp.flagMultiproc = False; #--whether to use multiprocessing to parallelize some large computations
-mp.Nthreads = 4         #--Number of threads to use when using multiprocessing. If undefined, it is set to the 
+## Special Computational Settings
+mp.flagPlot = True
+mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
+mp.Nthreads = 4  # Number of threads to use when using multiprocessing. If undefined, it is set to the max number of cores
 
 # mp.propMethodPTP = 'mft';
 
-#--Record Keeping
-mp.TrialNum = 1;
-mp.SeriesNum = 1;
+# Record Keeping
+mp.TrialNum = 1
+mp.SeriesNum = 1
 
-#--Use just 1 wavelength for initial debugging of code
-mp.fracBW = 0.01;       #--fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
-mp.Nsbp = 1;            #--Number of sub-bandpasses to divide the whole bandpass into for estimation and control
-mp.Nwpsbp = 1;
+# Use just 1 wavelength for initial debugging of code
+mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+mp.Nwpsbp = 1
 
-####### NEED TO DETERMINE
-# mp.F3.Rin = 2.7;    # maximum radius of inner part of the focal plane mask [lambda0/D]
-# mp.F3.RinA = mp.F3.Rin;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
-# mp.Fend.corr.Rin = mp.F3.Rin;   # inner radius of dark hole correction region [lambda0/D]
-# mp.Fend.score.Rin = mp.F3.Rin;  # inner radius of dark hole scoring region [lambda0/D]
-
-# mp.P4.IDnorm = 0.45; #--Lyot stop ID [Dtelescope]
-# mp.P4.ODnorm = 0.78; #--Lyot stop OD [Dtelescope]
-
+mp.estimator = 'perfect'
 
 ## Step 4: Generate the label associated with this trial
 
@@ -62,6 +54,3 @@ print(mp.runLabel)
 
 out = falco.setup.flesh_out_workspace(mp)
 falco.wfsc.loop(mp, out)
-
-print('END OF MAIN: ', mp)
-

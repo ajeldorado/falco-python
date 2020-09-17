@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class CheckException(Exception):
     pass
 
@@ -123,9 +124,9 @@ def real_nonnegative_scalar(var, vname, vexc):
 
     Parameters
     ----------
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
     Returns
     -------
@@ -149,19 +150,21 @@ def oneD_array(var, vname, vexc):
     """
     Check whether an object is a 1D numpy array, or castable to one.
 
-    Arguments:
+    Parameters
+    ----------
      var: variable to check
      vname: string to output in case of error for debugging
      vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 1:
         raise vexc(vname + ' must be a real or complex 1D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -171,21 +174,23 @@ def oneD_array(var, vname, vexc):
 
 def twoD_array(var, vname, vexc):
     """
-    Checks whether an object is a 2D numpy array, or castable to one
+    Check whether an object is a 2D numpy array, or castable to one.
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a real or complex 2D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -195,21 +200,23 @@ def twoD_array(var, vname, vexc):
 
 def threeD_array(var, vname, vexc):
     """
-    Checks whether an object is a 3D numpy array, or castable to one
+    Check whether an object is a 3D numpy array, or castable to one.
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 3:
         raise vexc(vname + ' must be a real or complex 2D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -219,15 +226,17 @@ def threeD_array(var, vname, vexc):
 
 def real_scalar(var, vname, vexc):
     """
-    Checks whether an object is a real scalar
+    Check whether an object is a real scalar.
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)
@@ -242,15 +251,17 @@ def real_scalar(var, vname, vexc):
 
 def positive_scalar_integer(var, vname, vexc):
     """
-    Checks whether an object is a positive scalar integer
+    Check whether an object is a positive scalar integer.
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)
@@ -267,15 +278,17 @@ def positive_scalar_integer(var, vname, vexc):
 
 def nonnegative_scalar_integer(var, vname, vexc):
     """
-    Checks whether an object is a nonnegative scalar integer
+    Check whether an object is a nonnegative scalar integer.
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)
@@ -292,15 +305,17 @@ def nonnegative_scalar_integer(var, vname, vexc):
 
 def scalar_integer(var, vname, vexc):
     """
-    Checks whether an object is a scalar integer (no sign dependence)
+    Check whether an object is a scalar integer (no sign dependence).
 
-    Arguments:
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
-    Returns:
-     returns var
+    Returns
+    -------
+    var
 
     """
     _checkname(vname)

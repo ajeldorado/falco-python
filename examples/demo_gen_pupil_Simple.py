@@ -5,6 +5,7 @@ import falco
 import numpy as np
 
 import matplotlib.pyplot as plt
+from astropy.io import fits
 
 Nbeam = 250
 
@@ -34,6 +35,8 @@ plt.figure(); plt.imshow(pupil); plt.colorbar(); plt.gca().invert_yaxis(); plt.p
 #     elif inputs["centering"]=='interpixel':
 #         plt.imshow(pupil-np.fliplr(pupil)); plt.colorbar(); plt.pause(0.1) #-Check centering
 
+# hdu = fits.PrimaryHDU(pupil)
+# hdu.writeto('/Users/ajriggs/Downloads/simple_pupil_python.fits', overwrite=True)
 
 # %% Simplest pupil--no optional inputs
 inputs = {}  # initialize
