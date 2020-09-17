@@ -293,7 +293,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     
             # Report results
             probeSign = '-+'
-            print('Actual Probe %d%s Contrast is: %.2e \n' % (
+            print('Actual Probe %d%s Contrast is: %.2e' % (
                     np.floor(iProbe/2), probeSign[(iProbe+1) % 2],
             np.mean(Im[mp.Fend.corr.maskBool])))
 

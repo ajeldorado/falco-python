@@ -89,7 +89,7 @@ def cosd(thetaDeg):
 def nextpow2(N):
     """Return exponent for the smallest power of 2 that satisfies 2^p ≥ |N|."""
     check.real_positive_scalar(N, 'N', TypeError)
-    p = np.ceil(np.log2(np.abs(N)))
+    p = int(np.ceil(np.log2(np.abs(N))))
     return p
 
 
