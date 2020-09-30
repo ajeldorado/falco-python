@@ -110,12 +110,12 @@ def cull_actuators(mp, cvar, jacStruct):
         if(any(mp.dm_ind == 1)):
             G1intNorm = np.sum(np.mean(np.abs(jacStruct.G1)**2, axis=2), axis=0)
             G1intNorm = G1intNorm/np.max(G1intNorm)
-            mp.dm1.act_ele = np.nonzero(G1intNorm>=10**(mp.logGmin))[0]
+            mp.dm1.act_ele = np.nonzero(G1intNorm >= 10**(mp.logGmin))[0]
             del G1intNorm
         if(any(mp.dm_ind == 2)):
             G2intNorm = np.sum(np.mean(np.abs(jacStruct.G2)**2, axis=2), axis=0)
             G2intNorm = G2intNorm/np.max(G2intNorm)
-            mp.dm2.act_ele = np.nonzero(G2intNorm>=10**(mp.logGmin))[0]
+            mp.dm2.act_ele = np.nonzero(G2intNorm >= 10**(mp.logGmin))[0]
             del G2intNorm
         if(any(mp.dm_ind == 8)):
             G8intNorm = np.sum(np.mean(np.abs(jacStruct.G8)**2, axis=2), axis=0)
@@ -168,16 +168,16 @@ def cull_actuators(mp, cvar, jacStruct):
         if(any(mp.dm_ind == 8)): mp.dm8.Nele = mp.dm8.act_ele.size
         if(any(mp.dm_ind == 9)): mp.dm9.Nele = mp.dm9.act_ele.size
 
-        if(any(mp.dm_ind == 1)): print('  DM1: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm1.Nele, mp.dm1.NactTotal,100*mp.dm1.Nele/mp.dm1.NactTotal))
-        if(any(mp.dm_ind == 2)): print('  DM2: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm2.Nele, mp.dm2.NactTotal,100*mp.dm2.Nele/mp.dm2.NactTotal))
-        if(any(mp.dm_ind == 8)): print('  DM8: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm8.Nele, mp.dm8.NactTotal,100*mp.dm8.Nele/mp.dm8.NactTotal))
-        if(any(mp.dm_ind == 9)): print('  DM9: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm9.Nele, mp.dm9.NactTotal,100*mp.dm9.Nele/mp.dm9.NactTotal))
+        if(any(mp.dm_ind == 1)): print('  DM1: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm1.Nele, mp.dm1.NactTotal, 100*mp.dm1.Nele/mp.dm1.NactTotal))
+        if(any(mp.dm_ind == 2)): print('  DM2: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm2.Nele, mp.dm2.NactTotal, 100*mp.dm2.Nele/mp.dm2.NactTotal))
+        if(any(mp.dm_ind == 8)): print('  DM8: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm8.Nele, mp.dm8.NactTotal, 100*mp.dm8.Nele/mp.dm8.NactTotal))
+        if(any(mp.dm_ind == 9)): print('  DM9: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm9.Nele, mp.dm9.NactTotal, 100*mp.dm9.Nele/mp.dm9.NactTotal))
         
         # Crop out unused actuators from the control Jacobian
-        if(any(mp.dm_ind == 1)): jacStruct.G1 = jacStruct.G1[:, mp.dm1.act_ele,:]
-        if(any(mp.dm_ind == 2)): jacStruct.G2 = jacStruct.G2[:, mp.dm2.act_ele,:]
-        if(any(mp.dm_ind == 8)): jacStruct.G8 = jacStruct.G8[:, mp.dm8.act_ele,:]
-        if(any(mp.dm_ind == 9)): jacStruct.G9 = jacStruct.G9[:, mp.dm9.act_ele,:]
+        if(any(mp.dm_ind == 1)): jacStruct.G1 = jacStruct.G1[:, mp.dm1.act_ele, :]
+        if(any(mp.dm_ind == 2)): jacStruct.G2 = jacStruct.G2[:, mp.dm2.act_ele, :]
+        if(any(mp.dm_ind == 8)): jacStruct.G8 = jacStruct.G8[:, mp.dm8.act_ele, :]
+        if(any(mp.dm_ind == 9)): jacStruct.G9 = jacStruct.G9[:, mp.dm9.act_ele, :]
 
     return None
 
@@ -242,11 +242,11 @@ def _grid_search_efc(mp, cvar):
     for ni in range(Nvals):
         print('%.2f\t\t' % (vals_list[ni][1]), end='')
 
-    print('\nlog10reg:\t', end='')
+    print('\nlog10reg:    \t', end='')
     for ni in range(Nvals):
         print('%.1f\t\t' % (vals_list[ni][0]), end='')
     
-    print('\nInorm:  \t', end='')
+    print('\nInorm:       \t', end='')
     for ni in range(Nvals):
         print('%.2e\t' % (InormVec[ni]), end='')
     print('\n', end='')
@@ -329,10 +329,10 @@ def _planned_efc(mp, cvar):
         print('Scaling factor:\t', end='')
         for ni in range(Nvals): print('%.2f\t\t' % (vals_list[ni][1]), end='')
     
-        print('\nlog10reg:\t', end='')
+        print('\nlog10reg:    \t', end='')
         for ni in range(Nvals): print('%.1f\t\t' % (vals_list[ni][0]), end='')
         
-        print('\nInorm:  \t', end='')
+        print('\nInorm:       \t', end='')
         for ni in range(Nvals): print('%.2e\t' % (InormVec[ni]), end='')
         print('\n', end='')
     
@@ -503,9 +503,12 @@ def _efc(ni, vals_list, mp, cvar):
 
     if(any(mp.dm_ind == 1)):
         DM1V0 = mp.dm1.V.copy()
-#        dDM1V0 = mp.dm1.dV.copy()
     if(any(mp.dm_ind == 2)):
         DM2V0 = mp.dm2.V.copy()
+    if(any(mp.dm_ind == 8)):
+        DM8V0 = mp.dm8.V.copy()
+    if(any(mp.dm_ind == 9)):
+        DM9V0 = mp.dm9.V.copy()
         
     # Initializations
     log10reg = vals_list[ni][0]  # log 10 of regularization value
@@ -539,7 +542,11 @@ def _efc(ni, vals_list, mp, cvar):
         mp.dm1.V = DM1V0
     if(any(mp.dm_ind == 2)):
         mp.dm2.V = DM2V0
-
+    if(any(mp.dm_ind == 8)):
+        mp.dm8.V = DM8V0
+    if(any(mp.dm_ind == 9)):
+        mp.dm9.V = DM9V0
+        
     return InormAvg, dDM
 
 
@@ -568,8 +575,8 @@ def init(mp, cvar):
     # Make the vector of total DM commands from before
     u1 = mp.dm1.V.reshape(mp.dm1.NactTotal)[mp.dm1.act_ele] if(any(mp.dm_ind == 1)) else np.array([])
     u2 = mp.dm2.V.reshape(mp.dm2.NactTotal)[mp.dm2.act_ele] if(any(mp.dm_ind == 2)) else np.array([])
-    u8 = mp.dm1.V.reshape(mp.dm8.NactTotal)[mp.dm8.act_ele] if(any(mp.dm_ind == 8)) else np.array([])
-    u9 = mp.dm1.V.reshape(mp.dm9.NactTotal)[mp.dm9.act_ele] if(any(mp.dm_ind == 9)) else np.array([])
+    u8 = mp.dm9.V.reshape(mp.dm8.NactTotal)[mp.dm8.act_ele] if(any(mp.dm_ind == 8)) else np.array([])
+    u9 = mp.dm9.V.reshape(mp.dm9.NactTotal)[mp.dm9.act_ele] if(any(mp.dm_ind == 9)) else np.array([])
     cvar.uVec = np.concatenate((u1, u2, u8, u9))
     cvar.NeleAll = cvar.uVec.size
     

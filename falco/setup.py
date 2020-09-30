@@ -516,12 +516,12 @@ def falco_gen_chosen_pupil(mp):
             inp['Npad'] = int(2**falco.nextpow2(mp.P1.compact.Nbeam))
             mp.P1.compact.mask = falco.mask.falco_gen_pupil_Simple(inp)
 
-    elif whichPupil == 'WFIRST20191009':
+    elif whichPupil in ('ROMAN', 'ROMAN20200513', 'WFIRST20200513'):
         if mp.full.flagGenPupil:
-            mp.P1.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.full.Nbeam, mp.centering)
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P1.full.Nbeam, mp.centering)
 
         if mp.compact.flagGenPupil:
-            mp.P1.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.compact.Nbeam, mp.centering)
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P1.compact.Nbeam, mp.centering)
 
     elif whichPupil == 'WFIRST180718':
         if mp.full.flagGenPupil:
@@ -709,42 +709,23 @@ def falco_gen_chosen_lyot_stop(mp):
             inp['Nbeam'] = mp.P4.compact.Nbeam  # number of points across usable pupil
             inp['Npad'] = int(2**falco.nextpow2(mp.P4.compact.Nbeam))
             mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple(inp)
-
-        """
-        if whichPupil in ('SIMPLEPROPER'):  
-            inputs.flagPROPER = true
-
-        inputs.Nbeam = mp.P4.full.Nbeam # number of points across incoming beam 
-        inputs.Npad = 2^(falco.util.nextpow2nextpow2(mp.P4.full.Nbeam))
-        inputs.OD = mp.P4.ODnorm
-        inputs.ID = mp.P4.IDnorm
-        inputs.Nstrut = mp.P4.Nstrut
-        inputs.angStrut = mp.P4.angStrut # Angles of the struts 
-        inputs.wStrut = mp.P4.wStrut # spider width (fraction of the pupil diameter)
-
-        mp.P4.full.mask = falco_gen_pupil_Simple(inputs)
-
-        inputs.Nbeam = mp.P4.compact.Nbeam # Number of pixels across the aperture or beam (independent of beam centering)
-        inputs.Npad = 2^(nextpow2(mp.P4.compact.Nbeam))
-
-        mp.P4.compact.mask = falco_gen_pupil_Simple(inputs)
-        """
         pass
 
-    elif whichPupil == 'WFIRST20191009':
+    elif whichPupil in ('ROMAN', 'ROMAN20200513', 'WFIRST20200513'):
         # Define Lyot stop generator function inputs for the 'full' optical model
         if mp.compact.flagGenLS or mp.full.flagGenLS:
+            changes["flagLyot"] = True
             changes["ID"] = mp.P4.IDnorm
             changes["OD"] = mp.P4.ODnorm
             changes["wStrut"] = mp.P4.wStrut
             changes["flagRot180"] = True
 
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam, mp.centering, changes)
+            mp.P4.full.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P4.full.Nbeam, mp.centering, changes)
 
         # Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam, mp.centering, changes)
+            mp.P4.compact.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P4.compact.Nbeam, mp.centering, changes)
 
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()
@@ -991,13 +972,14 @@ def falco_gen_FPM(mp):
     print(mp.coro.upper())
     if mp.layout.lower() == 'fourier':
         if mp.coro.upper() == 'HLC':
-            if mp.dm9.inf0name == '3foldZern':
-                # falco_setup_FPM_HLC_3foldZern(mp)
+            if mp.dm9.inf0name.upper() in ('COS', 'COSINE'):
+                falco.hlc.setup_fpm_cosine(mp)
+            elif mp.dm9.inf0name.upper() == '3foldZern':
+                # falco.hlc.setup_fpm_3foldZern(mp)
                 pass
             else:
-                # falco_setup_FPM_HLC(mp);
-                pass
-            falco.configs.falco_config_gen_FPM_HLC(mp)
+                falco.hlc.setup_fpm(mp)
+            falco.hlc.gen_fpm(mp)
 
             # Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
             if mp.coro in ('HLC',):

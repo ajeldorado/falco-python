@@ -124,18 +124,23 @@ def calc_psf_norm_factor(mp):
         modvar = falco.config.Object()  # reset
         modvar.ttIndex = 1
         modvar.sbpIndex = mp.si_ref
-        modvar.wpsbpIndex = mp.wi_ref
+        # modvar.wpsbpIndex = mp.wi_ref
         modvar.whichSource = 'star'
         E0c = falco.model.compact(mp, modvar)
         I0c = np.abs(E0c)**2
     
         plt.figure(501); plt.imshow(np.log10(I0c)); plt.colorbar();
-        plt.title('(Compact Model: Normalization Check Using Starting PSF)'); plt.pause(1e-2)
+        plt.title('(Compact Model Normalization'); plt.pause(1e-2)
        
+        modvar = falco.config.Object()  # reset
+        modvar.ttIndex = 1
+        modvar.sbpIndex = mp.si_ref
+        modvar.wpsbpIndex = mp.wi_ref
+        modvar.whichSource = 'star'
         E0f = falco.model.full(mp, modvar)
         I0f = np.abs(E0f)**2
         plt.figure(502); plt.imshow(np.log10(I0f)); plt.colorbar();
-        plt.title('(Full Model: Normalization Check Using Starting PSF)'); plt.pause(1e-2)
+        plt.title('(Full Model Normalization'); plt.pause(1e-2)
 
 
 def _model_full_norm_wrapper(mp, ilist, inds_list):

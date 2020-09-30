@@ -1,4 +1,6 @@
 
+data/material/*.npy
+
 **.fits
 **.pkl
 examples/**.pkl
