@@ -42,7 +42,7 @@ def centering(var):
 
     """
     _VALID_CENTERING = ['pixel', 'interpixel']
-    _CENTERING_ERR = 'Invalid centering specification. Options: \{}'.format(_VALID_CENTERING)
+    _CENTERING_ERR = ('Invalid centering specification. Options: \{}'.format(_VALID_CENTERING))
 
     if not isinstance(var, str):
         raise TypeError("'centering' value must be a string'")
@@ -138,11 +138,36 @@ def real_nonnegative_scalar(var, vname, vexc):
     _checkexc(vexc)
 
     if not np.isscalar(var):
-        raise vexc(vname + ' must be real nonnegative scalar')
+        raise vexc(vname + ' must be scalar')
     if not np.isreal(var):
-        raise vexc(vname + ' must be real nonnegative scalar')
+        raise vexc(vname + ' must be real')
     if var < 0:
-        raise vexc(vname + ' must be real nonnegative scalar')
+        raise vexc(vname + ' must be nonnegative')
+    return var
+
+
+def real_array(var, vname, vexc):
+    """
+    Check whether an object is a real numpy array, or castable to one.
+
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
+
+    Returns
+    -------
+     var:
+         Same as input.
+
+    """
+    _checkname(vname)
+    _checkexc(vexc)
+
+    var = np.array(var)  # cast to array
+    if (not np.isrealobj(var)):
+        raise vexc(vname + ' must be a real array')
     return var
 
 
@@ -152,13 +177,14 @@ def oneD_array(var, vname, vexc):
 
     Parameters
     ----------
-     var: variable to check
-     vname: string to output in case of error for debugging
-     vexc: Exception to raise in case of error for debugging
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
 
     Returns
     -------
-    var
+     var:
+         Same as input.
 
     """
     _checkname(vname)
@@ -193,6 +219,36 @@ def twoD_array(var, vname, vexc):
     var = np.array(var)  # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a real or complex 2D array')
+    if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
+        raise vexc(vname + ' must be a real or complex 2D array')
+    return var
+
+
+def twoD_square_array(var, vname, vexc):
+    """
+    Check whether an object is a 2D square array_like.
+
+    Parameters
+    ----------
+    var: variable to check
+    vname: string to output in case of error for debugging
+    vexc: Exception to raise in case of error for debugging
+
+    Returns
+    -------
+     var:
+         Same as input.
+
+    """
+    _checkname(vname)
+    _checkexc(vexc)
+
+    var = np.array(var)  # cast to array
+    if len(var.shape) != 2:
+        raise vexc(vname + ' must be a real or complex 2D array')
+    else:  # is 2-D
+        if not var.shape[0] == var.shape[1]:
+            raise vexc(vname + ' must be a square 2D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
         raise vexc(vname + ' must be a real or complex 2D array')
     return var

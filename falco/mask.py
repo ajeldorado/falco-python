@@ -839,6 +839,9 @@ def falco_gen_bowtie_FPM(inputs):
     return mask * innerSpot * bowtieTop * bowtieBottom
 
 
+def gen_annular_FPM(inputs):
+    return falco_gen_annular_FPM(inputs)
+
 def falco_gen_annular_FPM(inputs):
     """
     Generate an annular FPM using PROPER.

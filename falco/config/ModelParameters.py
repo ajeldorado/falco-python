@@ -33,6 +33,14 @@ class ModelParameters:
             self.Dstop = _spec_arg("Dstop", kwargs, 0)
             self.dx= _spec_arg("dx", kwargs, 0.048)
             self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
+    
+    class _base_dm8:
+        def __init__(self, **kwargs):
+            self.dummy = _spec_arg("dummy", kwargs, 1)
+            
+    class _base_dm9:
+        def __init__(self, **kwargs):
+            self.dummy = _spec_arg("dummy", kwargs, 1)
 
     class _base_P2:
         def __init__(self, **kwargs):
@@ -202,6 +210,8 @@ class ModelParameters:
 #         self.pup_strut_width = _spec_arg("pup_strut_width", kwargs, 0.0322)
         self.dm1 = _spec_arg("dm1", kwargs, self._base_dm1())
         self.dm2 = _spec_arg("dm2", kwargs, self._base_dm2())
+        self.dm8 = _spec_arg("dm1", kwargs, self._base_dm8())
+        self.dm9 = _spec_arg("dm1", kwargs, self._base_dm9())
 #         self.whichPupil = _spec_arg("whichPupil", kwargs, "WFIRST20180103")
 #         self.flagDM2stop = _spec_arg("flagDM2stop", kwargs, 0)
 #         self.d_dm1_dm2 = _spec_arg("d_dm1_dm2", kwargs, 1)

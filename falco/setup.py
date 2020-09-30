@@ -714,6 +714,7 @@ def falco_gen_chosen_lyot_stop(mp):
     elif whichPupil in ('ROMAN', 'ROMAN20200513', 'WFIRST20200513'):
         # Define Lyot stop generator function inputs for the 'full' optical model
         if mp.compact.flagGenLS or mp.full.flagGenLS:
+            changes["flagLyot"] = True
             changes["ID"] = mp.P4.IDnorm
             changes["OD"] = mp.P4.ODnorm
             changes["wStrut"] = mp.P4.wStrut
@@ -971,13 +972,14 @@ def falco_gen_FPM(mp):
     print(mp.coro.upper())
     if mp.layout.lower() == 'fourier':
         if mp.coro.upper() == 'HLC':
-            if mp.dm9.inf0name == '3foldZern':
-                # falco_setup_FPM_HLC_3foldZern(mp)
+            if mp.dm9.inf0name.upper() in ('COS', 'COSINE'):
+                falco.hlc.setup_fpm_cosine(mp)
+            elif mp.dm9.inf0name.upper() == '3foldZern':
+                # falco.hlc.setup_fpm_3foldZern(mp)
                 pass
             else:
-                # falco_setup_FPM_HLC(mp);
-                pass
-            falco.configs.falco_config_gen_FPM_HLC(mp)
+                falco.hlc.setup_fpm(mp)
+            falco.hlc.gen_fpm(mp)
 
             # Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
             if mp.coro in ('HLC',):

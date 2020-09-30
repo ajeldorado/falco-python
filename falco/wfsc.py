@@ -87,7 +87,7 @@ def loop(mp, out):
                 out.dm5.Vall[:, :, Itr] = mp.dm5.V
         if hasattr(mp, 'dm8'):
             if hasattr(mp.dm8, 'V'):
-                out.dm8.Vallr[:, Itr] = mp.dm8.V[:]
+                out.dm8.Vall[:, Itr] = mp.dm8.V[:]
         if hasattr(mp, 'dm9'):
             if hasattr(mp.dm9, 'V'):
                 out.dm9.Vall[:, Itr] = mp.dm9.V[:]
@@ -194,12 +194,11 @@ def loop(mp, out):
                 mp.dm1.act_ele = list(range(mp.dm1.NactTotal))
             if np.any(mp.dm_ind == 2):
                 mp.dm2.act_ele = list(range(mp.dm2.NactTotal))
-            if np.any(mp.dm_ind == 5):
-                mp.dm5.act_ele = list(range(mp.dm5.NactTotal))
             if np.any(mp.dm_ind == 8):
                 mp.dm8.act_ele = list(range(mp.dm8.NactTotal))
             if np.any(mp.dm_ind == 9):
                 mp.dm9.act_ele = list(range(mp.dm9.NactTotal))
+                
             # Update the number of elements used per DM
             if np.any(mp.dm_ind == 1):
                 mp.dm1.Nele = len(mp.dm1.act_ele)
@@ -209,10 +208,6 @@ def loop(mp, out):
                 mp.dm2.Nele = len(mp.dm2.act_ele)
             else:
                 mp.dm2.Nele = 0
-            if np.any(mp.dm_ind == 5):
-                mp.dm5.Nele = len(mp.dm5.act_ele)
-            else:
-                mp.dm5.Nele = 0
             if np.any(mp.dm_ind == 8):
                 mp.dm8.Nele = len(mp.dm8.act_ele)
             else:
