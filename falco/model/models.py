@@ -104,11 +104,6 @@ def full(mp, modvar, isNorm=True):
         if mp.coro.upper() in 'HLC':
             mp.F3.full.mask = falco.hlc.gen_fpm_from_LUT(mp,
                                     modvar.sbpIndex, modvar.wpsbpIndex, 'full')
-            hdu = fits.PrimaryHDU(np.abs(mp.F3.full.mask))
-            hdu.writeto('/Users/ajriggs/Downloads/fpm_abs_python.fits', overwrite=True)
-            hdu = fits.PrimaryHDU(np.angle(mp.F3.full.mask))
-            hdu.writeto('/Users/ajriggs/Downloads/fpm_angle_python.fits', overwrite=True)
-            pass
     elif mp.layout.lower() == 'fpm_scale':
         if mp.coro.upper() in 'HLC':
             if mp.Nsbp > 1 and mp.Nwpsbp > 1:
