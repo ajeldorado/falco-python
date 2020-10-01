@@ -1,0 +1,178 @@
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+SYSTEM TESTS
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+EXAMPLE_main_try_running_FALCO.py
+  - Compare against stored values of final contrast, throughput, RMS DM Surface, and Zernike Sensitivities
+
+EXAMPLE_main_WFIRST_LC.py
+  - Compare against stored values of final contrast, throughput, RMS DM Surface, and Zernike Sensitivities
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+UNIT TESTS
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+configs.py
+-------------------------------------------------------------------------------
+[HOW?] falco_config_gen_chosen_LS
+[HOW?] falco_config_gen_chosen_pupil
+[HOW?] falco_config_gen_chosen_apodizer
+falco_config_jac_weights
+  - Compare against some directly defined matrices.
+falco_config_spatial_weights
+  - Run at a small size to compare against directly defined matrices.
+falco_config_spectral_weights --> [NEED TO CREATE]
+  - Compare against some directly defined vectors.
+
+
+dms.py
+-------------------------------------------------------------------------------
+[HOW?] falco_gen_dm_surf
+falco_discretize_dm_surf
+  - Provide some small arrays of inputs and expected outputs.
+propcustom_dm
+  - Compare nominal cases by using same inputs for prop_dm and propcustom_dm
+  - Make sure that the different influence functions can get read in.
+  - Make sure that changing the influence function sign negates the result of having the other sign.
+[HOW?] falco_gen_dm_poke_cube
+[HOW?] falco_fit_dm_surf
+falco_dm_surf_from_cube
+  - Verify for some trivial examples that the surface is made as expected.
+
+
+imaging.py
+-------------------------------------------------------------------------------
+falco_get_PSF_norm_factor
+  - For the main example script, extract enough code to run this and compare against stored values.
+[HOW?] falco_get_summed_image
+[HOW?] falco_get_sbp_image
+falco_get_sim_sbp_image
+  - Maybe compare against the Airy pattern for a simple circular aperture pupil and no FPM or Lyot stop.
+[HOW?] falco_get_expected_summed_image
+falco_sim_image_compact_offaxis
+  - Test with a monochromatic Airy pattern off-axis.
+
+
+masks.py
+-------------------------------------------------------------------------------
+_init_proper
+  - Make sure the number of points is chosen correctly
+  - Make sure the wf structure has the correct elements
+falco_gen_DM_stop
+  - Compare against some expected circles.
+falco_gen_pupil_WFIRST_CGI_180718
+  - Compare some examples against saved values.
+  - Make sure outputs are the right size.
+falco_gen_pupil_WFIRST_20180103
+falco_gen_SW_mask
+[REMOVE] falco_gen_pupil_WFIRSTcycle6_LS
+falco_gen_annular_FPM
+falco_gen_bowtie_LS
+falco_gen_pupil_LUVOIR_A_final
+falco_gen_pupil_LUVOIR_A_final_Lyot
+falco_gen_pupil_LUVOIR_B_PROPER
+falco_hex_aperture_LUVOIR_A
+falco_hex_aperture_LUVOIR_B
+falco_gen_pupil_customHex
+falco_gen_pupil_LUVOIR_B
+falco_gen_vortex_mask
+  [Need to add an optional centering flag]
+falco_gen_pupil_Simple
+  - Compare against some simple shapes. Maybe compare only pixels that aren't gray in the grayscale version compared to one generated that is binary
+
+
+models.py 
+-------------------------------------------------------------------------------
+full
+_model_full_Fourier
+compact
+_model_compact_general
+jacobian
+model_Jacobian_middle_layer --> Change to _middle_layer
+model_Jacobian_LC --> Rename as _LC
+model_Jacobian_VC --> Rename as _VC
+
+
+propcustom.py
+-------------------------------------------------------------------------------propcustom_relay --> relay
+propcustom_ptp —> ptp
+  - Compare to PROPER prop_ptp output
+propcustom_mft_FtoP
+  - Compare against some analytical results with small matrices
+propcustom_mft_PtoF
+  - Compare against some analytical results with small matrices
+propcustom_mft_Pup2Vortex2Pup
+  - For a circular aperture input, compare against an analytical result from Gary's vortex equations. 
+  [May need to break into smaller pieces]
+falco_gen_Tukey4vortex
+  - Compare against analytical equations for some values of alpha
+
+
+segmentutils.py
+-------------------------------------------------------------------------------
+hexSegMirror_addHexSegment.m (need to correct the and(and()) logic for HEXphz)
+hexSegMirror_addHexagon.m
+hexSegMirror_getField.m
+hexSegMirror_getSupport.m
+hexSegMirror_getSurfHeight.m
+hexSegMirror_numSegments.m
+
+setups.py
+-------------------------------------------------------------------------------
+falco_setup_FPM_HLC
+
+
+thinfilms.py
+-------------------------------------------------------------------------------
+falco_discretize_FPM_surf
+falco_thin_film_solver
+falco_thin_film_material_def
+falco_gen_complex_trans_table
+
+
+utils.py
+-------------------------------------------------------------------------------
+cart2pol
+sind
+cosd
+nextpow2
+ceil_even
+ceil_odd
+padOrCropEven
+[maybe] all comb
+_spec_arg
+broadcast
+radial_grid
+radial_grid_squared
+create_axis
+[not a unit] falco_compute_thput
+
+
+
+wfsc.py
+-------------------------------------------------------------------------------
+
+
+
+zernikes.py
+-------------------------------------------------------------------------------
+
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
