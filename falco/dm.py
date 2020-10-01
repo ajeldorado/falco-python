@@ -1166,15 +1166,6 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     xyOffset = int(np.floor(multipleOfCommandGrid/2.))
     gridDerotAtActRes = gridDerotResize[xyOffset::multipleOfCommandGrid,
                                         xyOffset::multipleOfCommandGrid]
-     
-#     hdu = fits.PrimaryHDU(gridDerot)
-#     hdu.writeto('/Users/ajriggs/Downloads/gridDerot_python.fits',overwrite=True)
-#
-#     hdu = fits.PrimaryHDU(gridDerotResize)
-#     hdu.writeto('/Users/ajriggs/Downloads/gridDerotResize_python.fits',overwrite=True)
-#
-#     hdu = fits.PrimaryHDU(gridDerotAtActRes)
-#     hdu.writeto('/Users/ajriggs/Downloads/gridDerotAtActRes_python.fits',overwrite=True)
 #
 #    plt.figure(11); plt.imshow(dm_grid); plt.colorbar(); plt.pause(0.1)
 #    plt.figure(12); plt.imshow(gridDerot); plt.colorbar(); plt.pause(0.1)
