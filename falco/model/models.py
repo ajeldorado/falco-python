@@ -101,11 +101,11 @@ def full(mp, modvar, isNorm=True):
     # Pre-compute the FPM first for HLC
     if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
         # ilam = (modvar.sbpIndex-1)*mp.Nwpsbp + modvar.wpsbpIndex
-        if mp.coro.upper() in 'HLC':
+        if mp.coro.upper() == 'HLC':
             mp.F3.full.mask = falco.hlc.gen_fpm_from_LUT(mp,
                                     modvar.sbpIndex, modvar.wpsbpIndex, 'full')
     elif mp.layout.lower() == 'fpm_scale':
-        if mp.coro.upper() in 'HLC':
+        if mp.coro.upper() == 'HLC':
             if mp.Nsbp > 1 and mp.Nwpsbp > 1:
                 # Weird indexing is because interior wavelengths at
                 # edges of sub-bands are the same, and the fpmCube
@@ -806,7 +806,7 @@ def jacobian(mp):
         mp.dm2.compact.surfM = np.zeros((NdmPad, NdmPad))
     
     # Pre-compute the HLC FPM at each wavelength to save time
-    if mp.coro.upper() in 'HLC':
+    if mp.coro.upper() == 'HLC':
         mp.compact.fpmCube, mp.dm8.surf, mp.dm9.surf = \
             falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
 

@@ -494,3 +494,41 @@ def offcenter_crop(arrayIn, pixel_count_across, output_center_y,
        x_center-pixel_count_across//2:x_center+pixel_count_across//2 + buffer_]
 
     return recentered_image
+    
+
+def bin_downsample(Ain, dsfac):
+    """
+    Downsample an array by binning.
+    
+    Parameters
+    ----------
+    Ain : 2-D array
+        The matrix to be downsampled
+    dsfac : int
+        Downsampling factor for the matrix
+    
+    Returns
+    -------
+    Aout : 2-D array
+        Downsampled array
+    """
+    # Error checks on inputs
+    check.twoD_array(Ain, 'Ain', ValueError)
+    check.positive_scalar_integer(dsfac, 'dsfac', ValueError)
+    
+    # Array Sizes
+    ny0, nx0 = Ain.shape
+    if (nx0 % dsfac != 0) or (ny0 % dsfac != 0):
+        ValueError('The size of Ain must be divisible by dsfac.')
+
+    nx1 = int(nx0/dsfac)
+    ny1 = int(ny0/dsfac)
+    
+    # Bin and average values from the high-res array into the low-res array
+    Aout = np.zeros((ny1, nx1))
+    for ix in range(nx1):
+        for iy in range(ny1):
+            Aout[iy, ix] = np.sum(Ain[dsfac*iy:dsfac*(iy+1),
+                                      dsfac*ix:dsfac*(ix+1)])/dsfac/dsfac
+            
+    return Aout

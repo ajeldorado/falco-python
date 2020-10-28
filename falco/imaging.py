@@ -1,7 +1,7 @@
 """Functions for generating images in FALCO."""
 import numpy as np
 import multiprocessing
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 import falco
 from falco import check
@@ -130,7 +130,7 @@ def calc_psf_norm_factor(mp):
         I0c = np.abs(E0c)**2
     
         plt.figure(501); plt.imshow(np.log10(I0c)); plt.colorbar();
-        plt.title('(Compact Model Normalization'); plt.pause(1e-2)
+        plt.title('Compact Model Normalization'); plt.pause(1e-2)
        
         modvar = falco.config.Object()  # reset
         modvar.ttIndex = 1
@@ -140,11 +140,11 @@ def calc_psf_norm_factor(mp):
         E0f = falco.model.full(mp, modvar)
         I0f = np.abs(E0f)**2
         plt.figure(502); plt.imshow(np.log10(I0f)); plt.colorbar();
-        plt.title('(Full Model Normalization'); plt.pause(1e-2)
+        plt.title('Full Model Normalization'); plt.pause(1e-2)
 
 
 def _model_full_norm_wrapper(mp, ilist, inds_list):
-    """Use only with calc_psf_norm_factor for parallel processing """
+    """Use only with calc_psf_norm_factor for parallel processing."""
     si = inds_list[ilist][0]
     wi = inds_list[ilist][1]
     
@@ -162,7 +162,7 @@ def get_summed_image(mp):
     """
     Get the broadband image over the entire bandpass.
     
-    Get a broadband image over the entire bandpass by getting the sub-bandpass 
+    Get a broadband image over the entire bandpass by getting the sub-bandpass
     images and doing a weighted sum.
 
     Parameters
@@ -201,7 +201,8 @@ def get_summed_image(mp):
         for ilist in np.arange(Nvals, dtype=int):
             ilam = vals_list[ilist][0]
             # pol = vals_list[ilist][1]
-            Imean += mp.full.lambda_weights_all[ilam]/len(mp.full.pol_conds)*results_img[ilist]
+            Imean += mp.full.lambda_weights_all[ilam] / \
+                len(mp.full.pol_conds) * results_img[ilist]
             
     return Imean
    
@@ -352,9 +353,11 @@ def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
     if(mp.planetFlag):
         modvar.whichSource = 'exoplanet'
         Eplanet = falco.model.full(mp, modvar)
-        Iout = Iout + np.abs(Eplanet)**2  # Apply spectral weighting outside this function
+        # Apply spectral weighting outside this function
+        Iout = Iout + np.abs(Eplanet)**2
 
-    # Apply weight within the sub-bandpass. Assume polarizations are evenly weighted.
+    # Apply weight within the sub-bandpass.
+    # Assume polarizations are evenly weighted.
     Iout = mp.full.lambda_weights[wi]/len(mp.full.pol_conds)*Iout
     
     return Iout
@@ -405,10 +408,10 @@ def get_expected_summed_image(mp, cvar, dDM):
         EnewTempVecArray[:, si] = Etemp[mp.Fend.corr.maskBool]
     
     # Revert to the previous DM commands
-    if(any(mp.dm_ind == 1)):  mp.dm1.V = mp.dm1.V - dDM.dDM1V
-    if(any(mp.dm_ind == 2)):  mp.dm2.V = mp.dm2.V - dDM.dDM2V
-    if(any(mp.dm_ind == 8)):  mp.dm8.V = mp.dm8.V - dDM.dDM8V
-    if(any(mp.dm_ind == 9)):  mp.dm9.V = mp.dm9.V - dDM.dDM9V
+    if(any(mp.dm_ind == 1)): mp.dm1.V = mp.dm1.V - dDM.dDM1V
+    if(any(mp.dm_ind == 2)): mp.dm2.V = mp.dm2.V - dDM.dDM2V
+    if(any(mp.dm_ind == 8)): mp.dm8.V = mp.dm8.V - dDM.dDM8V
+    if(any(mp.dm_ind == 9)): mp.dm9.V = mp.dm9.V - dDM.dDM9V
         
     # Generate the model-based E-field with the previous DM setting
     modvar.whichSource = 'star'
@@ -420,7 +423,8 @@ def get_expected_summed_image(mp, cvar, dDM):
     
     # Compute the expected new 2-D intensity image
     for si in range(mp.Nsbp):
-        EexpectedVec = cvar.EfieldVec[:, si] + (EnewTempVecArray[:, si]-EoldTempVecArray[:, si])
+        EexpectedVec = cvar.EfieldVec[:, si] + \
+            (EnewTempVecArray[:, si] - EoldTempVecArray[:, si])
         Eexpected2D = np.zeros((mp.Fend.Neta, mp.Fend.Nxi), dtype=complex)
         Eexpected2D[mp.Fend.corr.maskBool] = EexpectedVec
         
@@ -504,7 +508,8 @@ def falco_get_sbp_image_fiber(mp, si):
     if mp.flagSim:
         ImNI = falco_get_sim_sbp_image_fiber(mp, si)
     else:
-        raise NotImplementedError('Testbed functionality not implemented for fibers yet.')
+        raise NotImplementedError(
+            'Testbed functionality not implemented for fibers yet.')
 
     return ImNI
 
@@ -548,7 +553,6 @@ def falco_get_summed_image_fiber(mp):
         Total intensity across the bandpass from all fibers.
 
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
@@ -558,6 +562,7 @@ def falco_get_summed_image_fiber(mp):
 def falco_get_testbed_sbp_image(mp, si):
     """
     Get an image in the specified sub-bandpass from a testbed.
+    
     This function calls an equivalent sub-function depending on mp.testbed.
 
     Parameters
@@ -608,10 +613,11 @@ def falco_get_gpct_sbp_image(mp, si):
 
 def falco_get_hcst_sbp_image(mp, si):
     """
-    Get an image in the specified sub-bandpass from the Caltech
-    HCST testbed. This function will need to be replaced in order to run on a
+    Get an image in the specified sub-bandpass from the Caltech HCST testbed.
+    
+    This function will need to be replaced in order to run on a
     different testbed. Note that the number of pixels per lambda*F# is
-    predetermined. 
+    predetermined.
 
     Parameters
     ----------
