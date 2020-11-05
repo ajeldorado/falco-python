@@ -4,12 +4,14 @@ from .util import *
 # from .configs  import *
 from .imaging import *
 from .dm import *
-from .est  import *
-from .ctrl  import *
+from .est import *
+from .ctrl import *
+from .hlc import *
 from .wfsc  import *
 from .mask import *
 from .prop import *
 from .hexsegmirror import *
+from .thinfilm import *
 from .zern import *
 from . import model
 from ._globals import INFLUENCE_XINETICS

@@ -52,7 +52,8 @@ def flesh_out_workspace(mp):
     falco.imaging.calc_psf_norm_factor(mp)
     # falco_gen_contrast_over_NI_map(mp)  # Contrast-to-NI Map Calculation (NOT INCLUDED YET)
 
-    out = falco_init_storage_arrays(mp)  # Initialize Arrays to Store Performance History
+    # Initialize Arrays to Store Performance History
+    out = falco_init_storage_arrays(mp)
 
     print('\nBeginning Trial %d of Series %d.\n' % (mp.TrialNum, mp.SeriesNum))
     print('DM 1-to-2 Fresnel number (using radius) = ' +
@@ -130,6 +131,8 @@ def falco_set_optional_variables(mp):
         mp.flagUseLearnedJac = False  # Whether to load and use an improved Jacobian from the Expectation-Maximization (E-M) algorithm 
     if not hasattr(mp.est, 'flagUseJac'):
         mp.est.flagUseJac = False   # Whether to use the Jacobian or not for estimation. (If not using Jacobian, model is called and differenced.)
+    if not hasattr(mp.est, 'ItrStartKF'):
+        mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
     if not hasattr(mp.ctrl, 'flagUseModel'):
         mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
 
@@ -288,6 +291,10 @@ def falco_set_optional_variables(mp):
         mp.x_planet = 6  # x position of exoplanet in lambda0/D
         mp.y_planet = 0  # y position of exoplanet in lambda0/D
 
+    # Pupil ID, needed for computing RMS DM commands
+    if not hasattr(mp.P1, 'IDnorm'):
+        mp.P1.IDnorm = 0.0
+
     pass
 
 
@@ -371,6 +378,7 @@ def falco_set_spectral_properties(mp):
         mp.full.lambda_weights_all[ind] = mp.full.lambda_weights_all[ind] + weight
     mp.full.NlamUnique = len(inds_unique)
     pass
+
 
 def falco_set_jacobian_weights(mp):
     """
@@ -472,34 +480,48 @@ def falco_gen_chosen_pupil(mp):
     whichPupil = mp.whichPupil.upper()
     if whichPupil in ('SIMPLE', 'SIMPLEPROPER'):
 
-        inputs = dict([
-                ('OD', mp.P1.ODnorm),
-                ('ID', mp.P1.IDnorm),
-                ('Nstrut', mp.P1.Nstrut),
-                ('angStrut', mp.P1.angStrut),
-                ('wStrut', mp.P1.wStrut),
-                ('stretch', mp.P1.stretch)])
+        inp = {}
+        inp["OD"] = mp.P1.ODnorm
+        if hasattr(mp.P1, 'IDnorm'):
+            inp["ID"] = mp.P1.IDnorm
+        if hasattr(mp.P1, 'angStrut'):
+            inp["angStrut"] = mp.P1.angStrut
+        if hasattr(mp.P1, 'wStrut'):
+            inp["wStrut"] = mp.P1.wStrut
+        if hasattr(mp.P1, 'stretch'):
+            inp["stretch"] = mp.P1.stretch
+        if hasattr(mp.P1, 'centering'):
+            inp["centering"] = mp.P1.centering
+        if hasattr(mp.P1, 'flagPROPER'):
+            inp["flagPROPER"] = mp.P1.flagPROPER
+        # inputs = dict([
+        #         ('OD', mp.P1.ODnorm),
+        #         ('ID', mp.P1.IDnorm),
+        #         ('Nstrut', mp.P1.Nstrut),
+        #         ('angStrut', mp.P1.angStrut),
+        #         ('wStrut', mp.P1.wStrut),
+        #         ('stretch', mp.P1.stretch)])
 
         if whichPupil in ('SIMPLEPROPER',):
-            inputs['flagPROPER'] = True
+            inp['flagPROPER'] = True
 
         if mp.full.flagGenPupil:
-            inputs['Nbeam'] = mp.P1.full.Nbeam
-            inputs['Npad'] = 2**falco.nextpow2(mp.P1.full.Nbeam)
-            mp.P1.full.mask = falco.mask.falco_gen_pupil_Simple(inputs)
+            inp['Nbeam'] = mp.P1.full.Nbeam
+            inp['Npad'] = int(2**falco.nextpow2(mp.P1.full.Nbeam))
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_Simple(inp)
 
         # Generate low-res input pupil for the 'compact' model
         if mp.compact.flagGenPupil:
-            inputs['Nbeam'] = mp.P1.compact.Nbeam  # number of points across usable pupil
-            inputs['Npad'] = 2**falco.nextpow2(mp.P1.compact.Nbeam)
-            mp.P1.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)
+            inp['Nbeam'] = mp.P1.compact.Nbeam  # number of points across usable pupil
+            inp['Npad'] = int(2**falco.nextpow2(mp.P1.compact.Nbeam))
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_Simple(inp)
 
-    elif whichPupil == 'WFIRST20191009':
+    elif whichPupil in ('ROMAN', 'ROMAN20200513', 'WFIRST20200513'):
         if mp.full.flagGenPupil:
-            mp.P1.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.full.Nbeam, mp.centering)
+            mp.P1.full.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P1.full.Nbeam, mp.centering)
 
         if mp.compact.flagGenPupil:
-            mp.P1.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P1.compact.Nbeam, mp.centering)
+            mp.P1.compact.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P1.compact.Nbeam, mp.centering)
 
     elif whichPupil == 'WFIRST180718':
         if mp.full.flagGenPupil:
@@ -641,7 +663,7 @@ def falco_gen_chosen_lyot_stop(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     # Resolution at Lyot Plane
-    if(mp.full.flagPROPER==False):
+    if mp.full.flagPROPER is False:
         mp.P4.full.dx = mp.P4.D/mp.P4.full.Nbeam
 
     # Changes to the pupil
@@ -652,63 +674,58 @@ def falco_gen_chosen_lyot_stop(mp):
     whichPupil = mp.whichPupil.upper()
     if whichPupil in ('SIMPLE', 'SIMPLEPROPER', 'DST_LUVOIRB', 'ISAT'):
 
-        inputs = dict([
-                ('OD', mp.P4.ODnorm),
-                ('ID', mp.P4.IDnorm),
-                ('Nstrut', mp.P4.Nstrut),
-                ('angStrut', mp.P4.angStrut),
-                ('wStrut', mp.P4.wStrut),
-                ('stretch', mp.P4.stretch)])
+        inp = {}
+        inp["OD"] = mp.P4.ODnorm
+        if hasattr(mp.P4, 'IDnorm'):
+            inp["ID"] = mp.P4.IDnorm
+        if hasattr(mp.P4, 'angStrut'):
+            inp["angStrut"] = mp.P4.angStrut
+        if hasattr(mp.P4, 'wStrut'):
+            inp["wStrut"] = mp.P4.wStrut
+        if hasattr(mp.P4, 'stretch'):
+            inp["stretch"] = mp.P4.stretch
+        if hasattr(mp.P4, 'centering'):
+            inp["centering"] = mp.P4.centering
+        if hasattr(mp.P4, 'flagPROPER'):
+            inp["flagPROPER"] = mp.P4.flagPROPER
+        # inputs = dict([
+        #         ('OD', mp.P4.ODnorm),
+        #         ('ID', mp.P4.IDnorm),
+        #         ('Nstrut', mp.P4.Nstrut),
+        #         ('angStrut', mp.P4.angStrut),
+        #         ('wStrut', mp.P4.wStrut),
+        #         ('stretch', mp.P4.stretch)])
 
         if whichPupil in ('SIMPLEPROPER',):
-            inputs['flagPROPER'] = True
+            inp['flagPROPER'] = True
 
         if mp.full.flagGenLS:
-            inputs['Nbeam'] = mp.P4.full.Nbeam
-            inputs['Npad'] = 2**falco.nextpow2(mp.P4.full.Nbeam) 
-            mp.P4.full.mask = falco.mask.falco_gen_pupil_Simple(inputs)
+            inp['Nbeam'] = mp.P4.full.Nbeam
+            inp['Npad'] = int(2**falco.nextpow2(mp.P4.full.Nbeam))
+            mp.P4.full.mask = falco.mask.falco_gen_pupil_Simple(inp)
 
         # Generate low-res input pupil for the 'compact' model
         if mp.compact.flagGenLS:
-            inputs['Nbeam'] = mp.P4.compact.Nbeam # number of points across usable pupil   
-            inputs['Npad'] = 2**falco.nextpow2(mp.P4.compact.Nbeam) 
-            mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)    
-
-        """
-        if whichPupil in ('SIMPLEPROPER'):  
-            inputs.flagPROPER = true
-
-        inputs.Nbeam = mp.P4.full.Nbeam # number of points across incoming beam 
-        inputs.Npad = 2^(falco.util.nextpow2nextpow2(mp.P4.full.Nbeam))
-        inputs.OD = mp.P4.ODnorm
-        inputs.ID = mp.P4.IDnorm
-        inputs.Nstrut = mp.P4.Nstrut
-        inputs.angStrut = mp.P4.angStrut # Angles of the struts 
-        inputs.wStrut = mp.P4.wStrut # spider width (fraction of the pupil diameter)
-
-        mp.P4.full.mask = falco_gen_pupil_Simple(inputs)
-
-        inputs.Nbeam = mp.P4.compact.Nbeam # Number of pixels across the aperture or beam (independent of beam centering)
-        inputs.Npad = 2^(nextpow2(mp.P4.compact.Nbeam))
-
-        mp.P4.compact.mask = falco_gen_pupil_Simple(inputs)
-        """
+            inp['Nbeam'] = mp.P4.compact.Nbeam  # number of points across usable pupil
+            inp['Npad'] = int(2**falco.nextpow2(mp.P4.compact.Nbeam))
+            mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple(inp)
         pass
 
-    elif whichPupil == 'WFIRST20191009':
+    elif whichPupil in ('ROMAN', 'ROMAN20200513', 'WFIRST20200513'):
         # Define Lyot stop generator function inputs for the 'full' optical model
         if mp.compact.flagGenLS or mp.full.flagGenLS:
+            changes["flagLyot"] = True
             changes["ID"] = mp.P4.IDnorm
             changes["OD"] = mp.P4.ODnorm
             changes["wStrut"] = mp.P4.wStrut
             changes["flagRot180"] = True
 
         if(mp.full.flagGenLS):
-            mp.P4.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.full.Nbeam, mp.centering, changes)
+            mp.P4.full.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P4.full.Nbeam, mp.centering, changes)
 
         # Make or read in Lyot stop (LS) for the 'compact' model
         if(mp.compact.flagGenLS):
-            mp.P4.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_20191009(mp.P4.compact.Nbeam, mp.centering, changes)
+            mp.P4.compact.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P4.compact.Nbeam, mp.centering, changes)
 
         if hasattr(mp, 'LSshape'):
             LSshape = mp.LSshape.lower()
@@ -750,7 +767,7 @@ def falco_gen_chosen_lyot_stop(mp):
                 # Define Lyot stop generator function inputs in a structure
                 inputs = {}
                 inputs["ID"] = mp.P4.IDnorm  # (pupil diameters)
-                inputs["OD"]= mp.P4.ODnorm  # (pupil diameters)
+                inputs["OD"] = mp.P4.ODnorm  # (pupil diameters)
                 inputs["ang"] = mp.P4.ang  # (degrees)
                 inputs["centering"] = mp.centering  # 'interpixel' or 'pixel'
 
@@ -950,18 +967,19 @@ def falco_plot_superposed_pupil_masks(mp):
 
 
 def falco_gen_FPM(mp):
-    """Generate the FPM is necessary."""
+    """Generate the FPM if necessary."""
     print(mp.layout.lower())
     print(mp.coro.upper())
     if mp.layout.lower() == 'fourier':
         if mp.coro.upper() == 'HLC':
-            if mp.dm9.inf0name == '3foldZern':
-                # falco_setup_FPM_HLC_3foldZern(mp)
+            if mp.dm9.inf0name.upper() in ('COS', 'COSINE'):
+                falco.hlc.setup_fpm_cosine(mp)
+            elif mp.dm9.inf0name.upper() == '3foldZern':
+                # falco.hlc.setup_fpm_3foldZern(mp)
                 pass
             else:
-                # falco_setup_FPM_HLC(mp);
-                pass
-            falco.configs.falco_config_gen_FPM_HLC(mp)
+                falco.hlc.setup_fpm(mp)
+            falco.hlc.gen_fpm(mp)
 
             # Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
             if mp.coro in ('HLC',):
@@ -1037,6 +1055,7 @@ def falco_get_FPM_coordinates(mp):
 
 
 def falco_get_Fend_resolution(mp):
+    """Define the resolution at the final plane."""
     # Sampling/Resolution and Scoring/Correction Masks for Final Focal Plane (Fend.
     
     mp.Fend.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.res  # sampling at Fend.[meters]
@@ -1331,6 +1350,7 @@ def falco_gen_DM_stops(mp):
 
 
 def falco_set_dm_surface_padding(mp):
+    """Set how much the DM surface arrays get padded prior to propagation."""
     #% DM Surface Array Sizes for Angular Spectrum Propagation with FFTs
     # Array Sizes for Angular Spectrum Propagation with FFTs
     
@@ -1357,40 +1377,50 @@ def falco_set_dm_surface_padding(mp):
     elif np.any(mp.dm_ind == 2):
         NdmPad = 2**np.ceil(1 + np.log2(mp.dm2.NdmPad))
     else:
-        NdmPad = 2*mp.P1.full.Nbeam;
-    while (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): # Double the zero-padding until the angular spectrum sampling requirement is not violated
-        NdmPad = 2*NdmPad;
-    mp.full.NdmPad = NdmPad;
+        NdmPad = 2*mp.P1.full.Nbeam
+    # Double the zero-padding until the angular spectrum sampling requirement is not violated
+    while (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_dm1_dm2)/mp.P2.full.dx**2) or \
+        (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): 
+        NdmPad = 2*NdmPad
+    mp.full.NdmPad = NdmPad
     pass
 
 
 def falco_set_initial_Efields(mp):
+    """Define star and optional planet E-fields at the input pupil."""
     # Initial Electric Fields for Star and Exoplanet
     
-    if not hasattr(mp.P1.full, 'E'):
-        mp.P1.full.E  = np.ones((mp.P1.full.Narr, mp.P1.full.Narr, mp.Nwpsbp, mp.Nsbp),dtype=complex)  # Input E-field at entrance pupil
+    if not hasattr(mp.P1.full, 'E'):  # Input E-field at entrance pupil
+        mp.P1.full.E = np.ones((mp.P1.full.Narr, mp.P1.full.Narr, mp.Nwpsbp,
+                                mp.Nsbp), dtype=complex)
     
-    mp.Eplanet = mp.P1.full.E  # Initialize the input E-field for the planet at the entrance pupil. Will apply the phase ramp later
+    # Initialize the input E-field for the planet at the entrance pupil.
+    # Will apply the phase ramp later
+    mp.Eplanet = mp.P1.full.E
     
     if not hasattr(mp.P1.compact, 'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
+        mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr,
+                                   mp.Nsbp), dtype=complex)
     else:
         if not mp.P1.compact.E.shape[0] == mp.P1.compact.Narr:
             EcubeTemp = copy.copy(mp.P1.compact.E)
-            mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
+            mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr,
+                                       mp.Nsbp), dtype=complex)
             for si in range(mp.Nsbp):
-                mp.P1.compact.E[:, :, si] = falco.util.pad_crop(EcubeTemp[:, :, si], (mp.P1.compact.Narr, mp.P1.compact.Narr))
+                mp.P1.compact.E[:, :, si] = falco.util.pad_crop(
+                EcubeTemp[:, :, si], (mp.P1.compact.Narr, mp.P1.compact.Narr))
                 pass
             pass
         pass
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(np.mean(mp.P1.compact.E, 2), mp.P1.compact.mask.shape[0] ))**2))  # Throughput is computed with the compact model
+    # Throughput is computed with the compact model
+    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(
+        np.mean(mp.P1.compact.E, 2), mp.P1.compact.mask.shape[0]))**2))
     
     pass
                 
 
 def falco_init_storage_arrays(mp):
-    #% Initialize Arrays to Store Performance History
-
+    """Initialize arrays that store performance history."""
     out = falco.config.Object()
     out.dm1 = falco.config.Object()
     out.dm2 = falco.config.Object()
@@ -1399,47 +1429,47 @@ def falco_init_storage_arrays(mp):
 
     # Storage Arrays for DM Metrics
     # EFC regularization history
-    out.log10regHist = np.zeros((mp.Nitr,1))
+    out.log10regHist = np.zeros((mp.Nitr, 1))
     
     # Peak-to-Valley DM voltages
-    out.dm1.Vpv = np.zeros((mp.Nitr,1))
-    out.dm2.Vpv = np.zeros((mp.Nitr,1))
-    out.dm8.Vpv = np.zeros((mp.Nitr,1))
-    out.dm9.Vpv = np.zeros((mp.Nitr,1))
+    out.dm1.Vpv = np.zeros((mp.Nitr, 1))
+    out.dm2.Vpv = np.zeros((mp.Nitr, 1))
+    out.dm8.Vpv = np.zeros((mp.Nitr, 1))
+    out.dm9.Vpv = np.zeros((mp.Nitr, 1))
     
     # Peak-to-Valley DM surfaces
-    out.dm1.Spv = np.zeros((mp.Nitr,1))
-    out.dm2.Spv = np.zeros((mp.Nitr,1))
-    out.dm8.Spv = np.zeros((mp.Nitr,1))
-    out.dm9.Spv = np.zeros((mp.Nitr,1))
+    out.dm1.Spv = np.zeros((mp.Nitr, 1))
+    out.dm2.Spv = np.zeros((mp.Nitr, 1))
+    out.dm8.Spv = np.zeros((mp.Nitr, 1))
+    out.dm9.Spv = np.zeros((mp.Nitr, 1))
     
     # RMS DM surfaces
-    out.dm1.Srms = np.zeros((mp.Nitr,1))
-    out.dm2.Srms = np.zeros((mp.Nitr,1))
-    out.dm8.Srms = np.zeros((mp.Nitr,1))
-    out.dm9.Srms = np.zeros((mp.Nitr,1))
+    out.dm1.Srms = np.zeros((mp.Nitr, 1))
+    out.dm2.Srms = np.zeros((mp.Nitr, 1))
+    out.dm8.Srms = np.zeros((mp.Nitr, 1))
+    out.dm9.Srms = np.zeros((mp.Nitr, 1))
     
     # Zernike sensitivities to 1nm RMS
-    if not hasattr(mp.eval, 'Rsens'): 
+    if not hasattr(mp.eval, 'Rsens'):
         mp.eval.Rsens = []
-    if not hasattr(mp.eval, 'indsZnoll'):  
-        mp.eval.indsZnoll = [1,2]
+    if not hasattr(mp.eval, 'indsZnoll'):
+        mp.eval.indsZnoll = [1, 2]
     Nannuli = mp.eval.Rsens.shape[0]
     Nzern = len(mp.eval.indsZnoll)
-    out.Zsens = np.zeros((Nzern,Nannuli, mp.Nitr))
+    out.Zsens = np.zeros((Nzern, Nannuli, mp.Nitr))
 
     # Store the DM commands at each iteration
-    if hasattr(mp, 'dm1'): 
-        if hasattr(mp.dm1, 'V'):  
+    if hasattr(mp, 'dm1'):
+        if hasattr(mp.dm1, 'V'):
             out.dm1.Vall = np.zeros((mp.dm1.Nact, mp.dm1.Nact, mp.Nitr+1))
-    if hasattr(mp, 'dm2'): 
-        if hasattr(mp.dm2, 'V'):  
+    if hasattr(mp, 'dm2'):
+        if hasattr(mp.dm2, 'V'):
             out.dm2.Vall = np.zeros((mp.dm2.Nact, mp.dm2.Nact, mp.Nitr+1))
-    if hasattr(mp, 'dm8'): 
-        if hasattr(mp.dm8, 'V'):  
+    if hasattr(mp, 'dm8'):
+        if hasattr(mp.dm8, 'V'):
             out.dm8.Vall = np.zeros((mp.dm8.NactTotal, mp.Nitr+1))
-    if hasattr(mp, 'dm9'): 
-        if hasattr(mp.dm9, 'V'):  
+    if hasattr(mp, 'dm9'):
+        if hasattr(mp.dm9, 'V'):
             out.dm9.Vall = np.zeros((mp.dm9.NactTotal, mp.Nitr+1))
 
     return out
@@ -1460,18 +1490,18 @@ def falco_gen_FPM_LC(mp):
     mp: falco.config.ModelParameters
         Structure of model parameters
     """
-
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
-    
-    
     # Make or read in focal plane mask (FPM) amplitude for the full model
     FPMgenInputs = {}
-    FPMgenInputs["pixresFPM"] = mp.F3.full.res # pixels per lambda_c/D
-    FPMgenInputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
-    FPMgenInputs["FPMampFac"] = mp.FPMampFac # amplitude transmission of inner FPM spot
+    FPMgenInputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
+    FPMgenInputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
+    FPMgenInputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
+    if hasattr(mp, 'FPMampFac'):
+        FPMgenInputs["FPMampFac"] = mp.FPMampFac  # amplitude transmission of inner FPM spot
+    else:
+        FPMgenInputs["FPMampFac"] = 0.0
     FPMgenInputs["centering"] = mp.centering
     
     if not hasattr(mp.F3.full, 'mask'):
@@ -1480,10 +1510,10 @@ def falco_gen_FPM_LC(mp):
     mp.F3.full.ampMask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
 
     mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
-    mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]  
+    mp.F3.full.Neta = mp.F3.full.ampMask.shape[0]
     
     # Number of points across the FPM in the compact model
-    if(mp.F3.Rout==np.inf):
+    if np.isinf(mp.F3.Rout):
         if mp.centering == 'pixel':
             mp.F3.compact.Nxi = falco.util.ceil_even((2*(mp.F3.Rin*mp.F3.compact.res + 1/2)))
         else:
@@ -1492,13 +1522,13 @@ def falco_gen_FPM_LC(mp):
     else:
         if mp.centering == 'pixel':
             mp.F3.compact.Nxi = falco.util.ceil_even((2*(mp.F3.Rout*mp.F3.compact.res + 1/2)))
-        else: #case 'interpixel'
+        else:  # case 'interpixel'
             mp.F3.compact.Nxi = falco.util.ceil_even((2*mp.F3.Rout*mp.F3.compact.res))
 
     mp.F3.compact.Neta = mp.F3.compact.Nxi
     
     # Make or read in focal plane mask (FPM) amplitude for the compact model
-    FPMgenInputs["pixresFPM"] = mp.F3.compact.res # pixels per lambda_c/D
+    FPMgenInputs["pixresFPM"] = mp.F3.compact.res  # pixels per lambda_c/D
     
     if not hasattr(mp.F3.compact, 'mask'):
         mp.F3.compact.mask = falco.config.Object()
@@ -1507,36 +1537,34 @@ def falco_gen_FPM_LC(mp):
     
 
 def falco_gen_FPM_SPLC(mp):
-
+    """Generate the FPM for an SPLC."""
     if not hasattr(mp.F3, 'ang'):
         mp.F3.ang = 180
     
     if(mp.full.flagGenFPM):
         # Generate the FPM amplitude for the full model
         inputs = {}
-        inputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
-        inputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
-        inputs["ang"] = mp.F3.ang # [degrees]
+        inputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
+        inputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
+        inputs["ang"] = mp.F3.ang  # [degrees]
         inputs["centering"] = mp.centering;
-        inputs["pixresFPM"] = mp.F3.full.res # pixels per lambda_c/D
+        inputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
         mp.F3.full.ampMask = falco.mask.falco_gen_bowtie_FPM(inputs)
     
     if(mp.compact.flagGenFPM):
         # Generate the FPM amplitude for the compact model
         inputs = {}
-        inputs["rhoInner"] = mp.F3.Rin # radius of inner FPM amplitude spot (in lambda_c/D)
-        inputs["rhoOuter"] = mp.F3.Rout # radius of outer opaque FPM ring (in lambda_c/D)
-        inputs["ang"] = mp.F3.ang # [degrees]
+        inputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
+        inputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
+        inputs["ang"] = mp.F3.ang  # [degrees]
         inputs["centering"] = mp.centering
         inputs["pixresFPM"] = mp.F3.compact.res
-        mp.F3.compact.ampMask = falco.mask.falco_gen_bowtie_FPM(inputs)        
+        mp.F3.compact.ampMask = falco.mask.falco_gen_bowtie_FPM(inputs)
     
     if not mp.full.flagPROPER:
         mp.F3.full.Nxi = mp.F3.full.ampMask.shape[1]
-        mp.F3.full.Neta= mp.F3.full.ampMask.shape[0]
-
+        mp.F3.full.Neta = mp.F3.full.ampMask.shape[0]
     
     mp.F3.compact.Nxi = mp.F3.compact.ampMask.shape[1]
-    mp.F3.compact.Neta= mp.F3.compact.ampMask.shape[0]
+    mp.F3.compact.Neta = mp.F3.compact.ampMask.shape[0]
     pass
-    

@@ -59,7 +59,7 @@ def loop(mp, out):
     for Itr in range(mp.Nitr):
     
         # Start of new estimation+control iteration
-        print('Iteration: %d / %d\n' % (Itr, mp.Nitr), end='')
+        print('Iteration: %d / %d\n' % (Itr, mp.Nitr-1), end='')
         
         # Re-normalize PSF after latest DM commands
         falco.imaging.calc_psf_norm_factor(mp)
@@ -87,7 +87,7 @@ def loop(mp, out):
                 out.dm5.Vall[:, :, Itr] = mp.dm5.V
         if hasattr(mp, 'dm8'):
             if hasattr(mp.dm8, 'V'):
-                out.dm8.Vallr[:, Itr] = mp.dm8.V[:]
+                out.dm8.Vall[:, Itr] = mp.dm8.V[:]
         if hasattr(mp, 'dm9'):
             if hasattr(mp.dm9, 'V'):
                 out.dm9.Vall[:, Itr] = mp.dm9.V[:]
@@ -166,13 +166,22 @@ def loop(mp, out):
         
         # Actuator Culling: Initialization of Flag and Which Actuators
         
-        # If new actuators are added, perform a new cull of actuators.
+        # If set of DMs changes or Itr is 0, perform a new cull of actuators.
         cvar = falco.config.Object()
         if Itr == 0:
             cvar.flagCullAct = True
         else:
             if hasattr(mp, 'dm_ind_sched'):
-                cvar.flagCullAct = np.not_equal(mp.dm_ind_sched[Itr], mp.dm_ind_sched[Itr-1])
+                schedPre = np.sort(mp.dm_ind_sched[Itr-1])
+                schedNow = np.sort(mp.dm_ind_sched[Itr])
+                if not schedPre.size == schedNow.size:
+                    cvar.flagCullAct = True
+                else:  # when they are same size
+                    doesEachValueMatch = np.not_equal(schedNow, schedPre)
+                    if all(doesEachValueMatch):
+                        cvar.flagCullAct = False
+                    else:
+                        cvar.flagCullAct = True
             else:
                 cvar.flagCullAct = False
         
@@ -185,12 +194,11 @@ def loop(mp, out):
                 mp.dm1.act_ele = list(range(mp.dm1.NactTotal))
             if np.any(mp.dm_ind == 2):
                 mp.dm2.act_ele = list(range(mp.dm2.NactTotal))
-            if np.any(mp.dm_ind == 5):
-                mp.dm5.act_ele = list(range(mp.dm5.NactTotal))
             if np.any(mp.dm_ind == 8):
                 mp.dm8.act_ele = list(range(mp.dm8.NactTotal))
             if np.any(mp.dm_ind == 9):
                 mp.dm9.act_ele = list(range(mp.dm9.NactTotal))
+                
             # Update the number of elements used per DM
             if np.any(mp.dm_ind == 1):
                 mp.dm1.Nele = len(mp.dm1.act_ele)
@@ -200,10 +208,6 @@ def loop(mp, out):
                 mp.dm2.Nele = len(mp.dm2.act_ele)
             else:
                 mp.dm2.Nele = 0
-            if np.any(mp.dm_ind == 5):
-                mp.dm5.Nele = len(mp.dm5.act_ele)
-            else:
-                mp.dm5.Nele = 0
             if np.any(mp.dm_ind == 8):
                 mp.dm8.Nele = len(mp.dm8.act_ele)
             else:
@@ -237,13 +241,17 @@ def loop(mp, out):
         # Wavefront Estimation
         if mp.estimator.lower() in ['perfect']:
             EfieldVec = falco.est.perfect(mp)
-        elif mp.estimator.lower in ['pwp-bp', 'pwp-kf']:
+        elif mp.estimator.lower() in ['pwp-bp', 'pwp-kf']:
+            if Itr == 0:
+                ev = falco.config.Object()
+            ev.Itr = Itr
+                
             if mp.est.flagUseJac:  # Send in the Jacobian if true
-                ev = falco.est.pairwise_probing(mp, jacStruct)
+                falco.est.pairwise_probing(mp, ev, jacStruct=jacStruct)
             else:  # Otherwise don't pass the Jacobian
-                ev = falco.est.pairwise_probing(mp)
+                falco.est.pairwise_probing(mp, ev)
             EfieldVec = ev.Eest
-            # IincoVec = ev.IincoEst
+            IincoVec = ev.IincoEst
                 
         # Add spatially-dependent weighting to the control Jacobians
         if np.any(mp.dm_ind == 1):

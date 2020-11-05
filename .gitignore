@@ -1,4 +1,6 @@
 
+data/material/*.npy
+
 **.fits
 **.pkl
 examples/**.pkl
@@ -14,4 +16,3 @@ docs/_build
 *.swp
 *.mat
 *~
-*.txt
