@@ -99,10 +99,8 @@ def calc_psf_norm_factor(mp):
             Nvals = mp.Nsbp*mp.Nwpsbp
             
             pool = multiprocessing.Pool(processes=mp.Nthreads)
-            resultsRaw = [pool.apply_async(_model_full_norm_wrapper,
-                        args=(mp, ilist, inds_list)) for ilist in range(Nvals)]
-            # All the E-fields in a list
-            I00list = [p.get() for p in resultsRaw]
+            resultsRaw = pool.starmap(_model_full_norm_wrapper, [(mp, ilist, inds_list) for ilist in range(Nvals)])
+            I00list = resultsRaw
             pool.close()
             pool.join()
         
@@ -191,8 +189,8 @@ def get_summed_image(mp):
         Nvals = mp.full.NlamUnique*len(mp.full.pol_conds)
             
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        results = [pool.apply_async(_get_single_sim_full_image, args=(mp, ilist, vals_list)) for ilist in range(Nvals) ]
-        results_img = [p.get() for p in results]  # All the images in a list
+        results = pool.starmap(_get_single_sim_full_image, [(mp, ilist, vals_list) for ilist in range(Nvals)])
+        results_img = results
         pool.close()
         pool.join()
         
@@ -283,10 +281,11 @@ def get_sim_sbp_image(mp, si):
     Iall = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
     if mp.flagMultiproc:
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        resultsRaw = [pool.apply_async(_get_single_sbp_image_wvlPol,
-                                       args=(mp, si, ilist, inds_list))
-                      for ilist in range(Nvals)]
-        results = [p.get() for p in resultsRaw]  # All the images in a list
+        #resultsRaw = [pool.apply_async(_get_single_sbp_image_wvlPol,args=(mp, si, ilist, inds_list)) for ilist in range(Nvals)]
+        #results = [p.get() for p in resultsRaw]  # All the images in a list
+        resultsRaw = pool.starmap(_get_single_sbp_image_wvlPol,[(mp, si, ilist, inds_list) for ilist in range(Nvals)])
+        results = resultsRaw
+        
         pool.close()
         pool.join()
 
