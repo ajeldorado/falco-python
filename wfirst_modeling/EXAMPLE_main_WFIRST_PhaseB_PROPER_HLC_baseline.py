@@ -6,6 +6,7 @@
 
 # import sys
 # sys.path.append('/Users/ajriggs/Repos/proper-models/wfirst_cgi/models_phaseb/python/wfirst_phaseb_proper/examples')
+import os
 import numpy as np
 from astropy.io import fits
 from scipy.interpolate import RectBivariateSpline
@@ -21,7 +22,8 @@ import EXAMPLE_defaults_WFIRST_PhaseB_PROPER_HLC as DEFAULTS
 mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
-mp.path.falco = '../'  #--Location of FALCO
+mp.path.falco = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# mp.path.falco = '../'  #--Location of FALCO
 
 # Step 1: Set paths for output if desired
 
@@ -71,7 +73,7 @@ lam_occ = lambdaFacs*mp.lambda0
 #                 '5.9097e-07', '5.9417e-07', '5.9736e-07', '6.0056e-07', '6.0375e-07' ]
 mp.F3.compact.Nxi = 40; #--Crop down to minimum size of the spot
 mp.F3.compact.Neta = mp.F3.compact.Nxi;
-mp.compact.FPMcube = np.zeros((mp.F3.compact.Nxi, mp.F3.compact.Nxi, mp.Nsbp), dtype=complex)
+mp.compact.fpmCube = np.zeros((mp.F3.compact.Nxi, mp.F3.compact.Nxi, mp.Nsbp), dtype=complex)
 fpm_axis = 'p';
 
 for si in range(mp.Nsbp):
@@ -81,12 +83,12 @@ for si in range(mp.Nsbp):
 
     # fn_p_r = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'real.fits'
     # fn_p_i = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'imag.fits'   
-    mp.compact.FPMcube[:, :, si] = falco.util.pad_crop(fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i), mp.F3.compact.Nxi)
+    mp.compact.fpmCube[:, :, si] = falco.util.pad_crop(fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i), mp.F3.compact.Nxi)
 
 
 #%% Visually check the FPM cropping
 for si in range(mp.Nsbp):
-   plt.figure(); plt.imshow(np.abs(mp.compact.FPMcube[:,:,si])); plt.colorbar(); plt.pause(0.1); 
+   plt.figure(); plt.imshow(np.abs(mp.compact.fpmCube[:,:,si])); plt.colorbar(); plt.gca().invert_yaxis(); plt.pause(0.1)
 
 #%% Step 3b: Obtain the phase retrieval phase.
 
@@ -130,8 +132,8 @@ for si in range(mp.Nsbp):
 
     fldFull, sampling = proper.prop_run('wfirst_phaseb', lambda_um, nout,  QUIET=True, PASSVALUE=optval.__dict__)
     if(mp.flagPlot):
-        plt.figure(1); plt.imshow(np.angle(fldFull)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
-        plt.figure(2); plt.imshow(np.abs(fldFull)); plt.colorbar(); plt.magma(); plt.pause(0.5)
+        plt.figure(1); plt.imshow(np.angle(fldFull)); plt.colorbar(); plt.gca().invert_yaxis(); plt.hsv(); plt.pause(1e-2)
+        plt.figure(2); plt.imshow(np.abs(fldFull)); plt.colorbar(); plt.gca().invert_yaxis(); plt.magma(); plt.pause(0.5)
         # figure(605); imagesc(angle(fldFull)); axis xy equal tight; colorbar; colormap hsv; drawnow;
 #         figure(606); imagesc(abs(fldFull)); axis xy equal tight; colorbar; colormap parula; drawnow;
         pass
@@ -180,15 +182,15 @@ for si in range(mp.Nsbp):
     N = falco.util.ceil_even(mp.P1.compact.Nbeam+1)
     fldC = falco.util.pad_crop(fldC, (N, N))
     if mp.flagPlot:
-        plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.hsv(); plt.pause(1e-2)
-        plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar();  plt.magma(); plt.pause(0.5)        
+        plt.figure(11); plt.imshow(np.angle(fldC)); plt.colorbar(); plt.gca().invert_yaxis(); plt.hsv(); plt.pause(1e-2)
+        plt.figure(12); plt.imshow(np.abs(fldC)); plt.colorbar(); plt.gca().invert_yaxis(); plt.magma(); plt.pause(0.5)
         pass
         
     #--Assign to initial E-field in compact model.
 #     Etemp = 0*fldC;
 #     Etemp[2:end,2:end] = rot90(fldC(2:end,2:end),2);
 #     mp.P1.compact.E[:,:,si] = Etemp
-    mp.P1.compact.E[:,:,si] = falco.prop.relay(fldC, 1, centering=mp.centering)
+    mp.P1.compact.E[:, :, si] = falco.prop.relay(fldC, 1, centering=mp.centering)
 
 #%% After getting input E-field, add back HLC DM shapes
 # mp.dm1.V = fitsread('hlc_dm1.fits')./mp.dm1.VtoH;

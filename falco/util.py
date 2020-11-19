@@ -409,16 +409,15 @@ def create_axis(N, step, centering='pixel'):
     return axis
 
 
-def offcenter_crop(arrayIn, pixel_count_across, output_center_y,
-                   output_center_x):
+def offcenter_crop(arrayIn, centerRow, centerCol, nRowOut, nColOut):
     """
     Crop a 2-D array to be centered at the specified pixel.
 
     This function crops a 2-D array about the center pixel specified by
-    output_center_x and output_center_y. The input array can be
-    rectangular with even or odd side lengths. The output will be a
-    square of side length pixel_count_across. If the output array has
-    regions outside the original 2-D array, those pixels are included
+    centerRow and centerCol. The input array can be
+    rectangular with even or odd side lengths. The output will is rectangular
+    with dimensions nRowOut, nColOut. If the output array includes
+    regions outside the input array, those pixels are included
     and set to zero. If the specified cropping region is fully outside the
     input array, then the output is all zeros.
 
@@ -430,13 +429,13 @@ def offcenter_crop(arrayIn, pixel_count_across, output_center_y,
     ----------
     arrayIn : array_like
         2-D input array
-    pixel_count_across : int
-        Width of the 2-D output array in pixels
-    output_center_y, output_center_x : float or int
+    centerRow, centerCol : float or int
         Indices of the pixel to be used as the output array's center.
         Floating point values are rounded to the nearest integer.
         Convention in this function is that y is the first axis.
         Values can be negative and/or lie outside the input array.
+    nRowOut, nColOut : int
+        Height and width of the 2-D output array in pixels.
 
     Returns
     -------
@@ -448,52 +447,56 @@ def offcenter_crop(arrayIn, pixel_count_across, output_center_y,
     All alignment units are in detector pixels.
     """
     check.twoD_array(arrayIn, 'arrayIn', TypeError)
-    check.positive_scalar_integer(pixel_count_across, 'pixel_count_across',
-                                  TypeError)
-    check.real_scalar(output_center_y, 'output_center_y', TypeError)
-    check.real_scalar(output_center_x, 'output_center_x', TypeError)
+    check.real_scalar(centerRow, 'centerRow', TypeError)
+    check.real_scalar(centerCol, 'centerCol', TypeError)
+    check.positive_scalar_integer(nRowOut, 'nRowOut', TypeError)
+    check.positive_scalar_integer(nColOut, 'nColOut', TypeError)
 
-    [pixel_count_y, pixel_count_x] = arrayIn.shape
-    y_center = int(np.round(output_center_y))
-    x_center = int(np.round(output_center_x))
-
-    # Compute how much to pad the array in x (if any)
-    x_pad_pre = 0
-    x_pad_post = 0
-    if np.ceil(-pixel_count_across/2.) + x_center < 0:
-        x_pad_pre = np.abs(np.ceil(-pixel_count_across/2.) + x_center)
-    if np.ceil(pixel_count_across/2.) + x_center > (pixel_count_x - 1):
-        x_pad_post = np.ceil(pixel_count_across/2.) + x_center - \
-                     (pixel_count_x)
-    x_pad = int(np.max((x_pad_pre, x_pad_post)))
+    [nRowIn, nColIn] = arrayIn.shape
+    centerRow = int(np.round(centerRow))
+    centerCol = int(np.round(centerCol))
 
     # Compute how much to pad the array in y (if any)
-    y_pad_pre = 0
-    y_pad_post = 0
-    if np.ceil(-pixel_count_across/2.) + y_center < 0:
-        y_pad_pre = np.abs(np.ceil(-pixel_count_across/2.) + y_center)
-    if np.ceil(pixel_count_across/2.) + y_center > (pixel_count_y - 1):
-        y_pad_post = np.ceil(pixel_count_across/2.) + y_center - \
-          (pixel_count_y)
-    y_pad = int(np.max((y_pad_pre, y_pad_post)))
+    rowPadPre = 0
+    rowPadPost = 0
+    if np.ceil(-nRowOut/2.) + centerRow < 0:
+        rowPadPre = np.abs(np.ceil(-nRowOut/2.) + centerRow)
+    if np.ceil(nRowOut/2.) + centerRow > (nRowIn - 1):
+        rowPadPost = np.ceil(nRowOut/2.) + centerRow - \
+          (nRowIn)
+    y_pad = int(np.max((rowPadPre, rowPadPost)))
 
-    padded_image = pad_crop(arrayIn, (pixel_count_y+2*y_pad,
-                                      pixel_count_x+2*x_pad))
+    # Compute how much to pad the array in x (if any)
+    colPadPre = 0
+    colPadPost = 0
+    if np.ceil(-nColOut/2.) + centerCol < 0:
+        colPadPre = np.abs(np.ceil(-nColOut/2.) + centerCol)
+    if np.ceil(nColOut/2.) + centerCol > (nColIn - 1):
+        colPadPost = np.ceil(nColOut/2.) + centerCol - \
+                     (nColIn)
+    x_pad = int(np.max((colPadPre, colPadPost)))
 
-    x_center += x_pad
-    y_center += y_pad
+    arrayPadded = pad_crop(arrayIn, (nRowIn+2*y_pad,
+                                      nColIn+2*x_pad))
+
+    centerCol += x_pad
+    centerRow += y_pad
 
     # Buffer needed to keep output array correct size
-    if pixel_count_across % 2 == 1:
-        buffer_ = 1
+    if nRowOut % 2 == 1:
+        rowBuffer = 1
     else:
-        buffer_ = 0
+        rowBuffer = 0
+    if nColOut % 2 == 1:
+        colBuffer = 1
+    else:
+        colBuffer = 0
 
-    recentered_image = padded_image[
-       y_center-pixel_count_across//2:y_center+pixel_count_across//2 + buffer_,
-       x_center-pixel_count_across//2:x_center+pixel_count_across//2 + buffer_]
+    arrayOut = arrayPadded[
+       centerRow-nRowOut//2:centerRow+nRowOut//2 + rowBuffer,
+       centerCol-nColOut//2:centerCol+nColOut//2 + colBuffer]
 
-    return recentered_image
+    return arrayOut
     
 
 def bin_downsample(Ain, dsfac):
