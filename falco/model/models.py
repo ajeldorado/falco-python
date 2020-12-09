@@ -806,9 +806,10 @@ def jacobian(mp):
         mp.dm2.compact.surfM = np.zeros((NdmPad, NdmPad))
     
     # Pre-compute the HLC FPM at each wavelength to save time
-    if mp.coro.upper() == 'HLC':
-        mp.compact.fpmCube, mp.dm8.surf, mp.dm9.surf = \
-            falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
+    if mp.layout.lower() == 'fourier':
+        if mp.coro.upper() == 'HLC':
+            mp.compact.fpmCube, mp.dm8.surf, mp.dm9.surf = \
+                falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
 
     # Initialize the Jacobians for each DM
     if any(mp.dm_ind == 1):

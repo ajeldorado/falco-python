@@ -4,7 +4,7 @@
 # at the California Institute of Technology.
 # -------------------------------------------------------------------------
 
-
+import os
 import numpy as np
 from astropy.io import fits
 from scipy.interpolate import RectBivariateSpline
@@ -20,7 +20,7 @@ import EXAMPLE_defaults_WFIRST_PhaseB_PROPER_SPC_Spec as DEFAULTS
 mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
-mp.path.falco = '../'  # Location of FALCO
+mp.path.falco = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Step 1: Set paths for output if desired
 
@@ -28,13 +28,12 @@ mp.path.falco = '../'  # Location of FALCO
 # mp.path.config = './' # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 # mp.path.ws = './' # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
-
 # Step 2: Overwrite default values as desired
 
 # ## Special Computational Settings
 mp.flagPlot = True;
 mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
-#mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
+# mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
 # Record Keeping
 mp.SeriesNum = 1;

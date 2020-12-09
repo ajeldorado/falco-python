@@ -4,7 +4,7 @@
 # at the California Institute of Technology.
 # -------------------------------------------------------------------------
 
-
+import os
 import numpy as np
 from astropy.io import fits
 from scipy.interpolate import RectBivariateSpline
@@ -20,7 +20,7 @@ import EXAMPLE_defaults_WFIRST_PhaseB_PROPER_SPC_WFOV as DEFAULTS
 mp = DEFAULTS.mp
 
 mp.path = falco.config.Object()
-mp.path.falco = '../'  # Location of FALCO
+mp.path.falco = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Step 1: Set paths for output if desired
 

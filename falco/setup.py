@@ -956,7 +956,8 @@ def falco_plot_superposed_pupil_masks(mp):
                print(type(P4mask))
                P4mask = np.roll(P4mask, (1, 1), (0, 1))
             P1andP4 = mp.P1.compact.mask + P4mask;
-            plt.figure(301); plt.imshow(P1andP4); plt.colorbar();
+            plt.figure(301); plt.imshow(P1andP4); plt.colorbar()
+            plt.gca().invert_yaxis()
             plt.title('Pupil and LS Superimposed'); plt.pause(1e-2)
 
             if mp.flagApod:
