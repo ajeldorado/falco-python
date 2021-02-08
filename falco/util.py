@@ -88,8 +88,12 @@ def cosd(thetaDeg):
 
 def nextpow2(N):
     """Return exponent for the smallest power of 2 that satisfies 2^p ≥ |N|."""
-    check.real_positive_scalar(N, 'N', TypeError)
-    p = int(np.ceil(np.log2(np.abs(N))))
+    check.real_scalar(N, 'N', TypeError)
+    if N == 0:
+        p = int(0)
+    else:
+        p = int(np.ceil(np.log2(np.abs(N))))
+    
     return p
 
 
@@ -172,7 +176,8 @@ def pad_crop(arrayIn, outsize, extrapval=0):
     check.twoD_array(arrayIn, 'arrayIn', TypeError)
     check.real_scalar(extrapval, 'extrapval', TypeError)
     sh0 = arrayIn.shape    # np.shape(arrayIn) #
-    if isinstance(outsize, int):
+    int_types = (int, np.integer)  # Int check support
+    if isinstance(outsize, int_types):
         sh1 = (outsize, outsize)
     else:
         sh1 = outsize

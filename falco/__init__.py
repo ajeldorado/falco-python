@@ -9,6 +9,7 @@ from .ctrl import *
 from .hlc import *
 from .wfsc  import *
 from .mask import *
+from .plot import *
 from .prop import *
 from .hexsegmirror import *
 from .thinfilm import *
