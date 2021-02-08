@@ -121,8 +121,14 @@ def loop(mp, out):
         
         # Plotting
         if(mp.flagPlot):
-            
-            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+            if Itr == 0:
+                fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+            # else:
+            #     ax1.clear()
+            #     ax2.clear()
+            #     ax3.clear()
+            #     ax4.clear()
+                
             fig.subplots_adjust(hspace=0.4, wspace=0.0)
             fig.suptitle(mp.coro+': Iteration %d' % Itr)
             
@@ -131,25 +137,33 @@ def loop(mp, out):
                                      np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL)])
             ax1.set_title('Stellar PSF: NI=%.2e' % InormHist[Itr])
             ax1.tick_params(labelbottom=False)
-            cbar1 = fig.colorbar(im1, ax=ax1)  # ,shrink=0.95)
+            # cbar1 = fig.colorbar(im1, ax=ax1)
 
             im3 = ax3.imshow(ImSimOffaxis/np.max(ImSimOffaxis), cmap=plt.cm.get_cmap('Blues'),
                              interpolation='none', extent=[np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL),
                                                            np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL)])
             ax3.set_title('Off-axis Thput = %.2f%%' % (100*thput))
-            cbar3 = fig.colorbar(im3, ax=ax3)
-            cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
-            cbar3.set_ticklabels(['0', '0.5', '1'])
+            # cbar3 = fig.colorbar(im3, ax=ax3)
+            # cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
+            # cbar3.set_ticklabels(['0', '0.5', '1'])
             
             im2 = ax2.imshow(1e9*DM1surf, cmap='viridis')
             ax2.set_title('DM1 Surface (nm)')
             ax2.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)
-            cbar2 = fig.colorbar(im2, ax=ax2)
+            # cbar2 = fig.colorbar(im2, ax=ax2)
             
             im4 = ax4.imshow(1e9*DM2surf, cmap='viridis')
             ax4.set_title('DM2 Surface (nm)')
             ax4.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)
-            cbar4 = fig.colorbar(im4, ax=ax4)
+            # cbar4 = fig.colorbar(im4, ax=ax4)
+            
+            if Itr == 0:
+                cbar1 = fig.colorbar(im1, ax=ax1)
+                cbar2 = fig.colorbar(im2, ax=ax2)
+                cbar3 = fig.colorbar(im3, ax=ax3)
+                cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
+                cbar3.set_ticklabels(['0', '0.5', '1'])
+                cbar4 = fig.colorbar(im4, ax=ax4)
             
             plt.pause(0.1)
             

@@ -67,7 +67,7 @@ class TestUtils:
         ret = falco.util.cosd(test_input)
         assert ret == pytest.approx(expected)
 
-    @pytest.mark.parametrize("test_input, expected", [(2, 1.0), (100, 7.0), (-2, 1.0), (-100, 7.0), (0, -np.inf)])
+    @pytest.mark.parametrize("test_input, expected", [(2, 1.0), (100, 7.0), (-2, 1.0), (-100, 7.0), (0, 0)])
     def test_nextpow2(cls, test_input, expected):
         ret = falco.util.nextpow2(test_input)
         assert ret == expected
@@ -87,15 +87,20 @@ class TestUtils:
     def test_pad_crop(cls):
         test_input = np.zeros((10,10))
         ret = falco.util.pad_crop(test_input, 20)
-
         assert ret.shape[0] == 20
+        assert ret.shape[1] == 20
 
         test_input = np.zeros((5, 6))
-        with pytest.raises(ValueError):
-            ret = falco.util.pad_crop(test_input, 20)
-        test_input = np.zeros((8, 6))
-        with pytest.raises(ValueError):
-            ret = falco.util.pad_crop(test_input, 20)
+        ret = falco.util.pad_crop(test_input, (11, 12))
+        assert ret.shape[0] == 11
+        assert ret.shape[1] == 12
+
+#         test_input = np.zeros((5, 6))
+#         with pytest.raises(TypeError):
+#             ret = falco.util.pad_crop(test_input, 20)
+#         test_input = np.zeros((8, 6))
+#         with pytest.raises(TypeError):
+#             ret = falco.util.pad_crop(test_input, 20)
 
 
     def test_allcomb(cls):

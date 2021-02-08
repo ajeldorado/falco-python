@@ -827,16 +827,35 @@ def jacobian(mp):
 
     # Calculate the Jacobian in parallel or serial
     if(mp.flagMultiproc):
-        print('Computing control Jacobian matrices in parallel...', end='')
-        pool = multiprocessing.Pool(processes=mp.Nthreads)
-
+        print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
         with falco.util.TicToc():
+             ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
             results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
-            results = pool.starmap(_jac_middle_layer, [(mp,im,idm)for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind)))])
-            results_Jac = results
-            pool.close()
-            pool.join()
-
+ 
+            print(zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind))))
+ 
+            output = multiprocessing.Queue()
+            processes = [multiprocessing.Process(target=_jac_middle_layer_process,
+                             args=(mp,im,idm,output)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
+ 
+            # if __name__ == '__main__':
+            jobs = []
+            for p in processes:
+                jobs.append(p)
+                p.start()
+                
+            # for j in jobs:
+            #     j.join()
+            
+            for p in processes:
+                p.terminate()
+            
+                
+            for p in processes:
+                p.join()
+                
+            results_Jac = [output.get() for p in processes]
+            
             # Reorder Jacobian by mode and DM from the list
             for ii in range(mp.jac.Nmode*mp.dm_ind.size):
                 im = results_order[ii][0]
@@ -845,12 +864,31 @@ def jacobian(mp):
                     jacStruct.G1[:, :, im] = results_Jac[ii]
                 if idm == 2:
                     jacStruct.G2[:, :, im] = results_Jac[ii]
-                if idm == 8:
-                    jacStruct.G8[:, :, im] = results_Jac[ii]
-                if idm == 9:
-                    jacStruct.G9[:, :, im] = results_Jac[ii]
+        
+        # print('Computing control Jacobian matrices in parallel...', end='')
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
 
-            print('done.')
+        # with falco.util.TicToc():
+        #     results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
+        #     results = pool.starmap(_jac_middle_layer, [(mp,im,idm)for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind)))])
+        #     results_Jac = results
+        #     pool.close()
+        #     pool.join()
+
+        #     # Reorder Jacobian by mode and DM from the list
+        #     for ii in range(mp.jac.Nmode*mp.dm_ind.size):
+        #         im = results_order[ii][0]
+        #         idm = results_order[ii][1]
+        #         if idm == 1:
+        #             jacStruct.G1[:, :, im] = results_Jac[ii]
+        #         if idm == 2:
+        #             jacStruct.G2[:, :, im] = results_Jac[ii]
+        #         if idm == 8:
+        #             jacStruct.G8[:, :, im] = results_Jac[ii]
+        #         if idm == 9:
+        #             jacStruct.G9[:, :, im] = results_Jac[ii]
+
+        #     print('done.')
 
     else:
         print('Computing control Jacobian matrices in serial:\n  ', end='')
@@ -933,3 +971,35 @@ def _jac_middle_layer(mp, im, idm):
         raise ValueError('mp.layout.lower not recognized')
 
     return jacMode
+
+
+def _jac_middle_layer_process(mp, im, idm, output):
+    """
+    Select which optical layout's Jacobian model to use and get E-field.
+ 
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+ 
+    Returns
+    -------
+    jacMode : numpy ndarray
+        Complex-valued, 2-D array containing the Jacobian for the specified DM.
+ 
+    """
+    if mp.layout.lower() in ('fourier', 'proper'):
+        if mp.coro.upper() in ('LC', 'APLC', 'FLC', 'SPLC'):
+            jacMode = jacobians.lyot(mp, im, idm)
+        elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
+            jacMode = jacobians.vortex(mp, im, idm)
+    elif mp.layout.lower() == 'wfirst_phaseb_proper':
+        if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
+            jacMode = jacobians.lyot(mp, im, idm)
+        else:
+            raise ValueError('%s not recognized as value for mp.coro' %
+                             mp.coro)
+    else:
+        raise ValueError('mp.layout.lower not recognized')
+ 
+    output.put(jacMode)  # Luis
