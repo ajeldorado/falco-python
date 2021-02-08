@@ -7,15 +7,17 @@ trigger:
 - master
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-20.04'
 strategy:
   matrix:
-    Python35:
-      python.version: '3.5'
     Python36:
       python.version: '3.6'
     Python37:
       python.version: '3.7'
+    Python38:
+      python.version: '3.8'
+    Python39:
+      python.version: '3.9'
 
 steps:
 - task: UsePythonVersion@0
@@ -25,7 +27,7 @@ steps:
 
 - script: |
     python -m pip install --upgrade pip
-    pip install -r requirements.txt
+#    pip install -r requirements.txt
   displayName: 'Install dependencies'
 
 - script: |
