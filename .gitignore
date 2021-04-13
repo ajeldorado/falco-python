@@ -1,4 +1,6 @@
 
+falco/.idea/**
+
 data/material/*.npy
 zOld/**
 

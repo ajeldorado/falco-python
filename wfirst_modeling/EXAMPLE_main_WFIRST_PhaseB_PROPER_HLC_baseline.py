@@ -58,11 +58,14 @@ mp.Nwpsbp = 1          #--Number of wavelengths to used to approximate an image 
 #     ];
 # [mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched] = falco_ctrl_EFC_schedule_generator(mp.ctrl.sched_mat);
 
-
 if mp.Nsbp == 1:
-    lambdaFacs = np.array([1,])
+    lambdaFacs = np.array([1, ])
+elif mp.Nwpsbp == 1:
+    lambdaFacs = np.linspace(1-mp.fracBW/2, 1+mp.fracBW/2, mp.Nsbp)
 else:
-    lambdaFacs = np.linspace(1-mp.fracBW/2, 1+mp.fracBW/2, mp.Nsbp);
+    DeltaBW = mp.fracBW/(mp.Nsbp)*(mp.Nsbp-1)/2
+    lambdaFacs = np.linspace(1-DeltaBW, 1+DeltaBW, mp.Nsbp)
+
 
 lam_occ = lambdaFacs*mp.lambda0
 # lam_occ = [     5.4625e-07, 5.4944e-07, 5.5264e-07, 5.5583e-07, 5.5903e-07, 5.6222e-07, 5.6542e-07,
@@ -78,8 +81,8 @@ fpm_axis = 'p';
 
 for si in range(mp.Nsbp):
     lambda_um = 1e6*mp.lambda0*lambdaFacs[si];
-    fn_p_r = str('%shlc_20190210/run461_occ_lam%.4gtheta6.69pol%s_real.fits' % (mp.full.data_dir, lam_occ[si], fpm_axis))
-    fn_p_i = str('%shlc_20190210/run461_occ_lam%.4gtheta6.69pol%s_imag.fits' % (mp.full.data_dir, lam_occ[si], fpm_axis))
+    fn_p_r = str('%shlc_20190210/run461_occ_lam%stheta6.69pol%s_real.fits' % (mp.full.data_dir, str(lam_occ[si]), fpm_axis))
+    fn_p_i = str('%shlc_20190210/run461_occ_lam%stheta6.69pol%s_imag.fits' % (mp.full.data_dir, str(lam_occ[si]), fpm_axis))
 
     # fn_p_r = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'real.fits'
     # fn_p_i = mp.full.data_dir + 'hlc_20190210/run461_occ_lam' + num2str(lam_occ[si],12) + 'theta6.69pol'  + fpm_axis + '_' 'imag.fits'   
