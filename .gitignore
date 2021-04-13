@@ -1,5 +1,8 @@
 
+falco/.idea/**
+
 data/material/*.npy
+zOld/**
 
 **.fits
 **.pkl

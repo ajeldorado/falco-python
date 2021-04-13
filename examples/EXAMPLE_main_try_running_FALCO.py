@@ -49,3 +49,12 @@ print(mp.runLabel)
 
 out = falco.setup.flesh_out_workspace(mp)
 falco.wfsc.loop(mp, out)
+
+## Step 6: Plot the output
+falco.plot.plot_trial_output(out)
+
+fnPickle = mp.runLabel + '_snippet.pkl'
+falco.plot.plot_trial_output_from_pickle(fnPickle)
+
+
+

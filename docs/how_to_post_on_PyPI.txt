@@ -1,0 +1,14 @@
+The following are a set of step you can follow to generate an archive of falco-python and publish to test.PyPI and PYPI (I suggest you test it but publishing to test.PYPI first):
+ 
+copy the attached file (pyproject.toml) to the folder ../falco-python
+cd ../falco-python
+python3 -m pip install --upgrade build  # upgrade build if needed
+python3 -m build  # run this command in same directory where pyproject.toml is located, this command creates a distribution archive of the falco-python code in ./dist
+cd dist/
+ls -l (note: you will need to change the package_name parameter in the setup.cfg file to the name you want your package to be recognized by in PyPI, in this case I used package_name = pyfalco_test01)
+-rw-r--r--  1 lmarchen  JPL\Domain Users  137400 Mar 19 09:16 pyfalco_test01-0.1.0-py3-none-any.whl
+-rw-r--r--  1 lmarchen  JPL\Domain Users  122751 Mar 19 09:15 pyfalco_test01-0.1.0.tar.gz
+cd ../                                                                                                 # cd back to falco-python
+python3 -m pip install --user --upgrade twine                          # upgrade twine which is used to upload all of the archives under dist
+python3 -m twine upload --repository testpypi dist/*           # this uploads the distribution archive files to testPyPI, to load to PyPI change testpypi to pypi
+go to testPyPI to see your package and you can use pip install to install it in your computer
