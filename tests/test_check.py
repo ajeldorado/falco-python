@@ -29,7 +29,6 @@ class TestCheck(unittest.TestCase):
             check.real_positive_scalar(1, 'rps', TestCheckException)
         except check.CheckException:
             self.fail('real_positive_scalar failed on valid input')
-        pass
 
     def test_real_positive_scalar_bad_var(self):
         """
@@ -40,23 +39,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [-1, 1j, (1.,), [5, 5], 'v0']:
             with self.assertRaises(TestCheckException):
                 check.real_positive_scalar(v0, 'rps', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_real_positive_scalar_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.real_positive_scalar(1, (1,), TestCheckException)
-            pass
-        pass
 
     def test_real_positive_scalar_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.real_positive_scalar(1, 'rps', 'TestCheckException')
-            pass
-        pass
 
     # real_nonnegative_scalar
     def test_real_nonnegative_scalar_good(self):
@@ -69,7 +61,6 @@ class TestCheck(unittest.TestCase):
             check.real_nonnegative_scalar(0, 'rps', TestCheckException)
         except check.CheckException:
             self.fail('real_nonnegative_scalar failed on valid input')
-        pass
 
     def test_real_nonnegative_scalar_bad_var(self):
         """
@@ -80,23 +71,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [-1, 1j, (1.,), [5, 5], 'v0']:
             with self.assertRaises(TestCheckException):
                 check.real_nonnegative_scalar(v0, 'rps', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_real_nonnegative_scalar_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.real_nonnegative_scalar(0, (1,), TestCheckException)
-            pass
-        pass
 
     def test_real_nonnegative_scalar_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.real_nonnegative_scalar(0, 'rps', 'TestCheckException')
-            pass
-        pass
 
     # real_array
     def test_real_array_good(self):
@@ -109,7 +93,6 @@ class TestCheck(unittest.TestCase):
             check.real_array(np.ones((5, 5)), 'real', TestCheckException)
         except check.CheckException:
             self.fail('real_array failed on valid input')
-        pass
 
     def test_real_array_bad_var(self):
         """
@@ -120,23 +103,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [1j*np.ones((5, 4)), (1+1j)*np.ones((5, 5, 5)), 'foo']:
             with self.assertRaises(TestCheckException):
                 check.real_array(v0, '1D', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_real_array_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.real_array(np.ones((5, 5)), (1,), TestCheckException)
-            pass
-        pass
 
     def test_real_array_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.real_array(np.ones((5, )), 'rps', 'TestCheckException')
-            pass
-        pass
 
     # oneD_array
     def test_oneD_array_good(self):
@@ -149,7 +125,6 @@ class TestCheck(unittest.TestCase):
             check.oneD_array(np.ones((5, )), '1D', TestCheckException)
         except check.CheckException:
             self.fail('oneD_array failed on valid input')
-        pass
 
     def test_oneD_array_bad_var(self):
         """
@@ -160,23 +135,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [np.ones((5, 4)), np.ones((5, 5, 5)), 'foo']:
             with self.assertRaises(TestCheckException):
                 check.oneD_array(v0, '1D', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_oneD_array_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.oneD_array(np.ones((5, )), (1,), TestCheckException)
-            pass
-        pass
 
     def test_oneD_array_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.oneD_array(np.ones((5, )), 'rps', 'TestCheckException')
-            pass
-        pass
 
     # twoD_array
     def test_twoD_array_good(self):
@@ -189,7 +157,6 @@ class TestCheck(unittest.TestCase):
             check.twoD_array(np.ones((5, 5)), '2d', TestCheckException)
         except check.CheckException:
             self.fail('twoD_array failed on valid input')
-        pass
 
     def test_twoD_array_bad_var(self):
         """
@@ -200,23 +167,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [np.ones((5,)), np.ones((5, 5, 5)), [], 'foo']:
             with self.assertRaises(TestCheckException):
                 check.twoD_array(v0, '2d', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_twoD_array_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.twoD_array(np.ones((5, 5)), (1,), TestCheckException)
-            pass
-        pass
 
     def test_twoD_array_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.twoD_array(np.ones((5, 5)), 'rps', 'TestCheckException')
-            pass
-        pass
 
     # twoD_square_array
     def test_twoD_square_array_good(self):
@@ -229,7 +189,6 @@ class TestCheck(unittest.TestCase):
             check.twoD_array(np.ones((5, 5)), '2d', TestCheckException)
         except check.CheckException:
             self.fail('twoD_square_array failed on valid input')
-        pass
 
     def test_twoD_square_array_bad_var(self):
         """
@@ -240,9 +199,6 @@ class TestCheck(unittest.TestCase):
         for v0 in [np.ones((5,)), np.ones((5, 5, 5)), [], 'foo']:
             with self.assertRaises(TestCheckException):
                 check.twoD_square_array(v0, '2d', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_twoD_square_array_bad_var_shape(self):
         """
@@ -253,24 +209,17 @@ class TestCheck(unittest.TestCase):
         for v0 in [np.ones((5, 4)), np.ones((4, 6))]:
             with self.assertRaises(TestCheckException):
                 check.twoD_square_array(v0, '2d', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_twoD_square_array_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.twoD_square_array(np.ones((5, 5)), (1,), TestCheckException)
-            pass
-        pass
 
     def test_twoD_square_array_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.twoD_square_array(np.ones((5, 5)), 'rps',
                                     'TestCheckException')
-            pass
-        pass
 
     # threeD_array
     def test_threeD_array_good(self):
@@ -283,7 +232,6 @@ class TestCheck(unittest.TestCase):
             check.threeD_array(np.ones((5, 5, 2)), '3d', TestCheckException)
         except check.CheckException:
             self.fail('threeD_array failed on valid input')
-        pass
 
     def test_threeD_array_bad_var(self):
         """
@@ -295,23 +243,16 @@ class TestCheck(unittest.TestCase):
                    [], 'foo']:
             with self.assertRaises(TestCheckException):
                 check.threeD_array(v0, '3d', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_threeD_array_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.threeD_array(np.ones((5, 5, 2)), (1,), TestCheckException)
-            pass
-        pass
 
     def test_threeD_array_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.threeD_array(np.ones((5, 5, 2)), 'rps', 'TestCheckException')
-            pass
-        pass
 
     # real_scalar
     def test_real_scalar_good(self):
@@ -324,7 +265,6 @@ class TestCheck(unittest.TestCase):
             check.real_scalar(1, 'rs', TestCheckException)
         except check.CheckException:
             self.fail('real_scalar failed on valid input')
-        pass
 
     def test_real_scalar_bad_var(self):
         """
@@ -335,23 +275,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [1j, (1.,), [5, 5], 'rs']:
             with self.assertRaises(TestCheckException):
                 check.real_scalar(v0, 'rs', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_real_scalar_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.real_scalar(1, (1,), TestCheckException)
-            pass
-        pass
 
     def test_real_scalar_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.real_scalar(1, 'rs', 'TestCheckException')
-            pass
-        pass
 
     # positive_scalar_integer
     def test_positive_scalar_integer_good(self):
@@ -364,7 +297,6 @@ class TestCheck(unittest.TestCase):
             check.positive_scalar_integer(1, 'psi', TestCheckException)
         except check.CheckException:
             self.fail('positive_scalar_integer failed on valid input')
-        pass
 
     def test_positive_scalar_integer_bad_var(self):
         """
@@ -375,23 +307,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [1.0, -1, 0, 1j, (1.,), [5, 5], 'psi']:
             with self.assertRaises(TestCheckException):
                 check.positive_scalar_integer(v0, 'psi', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_positive_scalar_integer_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.positive_scalar_integer(1, (1,), TestCheckException)
-            pass
-        pass
 
     def test_positive_scalar_integer_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.positive_scalar_integer(1, 'psi', 'TestCheckException')
-            pass
-        pass
 
     # nonnegative_scalar_integer
     def test_nonnegative_scalar_integer_good(self):
@@ -405,8 +330,6 @@ class TestCheck(unittest.TestCase):
                 check.nonnegative_scalar_integer(j, 'nsi', TestCheckException)
             except check.CheckException:
                 self.fail('nonnegative_scalar_integer failed on valid input')
-            pass
-        pass
 
     def test_nonnegative_scalar_integer_bad_var(self):
         """
@@ -417,23 +340,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [1.0, -1, 1j, (1.,), [5, 5], 'nsi']:
             with self.assertRaises(TestCheckException):
                 check.nonnegative_scalar_integer(v0, 'nsi', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_nonnegative_scalar_integer_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.nonnegative_scalar_integer(1, (1,), TestCheckException)
-            pass
-        pass
 
     def test_nonnegative_scalar_integer_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.nonnegative_scalar_integer(1, 'nsi', 'TestCheckException')
-            pass
-        pass
 
     # scalar_integer
     def test_scalar_integer_good(self):
@@ -447,8 +363,6 @@ class TestCheck(unittest.TestCase):
                 check.scalar_integer(j, 'si', TestCheckException)
             except check.CheckException:
                 self.fail('scalar_integer failed on valid input')
-            pass
-        pass
 
     def test_scalar_integer_bad_var(self):
         """
@@ -459,23 +373,16 @@ class TestCheck(unittest.TestCase):
         for v0 in [1.0, 1j, (1.,), [5, 5], 'si']:
             with self.assertRaises(TestCheckException):
                 check.scalar_integer(v0, 'si', TestCheckException)
-                pass
-            pass
-        pass
 
     def test_scalar_integer_bad_vname(self):
         """Fail on invalid input name for user output."""
         with self.assertRaises(check.CheckException):
             check.scalar_integer(1, (1,), TestCheckException)
-            pass
-        pass
 
     def test_scalar_integer_bad_vexc(self):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.scalar_integer(1, 'si', 'TestCheckException')
-            pass
-        pass
 
 
 if __name__ == '__main__':
