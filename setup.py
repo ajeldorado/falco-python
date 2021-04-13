@@ -1,53 +1,103 @@
-
+#!/usr/bin/env python
 import os
+import subprocess
 import sys
-import platform
-import ez_setup
-ez_setup.use_setuptools()
+from setuptools import setup, find_packages, Extension, Command
+from setuptools.command.test import test as TestCommand
 
-from setuptools import find_packages, setup, Extension
+try:
+    from distutil.config import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
 
-copy_args = sys.argv[1:]
+# Read configuration variables in from setup.cfg
+conf = ConfigParser()
+conf.read(['setup.cfg'])
 
-if os.name == 'posix':
-    copy_args.append('--user')
-    
-    if  platform.system() == 'Linux':
-        extra_compile_args = ['-fPIC']
-        ext_modules = [Extension('proper/libcconv', sources = ['proper/cubic_conv_c.c'], extra_compile_args = extra_compile_args, extra_link_args = ['-shared']),
-                       Extension('proper/libcconvthread', sources = ['proper/cubic_conv_threaded_c.c'], extra_compile_args = extra_compile_args, extra_link_args = ['-shared']),
-                       Extension('proper/libszoom', sources = ['proper/prop_szoom_c.c'], extra_compile_args = extra_compile_args, extra_link_args = ['-shared'])]
-    elif platform.system() == 'Darwin':
-        from distutils import sysconfig
-        vars = sysconfig.get_config_vars()
-        vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
-        ext_modules = [Extension('proper/libcconv', sources = ['proper/cubic_conv_c.c'], extra_link_args = ['-shared']),
-                       Extension('proper/libcconvthread', sources = ['proper/cubic_conv_threaded_c.c'], extra_link_args = ['-shared']),
-                       Extension('proper/libszoom', sources = ['proper/prop_szoom_c.c'], extra_link_args = ['-shared'])]
-else:
-    ext_modules = []
+# Get some config values
+metadata = dict(conf.items('metadata'))
+PACKAGENAME = metadata.get('package_name', 'packagename')
+DESCRIPTION = metadata.get('description', '')
+AUTHOR = metadata['author']
+AUTHOR_EMAIL = metadata['author_email']
+URL = metadata['url']
+LICENSE = metadata['license']
+VERSION = metadata['version']
+
+
+# This next part allows you to build sphinx docs from the package
+# main directory with 'python setup.py build_docs'
+
+try:
+    from sphinx.cmd.build import build_main
+    from sphinx.setup_command import BuildDoc
+
+    class BuildSphinx(BuildDoc):
+        """Build Sphinx documentation after compiling C source files"""
+
+        description = 'Build Sphinx documentation'
+
+        def initialize_options(self):
+            BuildDoc.initialize_options(self)
+
+        def finalize_options(self):
+            BuildDoc.finalize_options(self)
+
+        def run(self):
+            build_cmd = self.reinitialize_command('build_ext')
+            build_cmd.inplace = 1
+            self.run_command('build_ext')
+            build_main(['-b', 'html', './docs', './docs/_build/html'])
+
+except ImportError:
+    class BuildSphinx(Command):
+        user_options = []
+
+        def initialize_options(self):
+            pass
+
+        def finalize_options(self):
+            pass
+
+        def run(self):
+            print('!\n! Sphinx is not installed!\n!', file=sys.stderr)
+            exit(1)
+
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = ['falco/tests']
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.test_args)
+        sys.exit(errno)
+
 
 setup(
-      name="PyPROPER3",
-      version = "3.2.4",
-      packages=find_packages(),
-
-      # PROPER uses numpy, scipy and pyfits
-      install_requires = ['numpy>=1.8', 'scipy>=0.14', 'astropy>=1.3'],
-
-      # Optional package required
-      extras_require = {'pyfftw': ['pyfftw>=0.10']},
-
-      package_data = {
-        # If any package contains *.txt, *.rst or *.fits files, include them:
-        '': ['*.txt', '*.rst', '*.fits', '*.c', '*.pdf']
-      },
-
-      script_args = copy_args,
-
-      author="Navtej Saini, Nikta Amiri, Luis Marchen",
-      description="An optical wavefront propagation utility",
-      license = "BSD",
-      platforms=["any"],
-      ext_modules = ext_modules
-)
+    name=PACKAGENAME,
+    version=VERSION,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    description=DESCRIPTION,
+    license=LICENSE,
+    url=URL,
+    classifiers=[
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Topic :: Scientific/Engineering :: Astronomy',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+    ],
+    install_requires=['sphinx_rtd_theme'
+    ],
+    tests_require=['pytest'],
+    packages=find_packages(),
+    package_data={},
+    cmdclass={
+        'test': PyTest,
+        'build_docs': BuildSphinx
+    },)
