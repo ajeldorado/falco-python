@@ -1,9 +1,10 @@
 import numpy as np
 import math
+from numpy import cos, sin
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import rotate
 
-import proper 
+import proper
 import falco
 from . import check
 from falco.util import ceil_even, cosd, sind
@@ -650,96 +651,151 @@ def falco_gen_SW_mask(inputs):
     """
     check.is_dict(inputs, 'inputs')
 
-    # Read in user inputs
+    # Required inputs
     pixresFP = inputs["pixresFP"]  # pixels per lambda_c/D
     rhoInner = inputs["rhoInner"]  # radius of inner FPM amplitude spot (in lambda_c/D)
     rhoOuter = inputs["rhoOuter"]  # radius of outer opaque FPM ring (in lambda_c/D)
     angDeg = inputs["angDeg"]  # angular opening (input in degrees)
-    whichSide = inputs["whichSide"]  # which (sides) of the dark hole have open
-
-    if 'FOV' in inputs.keys():
-        FOV = inputs["FOV"]
-    else:
-        inputs["FOV"] = rhoOuter
-
-    if 'centering' in inputs.keys():
-        centering = inputs["centering"]
-    else:
-        centering = 'pixel'
-    check.centering(centering)
-
-    if 'shape' in inputs.keys():
-        DHshape = inputs["shape"]
-    else:
-        DHshape = 'circle'
-
-    # convert opening angle to radians
     angRad = np.radians(angDeg)
-
-    # Number of points across each axis. Crop the vertical (eta) axis if angDeg<180 degrees.
-    # if Nxi is defined use that, if not calculate Nxi.
-    if centering == "interpixel":
-        if hasattr(inputs,'Nxi'):
-            Nxi = inputs["Nxi"]
-        else:
-            Nxi = ceil_even(2 * FOV * pixresFP)  # Number of points across the full FPM
-
-        Neta = ceil_even(2 * FOV * pixresFP)
+    whichSide = inputs["whichSide"].lower()  # which (sides) of the dark hole have open
+    
+    # Optional inputs
+    centering = inputs.get("centering", "pixel")
+    check.centering(centering)
+    darkHoleShape = inputs.get("shape", "circle").lower()
+    clockAngDeg = inputs.get("clockAngDeg", 0)
+    FOV = inputs.get("FOV", rhoOuter)
+    xiOffset = inputs.get("xiOffset", 0.)
+    etaOffset = inputs.get("etaOffset", 0.)
+    if darkHoleShape in {'square', 'rect', 'rectangle'}:
+        maxExtent = np.max((1, 2*np.abs(np.cos(np.radians(clockAngDeg)))))
     else:
-        if hasattr(inputs, 'Nxi'):
-            Nxi = inputs["Nxi"]
-        else:
-            Nxi = ceil_even(2 * (FOV * pixresFP + 0.5))  # Number of points across the full FPM  
+        maxExtent = 1
+    minFOVxi = inputs.get("xiFOV", maxExtent*FOV + np.abs(xiOffset))
+    minFOVeta = inputs.get("etaFOV", maxExtent*FOV + np.abs(etaOffset))
 
-        Neta = ceil_even(2 * (FOV * pixresFP + 0.5))
+    # Output array dimensions
+    if centering == "pixel":
+        Nxi0 = ceil_even(2*(minFOVxi*pixresFP + 1/2))
+        Neta0 = ceil_even(2*(minFOVeta*pixresFP + 1/2))
+    elif centering == "interpixel":
+        Nxi0 = ceil_even(2*minFOVxi*pixresFP)
+        Neta0 = ceil_even(2*minFOVeta*pixresFP)
+    Nxi = inputs.get("Nxi", Nxi0)
+    Neta = inputs.get("Neta", Neta0)
 
     # Focal Plane Coordinates
-    deta = dxi = 1.0 / pixresFP
+    deta = dxi = 1/pixresFP
     if centering == "interpixel":
-        xis = np.arange(-(Nxi - 1) / 2, (Nxi + 1) / 2) * dxi
-        etas = np.arange(-(Neta - 1) / 2, (Neta + 1) / 2) * deta
-    else:  # pixel centering
-        xis = np.arange(-Nxi / 2, Nxi / 2) * dxi
-        etas = np.arange(-Neta / 2, Neta / 2) * deta
+        xis = np.arange(-(Nxi - 1)/2, (Nxi + 1)/2)*dxi
+        etas = np.arange(-(Neta - 1)/2, (Neta + 1)/2)*deta
+    elif centering == "pixel":
+        xis = np.arange(-Nxi/2, Nxi/2) * dxi
+        etas = np.arange(-Neta/2, Neta/2) * deta
 
     [XIS, ETAS] = np.meshgrid(xis, etas)
-    RHO = np.sqrt(XIS ** 2 + ETAS ** 2)
+    XIS = XIS - xiOffset
+    ETAS = ETAS - etaOffset
+    RHOS = np.sqrt(XIS ** 2 + ETAS ** 2)
     THETAS = np.arctan2(ETAS, XIS)
 
+    if whichSide in {'r', 'right', 'lr', 'rl', 'leftright', 'rightleft',
+                     'both'}:
+        clockAngRad = 0
+    elif whichSide in {'l', 'left'}:
+        clockAngRad = np.pi
+    elif whichSide in {'t', 'top', 'u', 'up', 'tb', 'bt', 'ud', 'du',
+                       'topbottom', 'bottomtop', 'updown', 'downup'}:
+        clockAngRad = np.pi/2
+    elif whichSide in {'b', 'bottom', 'd', 'down'}:
+        clockAngRad = 3/2*np.pi
+    else:
+        raise ValueError('Invalid value given for inputs["whichSide"]')
+    
+    clockAngRad = clockAngRad + np.radians(clockAngDeg)
+
     # Generate the Outer Mask
-    # maskSW = 1.0 * (RHOS >= rhoInner) * (RHOS <= rhoOuter) * (THETAS <= angRad/2) * \
-    #     (THETAS >= -angRad/2)
-    # maskSW = 1.0 * np.logical_and(RHOS>=rhoInner,RHOS<=rhoOuter)
-    if DHshape in ('square'):
-        maskSW0 = np.logical_and(RHO >= rhoInner, np.logical_and(abs(XIS) <= rhoOuter,
-                                                                 abs(ETAS) <= rhoOuter))
+    eps = np.finfo(float).eps
+    rhoInner = rhoInner - 13*eps # Avoidy a ratty line from the higher numerical noise floor introduced by RHOS*cos().
+    rhoOuter = rhoOuter + 13*eps # Avoidy a ratty line from the higher numerical noise floor introduced by RHOS*cos().
+    if darkHoleShape in {'circle', 'annulus'}:
+        softwareMask0 = np.logical_and(RHOS >= rhoInner,
+                                       RHOS <= rhoOuter)
+    elif darkHoleShape in {'square'}:
+        softwareMask0 = np.logical_and(
+            np.logical_or(
+            np.logical_and(np.logical_and(np.logical_and(RHOS*cos(THETAS-clockAngRad)<=rhoOuter,
+                                                         RHOS*cos(THETAS-clockAngRad)>=-rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)<=rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)>=-rhoOuter),
+            np.logical_and(np.logical_and(np.logical_and(RHOS*cos(THETAS-clockAngRad)>=-rhoOuter,
+                                                         RHOS*cos(THETAS-clockAngRad)<=rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)<=rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)>=-rhoOuter)
+            ),
+            RHOS >= rhoInner
+        )
+    elif darkHoleShape in {'rect', 'rectangle'}:
+        softwareMask0 = np.logical_or(
+            np.logical_and(np.logical_and(np.logical_and(RHOS*cos(THETAS-clockAngRad)>=rhoInner,
+                                                         RHOS*cos(THETAS-clockAngRad)<=rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)<=rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)>=-rhoOuter),
+            np.logical_and(np.logical_and(np.logical_and(RHOS*cos(THETAS-clockAngRad)<=-rhoInner,
+                                                         RHOS*cos(THETAS-clockAngRad)>=-rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)<=rhoOuter),
+                                                         RHOS*sin(THETAS-clockAngRad)>=-rhoOuter)
+            )
+    elif darkHoleShape in {'d'}:
+        softwareMask0 = np.logical_and(np.logical_or(
+            RHOS*cos(THETAS-clockAngRad) >= rhoInner,
+            RHOS*cos(THETAS-clockAngRad) <= -rhoInner),
+            RHOS <= rhoOuter)
     else:
-        maskSW0 = np.logical_and(RHO >= rhoInner, RHO <= rhoOuter)
+        raise ValueError('Invalid value given for inputs["shape"].')
+    
+    softwareMask = np.logical_and(softwareMask0, np.abs(np.angle(np.exp(1j*(THETAS-clockAngRad)))) <= angRad/2)
+    
+    if whichSide in {'both', 'lr', 'rl', 'leftright', 'rightleft', 'tb', 'bt',
+                     'ud', 'du', 'topbottom', 'bottomtop', 'updown', 'downup'}:
+        softwareMask2 = np.logical_and(softwareMask0, np.abs(np.angle(np.exp(1j *
+                                (THETAS-(clockAngRad+np.pi))))) <= angRad/2)
+        softwareMask = np.logical_or(softwareMask, softwareMask2)
 
-    # If the user doesn't pass the clocking angle
-    if not hasattr(inputs, 'clockAngDeg'):
-        if whichSide in ("L", "left"):
-            clockAng = np.pi
-        elif whichSide in ("R", "right"):
-            clockAng = 0
-        elif whichSide in ("T", "top"):
-            clockAng = np.pi/2
-        elif whichSide in ("B", "bottom"):
-            clockAng = 3*np.pi/2
-        else:
-            clockAng = 0
-    else:
-        clockAng = inputs["clockAngDeg"]*np.pi/180
+    # # Generate the Outer Mask
+    # # maskSW = 1.0 * (RHOS >= rhoInner) * (RHOS <= rhoOuter) * (THETAS <= angRad/2) * \
+    # #     (THETAS >= -angRad/2)
+    # # maskSW = 1.0 * np.logical_and(RHOS>=rhoInner,RHOS<=rhoOuter)
+    # if DHshape in ('square'):
+    #     maskSW0 = np.logical_and(RHO >= rhoInner, np.logical_and(abs(XIS) <= rhoOuter,
+    #                                                              abs(ETAS) <= rhoOuter))
+    # else:
+    #     maskSW0 = np.logical_and(RHO >= rhoInner, RHO <= rhoOuter)
 
-    maskSW = np.logical_and(maskSW0, np.abs(np.angle(np.exp(1j*(THETAS-clockAng)))) <= angRad/2)
+    # # If the user doesn't pass the clocking angle
+    # if not hasattr(inputs, 'clockAngDeg'):
+    #     if whichSide in ("L", "left"):
+    #         clockAng = np.pi
+    #     elif whichSide in ("R", "right"):
+    #         clockAng = 0
+    #     elif whichSide in ("T", "top"):
+    #         clockAng = np.pi/2
+    #     elif whichSide in ("B", "bottom"):
+    #         clockAng = 3*np.pi/2
+    #     else:
+    #         clockAng = 0
+    # else:
+    #     clockAng = inputs["clockAngDeg"]*np.pi/180
 
-    if whichSide in ('both'):
-        clockAng = clockAng + np.pi
-        maskSW2 = np.logical_and(maskSW0, np.abs(np.angle(np.exp(1j*(THETAS-clockAng)))) <=
-                                 angRad/2)
-        maskSW = np.logical_or(maskSW, maskSW2)
+    # maskSW = np.logical_and(maskSW0, np.abs(np.angle(np.exp(1j*(THETAS-clockAng)))) <= angRad/2)
 
-    return maskSW, xis, etas
+    # if whichSide in ('both'):
+    #     clockAng = clockAng + np.pi
+    #     maskSW2 = np.logical_and(maskSW0, np.abs(np.angle(np.exp(1j*(THETAS-clockAng)))) <=
+    #                              angRad/2)
+    #     maskSW = np.logical_or(maskSW, maskSW2)
+
+    return softwareMask, xis, etas
 
 
 def falco_gen_bowtie_FPM(inputs):
@@ -1407,17 +1463,6 @@ def falco_gen_pupil_Simple(inputs):
 
     """
     check.is_dict(inputs, 'inputs')
-# % Inputs:
-# % inputs["Npad"] #Number of samples in the padded array
-# % inputs["Nbeam"] - Number of samples across the beam
-# % inputs["OD"] - Outer diameter (fraction of Nbeam)
-# % inputs["ID"] - Inner diameter (fraction of Nbeam)
-# % inputs["Nstrut"] - Number of struts
-# % inputs["angStrut"] - Array of struct angles (deg)
-# % inputs["wStrut"] - Strut widths (fraction of Nbeam)
-# % inputs["stretch"] - Create an elliptical aperture by changing Nbeam along
-# %                   the horizontal direction by a factor of stretch (PROPER
-# %                   version isn't implemented as of March 2019).
 
     # Required dictionary keys
     Nbeam = inputs["Nbeam"]  # Aperture diameter in pixel widths
@@ -1425,32 +1470,31 @@ def falco_gen_pupil_Simple(inputs):
     OD = inputs["OD"]  # pupil outer diameter, can be < 1
 
     # Optional dictionary keys
-    ID = inputs["ID"] if('ID' in inputs) else 0.  # central obscuration diam
-    if 'wStrut' in inputs:
-        wStrut = inputs["wStrut"]  # width of all struts [pupil diameters]
-        
-    else:
-        wStrut = 0
-    if 'angStrut' in inputs:
-        angStrutVec = inputs["angStrut"]  # Azimuthal locations of the radial struts
-        angStrutVec = np.array(angStrutVec)
-    else:
-        angStrutVec = np.array([])
-        wStrut = 0
-    centering = inputs["centering"] if('centering' in inputs) else 'pixel'
-    xStretch = inputs["stretch"] if('stretch' in inputs) else 1.
-    clocking = inputs["clocking"] if('clocking' in inputs) else 0.  # [deg]
-    xShear = inputs["xShear"] if('xShear' in inputs) else 0.  # [pupil diam]
-    yShear = inputs["yShear"] if('yShear' in inputs) else 0.  # [pupil diam]
-    flagHG = inputs["flagHG"] if 'flagHG' in inputs else False
-
-    # Input checks
+    wStrut = inputs.get("wStrut", 0.)  # width of each strut [pupil diameters]
+    angStrut = inputs.get("angStrut", [])
+    angStrutVec = np.atleast_1d(angStrut)
+    
+    # if 'angStrut' in inputs:
+    #     angStrutVec = inputs["angStrut"]  # Azimuthal locations
+    #     angStrutVec = np.array(angStrutVec)
+    # else:
+    #     angStrutVec = np.array([])
+    #     wStrut = 0
+    ID = inputs.get("ID", 0.)  # central obscuration diam [pupil diameters]
+    centering = inputs.get("centering", "pixel")
+    xStretch = inputs.get("xStretch", 1.)
+    clocking = inputs.get("clocking", 0.)  # [degrees]
+    xShear = inputs.get("xShear", 0.)  # [pupil diameters]
+    yShear = inputs.get("yShear", 0.)  # [pupil diameters]
+    flagHG = inputs.get("flagHG", False)
+    
+    # Checks on dict keys
     check.real_nonnegative_scalar(wStrut, 'wStrut', TypeError)
     check.centering(centering)
     if not isinstance(flagHG, bool):
         raise TypeError("inputs['flagHG'] must be a bool")
-    if(ID > OD):
-        raise ValueError("Inner diameter cannot be larger than outer diameter.")
+    if ID > OD:
+        raise ValueError("Inner diameter is larger than outer diameter.")
 
     # By default, don't use hyger-gaussians for anti-aliasing the edges.
     if not flagHG:
@@ -1467,7 +1511,7 @@ def falco_gen_pupil_Simple(inputs):
         inpOuter["yShear"] = yShear
         apOuter = gen_ellipse(inpOuter)
 
-        # Create inner aperture
+        # Create inner obscuration
         if ID > 0:
             inpInner = {}
             inpInner["Nbeam"] = Nbeam
@@ -1482,7 +1526,7 @@ def falco_gen_pupil_Simple(inputs):
         else:
             apInner = 1
 
-        # STRUTS
+        # Create strut obscurations
         if angStrutVec.size == 0:
             apStruts = 1
         else:
@@ -1492,9 +1536,9 @@ def falco_gen_pupil_Simple(inputs):
             Darray = Narray*dx
             wl_dummy = 1e-6  # dummy value
             bdf = Dbeam/Darray  # beam diameter fraction
-            if(centering == 'pixel'):
+            if centering == 'pixel':
                 cshift = 0
-            elif(centering == 'interpixel'):
+            elif centering == 'interpixel':
                 cshift = -dx/2.
             bm = proper.prop_begin(Dbeam, wl_dummy, Narray, bdf)
             
@@ -1525,7 +1569,7 @@ def falco_gen_pupil_Simple(inputs):
         RHO = falco.util.radial_grid(x, xStretch=xStretch)
         THETA = falco.util.azimuthal_grid(x, xStretch=xStretch)
     
-        if(ID > 0):
+        if ID > 0:
             pupil = np.exp(-(RHO/(apRad*OD))**hg_expon) - \
                 np.exp(-(RHO/(apRad*ID))**hg_expon)
         else:
@@ -1536,7 +1580,8 @@ def falco_gen_pupil_Simple(inputs):
             try:
                 halfwidth = wStrut*apRad
                 for ang in angStrutVec:
-                    pupil *= (1-np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)/halfwidth)**hg_expon_spider) *
+                    pupil *= (1 - np.exp(-(RHO*np.sin(THETA-ang*np.pi/180)
+                                           / halfwidth)**hg_expon_spider) *
                               (RHO*np.cos(THETA-ang*np.pi/180) > 0))
             except:
                 raise TypeError("inputs['angStrut'] must be an iterable")
