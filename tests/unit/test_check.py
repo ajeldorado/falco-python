@@ -1,10 +1,9 @@
 """Unit tests for check.py."""
 import unittest
 import numpy as np
-import sys
 
-sys.path.insert(0,"../")
 from falco import check
+
 
 class TestCheckException(Exception):
     pass
@@ -18,7 +17,6 @@ class TestCheck(unittest.TestCase):
     error checking
     """
 
-    # real_positive_scalar
     def test_real_positive_scalar_good(self):
         """
         Verify checker works correctly for valid input.
