@@ -137,10 +137,7 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
     ## Changes to the pupil
 
     ### (Optional) Lyot stop mode (concentric, circular ID and OD)
-    if not 'flagLyot' in changes: 
-        flagLyot = False
-    else:
-        flagLyot = changes['flagLyot']
+    flagLyot = False if not 'flagLyot' in changes else changes['flagLyot']
     if flagLyot:
         if 'ID' in changes:
             ID = changes['ID']
@@ -222,7 +219,7 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
     # INITIALIZE PROPER
     bm = proper.prop_begin(Dbeam, wl, Narray, bdf)
     proper.prop_set_antialiasing(nSubsamples)
-    
+
     # Struts
     for iStrut in range(6):
         angDeg = angStrutVec[iStrut] + clock_deg  # degrees
@@ -291,7 +288,7 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
 
             xyShear = rotMat @ np.array([tabCenterVecX[iTab],
                                          tabCenterVecY[iTab]]).reshape((2, 1))
-            
+
             XSnew = (XS + magFac*xyShear[0]) - xShear
             YSnew = (YS + magFac*xyShear[1]) - yShear
             THETAS = np.arctan2(YSnew, XSnew)
@@ -314,7 +311,7 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
                 THETAS = THETAS - 2*np.pi
 
             cobsTabsMask[(THETAS <= ang2) & (THETAS >= ang1)] = 1.0
-        
+
             # if(angTabStart[iTab] > angTabEnd[iTab]):
             #     cobsTabsMask[(THETAS >= (angTabEnd[iTab]+clockRad)) &
             #                  (THETAS <= (angTabStart[iTab]+clockRad))] = 1.0
