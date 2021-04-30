@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install PyPROPER3
+        python -m  pip install https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip/download
         python -m pip install pytest
         python -m pip install pytest-html
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
