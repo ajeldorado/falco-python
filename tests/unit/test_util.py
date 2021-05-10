@@ -98,14 +98,14 @@ class TestUtils:
                 count += 1
 
     def test__spec_arg(cls):
-        
+
         kwargs = {"logGmin": 545}
         val = falco.util._spec_arg("logGmin", kwargs, -6)
 
         assert val == 545
 
     def test__spec_argi_unfoundArg(cls):
-        
+
         kwargs = {"blahblah": 545}
         val = falco.util._spec_arg("logGmin", kwargs, -6)
 
