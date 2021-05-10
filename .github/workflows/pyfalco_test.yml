@@ -39,4 +39,5 @@ jobs:
         python -m pip install matplotlib
     - name: Test with pytest
       run: |
-        python -m pytest tests/ -v -s
+        #python -m pytest tests/ -v -s
+        python -m pytest tests/ -v --html=./tests/report/TestReport.html
