@@ -13,8 +13,8 @@ def test_translation():
     changes = {"xShear": -11/100, "yShear": 19/100}
     pupilOffset = falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes)
     pupilRecentered = np.roll(pupilOffset,
-                              (np.array([-Nbeam*changes["yShear"],
-                                         -Nbeam*changes["xShear"]])).astype(int),
+                              [int(-Nbeam*changes["yShear"]),
+                               int(-Nbeam*changes["xShear"])],
                               axis=(0, 1))
     diff = pad_crop(pupil, pupilOffset.shape) - pupilRecentered
 
@@ -37,8 +37,8 @@ def test_translation_and_rotation():
                                                         centering,
                                                         changes)
     pupilRotRecentered = np.roll(pupilRotOffset,
-                                 (np.array([-Nbeam*changes["yShear"],
-                                            -Nbeam*changes["xShear"]])).astype(int),
+                                 [int(-Nbeam*changes["yShear"]),
+                                  int(-Nbeam*changes["xShear"])],
                                  axis=(0, 1))
 
     pupilRot = np.zeros_like(pupil)
@@ -50,7 +50,8 @@ def test_translation_and_rotation():
 
 
 def test_roman_pupil_against_file():
-    pupil0 = imread('pupil_CGI-20200513_8k_binary_noF.png').astype(float)
+    fn = '../../data/WFIRST/PhaseC/pupil_CGI-20200513_8k_binary_noF.png'
+    pupil0 = imread(fn).astype(float)
 
     pupilFromFile = pupil0/np.max(pupil0)
     Narray = pupilFromFile.shape[1]
@@ -75,5 +76,6 @@ def test_roman_pupil_against_file():
 
 
 if __name__ == '__main__':
-    # test_translation_and_rotation()
+    test_translation()
+    test_translation_and_rotation()
     test_roman_pupil_against_file()
