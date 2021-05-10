@@ -3,14 +3,17 @@
 import numpy as np
 import numbers
 
+
 class CheckException(Exception):
     pass
+
 
 # String check support
 string_types = (str, bytes)
 
 # Int check support
 int_types = (int, np.integer)
+
 
 def _checkname(vname):
     """Check internally that we can use vname as a string for printing."""
@@ -21,7 +24,7 @@ def _checkname(vname):
 
 
 def _checkexc(vexc):
-    """Check interanally that we can raise from the vexc object."""
+    """Check internally that we can raise from the vexc object."""
     if not isinstance(vexc, type):  # pre-check it is class-like
         raise CheckException('vexc must be a Exception, or an object ' +
                              'descended from one when fed to check functions')
@@ -47,7 +50,8 @@ def centering(var):
 
     """
     _VALID_CENTERING = ['pixel', 'interpixel']
-    _CENTERING_ERR = ('Invalid centering specification. Options: \{}'.format(_VALID_CENTERING))
+    _CENTERING_ERR = ('Invalid centering specification. Options: '
+                      '{}'.format(_VALID_CENTERING))
 
     if not isinstance(var, str):
         raise TypeError("'centering' value must be a string'")
@@ -197,7 +201,7 @@ def oneD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 1:
         raise vexc(vname + ' must be a 1D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -223,7 +227,7 @@ def twoD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a 2D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -250,10 +254,10 @@ def twoD_square_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a 2D array')
-    else: # is 2-D
+    else:  # is 2-D
         if not var.shape[0] == var.shape[1]:
             raise vexc(vname + ' must be a square 2D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -279,7 +283,7 @@ def threeD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var) # cast to array
+    var = np.array(var)  # cast to array
     if len(var.shape) != 3:
         raise vexc(vname + ' must be a 3D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -311,33 +315,6 @@ def real_scalar(var, vname, vexc):
         raise vexc(vname + ' must be real')
     return var
 
-
-def real_nonnegative_scalar(var, vname, vexc):
-    """
-    Checks whether an object is a real nonnegative scalar.
-
-    Parameters
-    ----------
-    var: variable to check
-    vname: string to output in case of error for debugging
-    vexc: Exception to raise in case of error for debugging
-
-    Returns
-    -------
-    var
-
-    """
-    _checkname(vname)
-    _checkexc(vexc)
-
-    if not isinstance(var, numbers.Number):
-        raise vexc(vname + ' must be scalar')
-    if not np.isrealobj(var):
-        raise vexc(vname + ' must be real')
-    if var < 0:
-        raise vexc(vname + ' must be nonnegative')
-    return var
-    
 
 def positive_scalar_integer(var, vname, vexc):
     """

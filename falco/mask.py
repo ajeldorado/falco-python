@@ -66,9 +66,9 @@ def falco_gen_DM_stop(dx, diamMask, centering):
 
 def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
     """
-    Generate WFIRST pupil CGI-20191009.
+    Generate WFIRST pupil CGI-20200513.
 
-    Function to generate WFIRST pupil CGI-20191009. Options to change
+    Generate WFIRST pupil CGI-20200513. Options to change
     the x- or y-shear, clocking, or magnification via keys in the dict
     called changes.
 
@@ -84,14 +84,13 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
     Returns
     -------
     pupil : numpy ndarray
-        2-D amplitude map of the WFIRST pupil CGI-20191009
+        2-D amplitude map of the WFIRST pupil CGI-20200513
     """
     check.real_positive_scalar(Nbeam, 'Nbeam', TypeError)
     check.centering(centering)
     check.is_dict(changes, 'changes')
 
     # Define the best-fit values for ellipses and rectangles (DO NOT CHANGE)
-
     primaryRadiusYpixels = 4027.25
     ODpixels = 2*primaryRadiusYpixels
 
