@@ -36,6 +36,8 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pytest
         python -m pip install pytest-html
+        python -m pip install numpy
+        python -m pip install scipy
     - name: Test with pytest
       run: |
         python -m pytest tests/ -v -s
