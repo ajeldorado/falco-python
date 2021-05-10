@@ -5,9 +5,9 @@ name: 'pyfalco'
 
 on:
   push:
-    branches: [ master ]
+    branches: [ dev-aj]
   pull_request:
-    branches: [ master ]
+    branches: [ dev-aj]
 
 jobs:
   build:
@@ -15,6 +15,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Step 1 - Create a temporary folder for PYPROPER
+      run: mkdir PYPROPER
+    - name: step 2 - Add artifacts to publish to the temp folder
+      run: |
+          cd PYPROPER
+          https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip
+          unzip -o myfile.zip
+          cd proper*
+          python setup.py install
+          cd ../../
     # This step checks out a copy of your repository.
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -24,7 +34,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m  pip install https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip/download
         python -m pip install pytest
         python -m pip install pytest-html
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
