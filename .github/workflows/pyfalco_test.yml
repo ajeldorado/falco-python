@@ -36,6 +36,7 @@ jobs:
         python -m pip install numpy
         python -m pip install scipy
         python -m pip install psutil
+        python -m pip install matplotlib
     - name: Test with pytest
       run: |
         python -m pytest tests/ -v -s
