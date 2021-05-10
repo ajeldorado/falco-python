@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from matplotlib.image import imread
 
@@ -50,7 +51,10 @@ def test_translation_and_rotation():
 
 
 def test_roman_pupil_against_file():
-    fn = '../../data/WFIRST/PhaseC/pupil_CGI-20200513_8k_binary_noF.png'
+
+    localpath = os.path.dirname(os.path.abspath(__file__))
+    fn = os.path.join(localpath, 'testdata',
+                      'pupil_CGI-20200513_8k_binary_noF.png')
     pupil0 = imread(fn).astype(float)
 
     pupilFromFile = pupil0/np.max(pupil0)
