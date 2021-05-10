@@ -20,7 +20,7 @@ jobs:
     - name: step 2 - Add artifacts to publish to the temp folder
       run: |
           cd PYPROPER
-          https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip
+          curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip -o myfile.zip -L
           unzip -o myfile.zip
           cd proper*
           python setup.py install
