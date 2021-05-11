@@ -15,7 +15,7 @@ def test_area_annulus():
     area = np.sum(swMask)
 
     assert isclose(area, areaExpected, rel_tol=1e-3)
-    
+
 
 def test_area_square():
     inputs = {"shape": "square", "pixresFP": 10, "whichSide": "right",
@@ -24,15 +24,15 @@ def test_area_square():
     areaExpected = (4*inputs["rhoOuter"]**2-np.pi*inputs["rhoInner"]**2) * \
         inputs["angDeg"]/360 * inputs["pixresFP"]**2
     area = np.sum(swMask)
-    
+
     # plt.figure()
     # plt.imshow(swMask)
     # plt.gca().invert_yaxis()
     # plt.pause(0.2)
-    
+
     assert isclose(area, areaExpected, rel_tol=3e-2)
-    
-    
+
+
 def test_area_rectangle():
     inputs = {"shape": "rectangle", "pixresFP": 10, "whichSide": "right",
               "rhoInner": 2.5, "rhoOuter": 10.0, "angDeg": 180}
@@ -41,14 +41,14 @@ def test_area_rectangle():
                     (inputs["rhoOuter"]-inputs["rhoInner"]) *
                     inputs["pixresFP"]**2)
     area = np.sum(swMask)
-    
+
     # plt.figure()
     # plt.imshow(swMask)
     # plt.gca().invert_yaxis()
     # plt.pause(0.2)
-    
+
     assert isclose(area, areaExpected, rel_tol=3e-2)
-  
+
 
 @pytest.mark.parametrize("inputs", [
     {"whichSide": "l", "shape": "circle", "clockAngDeg": 10},
@@ -71,13 +71,12 @@ def test_translation(inputs):
                               -round(inputs["xiOffset"]*inputs["pixresFP"])),
                              axis=(0, 1))
     swMaskRecenter = falco.util.pad_crop(swMaskRecenter, swMaskCentered.shape)
-                                               
+
     maxAbsDiff = np.max(np.abs(swMaskRecenter.astype(int) -
                                swMaskCentered.astype(int)))
-    
     assert maxAbsDiff < 1e-6
 
-    
+
 @pytest.mark.parametrize("inputs", [
     {"shape": "circle", "whichSide": "r", "clockAngDeg": 0},
     {"shape": "circle", "whichSide": "right", "clockAngDeg": 0},
@@ -94,23 +93,21 @@ def test_translation(inputs):
 ])
 def test_degeneracy_of_rotation_and_one_side(inputs):
     inputsFixed = {"pixresFP": 4, "rhoInner": 2.5, "rhoOuter": 10.0,
-                    "angDeg": 160}
+                   "angDeg": 160}
     inputs.update(inputsFixed)
     (swMask, _, _) = falco.mask.falco_gen_SW_mask(inputs)
-    
+
     # plt.figure()
     # plt.imshow(swMask)
     # plt.title(inputs["whichSide"])
     # plt.gca().invert_yaxis()
     # plt.pause(0.2)
-    
+
     # Reference mask
     inputs["whichSide"] = "right"
     inputs["clockAngDeg"] = 0
     (swMaskRef, xis, etas) = falco.mask.falco_gen_SW_mask(inputs)
-                                               
     sumAbsDiff = np.sum(np.abs(swMaskRef.astype(int) - swMask.astype(int)))
-    
     assert sumAbsDiff == 0
 
 
@@ -131,25 +128,23 @@ def test_degeneracy_of_rotation_and_one_side(inputs):
 ])
 def test_degeneracy_of_rotation_and_two_sides(inputs):
     inputsFixed = {"pixresFP": 4, "rhoInner": 2.5, "rhoOuter": 10.0,
-                    "angDeg": 160}
+                   "angDeg": 160}
     inputs.update(inputsFixed)
     (swMask, _, _) = falco.mask.falco_gen_SW_mask(inputs)
-    
+
     # plt.figure()
     # plt.imshow(swMask)
     # plt.title(inputs["whichSide"])
     # plt.gca().invert_yaxis()
     # plt.pause(0.2)
-    
+
     # Reference mask
     inputs["whichSide"] = "lr"
     inputs["clockAngDeg"] = 0
     (swMaskRef, xis, etas) = falco.mask.falco_gen_SW_mask(inputs)
-                                               
     sumAbsDiff = np.sum(np.abs(swMaskRef.astype(int) - swMask.astype(int)))
-    
     assert sumAbsDiff == 0
-    
+
 
 if __name__ == '__main__':
     test_area_annulus()

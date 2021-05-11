@@ -1067,166 +1067,144 @@ def falco_get_FPM_coordinates(mp):
 
 def falco_get_Fend_resolution(mp):
     """Define the resolution at the final plane."""
-    # Sampling/Resolution and Scoring/Correction Masks for Final Focal Plane (Fend.
-    
-    mp.Fend.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.res  # sampling at Fend.[meters]
-    mp.Fend.deta = mp.Fend.dxi  # sampling at Fend.[meters]    
-    
+    # Sampling/Resolution and Scoring/Correction Masks for Final Focal Plane
+
+    # sampling at Fend [meters]
+    mp.Fend.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.res
+    mp.Fend.deta = mp.Fend.dxi
+
     if mp.flagFiber:
-        mp.Fend.lenslet.D = 2*mp.Fend.res*mp.Fend.lensletWavRad*mp.Fend.dxi;
-        mp.Fend.x_lenslet_phys = mp.Fend.dxi*mp.Fend.res*mp.Fend.x_lenslet;
-        mp.Fend.y_lenslet_phys = mp.Fend.deta*mp.Fend.res*mp.Fend.y_lenslet;
-    
-        mp.F5.dxi = mp.lensletFL*mp.lambda0/mp.Fend.lenslet.D/mp.F5.res;
-        mp.F5.deta = mp.F5.dxi;
+        mp.Fend.lenslet.D = 2*mp.Fend.res*mp.Fend.lensletWavRad*mp.Fend.dxi
+        mp.Fend.x_lenslet_phys = mp.Fend.dxi*mp.Fend.res*mp.Fend.x_lenslet
+        mp.Fend.y_lenslet_phys = mp.Fend.deta*mp.Fend.res*mp.Fend.y_lenslet
+
+        mp.F5.dxi = mp.lensletFL*mp.lambda0/mp.Fend.lenslet.D/mp.F5.res
+        mp.F5.deta = mp.F5.dxi
     pass
 
 
 def falco_configure_dark_hole_region(mp):
-    """Configure the size and shape of the dark hole."""
-    # Software Mask for Correction (corr) and Scoring (score)
-    # Software Mask for Correction (corr) and Scoring (score)
+    """Generate the software mask indicating the dark hole pixels."""
+    # Convert needed values to iterables if they are scalars
+    mp.Fend.corr.Rin = np.atleast_1d(mp.Fend.corr.Rin)
+    mp.Fend.corr.Rout = np.atleast_1d(mp.Fend.corr.Rout)
+    mp.Fend.corr.ang = np.atleast_1d(mp.Fend.corr.ang)
+    sides = np.atleast_1d(mp.Fend.sides)  # array of strings
+    Nzones = mp.Fend.corr.Rin.size
 
-    # Set Inputs:
-    maskCorr = {}
-    maskCorr["pixresFP"] = mp.Fend.res;
-    maskCorr["rhoInner"] = mp.Fend.corr.Rin  # lambda0/D
-    maskCorr["rhoOuter"] = mp.Fend.corr.Rout  # lambda0/D
-    maskCorr["angDeg"] = mp.Fend.corr.ang  # degrees
-    maskCorr["centering"] = mp.centering
-    maskCorr["FOV"] = mp.Fend.FOV
-    maskCorr["whichSide"] = mp.Fend.sides  # which (sides) of the dark hole have open
-    if hasattr(mp.Fend, 'shape'):
-        maskCorr.shape = mp.Fend.shape
+    # Correction Region
+    CORR = {}
+    CORR["pixresFP"] = mp.Fend.res
+    CORR["centering"] = mp.centering
+    if hasattr(mp.Fend, 'FOV'):
+        CORR["FOV"] = mp.Fend.FOV
+    if hasattr(mp.Fend, 'xiFOV'):
+        CORR["xiFOV"] = mp.Fend.xiFOV
+    if hasattr(mp.Fend, 'etaFOV'):
+        CORR["etaFOV"] = mp.Fend.etaFOV
+    if hasattr(mp.Fend, 'Nxi'):
+        CORR["Nxi"] = mp.Fend.Nxi
+    if hasattr(mp.Fend, 'etaFOV'):
+        CORR["Neta"] = mp.Fend.Neta
 
-    # Compact Model: Generate Software Mask for Correction
-    mp.Fend.corr.mask, mp.Fend.xisDL, mp.Fend.etasDL = falco.mask.falco_gen_SW_mask(maskCorr)
-    mp.Fend.corr.settings = maskCorr  # Store values for future reference
+    if not hasattr(mp.Fend, 'shape'):
+        shapes = []
+        for ii in range(Nzones):
+            shapes.append('circle')  # Default to circular dark hole
+    shapes = np.atleast_1d(mp.Fend.shape)  # array of strings
+
+    maskCorr = np.zeros((1, 1))  # initialize
+    for iZone in range(Nzones):
+        CORR["rhoInner"] = mp.Fend.corr.Rin[iZone]  # lambda0/D
+        CORR["rhoOuter"] = mp.Fend.corr.Rout[iZone]  # lambda0/D
+        CORR["angDeg"] = mp.Fend.corr.ang[iZone]  # degrees
+        CORR["whichSide"] = sides[iZone]
+        CORR["shape"] = shapes[iZone]
+        if hasattr(mp.Fend, 'clockAngDeg'):
+            CORR["clockAngDeg"] = mp.Fend.clockAngDeg[iZone]
+        if hasattr(mp.Fend, 'xiOffset'):
+            CORR["xiOffset"] = mp.Fend.xiOffset[iZone]
+        if hasattr(mp.Fend, 'etaOffset'):
+            CORR["etaOffset"] = mp.Fend.etaOffset[iZone]
+
+        # Combine multiple zones. Use the largest array size
+        [maskTemp, _, _] = falco.mask.falco_gen_SW_mask(CORR)
+        Nrow = int(np.max(np.array([maskTemp.shape[0], maskCorr.shape[0]])))
+        Ncol = int(np.max(np.array([maskTemp.shape[1], maskCorr.shape[1]])))
+        maskCorr = (falco.util.pad_crop(maskCorr, [Nrow, Ncol]) +
+                    falco.util.pad_crop(maskTemp, [Nrow, Ncol]))
+
+    mp.Fend.corr.maskBool = np.array(maskCorr, dtype=bool)
+
+    CORR["Nxi"] = maskCorr.shape[1]
+    CORR["Neta"] = maskCorr.shape[0]
+    [_, mp.Fend.xisDL, mp.Fend.etasDL] = falco.mask.falco_gen_SW_mask(CORR)
+
     # Size of the output image
-    # Need the sizes to be the same for the correction and scoring masks
-    mp.Fend.Nxi = mp.Fend.corr.mask.shape[1]
-    mp.Fend.Neta = mp.Fend.corr.mask.shape[0]
+    mp.Fend.Nxi = mp.Fend.corr.maskBool.shape[1]
+    mp.Fend.Neta = mp.Fend.corr.maskBool.shape[0]
 
-    XIS, ETAS = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
+    [XIS, ETAS] = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
     mp.Fend.RHOS = np.sqrt(XIS**2 + ETAS**2)
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Mask defining the area covered by the lenslet.  Only the immediate area
-    # around the lenslet is propagated, saving computation time.  This lenslet
-    # can then be moved around to different positions in Fend.
-    if mp.flagFiber:
-        pass
-        # maskLenslet["pixresFP"] = mp.Fend.res;
-        # maskLenslet["rhoInner"] = 0;
-        # maskLenslet["rhoOuter"] = mp.Fend.lensletWavRad;
-        # maskLenslet["angDeg"] = mp.Fend.corr.ang;
-        # maskLenslet["centering"] = mp.centering;
-        # maskLenslet["FOV"] = mp.Fend.FOV;
-        # maskLenslet["whichSide"] = mp.Fend.sides;
-        # mp.Fend.lenslet.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(**maskLenslet)
-
-        # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-        # # Dummy mask to calculate the F5 coordinates correctly.
-        # maskF5["pixresFP"] = mp.F5.res;
-        # maskF5["rhoInner"] = 0;
-        # maskF5["rhoOuter"] = 1.22;
-        # maskF5["angDeg"] = 180;
-        # maskF5["centering"] = mp.centering;
-        # maskF5["FOV"] = mp.F5.FOV;
-        # maskF5["whichSide"] = mp.Fend.sides;
-        # mp.F5.mask, mp.F5.xisDL, mp.F5.etasDL = falco.mask.falco_gen_SW_mask(maskF5)
-
-        # # Size of the output image in F5
-        # mp.F5.Nxi = mp.F5.mask.shape[1] #size(mp.F5.mask, 2)
-        # mp.F5.Neta = mp.F5.mask.shape[0]
-
-        # # Set up the fiber mode in F5
-
-        # V = 2*pi/mp.lambda0*mp.fiber.a*mp.fiber.NA;
-        # W = 1.1428*V - 0.996;
-        # U = np.sqrt(V**2 - W**2)
-
-        # maskFiberCore["pixresFP"] = mp.F5.res;
-        # maskFiberCore["rhoInner"] = 0;
-        # maskFiberCore["rhoOuter"] = mp.fiber.a;
-        # maskFiberCore["angDeg"] = 180;
-        # maskFiberCore["FOV"] = mp.F5.FOV;
-        # maskFiberCore["whichSide"] = mp.Fend.sides;
-        # mp.F5.fiberCore.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(maskFiberCore)
-
-        # maskFiberCladding["pixresFP"] = mp.F5.res;
-        # maskFiberCladding["rhoInner"] = mp.fiber.a;
-        # maskFiberCladding["rhoOuter"] = 10;
-        # maskFiberCladding["angDeg"] = 180;
-        # maskFiberCladding["FOV"] = mp.F5.FOV;
-        # maskFiberCladding["whichSide"] = mp.Fend.sides;
-        # mp.F5.fiberCladding.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(maskFiberCladding)
-
-        # F5XIS, F5ETAS = np.meshgrid(mp.F5.xisDL, mp.F5.etasDL)
-
-        # mp.F5.RHOS = np.sqrt((F5XIS - mp.F5.fiberPos[0])**2 + (F5ETAS - mp.F5.fiberPos[1])**2)
-        # mp.F5.fiberCore.mode = mp.F5.fiberCore.mask*scipy.special.j0(U*mp.F5.RHOS/mp.fiber.a)/scipy.special.j0(0,U)
-        # mp.F5.fiberCladding.mode = mp.F5.fiberCladding.mask*scipy.special.k0(W*mp.F5.RHOS/mp.fiber.a)/scipy.special.k0(W)
-        # mp.F5.fiberCladding.mode[np.isnan(mp.F5.fiberCladding.mode)] = 0;
-        # mp.F5.fiberMode = mp.F5.fiberCore.mode + mp.F5.fiberCladding.mode;
-        # fiberModeNorm = np.sqrt(np.sum(np.sum(np.abs(mp.F5.fiberMode)**2)))
-        # mp.F5.fiberMode = mp.F5.fiberMode/fiberModeNorm;
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    # Evaluation Model for Computing Throughput (same as Compact Model but
-    # with different Fend.resolution)
-    maskCorr["pixresFP"] = mp.Fend.eval.res  # Assign the resolution
-    mp.Fend.eval.mask, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL =\
-        falco.mask.falco_gen_SW_mask(maskCorr)
-    mp.Fend.eval.Nxi = mp.Fend.eval.mask.shape[1]
-    mp.Fend.eval.Neta = mp.Fend.eval.mask.shape[0]
-    mp.Fend.eval.dxi = (mp.fl*mp.lambda0/mp.P4.D)/mp.Fend.eval.res  # higher sampling for eval
-    mp.Fend.eval.deta = mp.Fend.eval.dxi  # higher sampling at Fend.for evaulation [meters]
+    # %% Evaluation Model for Computing Throughput
+    # (just need size and coordinates, not mask)
+    if not hasattr(mp.Fend, 'eval'):
+        mp.Fend.eval = falco.config.Object()
+    CORR["pixresFP"] = mp.Fend.eval.res  # Assign the resolution
+    CORR["Nxi"] = falco.util.ceil_even(mp.Fend.eval.res /
+                                       mp.Fend.res*mp.Fend.Nxi)
+    CORR["Neta"] = falco.util.ceil_even(mp.Fend.eval.res /
+                                        mp.Fend.res*mp.Fend.Neta)
+    mp.Fend.eval.Nxi = CORR["Nxi"]
+    mp.Fend.eval.Neta = CORR["Neta"]
+    [_, mp.Fend.eval.xisDL, mp.Fend.eval.etasDL] = \
+        falco.mask.falco_gen_SW_mask(CORR)
 
     # (x,y) location [lambda_c/D] in dark hole at which to evaluate throughput
-    XIS, ETAS = np.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x,
-                            mp.Fend.eval.etasDL - mp.thput_eval_y)
+    [XIS, ETAS] = np.meshgrid(mp.Fend.eval.xisDL - mp.thput_eval_x,
+                              mp.Fend.eval.etasDL - mp.thput_eval_y)
     mp.Fend.eval.RHOS = np.sqrt(XIS**2 + ETAS**2)
 
-    # Storage array for throughput at each iteration
-    mp.thput_vec = np.zeros((mp.Nitr+1, 1))
+    # %% Scoring Region
+    mp.Fend.score.Rin = np.atleast_1d(mp.Fend.score.Rin)
+    mp.Fend.score.Rout = np.atleast_1d(mp.Fend.score.Rout)
+    mp.Fend.score.ang = np.atleast_1d(mp.Fend.score.ang)
+    Nzones = mp.Fend.score.Rin.size
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # These are same as for correction region
+    SCORE = {}
+    SCORE["Nxi"] = mp.Fend.Nxi
+    SCORE["Neta"] = mp.Fend.Neta
+    SCORE["pixresFP"] = mp.Fend.res
+    SCORE["centering"] = mp.centering
 
-    # Software Mask for Scoring Contrast
-    # Set Inputs
-    maskScore = {}
-    maskScore["rhoInner"] = mp.Fend.score.Rin  # lambda0/D
-    maskScore["rhoOuter"] = mp.Fend.score.Rout   # lambda0/D
-    maskScore["angDeg"] = mp.Fend.score.ang  # degrees
-    maskScore["centering"] = mp.centering
-    maskScore["FOV"] = mp.Fend.FOV  # Determines max dimension length
-    maskScore["whichSide"] = mp.Fend.sides  # which (sides) of the dark hole have open
-    if hasattr(mp.Fend, 'shape'):
-        maskScore["shape"] = mp.Fend.shape
-    # Compact Model: Generate Software Mask for Scoring Contrast
-    maskScore["pixresFP"] = mp.Fend.res
-    mp.Fend.score.mask, unused_1, unused_2 = falco.mask.falco_gen_SW_mask(maskScore)
-    mp.Fend.score.settings = maskScore  # Store values for future reference
+    maskScore = 0
+    for iZone in range(Nzones):
+        SCORE["rhoInner"] = mp.Fend.score.Rin[iZone]  # lambda0/D
+        SCORE["rhoOuter"] = mp.Fend.score.Rout[iZone]  # lambda0/D
+        SCORE["angDeg"] = mp.Fend.score.ang[iZone]  # degrees
+        SCORE["whichSide"] = sides[iZone]
+        SCORE["shape"] = shapes[iZone]
+        if hasattr(mp.Fend, 'clockAngDeg'):
+            SCORE["clockAngDeg"] = mp.Fend.clockAngDeg[iZone]
+        if hasattr(mp.Fend, 'xiOffset'):
+            SCORE["xiOffset"] = mp.Fend.xiOffset[iZone]
+        if hasattr(mp.Fend, 'etaOffset'):
+            SCORE["etaOffset"] = mp.Fend.etaOffset[iZone]
+
+        [maskTemp, _, _] = falco.mask.falco_gen_SW_mask(SCORE)
+        maskScore += maskTemp
+
+    mp.Fend.score.maskBool = np.array(maskScore, dtype=bool)
 
     # Number of pixels used in the dark hole
-    mp.Fend.corr.Npix = int(np.sum(np.sum(mp.Fend.corr.mask)))
-    mp.Fend.score.Npix = int(np.sum(np.sum(mp.Fend.score.mask)))
+    mp.Fend.corr.Npix = np.sum(mp.Fend.corr.maskBool)
+    mp.Fend.score.Npix = np.sum(mp.Fend.score.maskBool)
 
-    # Indices of dark hole pixels and logical masks
-    if mp.flagFiber:
-        mp.Fend.corr.inds = np.where(np.sum(mp.Fend.lenslet.mask, 3) != 0)
-        mp.Fend.corr.maskBool = np.array(mp.Fend.corr.mask, dtype=bool)
-    else:
-        mp.Fend.corr.inds = np.where(mp.Fend.corr.mask != 0)
-        mp.Fend.corr.maskBool = np.array(mp.Fend.corr.mask, dtype=bool)
-
-    mp.Fend.score.inds = np.where(mp.Fend.score.mask != 0)
-    mp.Fend.score.maskBool = np.array(mp.Fend.score.mask, dtype=bool)
-    pass
+    # vector indicating which pixels in vectorized correction region
+    # are also in the scoring region
+    mp.Fend.scoreInCorr = mp.Fend.score.maskBool[mp.Fend.corr.maskBool]
 
 
 def falco_set_spatial_weights(mp):
@@ -1258,7 +1236,8 @@ def falco_set_spatial_weights(mp):
         if(np.size(mp.WspatialDef) > 0):
             for kk in range(0, mp.WspatialDef.shape[0]):
                 Wannulus = 1. + (np.sqrt(mp.WspatialDef[kk, 2])-1.) *\
-                    ((RHOS >= mp.WspatialDef[kk, 0]) & (RHOS < mp.WspatialDef[kk, 1]))
+                    ((RHOS >= mp.WspatialDef[kk, 0]) &
+                     (RHOS < mp.WspatialDef[kk, 1]))
                 mp.Wspatial = mp.Wspatial*Wannulus
 
     mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]

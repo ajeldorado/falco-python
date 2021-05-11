@@ -93,7 +93,7 @@ def nextpow2(N):
         p = int(0)
     else:
         p = int(np.ceil(np.log2(np.abs(N))))
-    
+
     return p
 
 
