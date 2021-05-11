@@ -27,7 +27,7 @@ def flesh_out_workspace(mp):
     falco_set_optional_variables(mp)  # Optional/hidden boolean flags and variables
 
     falco_set_spectral_properties(mp)
-    falco_set_jacobian_weights(mp)  # Zernike Modes and Subband Weighting of Control Jacobian
+    falco_set_jacobian_modal_weights(mp)  # Zernike Modes and Subband Weighting of Control Jacobian
 
     # Pupil Masks
     falco_gen_chosen_pupil(mp)
@@ -386,7 +386,7 @@ def falco_set_spectral_properties(mp):
     pass
 
 
-def falco_set_jacobian_weights(mp):
+def falco_set_jacobian_modal_weights(mp):
     """
     Set the relative weights in Jacobian based on wavelength and Zernike mode.
 
@@ -411,14 +411,18 @@ def falco_set_jacobian_weights(mp):
     if not hasattr(mp, 'jac'):
         mp.jac = falco.config.EmptyClass()
 
-    # Which Zernike modes to include in Jacobian. Given as a vector of Noll indices.
+    # Which Zernike modes to include in Jacobian. A vector of Noll indices.
     # 1 is the on-axis piston mode.
     if not hasattr(mp.jac, 'zerns'):
         mp.jac.zerns = np.array([1])
-        mp.jac.Zcoef = np.array([1.])
+        mp.jac.Zcoef = np.array([1])
+    else:
+        mp.jac.zerns = np.atleast_1d(mp.jac.zerns)
+        mp.jac.Zcoef = np.atleast_1d(mp.jac.Zcoef)
 
     mp.jac.Nzern = np.size(mp.jac.zerns)
-    mp.jac.Zcoef[np.nonzero(mp.jac.zerns == 1)][0] = 1.  # Reset coefficient for piston term to 1
+    # Reset coefficient for piston term to 1
+    mp.jac.Zcoef[mp.jac.zerns == 1] = 1
 
     # Initialize weighting matrix of each Zernike-wavelength mode for the controller
     mp.jac.weightMat = np.zeros((mp.Nsbp, mp.jac.Nzern))
