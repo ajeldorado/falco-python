@@ -305,21 +305,27 @@ def falco_set_spectral_properties(mp):
     mp.si_ref = np.floor(mp.Nsbp/2).astype(int)
 
     # Wavelengths used for Compact Model (and Jacobian Model)
-    mp.sbp_weights = np.ones((mp.Nsbp,1))
-    if mp.Nwpsbp == 1:  # Set ctrl wvls evenly between endpoints (inclusive) of total bandpass.
+    mp.sbp_weights = np.ones((mp.Nsbp, 1))
+    if mp.Nwpsbp == 1 and mp.flagSim:  # Set ctrl wvls evenly between endpoints (inclusive) of total bandpass.
         if mp.Nsbp == 1:
             mp.sbp_centers = np.array([mp.lambda0])
         else:
-            mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBW/2,1+mp.fracBW/2, mp.Nsbp)
+            mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBW/2, 1+mp.fracBW/2, mp.Nsbp)
+            mp.sbp_weights[0] = 1/2
+            mp.sbp_weights[-1] = 1/2
     else:  # For cases with multiple sub-bands: Choose wavelengths to be at subbandpass centers since the wavelength samples will span to the full extent of the sub-bands.
         # Bandwidth between centers of endpoint subbandpasses.
-        mp.fracBWcent2cent = mp.fracBW*(1-1/mp.Nsbp)
+        mp.fracBWcent2cent = mp.fracBW*(1 - 1/mp.Nsbp)
         # Space evenly at the centers of the subbandpasses.
-        mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2, 1+mp.fracBWcent2cent/2, mp.Nsbp)
-    mp.sbp_weights = mp.sbp_weights/np.sum(mp.sbp_weights)  # Normalize the sum of the weights
+        mp.sbp_centers = mp.lambda0*np.linspace(1-mp.fracBWcent2cent/2,
+                                                1+mp.fracBWcent2cent/2,
+                                                mp.Nsbp)
+    # Normalize the sum of the weights
+    mp.sbp_weights = mp.sbp_weights / np.sum(mp.sbp_weights)
 
-    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over a %.1f%% total bandpass \n'%(mp.Nwpsbp, mp.Nsbp,100*mp.fracBW))
-    print('Sub-bandpasses are centered at wavelengths [nm]:\t ',end='')
+    print(' Using %d discrete wavelength(s) in each of %d sub-bandpasses over '
+          'a %.1f%% total bandpass \n' % (mp.Nwpsbp, mp.Nsbp, 100*mp.fracBW))
+    print('Sub-bandpasses are centered at wavelengths [nm]:\t ', end='')
     print(1e9*mp.sbp_centers)
 
     # Bandwidth and Wavelength Specs: Full Model
