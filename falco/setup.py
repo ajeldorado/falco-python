@@ -87,6 +87,8 @@ def falco_set_optional_variables(mp):
         mp.jac = falco.config.Object()
     if not hasattr(mp, "est"):
         mp.est = falco.config.Object()
+    if not hasattr(mp, "detector"):
+        mp.detector = falco.config.Object()
 
     # File Paths for Data Storage (excluded from git)
     filesep = os.pathsep
@@ -143,6 +145,25 @@ def falco_set_optional_variables(mp):
         mp.flagLenslet = False    # Whether to propagate through a lenslet array placed in Fend before coupling light into fibers
     if not hasattr(mp, 'flagDMwfe'):
         mp.flagDMwfe = False  # Temporary for BMC quilting study
+
+    # Detector properties for adding noise to images
+    # Default values are for the Andor Neo sCMOS detector and testbed flux
+    if not hasattr(mp, 'flagImageNoise'):
+        mp.flagImageNoise = False  # whether to include noise in the images
+    if not hasattr(mp.detector, 'gain'):
+        mp.detector.gain = 1.0  # [e-/count]
+    if not hasattr(mp.detector, 'darkCurrentRate'):
+        mp.detector.darkCurrentRate = 0.015  # [e-/pixel/second]
+    if not hasattr(mp.detector, 'readNoiseStd'):
+        mp.detector.readNoiseStd = 1.7  # [e-/count]
+    if not hasattr(mp.detector, 'wellDepth'):
+        mp.detector.wellDepth = 3e4  # [e-]
+    if not hasattr(mp.detector, 'peakFluxVec'):
+        mp.detector.peakFluxVec = 1e8 * np.ones(mp.Nsbp)  # [counts/pixel/second]
+    if not hasattr(mp.detector, 'tExpVec'):
+        mp.detector.tExpVec = 1.0 * np.ones(mp.Nsbp)  # [seconds]
+    if not hasattr(mp.detector, 'Nexp'):
+        mp.detector.Nexp = 1  # number of exposures to stack
 
     # Whether to generate or load various masks: compact model
     if not hasattr(mp.compact, 'flagGenPupil'):
@@ -284,12 +305,6 @@ def falco_set_optional_variables(mp):
         mp.Fend.eval = falco.config.Object()
     if not hasattr(mp.Fend.eval, 'res'):
         mp.Fend.eval.res = 10
-
-    # Off-axis, incoherent point source (exoplanet). Used if modvar.whichSource = 'exoplanet'
-    if not mp.flagFiber:
-        mp.c_planet = 1  # contrast of exoplanet
-        mp.x_planet = 6  # x position of exoplanet in lambda0/D
-        mp.y_planet = 0  # y position of exoplanet in lambda0/D
 
     # Pupil ID, needed for computing RMS DM commands
     if not hasattr(mp.P1, 'IDnorm'):
