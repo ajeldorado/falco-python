@@ -41,9 +41,10 @@ jobs:
       run: |
         #python -m pytest tests/ -v -s
         python -m pytest tests/ -v --html=./tests/report/TestReport.html
+        python -m pytest --cov-report html:./tests/report/CoverageReport.html
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v2
       with:
         name: test-report
-        path: tests/report/TestReport.html
+        path: tests/report/
         #retention-days: 5
