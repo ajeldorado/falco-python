@@ -41,8 +41,9 @@ jobs:
       run: |
         #python -m pytest tests/ -v -s
         python -m pytest tests/ -v --html=./tests/report/TestReport.html
-    - name: Publish Unit Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v1
-      if: always()
+    - name: 'Upload Artifact'
+      uses: actions/upload-artifact@v2
       with:
-        files: test-results/**/*.xml
+        name: test-report
+        path: tests/report/TestReport.html
+        #retention-days: 5
