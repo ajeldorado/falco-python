@@ -32,19 +32,21 @@ jobs:
         cd ../../
         python -m pip install --upgrade pip
         python -m pip install pytest
-        python -m pip install pytest-html
+        #python -m pip install pytest-html
         python -m pip install numpy
         python -m pip install scipy
         python -m pip install psutil
-        python -m pip install matplotlib
+        pip install matplotlib
+        pip install coverage  
     - name: Test with pytest
       run: |
         #python -m pytest tests/ -v -s
-        python -m pytest tests/ -v --html=./tests/report/TestReport.html
-        python -m pytest --cov-report html:./tests/report/CoverageReport.html
+        python -m pytest tests/ -v --html= TestReport/TestReport.html
+        python3 -m coverage html -d CoverageReport
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v2
       with:
-        name: test-report
-        path: tests/report/
-        #retention-days: 5
+        name: my-artifact
+        path: |
+          TestReport
+          CoverageReport
