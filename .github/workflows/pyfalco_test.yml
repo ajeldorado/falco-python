@@ -42,7 +42,7 @@ jobs:
       run: |
         #python -m pytest tests/ -v -s
         python -m pytest tests/ -v --html= TestReport/TestReport.html
-        python3 -m coverage html -d CoverageReport
+        python -m coverage html -d CoverageReport
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v2
       with:
