@@ -25,6 +25,7 @@ def flesh_out_workspace(mp):
 
     """
     falco_set_optional_variables(mp)  # Optional/hidden boolean flags and variables
+    verify_key_values(mp)
 
     falco_set_spectral_properties(mp)
     falco_set_jacobian_modal_weights(mp)  # Zernike Modes and Subband Weighting of Control Jacobian
@@ -50,7 +51,7 @@ def flesh_out_workspace(mp):
     falco_set_initial_Efields(mp)
 
     falco.imaging.calc_psf_norm_factor(mp)
-    # falco_gen_contrast_over_NI_map(mp)  # Contrast-to-NI Map Calculation (NOT INCLUDED YET)
+    # falco_gen_contrast_over_NI_map(mp)  # Contrast-to-NI Map Calculation
 
     # Initialize Arrays to Store Performance History
     out = falco_init_storage_arrays(mp)
@@ -61,7 +62,34 @@ def flesh_out_workspace(mp):
 
     return out
 
+
 #######################################################################
+
+
+def verify_key_values(mp):
+    """Verify that important text options are valid."""
+    mp.allowedCenterings = frozenset(('pixel', 'interpixel'))
+    mp.allowedCoronagraphTypes = frozenset(('VC', 'VORTEX', 'LC', 'APLC',
+                                            'FLC', 'SPLC', 'HLC'))
+    mp.allowedLayouts = frozenset(('fourier', 'fpm_scale', 'proper',
+                                   'roman_phasec_proper',
+                                   'wfirst_phaseb_proper'))
+
+    # Check centering
+    mp.centering = mp.centering.lower()
+    if mp.centering not in mp.allowedCenterings:
+        raise ValueError('%s is not an allowed value of mp.centering.',
+                         mp.centering)
+
+    # Check coronagraph type
+    mp.coro = mp.coro.upper()
+    if mp.coro not in mp.allowedCoronagraphTypes:
+        raise ValueError('%s is not an allowed value of mp.coro.', mp.coro)
+
+    # Check optical layout
+    mp.layout = mp.layout.lower()
+    if mp.layout not in mp.allowedLayouts:
+        raise ValueError('%s is not an allowed value of mp.layout.', mp.layout)
 
 
 def falco_set_optional_variables(mp):
