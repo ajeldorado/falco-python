@@ -43,8 +43,10 @@ jobs:
         #python -m pytest tests/ -v -s
         python -m pytest tests/ -v --html=./TestReport/TestReport.html
         #python -m pytest tests/ -v --html=./tests/report/TestReport.html
-        #python -m coverage html -d CoverageReport
+        python -m coverage html -d CoverageReport
     - uses: actions/upload-artifact@v2
       with:
         name: my-artifact
-        path: TestReport/TestReport.html
+        path: |
+          TestReport/TestReport.html
+          CoverageReport
