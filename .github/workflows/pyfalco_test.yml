@@ -41,7 +41,8 @@ jobs:
     - name: Test with pytest
       run: |
         #python -m pytest tests/ -v -s
-        python -m pytest tests/ -v --html= TestReport/TestReport.html
+        #python -m pytest tests/ -v --html= TestReport/TestReport.html
+        python -m pytest tests/ -v --html=./TestReport/TestReport.html
         python -m coverage html -d CoverageReport
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v2
