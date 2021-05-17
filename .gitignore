@@ -1,5 +1,8 @@
 
 falco/.idea/**
+falco/data/brief/**
+falco/data/ws/**
+
 
 data/material/*.npy
 zOld/**
@@ -19,3 +22,9 @@ docs/_build
 *.swp
 *.mat
 *~
+
+
+# Exceptions
+!falco/data/brief/.placeholder.txt
+!falco/data/ws/.placeholder.txt
+
