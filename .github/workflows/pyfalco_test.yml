@@ -32,12 +32,13 @@ jobs:
         cd ../../
         python -m pip install --upgrade pip
         pip install pytest
+        pip install pytest-cov
         pip install pytest-html
         pip install numpy
         pip install scipy
         pip install psutil
         pip install matplotlib
-        pip install coverage  
+        #pip install coverage  
     - name: Test with pytest
       run: |
         #python -m pytest tests/ -v --html=./TestReport/TestReport.html
