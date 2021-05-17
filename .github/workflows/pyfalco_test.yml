@@ -31,13 +31,23 @@ jobs:
         python setup.py install
         cd ../../
         python -m pip install --upgrade pip
-        python -m pip install pytest
-        python -m pip install pytest-html
-        python -m pip install numpy
-        python -m pip install scipy
-        python -m pip install psutil
-        python -m pip install matplotlib
+        pip install pytest
+        pip install pytest-cov
+        pip install pytest-html
+        pip install numpy
+        pip install scipy
+        pip install psutil
+        pip install matplotlib
+        #pip install coverage  
     - name: Test with pytest
       run: |
-        #python -m pytest tests/ -v -s
-        python -m pytest tests/ -v --html=./tests/report/TestReport.html
+        #python -m pytest tests/ -v --html=./TestReport/TestReport.html
+        python3 -m pytest --cov-report=  --cov=./falco tests/
+        #python -m coverage html -d CoverageReport
+        #python -m coverage html -d coverage_html
+    - uses: actions/upload-artifact@v2
+      with:
+        name: my-artifact
+        path: htmlcov #TestReport/TestReport.html
+          #TestReport/TestReport.html
+          #CoverageReport
