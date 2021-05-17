@@ -42,12 +42,12 @@ jobs:
     - name: Test with pytest
       run: |
         #python -m pytest tests/ -v --html=./TestReport/TestReport.html
-        python3 -m pytest --cov-report=  --cov=./falco tests/
+        python3 -m pytest --cov-report=html  --cov=./falco tests/
         #python -m coverage html -d CoverageReport
         #python -m coverage html -d coverage_html
     - uses: actions/upload-artifact@v2
       with:
         name: my-artifact
-        path: htmlcov #TestReport/TestReport.html
+        path: ./htmlcov #TestReport/TestReport.html
           #TestReport/TestReport.html
           #CoverageReport
