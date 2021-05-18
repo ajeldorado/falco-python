@@ -10,7 +10,6 @@ def test_area_spot():
     inputs = {"pixresFPM": 6,
               "rhoInner": 3,
               "rhoOuter": np.Inf,
-              "centering": "pixel",
               }
     fpm = gen_annular_fpm(inputs)
 
@@ -19,11 +18,24 @@ def test_area_spot():
     assert isclose(area, areaExpected, rel_tol=1e-3)
 
 
+def test_area_partially_transmissive_spot():
+    inputs = {"pixresFPM": 6,
+              "rhoInner": 3,
+              "rhoOuter": np.Inf,
+              "FPMampFac": 0.2,
+              }
+    fpm = gen_annular_fpm(inputs)
+
+    area = np.sum(1 - fpm)
+    areaExpected = (np.pi * inputs["rhoInner"]**2 * inputs["pixresFPM"]**2 *
+                    (1-inputs["FPMampFac"]))
+    assert isclose(area, areaExpected, rel_tol=1e-3)
+
+
 def test_area_annulus():
     inputs = {"pixresFPM": 6,
               "rhoInner": 3,
               "rhoOuter": 10,
-              "centering": "pixel",
               }
     fpm = gen_annular_fpm(inputs)
 
@@ -38,7 +50,6 @@ def test_translation_spot():
     inputs = {"pixresFPM": res,
               "rhoInner": 3,
               "rhoOuter": np.Inf,
-              "centering": "pixel",
               }
     fpm = gen_annular_fpm(inputs)
 
@@ -58,7 +69,6 @@ def test_translation_annulus():
     inputs = {"pixresFPM": res,
               "rhoInner": 3,
               "rhoOuter": 10,
-              "centering": "pixel",
               }
     fpm = gen_annular_fpm(inputs)
 
@@ -75,6 +85,7 @@ def test_translation_annulus():
 
 if __name__ == '__main__':
     test_area_spot()
+    test_area_partially_transmissive_spot()
     test_area_annulus()
     test_translation_spot()
     test_translation_annulus()

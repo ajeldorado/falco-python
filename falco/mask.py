@@ -710,94 +710,106 @@ def falco_gen_SW_mask(inputs):
 
 
 def falco_gen_bowtie_FPM(inputs):
+    return gen_bowtie_fpm(inputs)
+
+
+def gen_bowtie_fpm(inputs):
     """
     Generate a bowtie FPM using PROPER.
 
-    Outside the outer ring is opaque.If rhoOuter = infinity, then the outer
-    ring is omitted and the mask is cropped down to the size of the inner spot.
-    The inner spot has a specifyable amplitude value. The output array is the
-    smallest size that fully contains the mask.
-
     Parameters
     ----------
-    pixresFPM:  resolution in pixels per lambda_c/D
-    rhoInner:   radius of inner FPM amplitude spot (in lambda_c/D)
-    rhoOuter:   radius of outer opaque FPM ring (in lambda_c/D). Set to
-                infinity for an occulting-spot only FPM
-    FPMampFac:  amplitude transmission of inner FPM spot
-    centering:  pixel centering
+    inputs : dict
+        dictionary of input values
 
     Returns
     -------
-    mask:    cropped-down, 2-D FPM representation. amplitude only
-
+    mask : array_like
+        2-D FPM representation
     """
     check.is_dict(inputs, 'inputs')
 
-    # Set default values of input parameters
-    flagRot180deg = False
-
+    # Required keys
     ang = inputs["ang"]  # Opening angle on each side of the bowtie
     pixresFPM = inputs["pixresFPM"]
     rhoInner = inputs["rhoInner"]
     rhoOuter = inputs["rhoOuter"]
-    centering = inputs["centering"]
-    FPMampFac = 0
 
-    if hasattr(inputs, 'flagRot180deg'):
-        flagRot180deg = inputs["flagRot180deg"]
+    # Optional keys
+    xOffset = inputs.get("xOffset", 0)  # [lambda0/D]
+    yOffset = inputs.get("yOffset", 0)  # [lambda0/D]
+    centering = inputs.get("centering", "pixel")
+    clocking = inputs.get("clocking", 0)  # [degrees]
 
-    dxiUL = 1.0 / pixresFPM  # lambda_c/D per pixel. "UL" for unitless
+    dx = 1.0 / pixresFPM  # lambda_c/D per pixel.
+    maxAbsOffset = np.max(np.array([np.abs(xOffset), np.abs(yOffset)]))
 
     if centering == "interpixel":
-        Narray = ceil_even(2 * rhoOuter / dxiUL)
-    else:
-        Narray = ceil_even(2 * (rhoOuter / dxiUL + 0.5))
+        Narray = ceil_even(2*rhoOuter/dx + 2*maxAbsOffset/dx)
+    elif centering == "pixel":
+        Narray = ceil_even(2*rhoOuter/dx + 2*maxAbsOffset/dx + 1)
 
-    xshift = 0  # translation in x of FPM (in lambda_c/D)
-    yshift = 0  # translation in y of FPM (in lambda_c/D)
+    Dmask = 2 * pixresFPM * rhoOuter  # Diameter of the mask
 
-    Darray = Narray * dxiUL  # width of array in lambda_c/D
-    diam = Darray
+    if "Narray" in inputs:
+        Narray = inputs["Narray"]
+
+    Darray = Narray * dx  # width of array in lambda_c/D
+    bdf = Dmask / Darray
     wl_dummy = 1e-6  # Dummy value--no propagation here, so not used.
 
     if centering == "interpixel":
-        cshift = -diam / 2 / Narray
-    elif flagRot180deg:
-        cshift = -diam / Narray
+        cshift = -Darray / 2 / Narray
     else:
         cshift = 0
 
     # INITIALIZE PROPER. Note that:  bm.dx = diam / bdf / np;
-    wf = proper.prop_begin(diam, wl_dummy, Narray, 1.0)
+    wf = proper.prop_begin(Dmask, wl_dummy, Narray, bdf)
 
     # Outer opaque ring of FPM
-    cx_OD = 0 + cshift + xshift
-    cy_OD = 0 + cshift + yshift
+    cx_OD = 0 + cshift + xOffset
+    cy_OD = 0 + cshift + yOffset
     proper.prop_circular_aperture(wf, rhoOuter, cx_OD, cy_OD)
 
     # Inner spot of FPM (Amplitude transmission can be nonzero)
-    cx_ID = 0 + cshift + xshift
-    cy_ID = 0 + cshift + yshift
+    cx_ID = 0 + cshift + xOffset
+    cy_ID = 0 + cshift + yOffset
     innerSpot = proper.prop_ellipse(wf, rhoInner, rhoInner, cx_ID, cy_ID,
-                                    DARK=True) * (1 - FPMampFac) + FPMampFac
+                                    DARK=True)
 
     # Create the bowtie region
     if ang < 180:
         # Top part
         Lside = 2*rhoOuter
-        xvert = cshift + xshift + np.array([0, Lside*cosd(ang/2), Lside*cosd(ang/2),
-                                            -Lside*cosd(ang/2), -Lside*cosd(ang/2)])
-        yvert = cshift + xshift + np.array([0, Lside*sind(ang/2), Lside, Lside,
-                                            Lside*sind(ang/2)])
+
+        rotMat = np.array([[cosd(clocking), -sind(clocking)],
+                           [sind(clocking), cosd(clocking)]])
+        xTop = np.array([0, Lside*cosd(ang/2), Lside*cosd(ang/2),
+                -Lside*cosd(ang/2), -Lside*cosd(ang/2)])
+        yTop = np.array([0, Lside*sind(ang/2), Lside, Lside,
+                         Lside*sind(ang/2)])
+        for ii in range(len(xTop)):
+            xy = rotMat @ np.array([xTop[ii], yTop[ii]]).reshape((2, 1))
+            xTop[ii] = xy[0]
+            yTop[ii] = xy[1]
+        xvert = cshift + xOffset + xTop
+        yvert = cshift + yOffset + yTop
         bowtieTop = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True)
 
         # Bottom part
-        xvert = cshift + xshift + np.array([0, Lside*cosd(ang/2), Lside*cosd(ang/2),
-                                            -Lside*cosd(ang/2), -Lside*cosd(ang/2)])
-        yvert = cshift + xshift + -1*np.array([0, Lside*sind(ang/2), Lside, Lside,
-                                               Lside*sind(ang/2)])
-        bowtieBottom = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True)
+        xBottom = np.array([0, Lside*cosd(ang/2), Lside*cosd(ang/2),
+                            -Lside*cosd(ang/2), -Lside*cosd(ang/2)])
+        yBottom = -1*np.array([0, Lside*sind(ang/2), Lside, Lside,
+                               Lside*sind(ang/2)])
+        for ii in range(len(xBottom)):
+            xy = rotMat @ np.array([xBottom[ii], yBottom[ii]]).reshape((2, 1))
+            xBottom[ii] = xy[0]
+            yBottom[ii] = xy[1]
+        xvert = cshift + xOffset + xBottom
+        yvert = cshift + yOffset + yBottom
+        bowtieBottom = proper.prop_irregular_polygon(wf, xvert, yvert,
+                                                     DARK=True)
+
     else:
         bowtieTop = 1
         bowtieBottom = 1
@@ -821,17 +833,13 @@ def gen_annular_fpm(inputs):
 
     Parameters
     ----------
-     pixresFPM:  resolution in pixels per lambda_c/D
-     rhoInner:   radius of inner FPM amplitude spot (in lambda_c/D)
-     rhoOuter:   radius of outer opaque FPM ring (in lambda_c/D). Set to
-                 infinity for an occulting-spot only FPM
-     FPMampFac:  amplitude transmission of inner FPM spot
-     centering:  pixel centering
+    inputs : dict
+        dictionary of input values
 
     Returns
     -------
-     mask:    cropped-down, 2-D FPM representation. amplitude only
-
+    mask : array_like
+        2-D FPM representation
     """
     check.is_dict(inputs, 'inputs')
 
@@ -839,11 +847,11 @@ def gen_annular_fpm(inputs):
     pixresFPM = inputs["pixresFPM"]
     rhoInner = inputs["rhoInner"]
     rhoOuter = inputs["rhoOuter"]
-    centering = inputs["centering"]
 
     # Optional keys
     xOffset = inputs.get("xOffset", 0)
     yOffset = inputs.get("yOffset", 0)
+    centering = inputs.get("centering", "pixel")
     FPMampFac = inputs.get("FPMampFac", 0)
 
     dx = 1.0 / pixresFPM  # lambda_c/D per pixel.
