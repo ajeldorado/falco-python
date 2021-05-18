@@ -598,7 +598,8 @@ def falco_gen_SW_mask(inputs):
     rhoOuter = inputs["rhoOuter"]  # outer radius (in lambda_c/D)
     angDeg = inputs["angDeg"]  # angular opening (input in degrees)
     angRad = np.radians(angDeg)
-    whichSide = inputs["whichSide"].lower()
+    whichSide = inputs["whichSide"]
+    print(inputs["whichSide"])
 
     # Optional inputs
     centering = inputs.get("centering", "pixel")
@@ -805,11 +806,11 @@ def falco_gen_bowtie_FPM(inputs):
     return mask * innerSpot * bowtieTop * bowtieBottom
 
 
-def gen_annular_FPM(inputs):
-    return falco_gen_annular_FPM(inputs)
-
-
 def falco_gen_annular_FPM(inputs):
+    return gen_annular_fpm(inputs)
+
+
+def gen_annular_fpm(inputs):
     """
     Generate an annular FPM using PROPER.
 
@@ -834,60 +835,67 @@ def falco_gen_annular_FPM(inputs):
     """
     check.is_dict(inputs, 'inputs')
 
-    # Set default values of input parameters
-    flagRot180deg = False
-
+    # Required keys
     pixresFPM = inputs["pixresFPM"]
     rhoInner = inputs["rhoInner"]
     rhoOuter = inputs["rhoOuter"]
-    FPMampFac = inputs["FPMampFac"]
     centering = inputs["centering"]
 
-    if hasattr(inputs, 'flagRot180deg'):
-        flagRot180deg = inputs["flagRot180deg"]
+    # Optional keys
+    xOffset = inputs.get("xOffset", 0)
+    yOffset = inputs.get("yOffset", 0)
+    FPMampFac = inputs.get("FPMampFac", 0)
 
-    dxiUL = 1.0 / pixresFPM  # lambda_c/D per pixel. "UL" for unitless
+    dx = 1.0 / pixresFPM  # lambda_c/D per pixel.
+    maxAbsOffset = np.max(np.array([np.abs(xOffset), np.abs(yOffset)]))
+
     if np.isinf(rhoOuter):
         if centering == "interpixel":
-            Narray = ceil_even((2 * rhoInner / dxiUL))
-        else:
-            Narray = ceil_even(2 * (rhoInner / dxiUL + 0.5))
+            Narray = ceil_even(2*rhoInner/dx + 2*maxAbsOffset/dx)
+        elif centering == "pixel":
+            Narray = ceil_even(2*rhoInner/dx + 2*maxAbsOffset/dx + 1)
+
+        Dmask = 2 * pixresFPM * rhoInner  # Diameter of the mask
+
     else:
+
         if centering == "interpixel":
-            Narray = ceil_even(2 * rhoOuter / dxiUL)
-        else:
-            Narray = ceil_even(2 * (rhoOuter / dxiUL + 0.5))
+            Narray = ceil_even(2*rhoOuter/dx + 2*maxAbsOffset/dx)
+        elif centering == "pixel":
+            Narray = ceil_even(2*rhoOuter/dx + 2*maxAbsOffset/dx + 1)
 
-    xshift = 0  # translation in x of FPM (in lambda_c/D)
-    yshift = 0  # translation in y of FPM (in lambda_c/D)
+        Dmask = 2 * pixresFPM * rhoOuter  # Diameter of the mask
 
-    Darray = Narray * dxiUL  # width of array in lambda_c/D
-    diam = Darray
-    wl_dummy = 1e-6  # wavelength (m); Dummy value--no propagation here, so not used.
+    if "Narray" in inputs:
+        Narray = inputs["Narray"]
+
+    Darray = Narray * dx  # width of array in lambda_c/D
+    bdf = Dmask / Darray
+    wl_dummy = 1e-6  # wavelength (m); Dummy value
 
     if centering == "interpixel":
-        cshift = -diam / 2 / Narray
-    elif flagRot180deg:
-        cshift = -diam / Narray
+        cshift = -Darray / 2 / Narray
     else:
         cshift = 0
 
-    # INITIALIZE PROPER. Note that:  bm.dx = diam / bdf / np;
-    wf = proper.prop_begin(diam, wl_dummy, Narray, 1.0)
+    # INITIALIZE PROPER. Note that:  bm.dx = Darray / bdf / np;
+    wf = proper.prop_begin(Dmask, wl_dummy, Narray, bdf)
+    proper.prop_set_antialiasing(101)
 
     if not np.isinf(rhoOuter):
         # Outer opaque ring of FPM
-        cx_OD = 0 + cshift + xshift
-        cy_OD = 0 + cshift + yshift
+        cx_OD = 0 + cshift + xOffset
+        cy_OD = 0 + cshift + yOffset
         proper.prop_circular_aperture(wf, rhoOuter, cx_OD, cy_OD)
 
     # Inner spot of FPM (Amplitude transmission can be nonzero)
-    cx_ID = 0 + cshift + xshift
-    cy_ID = 0 + cshift + yshift
+    cx_ID = 0 + cshift + xOffset
+    cy_ID = 0 + cshift + yOffset
     innerSpot = proper.prop_ellipse(wf, rhoInner, rhoInner, cx_ID, cy_ID,
                                     DARK=True) * (1 - FPMampFac) + FPMampFac
 
     mask = np.fft.ifftshift(np.abs(wf.wfarr))  # undo PROPER's fftshift
+
     return mask * innerSpot  # Include the inner FPM spot
 
 
