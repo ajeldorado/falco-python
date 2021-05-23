@@ -40,8 +40,8 @@ jobs:
         pip install matplotlib
     - name: Test with pytest
       run: |
-        python -m pytest tests/ -v --html=./TestReport/TestReport.html
-        python3 -m pytest --cov-report=html  --cov=./falco tests/
+        #python -m pytest tests/ -v --html=./TestReport/TestReport.html
+        python3 -m pytest --cov-report=html  --cov=./falco tests/ -v --html=./TestReport/TestReport.html
     - uses: actions/upload-artifact@v2
       with:
         name: my-artifact
