@@ -42,10 +42,13 @@ jobs:
       run: |
         #python -m pytest tests/ -v --html=./TestReport/TestReport.html
         python3 -m pytest --cov-report=html  --cov=./falco tests/ -v --html=./TestReport/TestReport.html
+    - name: Upload coverage data to coveralls.io
+            run: coveralls
+            env:
+              GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
     - uses: actions/upload-artifact@v2
       with:
         name: my-artifact
         path: |
           ./htmlcov
           ./TestReport/TestReport.html
-      
