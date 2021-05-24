@@ -43,24 +43,12 @@ jobs:
         #python -m pytest tests/ -v --html=./TestReport/TestReport.html
         python3 -m pytest --cov-report=html  --cov=./falco tests/ -v --html=./TestReport/TestReport.html
     - name: Upload coverage data to coveralls.io
-            run: coveralls
-            env:
-              GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      run: coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
     - uses: actions/upload-artifact@v2
       with:
         name: my-artifact
         path: |
           ./htmlcov
           ./TestReport/TestReport.html
-  coveralls:
-    name: Indicate completion to coveralls.io
-    needs: test
-    runs-on: ubuntu-latest
-    container: python:3-slim
-    steps:
-    - name: Finished
-      run: |
-        pip3 install --upgrade coveralls
-        coveralls --finish
-      env:
-        GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
