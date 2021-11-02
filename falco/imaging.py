@@ -411,13 +411,6 @@ def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
     Estar = falco.model.full(mp, modvar)
     Iout = np.abs(Estar)**2  # Apply spectral weighting outside this function
 
-    # Optionally include the planet PSF
-    if(mp.planetFlag):
-        modvar.whichSource = 'exoplanet'
-        Eplanet = falco.model.full(mp, modvar)
-        # Apply spectral weighting outside this function
-        Iout = Iout + np.abs(Eplanet)**2
-
     # Apply weight within the sub-bandpass.
     # Assume polarizations are evenly weighted.
     Iout = mp.full.lambda_weights[wi]/len(mp.full.pol_conds)*Iout
