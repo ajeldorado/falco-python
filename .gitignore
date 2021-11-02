@@ -28,9 +28,15 @@ docs/_build
 *~
 
 
-# Exceptions
+# Exceptions #
+
+!.placeholder.txt
 !**/.placeholder.txt
+!**/*.placeholder.txt
 !falco/data/brief/.placeholder.txt
 !falco/data/config/.placeholder.txt
 !falco/data/ws/.placeholder.txt
+!roman/flatmaps/.placeholder.txt
 !roman/flatmaps/*.fits
+
+
