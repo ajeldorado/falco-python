@@ -42,9 +42,9 @@ def calc_zern_sens(mp):
         maskDict["angDeg"] = mp.Fend.corr.ang  # [degrees]
         maskDict["centering"] = mp.centering
         maskDict["FOV"] = mp.Fend.FOV
-        maskDict["whichSide"] = mp.Fend.sides  # which sides the dark hole exists in
+        maskDict["whichSide"] = np.atleast_1d(mp.Fend.sides)[0]
         if hasattr(mp.Fend, 'shape'):
-            maskDict.shape = mp.Fend.shape
+            maskDict["shape"] = np.atleast_1d(mp.Fend.shape)[0]
         maskCube[:, :, ni], xisDL, etasDL = falco.mask.falco_gen_SW_mask(maskDict)
 
     if not mp.full.flagPROPER:  # When using full models completely made with PROPER
