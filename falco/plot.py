@@ -1,5 +1,6 @@
 """FALCO plotting."""
 import numpy as np
+import pickle
 import matplotlib.pyplot as plt
 
 from . import check
@@ -23,35 +24,35 @@ def plot_trial_output(out):
     plt.plot(range(out.Nitr+1), out.thput)
     plt.xlabel('Iteration')
     plt.ylabel('Throughput')
-    
+
     plt.figure()
     plt.semilogy(range(out.Nitr+1), out.InormHist)
     plt.xlabel('Iteration')
     plt.ylabel('Normalized Intensity')
-    
+
     plt.figure()
     plt.plot(range(out.Nitr), out.log10regHist)
     plt.xlabel('Iteration')
     plt.ylabel('log10 Regularization')
-    
+
     plt.figure()
     plt.plot(range(out.Nitr), 1e9*out.dm1.Srms, '-r',
              range(out.Nitr), 1e9*out.dm2.Srms, '-b')
     plt.xlabel('Iteration')
     plt.ylabel('RMS DM Surface (nm)')
-    
+
     plt.figure()
     plt.imshow(out.DM1V)
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('Final DM1 Voltages')
-    
+
     plt.figure()
     plt.imshow(out.DM2V)
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('Final DM2 Voltages')
-    
+
     iterCount = 1
     plt.figure()
     plt.imshow(out.dm1.Vall[:, :, iterCount])
@@ -75,43 +76,47 @@ def plot_trial_output_from_pickle(fnPickle):
     -------
     None
     """
-    
-    with np.load(fnPickle) as data:
-        out = data['out']
-    
+
+    # with np.load(fnPickle, allow_pickle=True) as data:
+    #     out = data['out']
+    # out = pickle.load(fnPickle)
+
+    with open(fnPickle, 'rb') as pickle_file:
+        out = pickle.load(pickle_file)
+
     plt.figure()
     plt.plot(range(out.Nitr+1), out.thput)
     plt.xlabel('Iteration')
     plt.ylabel('Throughput')
-    
+
     plt.figure()
     plt.semilogy(range(out.Nitr+1), out.InormHist)
     plt.xlabel('Iteration')
     plt.ylabel('Normalized Intensity')
-    
+
     plt.figure()
     plt.plot(range(out.Nitr), out.log10regHist)
     plt.xlabel('Iteration')
     plt.ylabel('log10 Regularization')
-    
+
     plt.figure()
     plt.plot(range(out.Nitr), 1e9*out.dm1.Srms, '-r',
              range(out.Nitr), 1e9*out.dm2.Srms, '-b')
     plt.xlabel('Iteration')
     plt.ylabel('RMS DM Surface (nm)')
-    
+
     plt.figure()
     plt.imshow(out.DM1V)
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('Final DM1 Voltages')
-    
+
     plt.figure()
     plt.imshow(out.DM2V)
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('Final DM2 Voltages')
-    
+
     iterCount = 1
     plt.figure()
     plt.imshow(out.dm1.Vall[:, :, iterCount])
