@@ -342,14 +342,24 @@ def loop(mp, out):
         with falco.util.TicToc('Getting updated summed image'):
             Im = falco.imaging.get_summed_image(mp)
 
+        InormHist[Itr+1] = np.mean(Im[mp.Fend.corr.maskBool])
+        out.InormHist = InormHist
+
+        # Save 'out' structure after each iteration in case the trial terminates early.
+        fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+        print('Saving abridged workspace to this file:\n\t%s\n' % (fnSnippet), end='')
+        with open(fnSnippet, 'wb') as f:
+            pickle.dump(out, f)
+        print('done.')
+
         # REPORTING NORMALIZED INTENSITY
         print('Itr: ', Itr)
-        InormHist[Itr+1] = np.mean(Im[mp.Fend.corr.maskBool])
         print('Prev and New Measured Normalized Intensity:\t\t\t %.2e\t->\t%.2e\t (%.2f x smaller)  \n\n' %
               (InormHist[Itr], InormHist[Itr+1], InormHist[Itr]/InormHist[Itr+1]))
 
         # END OF ESTIMATION + CONTROL LOOP
 
+    # Update 'out' structure and progress plot one last time
     Itr = Itr + 1
 
     # Data to store
@@ -382,17 +392,16 @@ def loop(mp, out):
         if hasattr(mp.dm9, 'V'):
             out.DM9V = mp.dm9.V
 
-    # Save out an abridged workspace
     out.thput = mp.thput_vec
     out.Nitr = mp.Nitr
     out.InormHist = InormHist
 
-    fnOut = os.path.join(mp.path.config, (mp.runLabel + '_snippet.pkl'))
-
-    print('\nSaving abridged workspace to file:\n\t%s\n' % (fnOut), end='')
-    with open(fnOut, 'wb') as f:
+    # Save out an abridged workspace
+    fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+    print('\nSaving abridged workspace to this file:\n\t%s\n' % (fnSnippet), end='')
+    with open(fnSnippet, 'wb') as f:
         pickle.dump(out, f)
-    print('...done.\n')
+    print('done.\n')
 
     # Save out the data from the workspace
     if mp.flagSaveWS:

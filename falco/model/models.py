@@ -626,8 +626,8 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
     else:
         DM2stop = np.ones((NdmPad, NdmPad))
 
-    if(mp.useGPU):
-        log.warning('GPU support not yet implemented. Proceeding without GPU.')
+    # if mp.useGPU:
+    #     log.warning('GPU support not yet implemented. Proceeding without GPU.')
 
     # This block is for BMC surface error testing
     if mp.flagDMwfe:

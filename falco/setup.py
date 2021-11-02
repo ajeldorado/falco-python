@@ -139,6 +139,8 @@ def falco_set_optional_variables(mp):
     mp.path.falco = head
     # Store minimal data to re-construct the data from the run:
     # the "out" structure after a trial goes here
+    if not hasattr(mp.path, 'brief'):
+        mp.path.brief = os.path.join(mp.path.falco, 'data', 'brief')
     if not hasattr(mp.path, 'config'):
         mp.path.config = os.path.join(mp.path.falco, 'data', 'config')
     # Store final workspace data here
