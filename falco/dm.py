@@ -11,10 +11,10 @@ from falco import check
 
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
-    
+
 # import matplotlib.pyplot as plt
 # from astropy.io import fits
-    
+
 def gen_surf_from_act(dm, dx, N):
     """
     Function to compute the surface shape of a deformable mirror. Uses PROPER.
@@ -38,7 +38,7 @@ def gen_surf_from_act(dm, dx, N):
     check.positive_scalar_integer(N, 'N', TypeError)
     # if type(dm) is not falco.config.Object:
     #     raise TypeError('Input "dm" must be of type falco.config.Object')
-        
+
     # Set the order of operations
     flagXYZ = True
     if(hasattr(dm, 'flagZYX')):
@@ -70,15 +70,35 @@ def gen_surf_from_act(dm, dx, N):
             dm.HminStepMethod = 'round'
         # Discretize/Quantize the DM voltages (creates dm.Vquantized)
         dm = discretize_surf(dm, dm.HminStepMethod)
-        H = dm.VtoH*dm.Vquantized
+        heightMap = dm.VtoH*dm.Vquantized
     else:  # Quantization not desired; send raw, continuous voltages
-        H = dm.VtoH*dm.V
-    
+        heightMap = dm.VtoH*dm.V
+
+    if hasattr(dm, 'orientation'):
+        if dm.orientation.lower() == 'rot0':
+            pass  # no change
+        elif dm.orientation.lower() == 'rot90':
+            heightMap = np.rot90(heightMap, 1)
+        elif dm.orientation.lower() == 'rot180':
+            heightMap = np.rot90(heightMap, 2)
+        elif dm.orientation.lower() == 'rot270':
+            heightMap = np.rot90(heightMap, 3)
+        elif dm.orientation.lower() == 'flipxrot0':
+            heightMap = np.flipx(heightMap)
+        elif dm.orientation.lower() == 'flipxrot90':
+            heightMap = np.rot90(np.flipx(heightMap), 1)
+        elif dm.orientation.lower() == 'flipxrot180':
+            heightMap = np.rot90(np.flipx(heightMap), 2)
+        elif dm.orientation.lower() == 'flipxrot270':
+            heightMap = np.rot90(np.flipx(heightMap), 3)
+        else:
+            raise ValueError('invalid value of dm.orientation')
+
     # Generate the DM surface
-    DMsurf = falco.dm.propcustom_dm(bm, H, dm.xc-cshift, dm.yc-cshift,
+    DMsurf = falco.dm.propcustom_dm(bm, heightMap, dm.xc-cshift, dm.yc-cshift,
     dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ,
     inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
-        
+
     return DMsurf
 
 
@@ -118,7 +138,7 @@ def discretize_surf(dm, HminStepMethod):
 def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     """
     Generate a deformable mirror surface almost exactly like PROPER.
-    
+
     Simulate a deformable mirror of specified actuator spacing, including the
     effects of the DM influence function. Has two more optional keywords
     compared to  proper.prop_dm
@@ -138,7 +158,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     spacing : float
         Defines the spacing in meters between actuators; must not be used when
         n_act_across_pupil is specified.
-        
+
     Returns
     -------
     dmap : numpy ndarray
@@ -376,7 +396,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
 def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     """
     Compute the datacube of each influence function.
-    
+
     Influence functions are cropped down or padded up
     to the best size for angular spectrum propagation.
 
@@ -404,7 +424,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     check.real_positive_scalar(dx_dm, 'dx_dm', TypeError)
-          
+
     if "NOCUBE" in kwargs and kwargs["NOCUBE"]:
         flagGenCube = False
     else:
@@ -427,14 +447,14 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     # Default to being centered on a pixel if not specified
     if not(hasattr(dm, 'centering')):
         dm.centering = 'pixel'
-        
+
     # Compute coordinates of original influence function
     Ninf0 = dm.inf0.shape[0]  # Number of points across inf func at native res
     x_inf0 = np.linspace(-(Ninf0-1)/2., (Ninf0-1)/2., Ninf0)*dm.dx_inf0
     # True for even- or odd-sized influence function maps as long as they are
     # centered on the array.
     [Xinf0, Yinf0] = np.meshgrid(x_inf0, x_inf0)
-    
+
     # Number of points across the DM surface at native inf func resolution
     Ndm0 = falco.util.ceil_even(Ninf0 + (dm.Nact - 1)*(dm.dm_spacing/dm.dx_inf0))
     # Number of points across the (un-rotated) DM surface at new, desired res.
@@ -443,7 +463,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     # desired resolution and z-rotation angle.
     dm.Ndm = int(falco.util.ceil_even((abs(np.array([np.sqrt(2.)*cos(radians(45.-dm.zrot)),
             np.sqrt(2.)*sin(radians(45.-dm.zrot))])).max())*Ndm0*(dm.dx_inf0/dm.dx))+2)
-    
+
     # Compute list of initial actuator center coordinates (in actutor widths).
     if(dm.flag_hex_array):  # Hexagonal, hex-packed grid
         raise ValueError('flag_hex_array option not implemented yet.')
@@ -477,11 +497,11 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
 #        y_vec = dm.Yact.reshape(dm.Nact*dm.Nact,order='F')
         x_vec = dm.Xact.reshape(dm.Nact*dm.Nact)
         y_vec = dm.Yact.reshape(dm.Nact*dm.Nact)
-    
+
     dm.NactTotal = x_vec.shape[0]  # Total number of actuators in the 2-D array
     dm.xy_cent_act = np.zeros((2, dm.NactTotal))  # Initialize
 
-    # Compute the rotation matrix to apply to the influence function and 
+    # Compute the rotation matrix to apply to the influence function and
     #  actuator center locations
     tlt = np.zeros(3)
     tlt[0] = radians(dm.xtilt)
@@ -496,19 +516,49 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     cg = cos(tlt[2])
 
     if XYZ:
-        Mrot = np.array([[cb * cg, sa * sb * cg - ca * sg, ca * sb * cg + sa * sg, 0.0],
-                 [cb * sg, sa * sb * sg + ca * cg, ca * sb * sg - sa * cg, 0.0],
-                [-sb,      sa * cb,                ca * cb,                0.0],
-                     [0.0,                    0.0,                    0.0, 1.0]])
+        Mrot = np.array(
+            [[cb * cg, sa * sb * cg - ca * sg, ca * sb * cg + sa * sg, 0.0],
+             [cb * sg, sa * sb * sg + ca * cg, ca * sb * sg - sa * cg, 0.0],
+             [-sb, sa * cb, ca * cb, 0.0],
+             [0.0, 0.0, 0.0, 1.0]])
     else:
-        Mrot = np.array([               [cb * cg,               -cb * sg,       sb, 0.0],
-                [ca * sg + sa * sb * cg, ca * cg - sa * sb * sg, -sa * cb, 0.0],
-                [sa * sg - ca * sb * cg, sa * cg + ca * sb * sg,  ca * cb, 0.0],
-                                   [0.0,                    0.0,      0.0, 1.0]])
-    
+        Mrot = np.array(
+            [[cb * cg, -cb * sg, sb, 0.0],
+             [ca * sg + sa * sb * cg, ca * cg - sa * sb * sg, -sa * cb, 0.0],
+             [sa * sg - ca * sb * cg, sa * cg + ca * sb * sg, ca * cb, 0.0],
+             [0.0, 0.0, 0.0, 1.0]])
+
+    # # Compute the actuator center coordinates in units of actuator spacings
+    # for iact in range(dm.NactTotal):
+    #     xyzVals = np.array([x_vec[iact], y_vec[iact], 0., 1.])
+    #     xyzValsRot = Mrot @ xyzVals
+    #     dm.xy_cent_act[0, iact] = xyzValsRot[0].copy()
+    #     dm.xy_cent_act[1, iact] = xyzValsRot[1].copy()
+
+    actIndMat = np.arange(dm.Nact**2, dtype=int).reshape((dm.Nact, dm.Nact))
+    if hasattr(dm, 'orientation'):
+        if dm.orientation.lower() == 'rot0':
+            pass  # no change
+        elif dm.orientation.lower() == 'rot90':
+            actIndMat = np.rot90(actIndMat, 1)
+        elif dm.orientation.lower() == 'rot180':
+            actIndMat = np.rot90(actIndMat, 2)
+        elif dm.orientation.lower() == 'rot270':
+            actIndMat = np.rot90(actIndMat, 3)
+        elif dm.orientation.lower() == 'flipxrot0':
+            actIndMat = np.flipx(actIndMat)
+        elif dm.orientation.lower() == 'flipxrot90':
+            actIndMat = np.rot90(np.flipx(actIndMat), 1)
+        elif dm.orientation.lower() == 'flipxrot180':
+            actIndMat = np.rot90(np.flipx(actIndMat), 2)
+        elif dm.orientation.lower() == 'flipxrot270':
+            actIndMat = np.rot90(np.flipx(actIndMat), 3)
+        else:
+            raise ValueError('invalid value of dm.orientation')
+
     # Compute the actuator center coordinates in units of actuator spacings
-    for iact in range(dm.NactTotal):
-        xyzVals = np.array([x_vec[iact], y_vec[iact], 0., 1.])
+    for iact, iIndex in enumerate(actIndMat.flatten()):
+        xyzVals = np.array([x_vec[iIndex], y_vec[iIndex], 0., 1.])
         xyzValsRot = Mrot @ xyzVals
         dm.xy_cent_act[0, iact] = xyzValsRot[0].copy()
         dm.xy_cent_act[1, iact] = xyzValsRot[1].copy()
@@ -521,7 +571,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
 
     ydim = inf0pad.shape[0]
     xdim = inf0pad.shape[1]
-    
+
     xd2 = np.fix(xdim / 2.) + 1
     yd2 = np.fix(ydim / 2.) + 1
     cx = np.arange(xdim) + 1. - xd2
@@ -532,13 +582,13 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     ysNewVec = np.zeros(ydim*ydim)
     Xs0Vec = Xs0.reshape(xdim*xdim)
     Ys0Vec = Ys0.reshape(ydim*ydim)
-    
+
     for ii in range(Xs0.size):
         xyzVals = np.array([Xs0Vec[ii], Ys0Vec[ii], 0., 1.])
         xyzValsRot = Mrot @ xyzVals
         xsNewVec[ii] = xyzValsRot[0]
         ysNewVec[ii] = xyzValsRot[1]
-    
+
     # Calculate the interpolated DM grid at the new resolution
     # (set extrapolated values to 0.0)
     dm.infMaster = griddata((xsNewVec, ysNewVec), inf0pad.reshape(Npad*Npad),
@@ -563,7 +613,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
         infMaster2 = dm.infMaster[int(counter/2):int(-counter/2),
                                   int(counter/2):int(-counter/2)].copy()
         dm.infMaster = infMaster2
-    
+
     Npad = Ninf0pad
 
     # True for even- or odd-sized influence function maps as long as they are
@@ -572,7 +622,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     [Xinf0, Yinf0] = np.meshgrid(x_inf0, x_inf0)
 
     # Translate and resample the master influence function to be at each 
-    # actuator's location in the pixel grid 
+    # actuator's location in the pixel grid
 
     # Compute the size of the postage stamps.
     # Number of points across the influence function array at the DM plane's
@@ -620,10 +670,12 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
 
     dm.y_pupPad = dm.x_pupPad
 
+    dm.act_ele = np.arange(dm.NactTotal)  # Include all actuators
+
     # Make NboxPad-sized postage stamps for each actuator's influence function
     if(flagGenCube):
         if not dm.flag_hex_array:
-            print("  Influence function padded from %d to %d points for A.S. propagation." % (Nbox,dm.NboxAS))
+            print("  Influence function padded from %d to %d points for A.S. propagation." % (Nbox, dm.NboxAS))
 
         print('Computing datacube of DM influence functions... ', end='')
 
@@ -640,32 +692,30 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
         [dm.Xbox0, dm.Ybox0] = np.meshgrid(dm.x_box0, dm.x_box0)  # meters, interpixel-centered coordinates for the master influence function
 
         # (Allow for later) Limit the actuators used to those within 1 actuator width of the pupil
-        r_cent_act_box_inM = np.sqrt(dm.xy_cent_act_box_inM[0, :]**2 + dm.xy_cent_act_box_inM[1, :]**2)
+        # r_cent_act_box_inM = np.sqrt(dm.xy_cent_act_box_inM[0, :]**2 + dm.xy_cent_act_box_inM[1, :]**2)
         # Compute and store all the influence functions:
         dm.inf_datacube = np.zeros((Nbox, Nbox, dm.NactTotal))  # initialize array of influence function "postage stamps"
-        dm.act_ele = np.arange(dm.NactTotal)  # Initialize as including all actuators
-
         inf_datacube = np.zeros((dm.NactTotal, Nbox, Nbox))
 
         interp_spline = RectBivariateSpline(x_inf0, x_inf0, dm.infMaster)  # RectBivariateSpline is faster in 2-D than interp2d
         # Refer to https://scipython.com/book/chapter-8-scipy/examples/two-dimensional-interpolation-with-scipyinterpolaterectbivariatespline/
 
         for iact in range(dm.NactTotal):
-           xbox = dm.x_box0 - (dm.xy_cent_act_inPix[0, iact]-dm.xy_cent_act_box[0, iact])*dx_dm # X = X0 -(x_true_center-x_box_center)
-           ybox = dm.x_box0 - (dm.xy_cent_act_inPix[1, iact]-dm.xy_cent_act_box[1, iact])*dx_dm # Y = Y0 -(y_true_center-y_box_center)
-           dm.inf_datacube[:, :, iact] = interp_spline(ybox, xbox)
-           inf_datacube[iact, :, :] = interp_spline(ybox, xbox)
+            xbox = dm.x_box0 - (dm.xy_cent_act_inPix[0, iact]-dm.xy_cent_act_box[0, iact])*dx_dm # X = X0 -(x_true_center-x_box_center)
+            ybox = dm.x_box0 - (dm.xy_cent_act_inPix[1, iact]-dm.xy_cent_act_box[1, iact])*dx_dm # Y = Y0 -(y_true_center-y_box_center)
+            dm.inf_datacube[:, :, iact] = interp_spline(ybox, xbox)
+            inf_datacube[iact, :, :] = interp_spline(ybox, xbox)
 
         print('done.')
 
     else:
         dm.act_ele = np.arange(dm.NactTotal)
-   
-    
+
+
 def apply_neighbor_rule(Vin, Vlim, Nact):
     """
     Apply the neighbor rule to DM commands.
-    
+
     Find neighboring actuators that exceed a specified difference
     in voltage and to scale down those voltages until the rule is met.
 
