@@ -599,7 +599,6 @@ def falco_gen_SW_mask(inputs):
     angDeg = inputs["angDeg"]  # angular opening (input in degrees)
     angRad = np.radians(angDeg)
     whichSide = inputs["whichSide"]
-    print(inputs["whichSide"])
 
     # Optional inputs
     centering = inputs.get("centering", "pixel")
