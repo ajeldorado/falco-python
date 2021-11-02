@@ -444,9 +444,9 @@ def loop(mp, out):
 
         print('done.\n\n')
     else:
-        print('Entire workspace NOT saved because mp.flagSaveWS==false')
+        print('Entire workspace NOT saved because mp.flagSaveWS==False')
 
     # END OF main FUNCTION
-    print('END OF WFSC LOOP')
+    print('*** END OF WFSC LOOP ***')
 
     return None

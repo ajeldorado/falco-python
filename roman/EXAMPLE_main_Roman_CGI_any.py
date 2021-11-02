@@ -1,30 +1,35 @@
 """
-Script to run the high-order WFSC with the Roman CGI's SPC-Spec mode.
+Script to run high-order WFSC with any of the Roman CGI's mask configurations.
 
 Requires the Roman CGI Phase C model and data from
 https://sourceforge.net/projects/cgisim/
 """
 import numpy as np
+import os
 import copy
-from astropy.io import fits
 import matplotlib.pyplot as plt
 
 import falco
 import proper
 
+# %% Uncomment the config file for the mask configuration that you want
+
 import EXAMPLE_config_Roman_CGI_SPC_Spec_Band3 as CONFIG
+# import EXAMPLE_config_Roman_CGI_SPC_WFOV_Band4 as CONFIG
+
 
 # %% Load the config file (a script)
 mp = CONFIG.mp
 
 
-# %% Define directories for data output
+# %% Define different directories for data output
 # #
-# # Location of config files and minimal output files.
-# mp.path.config =   # Default is mp.path.falco + 'data/brief/'
+# # Location of minimal output files.
+# mp.path.brief =   # Default is mp.path.falco + '/data/brief/'
 # #
 # # (Mostly) complete workspace from end of trial.
-# mp.path.ws =  # Default is mp.path.falco + 'data/ws/'
+# mp.flagSaveWS = False  # Set to True to save the final mp object.
+# mp.path.ws =  # Default is mp.path.falco + '/data/ws/'
 
 
 # %% Overwrite values from config file if desired
@@ -38,11 +43,13 @@ mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some l
 mp.TrialNum = 1
 mp.SeriesNum = 1
 
-# QUICK CHECK WITH JUST 1 WAVELENGTH AND POLARIZATION
+
+# %% SETTINGS FOR QUICK RUN: SINGLE WAVELENGTH, SINGLE POLARIZATION, AND NO PROBING
 mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1  # Number of wavelengths to used to approximate an image in each sub-bandpass
 mp.full.pol_conds = [10, ]
+mp.estimator = 'perfect'
 mp.Nitr = 3  # Number of wavefront control iterations
 
 
@@ -111,5 +118,6 @@ falco.wfsc.loop(mp, out)
 # %% Plot the output
 falco.plot.plot_trial_output(out)
 
-# fnPickle = mp.runLabel + '_snippet.pkl'
-# falco.plot.plot_trial_output_from_pickle(fnPickle)
+# Or, load and plot the output data from pickled data
+fnPickle = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+falco.plot.plot_trial_output_from_pickle(fnPickle)
