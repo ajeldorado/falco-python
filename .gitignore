@@ -7,6 +7,10 @@ falco/data/ws/**
 data/material/*.npy
 zOld/**
 
+#--Sync only example files
+roman/**
+!roman/EXAMPLE_*
+
 **.fits
 **.pkl
 examples/**.pkl
@@ -27,4 +31,4 @@ docs/_build
 # Exceptions
 !falco/data/brief/.placeholder.txt
 !falco/data/ws/.placeholder.txt
-
+!roman/flatmaps/*.fits
