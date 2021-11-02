@@ -4,7 +4,7 @@ import numpy as np
 
 import proper
 import falco
-import testing_defaults_WFIRST_LC as DEFAULTS
+import testing_config_LC as DEFAULTS
 
 
 class TestFitSurfToAct(unittest.TestCase):
