@@ -55,9 +55,12 @@ mp.estimator = 'perfect'
 mp.Nitr = 3  # Number of wavefront control iterations
 mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
 
-# %% Keep only the central bandpass FPM if using just one wavelength
+
+# %% Keep only the central bandpasses's FPM if using just one wavelength with HLC
+
 if (mp.Nsbp == 1) and (mp.coro == 'HLC'):
-    mp.compact.FPMcube = mp.compact.FPMcube[:, :, 1]
+    N = mp.compact.fpmCube.shape[0]
+    mp.compact.fpmCube = mp.compact.fpmCube[:, :, 1].reshape((N, N, 1))
 
 
 # %% Perform an idealized phase retrieval (get the E-field directly)
