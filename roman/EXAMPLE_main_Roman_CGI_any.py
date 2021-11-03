@@ -53,6 +53,11 @@ mp.Nwpsbp = 1  # Number of wavelengths to used to approximate an image in each s
 mp.full.pol_conds = [10, ]
 mp.estimator = 'perfect'
 mp.Nitr = 3  # Number of wavefront control iterations
+mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
+
+# %% Keep only the central bandpass FPM if using just one wavelength
+if (mp.Nsbp == 1) and (mp.coro == 'HLC'):
+    mp.compact.FPMcube = mp.compact.FPMcube[:, :, 1]
 
 
 # %% Perform an idealized phase retrieval (get the E-field directly)
