@@ -297,7 +297,7 @@ SP0 = np.rot90(SP0, 2)
 SP1 = falco.mask.rotate_shift_downsample_pupil_mask(
     SP0, mp.P1.full.Nbeam, mp.P1.compact.Nbeam, 0, 0, 0)
 mp.P3.compact.mask = falco.util.pad_crop(SP1, falco.util.ceil_even(np.max(SP1.shape)))
-plt.figure(21); plt.imshow(SP1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
+# plt.figure(21); plt.imshow(SP1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
 
 # Lyot stop shape
 mp.LSshape = 'bowtie'
@@ -315,7 +315,7 @@ LS0 = falco.util.pad_crop(LS0, 1001)
 LS1 = falco.mask.rotate_shift_downsample_pupil_mask(
     LS0, 1000, mp.P4.compact.Nbeam, 0, 0, 0)
 mp.P4.compact.mask = falco.util.pad_crop(LS1, falco.util.ceil_even(np.max(LS1.shape)))
-plt.figure(22); plt.imshow(LS1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
+# plt.figure(22); plt.imshow(LS1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
 
 # FPM parameters
 mp.F3.compact.res = 6  # sampling of FPM for compact model [pixels per lambda0/D]
@@ -334,4 +334,4 @@ FPM0 = falco.util.pad_crop(FPM0, falco.util.ceil_odd(diam0+10))
 FPM1 = falco.mask.rotate_shift_downsample_pupil_mask(
     FPM0, diam0, diam1, 0, 0, 0)
 mp.F3.compact.mask = falco.util.pad_crop(FPM1, falco.util.ceil_even(np.max(FPM1.shape)))
-plt.figure(23); plt.imshow(FPM1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
+# plt.figure(23); plt.imshow(FPM1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)

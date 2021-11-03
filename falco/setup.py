@@ -438,7 +438,6 @@ def falco_set_spectral_properties(mp):
         wvl = lambdas[duplicate_inds[idup]]
         weight = lambda_weights_all[duplicate_inds[idup]]
         ind = np.where(np.abs(mp.full.lambdas-wvl) <= 1e-11)
-        print(ind)
         mp.full.lambda_weights_all[ind] = mp.full.lambda_weights_all[ind] + weight
     mp.full.NlamUnique = len(inds_unique)
     pass
