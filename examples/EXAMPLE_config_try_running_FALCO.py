@@ -1,9 +1,13 @@
+import os
 import numpy as np
-import sys
-sys.path.append('../')
+
 import falco
 
+# import sys
+# sys.path.append('../')
+
 mp = falco.config.ModelParameters()
+mp.path = falco.config.Object()
 
 ###--Record Keeping
 mp.SeriesNum = 867
@@ -267,36 +271,65 @@ mp.P4.full.Nbeam = 250 # P4 size must be the same as P1 for Vortex.
 mp.full = falco.config.Object() #--Initialize
 mp.compact = falco.config.Object() #--Initialize
 
-#--Pupil definition
-mp.whichPupil = 'LUVOIR_B_offaxis'
+# %% Entrance Pupil (P1) Definition and Generation
+mp.whichPupil = 'LUVOIR_B'  # Used only for run label
+
 mp.P1.IDnorm = 0.00 #--ID of the central obscuration [diameter]. Used only for computing the RMS DM surface from the ID to the OD of the pupil. OD is assumed to be 1.
 mp.P1.ODnorm = 1.00 # Outer diameter of the telescope [diameter]
-mp.P1.D = 7.989 #--meters, circumscribed. The segment size is 0.955 m, flat-to-flat, and the gaps are 6 mm. %--telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
-mp.P1.Dfac = 1 #--Factor scaling inscribed OD to circumscribed OD for the telescope pupil.
-mp.P1.wGap = 6e-3/mp.P1.D # Fractional width of segment gaps
-        
-#--Aperture stop (in apodizer plane) definition
-mp.flagApod = True   #--Whether to use an apodizer or not. Can be a simple aperture stop
-mp.apodType = 'Simple'
-mp.P3.IDnorm = 0
-mp.P3.ODnorm = 0.84
-mp.P3.Nstrut = 0 # Number of struts
-mp.P3.angStrut = np.array([]) # Array of struct angles (deg)
-mp.P3.wStrut = 0 # Strut widths (fraction of Nbeam)
-mp.P3.stretch = 1. # - Create an elliptical aperture by changing Nbeam along
-#%                   the horizontal direction by a factor of stretch (PROPER
- 
+mp.P1.D = 7.989  # circumscribed telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
 
-mp.full.flagGenApod = True
-mp.compact.flagGenApod = True
+# Generate the entrance pupil aperture
+inputs = {"centering": mp.centering}
+
+# Full model:
+inputs["Nbeam"] = mp.P1.full.Nbeam
+mp.P1.full.mask = falco.util.pad_crop(
+    falco.mask.falco_gen_pupil_LUVOIR_B(inputs),
+    2**(falco.util.nextpow2(inputs["Nbeam"])))
+# Compact model
+inputs["Nbeam"] = mp.P1.compact.Nbeam
+mp.P1.compact.mask = falco.util.pad_crop(
+    falco.mask.falco_gen_pupil_LUVOIR_B(inputs),
+    2**(falco.util.nextpow2(inputs["Nbeam"])))
 
 
-#--Lyot stop padding
-mp.P4.IDnorm = 0. #--Lyot stop ID [Dtelescope]
-mp.P4.ODnorm = 0.82 #--Lyot stop OD [Dtelescope]
-mp.P4.padFacPct = 0
+# %% "Apodizer" (P3) Definition and Generation
+mp.flagApod = True  # Whether to use an apodizer or not
+
+# Inputs common to both the compact and full models
+inputs = {"OD": 0.84}
+
+# Full model only
+inputs["Nbeam"] = mp.P1.full.Nbeam
+inputs["Npad"] = 2**(falco.util.nextpow2(mp.P1.full.Nbeam))
+mp.P3.full.mask = falco.mask.falco_gen_pupil_Simple(inputs)
+
+# Compact model only
+inputs["Nbeam"] = mp.P1.compact.Nbeam
+inputs["Npad"] = 2**(falco.util.nextpow2(mp.P1.compact.Nbeam))
+mp.P3.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)
+
+# %% Lyot stop (P4) Definition and Generation
+mp.P4.IDnorm = 0  # Lyot stop ID [Dtelescope]
+mp.P4.ODnorm = 0.82  # Lyot stop OD [Dtelescope]
+
+# Inputs common to both the compact and full models
+inputs = {}
+inputs["ID"] = mp.P4.IDnorm
+inputs["OD"] = mp.P4.ODnorm
+
+# Full model
+inputs["Nbeam"] = mp.P4.full.Nbeam
+inputs["Npad"] = 2**(falco.util.nextpow2(mp.P4.full.Nbeam))
+mp.P4.full.mask = falco.mask.falco_gen_pupil_Simple(inputs)
+
+# Compact model
+inputs["Nbeam"] = mp.P4.compact.Nbeam
+inputs["Npad"] = 2**(falco.util.nextpow2(mp.P4.compact.Nbeam))
+mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)
 
 
-## VC-Specific Values
 
-mp.F3.VortexCharge = 6 #--Charge of the vortex mask
+# %% VC-Specific Values
+
+mp.F3.VortexCharge = 6  # Charge of the vortex mask

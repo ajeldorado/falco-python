@@ -38,9 +38,14 @@ def lyot(mp, im, idm):
     wvl = mp.sbp_centers[modvar.sbpIndex]
     mirrorFac = 2.  # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
-    
+
+    if mp.flagRotation:
+        NrelayFactor = 1
+    else:
+        NrelayFactor = 0  # zero out the number of relays
+
     if mp.coro.upper() in ('LC', 'APLC', 'FLC', 'SPLC'):
-        fpm = mp.F3.compact.ampMask
+        fpm = mp.F3.compact.mask
         transOuterFPM = 1.  # transmission of points outside the FPM.
     elif mp.coro.upper() in ('HLC',):
         fpm = np.squeeze(mp.compact.fpmCube[:, :, modvar.sbpIndex])  # complex
@@ -68,7 +73,7 @@ def lyot(mp, im, idm):
     # Re-image the apodizer from pupil P3 back to pupil P2.
     if(mp.flagApod):
         apodReimaged = pad_crop(mp.P3.compact.mask, NdmPad)
-        apodReimaged = fp.relay(apodReimaged, mp.Nrelay2to3, mp.centering)
+        apodReimaged = fp.relay(apodReimaged, NrelayFactor*mp.Nrelay2to3, mp.centering)
     else:
         apodReimaged = np.ones((NdmPad, NdmPad))
 
@@ -110,7 +115,7 @@ def lyot(mp, im, idm):
     """Propagation"""
     # Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein  # E-field at pupil plane P1
-    EP2 = fp.relay(EP1, mp.Nrelay1to2, mp.centering)
+    EP2 = fp.relay(EP1, NrelayFactor*mp.Nrelay1to2, mp.centering)
 
     # Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not abs(mp.d_P2_dm1) == 0:
@@ -168,9 +173,9 @@ def lyot(mp, im, idm):
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
                 # Second, negate the coordinates of the box used.
                 dEP2box = apodReimaged[indBoxAS]*dEP2box # Apply 180deg-rotated SP mask.
-                dEP3box = np.rot90(dEP2box, k=2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+                dEP3box = np.rot90(dEP2box, k=NrelayFactor*2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
                 # Negate and reverse coordinate values to effectively rotate by 180 degrees. No change if 360 degree rotation.
-                if np.mod(mp.Nrelay2to3, 2) == 1:
+                if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
                     x_box = -1*x_box[::-1]
                     y_box = -1*y_box[::-1]
                
@@ -186,12 +191,12 @@ def lyot(mp, im, idm):
         
                     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
                     EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-                    EP4sub = fp.relay(EP4sub, mp.Nrelay3to4-1, mp.centering)
+                    EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
                     
                     # Full Lyot plane pupil (for Babinet)
                     EP4noFPM = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad),dtype=np.complex)
                     EP4noFPM[indBoxAS] = dEP2box # Propagating the E-field from P2 to P4 without masks gives the same E-field. 
-                    EP4noFPM = fp.relay(EP4noFPM, mp.Nrelay2to3+mp.Nrelay3to4, mp.centering) # Get the correct orientation 
+                    EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering) # Get the correct orientation 
                     EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
                     EP4 = transOuterFPM*EP4noFPM - EP4sub  # Babinet's principle to get E-field at Lyot plane
                 
@@ -200,12 +205,12 @@ def lyot(mp, im, idm):
                     
                     # MFT to Lyot plane
                     EP4 = fp.mft_f2p(EF3, mp.fl,wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-                    EP4 = fp.relay(EP4, mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
+                    EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
                     
                 EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
     
                 # MFT to camera
-                EP4 = fp.relay(EP4, mp.NrelayFend, mp.centering) # Rotate the final image 180 degrees if necessary
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering) # Rotate the final image 180 degrees if necessary
                 EFend = fp.mft_p2f(EP4, mp.fl,wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
                 
                 Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
@@ -250,9 +255,9 @@ def lyot(mp, im, idm):
                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
                 # Second, negate the coordinates of the box used.
                 dEP2box = apodReimaged[indBoxAS]*dEP2box  # Apply 180deg-rotated SP mask.
-                dEP3box = np.rot90(dEP2box, k=2*mp.Nrelay2to3)  # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+                dEP3box = np.rot90(dEP2box, k=2*NrelayFactor*mp.Nrelay2to3)  # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
                 # Negate and rotate coordinates to effectively rotate by 180 degrees. No change if 360 degree rotation.
-                if np.mod(mp.Nrelay2to3, 2) == 1:
+                if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
                     x_box = -1*x_box[::-1]
                     y_box = -1*y_box[::-1]
        
@@ -268,11 +273,11 @@ def lyot(mp, im, idm):
         
                     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
                     EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering) # Subtrahend term for the Lyot plane E-field    
-                    EP4sub = fp.relay(EP4sub, mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
+                    EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
                                     
                     EP4noFPM = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=np.complex)
                     EP4noFPM[indBoxAS] = dEP2box  # Propagating the E-field from P2 to P4 without masks gives the same E-field.
-                    EP4noFPM = fp.relay(EP4noFPM, mp.Nrelay2to3+mp.Nrelay3to4, mp.centering) # Get the number or re-imaging relays between pupils P3 and P4. 
+                    EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering) # Get the number or re-imaging relays between pupils P3 and P4. 
                     EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
                     EP4 = transOuterFPM*EP4noFPM - EP4sub  # Babinet's principle to get E-field at Lyot plane
                 
@@ -282,12 +287,12 @@ def lyot(mp, im, idm):
         
                     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
                     EP4 = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-                    EP4 = fp.relay(EP4, mp.Nrelay3to4-1, mp.centering)
+                    EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
                 
                 EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
     
                 # MFT to detector
-                EP4 = fp.relay(EP4, mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
                 
                 Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
@@ -318,7 +323,7 @@ def lyot(mp, im, idm):
             EP2eff = fp.ptp(Edm2, mp.P2.compact.dx*NdmPad, wvl, -dz2)
         
         # Rotate 180 degrees mp.Nrelay2to3 times to go from pupil P2 to P3
-        EP3 = fp.relay(EP2eff, mp.Nrelay2to3, mp.centering)
+        EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
     
         # Apply apodizer mask
         if mp.flagApod:
@@ -368,11 +373,11 @@ def lyot(mp, im, idm):
     
                 # MFT from FPM to Lyot stop (Nominal term transOuterFPM*EP4noFPM subtracts out to 0 since it ignores the FPM change).
                 EP4 = 0 - rect_mat_pre @ dEF3box @ rect_mat_post  # MFT from FPM (F3) to Lyot stop plane (P4)
-                EP4 = fp.relay(EP4, mp.Nrelay3to4-1, mp.centering)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
                 EP4 = mp.P4.compact.croppedMask * EP4  # Apply Lyot stop
     
                 # MFT to final focal plane
-                EP4 = fp.relay(EP4, mp.NrelayFend, mp.centering)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
     
                 Gzdl[:, Gindex] = mp.dm9.act_sens / stepFac * mp.dm9.weight*EFend[mp.Fend.corr.maskBool] / np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
@@ -408,10 +413,15 @@ def vortex(mp, im, idm):
     modvar = falco.config.Object()  # Initialize the new structure
     modvar.sbpIndex = mp.jac.sbp_inds[im]
     modvar.zernIndex = mp.jac.zern_inds[im]
-    
+
     wvl = mp.sbp_centers[modvar.sbpIndex]
     mirrorFac = 2.  # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
+
+    if mp.flagRotation:
+        NrelayFactor = 1
+    else:
+        NrelayFactor = 0  # zero out the number of relays
 
     # Minimum FPM resolution for Jacobian calculations (in pixels per lambda/D)
     minPadFacVortex = 8
@@ -453,7 +463,7 @@ def vortex(mp, im, idm):
     # Re-image the apodizer from pupil P3 back to pupil P2.
     if(mp.flagApod):
         apodReimaged = pad_crop(mp.P3.compact.mask, NdmPad)
-        apodReimaged = fp.relay(apodReimaged, mp.Nrelay2to3, mp.centering)
+        apodReimaged = fp.relay(apodReimaged, NrelayFactor*mp.Nrelay2to3, mp.centering)
     else:
         apodReimaged = np.ones((NdmPad, NdmPad))
 
@@ -497,7 +507,7 @@ def vortex(mp, im, idm):
     """Propagation"""
     # Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein  # E-field at pupil plane P1
-    EP2 = fp.relay(EP1, mp.Nrelay1to2, mp.centering)
+    EP2 = fp.relay(EP1, NrelayFactor*mp.Nrelay1to2, mp.centering)
 
     # Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not (abs(mp.d_P2_dm1) == 0):  # E-field arriving at DM1
@@ -566,7 +576,7 @@ def vortex(mp, im, idm):
                 EP2eff[indBoxAS] = dEP2boxEff
                 
                 # Forward propagate from P2 (effective) to P3
-                EP3 = fp.relay(EP2eff, mp.Nrelay2to3, mp.centering)
+                EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
                 
                 # Pad pupil P3 for FFT
                 EP3pad = pad_crop(EP3, Nfft1)
@@ -576,7 +586,7 @@ def vortex(mp, im, idm):
                 
                 # FFT from Vortex FPM to Lyot Plane
                 EP4 = fftshift(fft2(EF3))/Nfft1
-                EP4 = fp.relay(EP4, mp.Nrelay3to4-1, mp.centering)  # Add more re-imaging relays if necessary
+                EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Add more re-imaging relays if necessary
                 if(Nfft1 > mp.P4.compact.Narr):
                     EP4 = mp.P4.compact.croppedMask*pad_crop(EP4, mp.P4.compact.Narr)  # Crop EP4 and then apply Lyot stop 
                 else:
@@ -584,7 +594,7 @@ def vortex(mp, im, idm):
                     pass
                 
                 # MFT to camera
-                EP4 = fp.relay(EP4, mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
                 
                 Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
@@ -646,7 +656,7 @@ def vortex(mp, im, idm):
                 EP2eff[indBoxAS] = dEP2boxEff
 
                 # Forward propagate from P2 (effective) to P3
-                EP3 = fp.relay(EP2eff, mp.Nrelay2to3, mp.centering)
+                EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
     
                 # Pad pupil P3 for FFT
                 EP3pad = pad_crop(EP3, Nfft2)
@@ -656,7 +666,7 @@ def vortex(mp, im, idm):
     
                 # FFT from Vortex FPM to Lyot Plane
                 EP4 = fftshift(fft2(EF3))/Nfft2
-                EP4 = fp.relay(EP4, mp.Nrelay3to4-1, mp.centering)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
                 
                 if(Nfft2 > mp.P4.compact.Narr):
                     EP4 = mp.P4.compact.croppedMask * pad_crop(EP4, mp.P4.compact.Narr)
@@ -664,7 +674,7 @@ def vortex(mp, im, idm):
                     EP4 = pad_crop(mp.P4.compact.croppedMask, Nfft2) * EP4
 
                 # MFT to detector
-                EP4 = fp.relay(EP4, mp.NrelayFend, mp.centering)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
                 
                 Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool] / \

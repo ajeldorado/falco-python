@@ -196,7 +196,6 @@ class ModelParameters:
 #         self.SPname = _spec_arg("SPname", kwargs, 0)
 #         self.TToffset = _spec_arg("TToffset", kwargs, 1)
 #         self.TrialNum = _spec_arg("TrialNum", kwargs, 1)
-#         self.planetFlag = _spec_arg("planetFlag", kwargs, 0)
 #         self.Nsbp = _spec_arg("Nsbp", kwargs, 1)
 #         self.SeriesNum = _spec_arg("SeriesNum", kwargs, 1)
 #         self.thput_radius = _spec_arg("thput_radius", kwargs, 0.7)

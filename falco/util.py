@@ -93,7 +93,7 @@ def nextpow2(N):
         p = int(0)
     else:
         p = int(np.ceil(np.log2(np.abs(N))))
-    
+
     return p
 
 
@@ -135,6 +135,28 @@ def ceil_odd(x_in):
         x_out += 1
 
     return x_out
+
+
+def pad_to_even_square(arrayIn):
+    """
+    Zero-pad a 2-D array to make it square-shaped with even-length sides.
+
+    Parameters
+    ----------
+    arrayIn : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    arrayOut : TYPE
+        DESCRIPTION.
+
+    """
+    check.twoD_array(arrayIn, 'arrayIn', ValueError)
+
+    nOut = ceil_even(np.max(arrayIn.shape))
+    arrayOut = pad_crop(arrayIn, (nOut, nOut))
+    return arrayOut
 
 
 def pad_crop(arrayIn, outsize, extrapval=0):

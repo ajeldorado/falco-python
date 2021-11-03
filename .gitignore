@@ -1,10 +1,19 @@
 
 falco/.idea/**
+falco/data/brief/**
+falco/data/ws/**
+
 
 data/material/*.npy
 zOld/**
 
-**.fits
+#--Sync only example files
+roman/*.m
+!roman/EXAMPLE_*
+data/WFIRST/PhaseB/*.fits
+
+
+# **.fits
 **.pkl
 examples/**.pkl
 **.DS_Store
@@ -19,3 +28,17 @@ docs/_build
 *.swp
 *.mat
 *~
+
+
+# Exceptions #
+
+!.placeholder.txt
+!**/.placeholder.txt
+!**/*.placeholder.txt
+!falco/data/brief/.placeholder.txt
+!falco/data/config/.placeholder.txt
+!falco/data/ws/.placeholder.txt
+!roman/flatmaps/.placeholder.txt
+!roman/flatmaps/*.fits
+
+

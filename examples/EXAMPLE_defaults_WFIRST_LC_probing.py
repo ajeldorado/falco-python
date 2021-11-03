@@ -21,9 +21,6 @@ mp.flagPlot = False;
 ###--General
 mp.centering = 'pixel';
 
-###--Whether to include planet in the images
-mp.planetFlag = False;
-
 ###--Method of computing core throughput:
 ### - 'HMI' for energy within half-max isophote divided by energy at telescope pupil
 ### - 'EE' for encircled energy within a radius (mp.thput_radius) divided by energy at telescope pupil

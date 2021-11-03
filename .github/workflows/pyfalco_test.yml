@@ -5,9 +5,9 @@ name: 'pyfalco'
 
 on:
   push:
-    branches: [ master ]
+    branches: [ dev-aj]
   pull_request:
-    branches: [ master ]
+    branches: [ dev-aj]
 
 jobs:
   build:
@@ -23,11 +23,33 @@ jobs:
         python-version: '3.7'
     - name: Install dependencies
       run: |
+        mkdir PYPROPER
+        cd PYPROPER
+        curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip -o myfile.zip -L
+        unzip -o myfile.zip
+        cd proper*
+        python setup.py install
+        cd ../../
         python -m pip install --upgrade pip
-        python -m  pip install https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip/download
-        python -m pip install pytest
-        python -m pip install pytest-html
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pytest
+        pip install pytest-cov
+        pip install pytest-html
+        pip install numpy
+        pip install scipy
+        pip install psutil
+        pip install matplotlib
+        pip install coveralls
     - name: Test with pytest
       run: |
-        python pytest --html=report.html
+        #python -m pytest tests/ -v --html=./TestReport/TestReport.html
+        python3 -m pytest --cov-report=html  --cov=./falco tests/ -v --html=./TestReport/TestReport.html
+    - name: Upload coverage data to coveralls.io
+      run: coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+    - uses: actions/upload-artifact@v2
+      with:
+        name: my-artifact
+        path: |
+          ./htmlcov/index.html
+          #./TestReport/TestReport.html
