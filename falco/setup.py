@@ -267,8 +267,24 @@ def set_optional_variables(mp):
         mp.dm9 = falco.config.Object()
 
     # Initialize the number of actuators (NactTotal) and actuators used (Nele).
-    mp.dm1.NactTotal=0; mp.dm2.NactTotal=0; mp.dm3.NactTotal=0; mp.dm4.NactTotal=0; mp.dm5.NactTotal=0; mp.dm6.NactTotal=0; mp.dm7.NactTotal=0; mp.dm8.NactTotal=0; mp.dm9.NactTotal=0  # Initialize for bookkeeping later.
-    mp.dm1.Nele=0; mp.dm2.Nele=0; mp.dm3.Nele=0; mp.dm4.Nele=0; mp.dm5.Nele=0; mp.dm6.Nele=0; mp.dm7.Nele=0; mp.dm8.Nele=0; mp.dm9.Nele=0  # Initialize for Jacobian calculations later. 
+    mp.dm1.NactTotal=0
+    mp.dm2.NactTotal=0
+    mp.dm3.NactTotal=0
+    mp.dm4.NactTotal=0
+    mp.dm5.NactTotal=0
+    mp.dm6.NactTotal=0
+    mp.dm7.NactTotal=0
+    mp.dm8.NactTotal=0
+    mp.dm9.NactTotal=0  # Initialize for bookkeeping later.
+    mp.dm1.Nele=0
+    mp.dm2.Nele=0
+    mp.dm3.Nele=0
+    mp.dm4.Nele=0
+    mp.dm5.Nele=0
+    mp.dm6.Nele=0
+    mp.dm7.Nele=0
+    mp.dm8.Nele=0
+    mp.dm9.Nele=0  # Initialize for Jacobian calculations later. 
 
     # Deformable mirror settings
     # DM1
@@ -330,7 +346,6 @@ def set_optional_variables(mp):
         mp.dm8.dV = 0
     if np.any(mp.dm_ind == 9):
         mp.dm9.dV = 0
-
 #    # First delta DM settings are zero (for covariance calculation in Kalman filters)
 #    mp.dm1.dV = np.zeros((mp.dm1.Nact, mp.dm1.Nact))  # delta voltage on DM1;
 #    mp.dm2.dV = np.zeros((mp.dm2.Nact, mp.dm2.Nact))  # delta voltage on DM2;
@@ -352,8 +367,6 @@ def set_optional_variables(mp):
     # Pupil ID, needed for computing RMS DM commands
     if not hasattr(mp.P1, 'IDnorm'):
         mp.P1.IDnorm = 0.0
-
-    pass
 
 
 def falco_set_spectral_properties(mp):
@@ -423,7 +436,7 @@ def falco_set_spectral_properties(mp):
             lambdas[counter] = mp.full.lambdasMat[si, wi];
             lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi]
             mp.full.indsLambdaMat[counter, :] = [si, wi]
-            counter = counter+1;
+            counter += 1;
 
     # Get rid of redundant wavelengths in the complete list, and sum weights for repeated wavelengths
     unused_1, inds_unique = np.unique(np.round(1e12*lambdas), return_index=True)  # Check equality at picometer level
@@ -440,7 +453,6 @@ def falco_set_spectral_properties(mp):
         ind = np.where(np.abs(mp.full.lambdas-wvl) <= 1e-11)
         mp.full.lambda_weights_all[ind] = mp.full.lambda_weights_all[ind] + weight
     mp.full.NlamUnique = len(inds_unique)
-    pass
 
 
 def falco_set_jacobian_modal_weights(mp):
@@ -483,7 +495,7 @@ def falco_set_jacobian_modal_weights(mp):
 
     # Initialize weighting matrix of each Zernike-wavelength mode for the controller
     mp.jac.weightMat = np.zeros((mp.Nsbp, mp.jac.Nzern))
-    for izern in range(0, mp.jac.Nzern):
+    for izern in range(mp.jac.Nzern):
         whichZern = mp.jac.zerns[izern]
         if whichZern == 1:  # Include all wavelengths for piston Zernike mode
             mp.jac.weightMat[:, 0] = np.ones(mp.Nsbp)
@@ -523,8 +535,6 @@ def falco_set_jacobian_modal_weights(mp):
     # Get the Zernike indices for the nonzero elements in the weight matrix.
     tempMat = np.tile(mp.jac.zerns, (mp.Nsbp, 1))
     mp.jac.zern_inds = tempMat[mp.jac.weightMat_ele]
-
-    pass
 
 
 def compute_entrance_pupil_coordinates(mp):
@@ -701,162 +711,158 @@ def compute_lyot_stop_coordinates(mp):
 
 def plot_superimposed_pupil_masks(mp):
     """Plot the pupil and Lyot stop on top of each other."""
-    if mp.flagPlot:
+    if not mp.flagPlot:
 
-        # Apodizer check
-        if mp.flagApod:
-            P3mask = pad_crop(mp.P3.compact.mask, mp.P1.compact.mask.shape)
-            if mp.flagRotation:
-                P3mask = falco.prop.relay(P3mask,
-                                                mp.Nrelay1to2 + mp.Nrelay2to3)
+        return
+    # Apodizer check
+    if mp.flagApod:
+        P3mask = pad_crop(mp.P3.compact.mask, mp.P1.compact.mask.shape)
+        if mp.flagRotation:
+            P3mask = falco.prop.relay(P3mask,
+                                            mp.Nrelay1to2 + mp.Nrelay2to3)
 
-            plt.figure(300)
-            plt.imshow(P3mask - mp.P1.compact.mask)
-            plt.clim(-1, 1)
-            plt.colorbar()
-            plt.gca().invert_yaxis()
-            plt.title('Apodizer - Entrance Pupil')
-            plt.pause(0.1)
+        plt.figure(300)
+        plt.imshow(P3mask - mp.P1.compact.mask)
+        plt.clim(-1, 1)
+        plt.colorbar()
+        plt.gca().invert_yaxis()
+        plt.title('Apodizer - Entrance Pupil')
+        plt.pause(0.1)
 
-            plt.figure(302)
-            plt.imshow(mp.P1.compact.mask + P3mask)
-            plt.colorbar()
-            plt.gca().invert_yaxis()
-            plt.title('Superimposed Pupil and Apodizer')
-            plt.pause(0.1)
+        plt.figure(302)
+        plt.imshow(mp.P1.compact.mask + P3mask)
+        plt.colorbar()
+        plt.gca().invert_yaxis()
+        plt.title('Superimposed Pupil and Apodizer')
+        plt.pause(0.1)
 
-        # Lyot stop check
-        if mp.P1.compact.Nbeam == mp.P4.compact.Nbeam:
+    # Lyot stop check
+    if mp.P1.compact.Nbeam == mp.P4.compact.Nbeam:
 
-            P4mask = pad_crop(mp.P4.compact.mask, mp.P1.compact.Narr)
-            if mp.flagRotation:
-                P4mask = falco.prop.relay(
-                    P4mask, mp.Nrelay1to2 + mp.Nrelay2to3 + mp.Nrelay3to4)
+        P4mask = pad_crop(mp.P4.compact.mask, mp.P1.compact.Narr)
+        if mp.flagRotation:
+            P4mask = falco.prop.relay(
+                P4mask, mp.Nrelay1to2 + mp.Nrelay2to3 + mp.Nrelay3to4)
 
-            P1andP4 = mp.P1.compact.mask + P4mask
+        P1andP4 = mp.P1.compact.mask + P4mask
 
-            plt.figure(301)
-            plt.imshow(P1andP4)
-            plt.colorbar()
-            plt.gca().invert_yaxis()
-            plt.title('Superimposed Pupil and Lyot Stop')
-            plt.pause(0.1)
+        plt.figure(301)
+        plt.imshow(P1andP4)
+        plt.colorbar()
+        plt.gca().invert_yaxis()
+        plt.title('Superimposed Pupil and Lyot Stop')
+        plt.pause(0.1)
 
 
 def falco_gen_FPM(mp):
     """Generate the FPM (for the HLC only)."""
-    if mp.layout.lower() == 'fourier':
+    if mp.layout.lower() != 'fourier':
 
-        if mp.coro == 'HLC':
+        return
+    if mp.coro == 'HLC':
 
-            # Stash DM8 and DM9 starting commands
-            # if they are pre-defined
-            if hasattr(mp, 'dm8'):
-                if hasattr(mp.dm8, 'V'):
-                    mp.DM8V0 = copy.deepcopy(mp.dm8.V)
-                if hasattr(mp.dm9, 'V'):
-                    mp.DM9V0 = copy.deepcopy(mp.dm9.V)
+        # Stash DM8 and DM9 starting commands
+        # if they are pre-defined
+        if hasattr(mp, 'dm8'):
+            if hasattr(mp.dm8, 'V'):
+                mp.DM8V0 = copy.deepcopy(mp.dm8.V)
+            if hasattr(mp.dm9, 'V'):
+                mp.DM9V0 = copy.deepcopy(mp.dm9.V)
 
-            if mp.dm9.inf0name.upper() in ('COS', 'COSINE'):
-                falco.hlc.setup_fpm_cosine(mp)
-            elif mp.dm9.inf0name.upper() == '3foldZern':
-                # falco.hlc.setup_fpm_3foldZern(mp)
-                pass
-            else:
-                falco.hlc.setup_fpm(mp)
-            falco.hlc.gen_fpm(mp)
+        if mp.dm9.inf0name.upper() in ('COS', 'COSINE'):
+            falco.hlc.setup_fpm_cosine(mp)
+        elif mp.dm9.inf0name.upper() != '3foldZern':
+            falco.hlc.setup_fpm(mp)
+        falco.hlc.gen_fpm(mp)
 
-            # Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
-            if mp.coro in ('HLC',):
-                [mp.complexTransCompact, mp.complexTransFull] =\
-                    falco.thinfilm.gen_complex_trans_table(mp)
+        # Pre-compute the complex transmission of the allowed Ni+PMGI FPMs.
+        if mp.coro in ('HLC',):
+            [mp.complexTransCompact, mp.complexTransFull] =\
+                falco.thinfilm.gen_complex_trans_table(mp)
 
 
 def falco_compute_fpm_coordinates(mp):
     """Generate coordinates in the FPM's plane."""
     if mp.coro.upper() in ['VORTEX', 'VC']:
-        pass  # Not needed
+        return
+    fLamD = mp.fl * mp.lambda0 / mp.P2.D
 
-    else:
-        fLamD = mp.fl * mp.lambda0 / mp.P2.D
+    # COMPACT MODEL
+    if not hasattr(mp.F3, 'compact'):
+        mp.F3.compact = falco.config.Object()
 
-        # COMPACT MODEL
-        if not hasattr(mp.F3, 'compact'):
-            mp.F3.compact = falco.config.Object()
+    if not hasattr(mp.F3.compact, 'Nxi'):
+        mp.F3.compact.Nxi = mp.F3.compact.mask.shape[1]
+    if not hasattr(mp.F3.compact, 'Neta'):
+        mp.F3.compact.Neta = mp.F3.compact.mask.shape[0]
 
-        if not hasattr(mp.F3.compact, 'Nxi'):
-            mp.F3.compact.Nxi = mp.F3.compact.mask.shape[1]
-        if not hasattr(mp.F3.compact, 'Neta'):
-            mp.F3.compact.Neta = mp.F3.compact.mask.shape[0]
+    # Resolution in compact model
+    mp.F3.compact.dxi = fLamD / mp.F3.compact.res  # [meters/pixel]
+    mp.F3.compact.deta = mp.F3.compact.dxi  # [meters/pixel]
 
-        # Resolution in compact model
-        mp.F3.compact.dxi = fLamD / mp.F3.compact.res  # [meters/pixel]
-        mp.F3.compact.deta = mp.F3.compact.dxi  # [meters/pixel]
+    # FPM coordinates in the compact model [meters]
+    # horizontal axis, xis
+    if mp.centering == 'interpixel' or (mp.F3.compact.Nxi % 2) == 1:
+        mp.F3.compact.xis = (np.linspace(-(mp.F3.compact.Nxi-1)/2,
+                                        (mp.F3.compact.Nxi-1)/2,
+                                        mp.F3.compact.Nxi) *
+                             mp.F3.compact.dxi)
+    elif mp.centering == 'pixel':
+        mp.F3.compact.xis = (np.arange(-mp.F3.compact.Nxi/2,
+                                      mp.F3.compact.Nxi/2) *
+                             mp.F3.compact.dxi)
 
-        # FPM coordinates in the compact model [meters]
-        # horizontal axis, xis
-        if mp.centering == 'interpixel' or (mp.F3.compact.Nxi % 2) == 1:
-            mp.F3.compact.xis = (np.linspace(-(mp.F3.compact.Nxi-1)/2,
-                                            (mp.F3.compact.Nxi-1)/2,
-                                            mp.F3.compact.Nxi) *
-                                 mp.F3.compact.dxi)
-        elif mp.centering == 'pixel':
-            mp.F3.compact.xis = (np.arange(-mp.F3.compact.Nxi/2,
-                                          mp.F3.compact.Nxi/2) *
-                                 mp.F3.compact.dxi)
+    # vertical axis, etas
+    if mp.centering == 'interpixel' or (mp.F3.compact.Neta % 2) == 1:
+        mp.F3.compact.etas = (np.linspace(-(mp.F3.compact.Neta-1)/2,
+                                          (mp.F3.compact.Neta-1)/2,
+                                          mp.F3.compact.Neta) *
+                              mp.F3.compact.deta)
+    elif mp.centering == 'pixel':
+        mp.F3.compact.etas = (np.arange(-mp.F3.compact.Neta/2,
+                                        mp.F3.compact.Neta/2) *
+                              mp.F3.compact.deta)
 
-        # vertical axis, etas
-        if mp.centering == 'interpixel' or (mp.F3.compact.Neta % 2) == 1:
-            mp.F3.compact.etas = (np.linspace(-(mp.F3.compact.Neta-1)/2,
-                                              (mp.F3.compact.Neta-1)/2,
-                                              mp.F3.compact.Neta) *
-                                  mp.F3.compact.deta)
-        elif mp.centering == 'pixel':
-            mp.F3.compact.etas = (np.arange(-mp.F3.compact.Neta/2,
-                                            mp.F3.compact.Neta/2) *
-                                  mp.F3.compact.deta)
-
-        # Dimensionless FPM Coordinates in compact model
-        mp.F3.compact.xisDL = mp.F3.compact.xis / fLamD
-        mp.F3.compact.etasDL = mp.F3.compact.etas / fLamD
+    # Dimensionless FPM Coordinates in compact model
+    mp.F3.compact.xisDL = mp.F3.compact.xis / fLamD
+    mp.F3.compact.etasDL = mp.F3.compact.etas / fLamD
 
         # FULL MODEL
-        if mp.layout in ('roman_phasec_proper',
-                         'wfirst_phaseb_proper',
-                         'proper'):
-            pass  # Coordinates not used by the PROPER model
+    if mp.layout not in (
+        'roman_phasec_proper',
+        'wfirst_phaseb_proper',
+        'proper',
+    ):
 
-        else:
+        if not hasattr(mp.F3, 'full'):
+            mp.F3.full = falco.config.Object()
 
-            if not hasattr(mp.F3, 'full'):
-                mp.F3.full = falco.config.Object()
+        if not hasattr(mp.F3.full, 'Nxi'):
+            mp.F3.full.Nxi = mp.F3.full.mask.shape[1]
+        if not hasattr(mp.F3.full, 'Neta'):
+            mp.F3.full.Neta = mp.F3.full.mask.shape[0]
 
-            if not hasattr(mp.F3.full, 'Nxi'):
-                mp.F3.full.Nxi = mp.F3.full.mask.shape[1]
-            if not hasattr(mp.F3.full, 'Neta'):
-                mp.F3.full.Neta = mp.F3.full.mask.shape[0]
+        # Resolution
+        mp.F3.full.dxi = fLamD/mp.F3.full.res  # [meters/pixel]
+        mp.F3.full.deta = mp.F3.full.dxi  # [meters/pixel]
 
-            # Resolution
-            mp.F3.full.dxi = fLamD/mp.F3.full.res  # [meters/pixel]
-            mp.F3.full.deta = mp.F3.full.dxi  # [meters/pixel]
-
-            # Coordinates (dimensionless [DL]) for the FPMs in the full model
-            if mp.centering == 'interpixel' or (mp.F3.full.Nxi % 2) == 1:
-                mp.F3.full.xisDL = (np.linspace(-(mp.F3.full.Nxi-1)/2,
-                                                (mp.F3.full.Nxi-1)/2,
-                                                mp.F3.full.Nxi) /
-                                    mp.F3.full.res)
-                mp.F3.full.etasDL = (np.linspace(-(mp.F3.full.Neta-1)/2,
-                                                 (mp.F3.full.Neta-1)/2,
-                                                 mp.F3.full.Neta) /
-                                     mp.F3.full.res)
-            elif mp.centering == 'pixel':
-                mp.F3.full.xisDL = (np.arange(-mp.F3.full.Nxi/2,
-                                             (mp.F3.full.Nxi/2)) /
-                                    mp.F3.full.res)
-                mp.F3.full.etasDL = (np.arange(-mp.F3.full.Neta/2,
-                                              (mp.F3.full.Neta/2)) /
-                                     mp.F3.full.res)
+        # Coordinates (dimensionless [DL]) for the FPMs in the full model
+        if mp.centering == 'interpixel' or (mp.F3.full.Nxi % 2) == 1:
+            mp.F3.full.xisDL = (np.linspace(-(mp.F3.full.Nxi-1)/2,
+                                            (mp.F3.full.Nxi-1)/2,
+                                            mp.F3.full.Nxi) /
+                                mp.F3.full.res)
+            mp.F3.full.etasDL = (np.linspace(-(mp.F3.full.Neta-1)/2,
+                                             (mp.F3.full.Neta-1)/2,
+                                             mp.F3.full.Neta) /
+                                 mp.F3.full.res)
+        elif mp.centering == 'pixel':
+            mp.F3.full.xisDL = (np.arange(-mp.F3.full.Nxi/2,
+                                         (mp.F3.full.Nxi/2)) /
+                                mp.F3.full.res)
+            mp.F3.full.etasDL = (np.arange(-mp.F3.full.Neta/2,
+                                          (mp.F3.full.Neta/2)) /
+                                 mp.F3.full.res)
 
 
 def compute_Fend_resolution(mp):
@@ -875,8 +881,6 @@ def compute_Fend_resolution(mp):
 
         mp.F5.dxi = mp.lensletFL*mp.lambda0/mp.Fend.lenslet.D/mp.F5.res
         mp.F5.deta = mp.F5.dxi
-    pass
-
     # Compact evaluation model at higher resolution
     if not hasattr(mp.Fend, 'eval'):
         mp.Fend.eval = falco.config.Object()
@@ -975,8 +979,7 @@ def falco_configure_dark_hole_region(mp):
     Nzones = mp.Fend.score.Rin.size
 
     # These are same as for correction region
-    SCORE = {}
-    SCORE["Nxi"] = mp.Fend.Nxi
+    SCORE = {'Nxi': mp.Fend.Nxi}
     SCORE["Neta"] = mp.Fend.Neta
     SCORE["pixresFP"] = mp.Fend.res
     SCORE["centering"] = mp.centering

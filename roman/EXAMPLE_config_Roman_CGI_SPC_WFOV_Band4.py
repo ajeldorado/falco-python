@@ -1,4 +1,5 @@
 """Configuration file for the Roman CGI model."""
+
 import numpy as np
 import os
 from astropy.io import fits
@@ -98,10 +99,9 @@ mp.dm1.weight = 1
 mp.dm2.weight = 1
 
 # Voltage range restrictions
-mp.dm1.maxAbsV = 1000;  # Max absolute voltage (+/-) for each actuator [volts] # NOT ENFORCED YET
-mp.dm2.maxAbsV = 1000;  # Max absolute voltage (+/-) for each actuator [volts] # NOT ENFORCED YET
-mp.maxAbsdV = 1000;     # Max +/- delta voltage step for each actuator for DMs 1 and 2 [volts] # NOT ENFORCED YET
-
+mp.dm1.maxAbsV = 1000
+mp.dm2.maxAbsV = 1000
+mp.maxAbsdV = 1000
 # %% Wavefront Control: Controller Specific
 # Controller options: 
 #  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
@@ -113,23 +113,6 @@ mp.controller = 'gridsearchEFC'
 mp.Nitr = 5  # Number of estimation+control iterations to perform
 mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  # Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1, 2]) # Which DMs to use [1-D ndarray]
-
-# # PLANNED SEARCH EFC DEFAULTS     
-#mp.dm_ind = np.array([1, 2]) # vector of DMs used in controller at ANY time (not necessarily all at once or all the time). 
-#mp.ctrl.dmfacVec = np.array([1.])
-
-# CONTROL SCHEDULE. Columns of mp.ctrl.sched_mat are: 
-    # Column 1: # of iterations, 
-    # Column 2: log10(regularization), 
-    # Column 3: which DMs to use (12, 128, 129, or 1289) for control
-    # Column 4: flag (0 = false, 1 = true), whether to re-linearize
-    #   at that iteration.
-    # Column 5: flag (0 = false, 1 = true), whether to perform an
-    #   EFC parameter grid search to find the set giving the best
-    #   contrast .
-    # The imaginary part of the log10(regularization) in column 2 is
-    #  replaced for that iteration with the optimal log10(regularization)
-    # A row starting with [0, 0, 0, 1...] is for relinearizing only at that time
 
 # mp.ctrl.sched_mat = [...
 #     [0,0,0,1,0];
@@ -316,9 +299,6 @@ mp.P4.compact.mask = falco.util.pad_crop(LS1, falco.util.ceil_even(np.max(LS1.sh
 
 # FPM parameters
 mp.F3.compact.res = 3  # sampling of FPM for compact model [pixels per lambda0/D]
-inputs = {}
-inputs["pixresFPM"] = mp.F3.compact.res
-inputs["rhoInner"] = 5.6  # [lambda0/D]
-inputs["rhoOuter"] = 20.4  #  [lambda0/D]
+inputs = {'pixresFPM': mp.F3.compact.res, 'rhoInner': 5.6, 'rhoOuter': 20.4}
 mp.F3.compact.mask = falco.mask.gen_annular_fpm(inputs)
 # plt.figure(23); plt.imshow(mp.F3.compact.mask); plt.colorbar(); plt.gca().invert_yaxis(); plt.magma(); plt.pause(0.5)
