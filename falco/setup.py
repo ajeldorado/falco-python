@@ -27,7 +27,7 @@ def flesh_out_workspace(mp):
         Object containing arrays to be filled in during WFSC.
 
     """
-    falco_set_optional_variables(mp)  # Optional/hidden variables
+    set_optional_variables(mp)  # Optional/hidden variables
     verify_key_values(mp)
 
     falco_set_spectral_properties(mp)
@@ -99,7 +99,7 @@ def verify_key_values(mp):
         raise ValueError('%s is not an allowed value of mp.layout.', mp.layout)
 
 
-def falco_set_optional_variables(mp):
+def set_optional_variables(mp):
     """
     Set values for optional values.
 
@@ -731,11 +731,10 @@ def plot_superimposed_pupil_masks(mp):
 
             P4mask = pad_crop(mp.P4.compact.mask, mp.P1.compact.Narr)
             if mp.flagRotation:
-                P4mask = falco.prop.relay(P4mask,
-                                                mp.Nrelay1to2 +
-                                                mp.Nrelay2to3 +
-                                                mp.Nrelay3to4)
-                P1andP4 = mp.P1.compact.mask + P4mask
+                P4mask = falco.prop.relay(
+                    P4mask, mp.Nrelay1to2 + mp.Nrelay2to3 + mp.Nrelay3to4)
+
+            P1andP4 = mp.P1.compact.mask + P4mask
 
             plt.figure(301)
             plt.imshow(P1andP4)
