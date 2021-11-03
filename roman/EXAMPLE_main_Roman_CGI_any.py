@@ -14,7 +14,8 @@ import proper
 
 # %% Uncomment the config file for the mask configuration that you want
 
-import EXAMPLE_config_Roman_CGI_SPC_Spec_Band3 as CONFIG
+import EXAMPLE_config_Roman_CGI_HLC_NFOV_Band1 as CONFIG
+# import EXAMPLE_config_Roman_CGI_SPC_Spec_Band3 as CONFIG
 # import EXAMPLE_config_Roman_CGI_SPC_WFOV_Band4 as CONFIG
 
 
@@ -45,6 +46,7 @@ mp.SeriesNum = 1
 
 
 # %% SETTINGS FOR QUICK RUN: SINGLE WAVELENGTH, SINGLE POLARIZATION, AND NO PROBING
+
 mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1  # Number of wavelengths to used to approximate an image in each sub-bandpass
