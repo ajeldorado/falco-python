@@ -18,8 +18,8 @@ LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
 flatmap_path = os.path.join(LOCAL_PATH, 'flatmaps')
 
 # Record Keeping
-mp.SeriesNum = 1;
-mp.TrialNum = 1;
+mp.SeriesNum = 1
+mp.TrialNum = 1
 
 # Special Computational Settings
 mp.flagMultiproc = True
@@ -44,7 +44,7 @@ mp.source_y_offset_norm = 0  # y location [lambda_c/D] in dark hole at which to 
 # %# Bandwidth and Wavelength Specs
 
 mp.lambda0 = 730e-9  # Central wavelength of the whole spectral bandpass [meters]
-mp.fracBW = 0.15  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.fracBW = 0.1671232876712329  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 5  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 3  # Number of wavelengths to used to approximate an image in each sub-bandpass
 
@@ -316,6 +316,9 @@ LS1 = falco.mask.rotate_shift_downsample_pupil_mask(
     LS0, 1000, mp.P4.compact.Nbeam, 0, 0, 0)
 mp.P4.compact.mask = falco.util.pad_crop(LS1, falco.util.ceil_even(np.max(LS1.shape)))
 # plt.figure(22); plt.imshow(LS1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
+
+# Pinhole used during back-end calibration
+mp.F3.pinhole_diam_m = 0.5*32.22*730e-9
 
 # FPM parameters
 mp.F3.compact.res = 6  # sampling of FPM for compact model [pixels per lambda0/D]
