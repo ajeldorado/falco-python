@@ -77,7 +77,7 @@ def calc_zern_sens(mp):
     Eunab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nvals), dtype=complex)  # Temporary array
 
     print('Computing unaberrated E-fields for Zernike sensitivities...\t', end='')
-    if mp.flagMultiproc:
+    if mp.flagParallel:
         pool = multiprocessing.Pool(processes=mp.Nthreads)
         resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPol,
                                        args=(iv, inds_list, mp)) for iv in range(Nvals)]
@@ -110,7 +110,7 @@ def calc_zern_sens(mp):
     Eab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, NvalsZern), dtype=complex)
     
     print('Computing aberrated E-fields for Zernike sensitivities...\t', end='')
-    if mp.flagMultiproc:
+    if mp.flagParallel:
         pool = multiprocessing.Pool(processes=mp.Nthreads)
         resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPolZern,
                                        args=(iv, inds_list_zern, mp)) for iv in range(NvalsZern)]

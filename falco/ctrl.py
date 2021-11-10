@@ -215,7 +215,7 @@ def _grid_search_efc(mp, cvar):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
     # Empirically find the regularization value giving the best contrast
-#    if(mp.flagMultiproc and mp.ctrl.flagUseModel):
+#    if(mp.flagParallel and mp.ctrl.flagUseModel):
 #        # Run the controller in parallel
 #        pool = multiprocessing.Pool(processes=mp.Nthreads)
 #        results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]

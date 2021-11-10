@@ -14,7 +14,7 @@ mp.SeriesNum = 1
 mp.TrialNum = 1
 
 ### Special Computational Settings
-mp.flagMultiproc = True;
+mp.flagParallel = True;
 mp.useGPU = False;
 mp.flagPlot = False;
 
