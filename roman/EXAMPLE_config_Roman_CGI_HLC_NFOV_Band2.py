@@ -22,7 +22,7 @@ mp.SeriesNum = 1
 mp.TrialNum = 1
 
 # Special Computational Settings
-mp.flagMultiproc = True
+mp.flagParallel = True
 mp.flagPlot = True
 mp.useGPU = False
 
@@ -207,7 +207,7 @@ mp.flagDMwfe = False  # Whether to use BMC DM quilting maps
 mp.Fend = falco.config.Object()
 
 # Final Focal Plane Properties
-mp.Fend.res = 2.30  # Sampling [ pixels per lambda0/D]. 825/500*2
+mp.Fend.res = mp.lambda0/(500e-9)*2  # Sampling [ pixels per lambda0/D]
 mp.Fend.FOV = 12.0  # half-width of the field of view in both dimensions [lambda0/D]
 
 # Correction and scoring region definition

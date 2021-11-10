@@ -32,7 +32,7 @@ mp.path.falco = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ## Special Computational Settings
 mp.flagPlot = True;
-mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
+mp.flagParallel = False  # whether to use multiprocessing to parallelize some large computations
 # mp.Nthreads = 2         # Number of threads to use when using multiprocessing. If undefined, it is set to the 
 
 # Record Keeping

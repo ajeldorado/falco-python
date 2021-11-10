@@ -23,8 +23,8 @@ mp.TrialNum = 1
 
 # Special Computational Settings
 mp.flagParallel = True
-mp.flagPlot = True
 mp.useGPU = False
+mp.flagPlot = False
 
 # General
 mp.centering = 'pixel'
@@ -43,9 +43,9 @@ mp.source_y_offset_norm = 0  # y location [lambda_c/D] in dark hole at which to 
 
 # %# Bandwidth and Wavelength Specs
 
-mp.lambda0 = 825e-9  # Central wavelength of the whole spectral bandpass [meters]
-mp.fracBW = 0.113939393939  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
-mp.Nsbp = 3  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+mp.lambda0 = 660e-9  # Central wavelength of the whole spectral bandpass [meters]
+mp.fracBW = 0.169696969696967  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.Nsbp = 5  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 3  # Number of wavelengths to used to approximate an image in each sub-bandpass
 
 # %% Wavefront Estimation
@@ -199,9 +199,9 @@ mp.d_dm1_dm2 = 1.000  # distance between DM1 and DM2 [meters]
 # Key Optical Layout Choices
 mp.flagSim = True  # Simulation or not
 mp.layout = 'roman_phasec_proper'  # Which optical layout to use
-mp.coro = 'HLC'
+mp.coro = 'SPLC'
 mp.flagRotation = False  # Whether to rotate 180 degrees between conjugate planes in the compact model
-mp.flagApod = False  # Whether to use an apodizer or not
+mp.flagApod = True  # Whether to use an apodizer or not
 mp.flagDMwfe = False  # Whether to use BMC DM quilting maps
 
 mp.Fend = falco.config.Object()
@@ -212,14 +212,14 @@ mp.Fend.FOV = 12.0  # half-width of the field of view in both dimensions [lambda
 
 # Correction and scoring region definition
 mp.Fend.corr = falco.config.Object()
-mp.Fend.corr.Rin = 2.8  # inner radius of dark hole correction region [lambda0/D]
-mp.Fend.corr.Rout = 9.7  # outer radius of dark hole correction region [lambda0/D]
-mp.Fend.corr.ang = 180  # angular opening of dark hole correction region [degrees]
+mp.Fend.corr.Rin = 2.6  # inner radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.Rout = 9.4  # outer radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.ang = 65  # angular opening of dark hole correction region [degrees]
 
 mp.Fend.score = falco.config.Object()
 mp.Fend.score.Rin = 3.0  # inner radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.Rout = 9.0  # outer radius of dark hole scoring region [lambda0/D]
-mp.Fend.score.ang = 180  # angular opening of dark hole scoring region [degrees]
+mp.Fend.score.ang = 65  # angular opening of dark hole scoring region [degrees]
 
 mp.Fend.sides = 'lr'  # Which side(s) for correction: 'left', 'right', 'top', 'up', 'bottom', 'down', 'lr', 'rl', 'leftright', 'rightleft', 'tb', 'bt', 'ud', 'du', 'topbottom', 'bottomtop', 'updown', 'downup'
 mp.Fend.clockAngDeg = 0  # Amount to rotate the dark hole location
@@ -227,33 +227,31 @@ mp.Fend.clockAngDeg = 0  # Amount to rotate the dark hole location
 
 # %% Optical Layout: Full PROPER Model
 
-mp.full.cor_type = 'hlc_band4'
+mp.full.cor_type = 'spc-spec_band2'
+
 mp.full.flagPROPER = True  # Whether the full model is a PROPER prescription
 
 # Pupil Plane Resolutions
-mp.P1.full.Nbeam = 309
-mp.P1.full.Narr = 310
+mp.P1.full.Nbeam = 1000
+mp.P1.full.Narr = 1002
 
-mp.full.field_stop_radius_lam0 = 9.7  # [lambda0/D]
-
-# Image size and resolutino
 mp.full.output_dim = falco.util.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV))  # dimensions of output in pixels (overrides output_dim0)
 mp.full.final_sampling_lam0 = 1/mp.Fend.res  # final sampling in lambda0/D
 
-# Aberrations and polarization
 mp.full.pol_conds = [-2, -1, 1, 2]  # Which polarization states to use when creating an image.
-mp.full.polaxis = 10  # Pol state to use when making a single call to the Roman CGI PROPER model  
+# mp.full.polaxis = 10  #   polarization condition (only used with input_field_rootname)
 mp.full.use_errors = True
 
-# DM starting voltages (in the PROPER model only)
-fn_dm1_design = os.path.join(flatmap_path, 'dm1_m_design_hlc_band4.fits')
-fn_dm2_design = os.path.join(flatmap_path, 'dm2_m_design_hlc_band4.fits')
-fn_dm1_flatmap = os.path.join(flatmap_path, 'dm1_m_flat_hlc_band4.fits')
-fn_dm2_flatmap = os.path.join(flatmap_path, 'dm2_m_flat_hlc_band4.fits')
+fn_dm1_flatmap = os.path.join(flatmap_path, 'dm1_m_spc-spec_band2.fits')
+fn_dm2_flatmap = os.path.join(flatmap_path, 'dm2_m_spc-spec_band2.fits')
+fn_dm1_flatmapNoSPM = os.path.join(flatmap_path, 'dm1_m_flat_hlc_band2.fits')
+fn_dm2_flatmapNoSPM = os.path.join(flatmap_path, 'dm2_m_flat_hlc_band2.fits')
 mp.full.dm1 = falco.config.Object()
 mp.full.dm2 = falco.config.Object()
-mp.full.dm1.flatmap = fits.getdata(fn_dm1_flatmap) + fits.getdata(fn_dm1_design)
-mp.full.dm2.flatmap = fits.getdata(fn_dm2_flatmap) + fits.getdata(fn_dm2_design)
+mp.full.dm1.flatmap = fits.getdata(fn_dm1_flatmap)
+mp.full.dm2.flatmap = fits.getdata(fn_dm2_flatmap)
+mp.full.dm1.flatmapNoSPM = fits.getdata(fn_dm1_flatmapNoSPM)
+mp.full.dm2.flatmapNoSPM = fits.getdata(fn_dm2_flatmapNoSPM)
 
 mp.dm1.biasMap = 50 + mp.full.dm1.flatmap/mp.dm1.VtoH  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm1.biasMap + mp.dm1.V
 mp.dm2.biasMap = 50 + mp.full.dm2.flatmap/mp.dm2.VtoH  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm2.biasMap + mp.dm2.V
@@ -273,7 +271,7 @@ mp.P4.D = 46.3e-3
 mp.P1.compact.Nbeam = 300
 # mp.P2.compact.Nbeam = 300
 mp.P3.compact.Nbeam = 300
-mp.P4.compact.Nbeam = 300
+mp.P4.compact.Nbeam = 60
 
 # Number of re-imaging relays between pupil planesin compact model. Needed
 # to keep track of 180-degree rotations and (1/1j)^2 factors compared to the
@@ -295,45 +293,52 @@ mp.P1.Dfac = 1  # Factor scaling inscribed OD to circumscribed OD for the telesc
 changes = {'flagRot180': True}
 mp.P1.compact.mask = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P1.compact.Nbeam, mp.centering, changes)
 
+# Shaped pupil mask definition
+fnSP = os.path.join(mp.full.data_dir, 'spc_20200617_spec', 'SPM_SPC-20200617_1000_rounded9.fits')
+SP0 = fits.getdata(fnSP, ext=0)
+SP0 = falco.util.pad_crop(SP0, 1001)
+SP0 = np.rot90(SP0, 2)
+SP1 = falco.mask.rotate_shift_downsample_pupil_mask(
+    SP0, mp.P1.full.Nbeam, mp.P1.compact.Nbeam, 0, 0, 0)
+mp.P3.compact.mask = falco.util.pad_crop(SP1, falco.util.ceil_even(np.max(SP1.shape)))
+# plt.figure(21); plt.imshow(SP1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
+
 # Lyot stop shape
-mp.P4.IDnorm = 0.50  # Lyot stop ID [Dtelescope]
-mp.P4.ODnorm = 0.80  # Lyot stop OD [Dtelescope]
-# wStrut = 3.2/100  # Lyot stop strut width [pupil diameters]
-# rocLS = 0.02  # fillet radii [fraction of pupil diameter]
+mp.LSshape = 'bowtie'
+mp.P4.IDnorm = 0.41  # Lyot stop ID [Dtelescope]
+mp.P4.ODnorm = 0.89  # Lyot stop OD [Dtelescope]
+mp.P4.ang = 88  # Lyot stop opening angle [degrees]
+mp.P4.wStrut = 0  # Lyot stop strut width [pupil diameters]
+rocLS = 0.03  # fillet radii [fraction of pupil diameter]
+# clockDegLS = 0  # [degrees]
 # upsampleFactor = 100  # Lyot and FPM anti-aliasing value
-fnLS = os.path.join(mp.full.data_dir, 'hlc_20200609b_band4', 'lyot.fits')
+# mp.P4.compact.mask = falco.mask.falco_gen_rounded_bowtie_LS(mp.P4.compact.Nbeam, mp.P4.IDnorm, mp.P4.ODnorm, rocLS, upsampleFactor, mp.P4.ang, clockDegLS, mp.centering)
+fnLS = os.path.join(mp.full.data_dir, 'spc_20200617_spec', 'LS_SPC-20200617_1000.fits')
 LS0 = fits.getdata(fnLS)
-LS0 = falco.util.pad_crop(LS0, 311)
+LS0 = falco.util.pad_crop(LS0, 1001)
 LS1 = falco.mask.rotate_shift_downsample_pupil_mask(
-    LS0, 309, mp.P4.compact.Nbeam, 0, 0, 0)
+    LS0, 1000, mp.P4.compact.Nbeam, 0, 0, 0)
 mp.P4.compact.mask = falco.util.pad_crop(LS1, falco.util.ceil_even(np.max(LS1.shape)))
 # plt.figure(22); plt.imshow(LS1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
 
 # Pinhole used during back-end calibration
-mp.F3.pinhole_diam_m = 0.5*32.22*825e-9
+mp.F3.pinhole_diam_m = 0.5*32.22*575e-9
 
-# Load the HLC FPM
-if mp.Nsbp == 1:
-    lambdaFacs = np.array([1,])
-elif mp.Nwpsbp == 1:
-    lambdaFacs = np.linspace(1-mp.fracBW/2, 1+mp.fracBW/2, mp.Nsbp)
-else:
-    DeltaBW = mp.fracBW/(mp.Nsbp)*(mp.Nsbp-1)/2;
-    lambdaFacs = np.linspace(1-DeltaBW, 1+DeltaBW, mp.Nsbp)
-
-lamUmVec = 1e6*lambdaFacs*mp.lambda0
-mp.F3.compact.Nxi = 42  # Crop down to minimum size of the spot
-mp.F3.compact.Neta = mp.F3.compact.Nxi
-mp.compact.fpmCube = np.zeros((mp.F3.compact.Nxi, mp.F3.compact.Nxi, mp.Nsbp), dtype=complex)
-for si in range(mp.Nsbp):
-    lambda_um = 1e6*mp.lambda0*lambdaFacs[si]
-    fn_p_r = os.path.join(mp.full.data_dir, ('hlc_20200609b_band4/hlc_jacobian_fpm_trans_%.8fum_real.fits' % lamUmVec[si]))
-    fn_p_i = os.path.join(mp.full.data_dir, ('hlc_20200609b_band4/hlc_jacobian_fpm_trans_%.8fum_imag.fits' % lamUmVec[si]))
-    fpm = fits.getdata(fn_p_r) + 1j*fits.getdata(fn_p_i)
-    mp.compact.fpmCube[:, :, si] = falco.util.pad_crop(fpm, mp.F3.compact.Nxi)
-
-mp.F3.compact.res = 2048/309  # sampling of FPM for compact model [pixels per lambda0/D]. DO NOT CHANGE--tied to files.
-
-if mp.flagPlot:
-    for si in range(mp.Nsbp):
-       plt.figure(200); plt.imshow(np.angle(mp.compact.fpmCube[:,:,si])); plt.colorbar(); plt.gca().invert_yaxis(); plt.pause(0.5)
+# FPM parameters
+mp.F3.compact.res = 6  # sampling of FPM for compact model [pixels per lambda0/D]
+Rmask0 = 2.6  # [lambda/D]
+Rmask1 = 9.4  # [lambda/D]
+rocFPM = 0.25  # [lambda/D]
+# angDegFPM = 65  # [degrees]
+# clockDegFPM = 0  # [degrees]
+# mp.F3.compact.mask = falco.mask.falco_gen_rounded_bowtie_FPM(Rmask0, Rmask1, rocFPM, mp.F3.compact.res, angDegFPM, clockDegFPM, upsampleFactor, mp.centering);
+res0 = 20
+diam0 = 2*Rmask1*res0
+diam1 = 2*Rmask1*mp.F3.compact.res
+fnFPM = os.path.join(mp.full.data_dir, 'spc_20200617_spec', 'fpm_0.05lamD.fits')
+FPM0 = fits.getdata(fnFPM)
+FPM0 = falco.util.pad_crop(FPM0, falco.util.ceil_odd(diam0+10))
+FPM1 = falco.mask.rotate_shift_downsample_pupil_mask(
+    FPM0, diam0, diam1, 0, 0, 0)
+mp.F3.compact.mask = falco.util.pad_crop(FPM1, falco.util.ceil_even(np.max(FPM1.shape)))
+# plt.figure(23); plt.imshow(FPM1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)

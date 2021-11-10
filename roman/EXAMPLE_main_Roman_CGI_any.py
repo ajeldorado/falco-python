@@ -21,9 +21,14 @@ from EXAMPLE_config_Roman_CGI_HLC_NFOV_Band1 import mp
 # from EXAMPLE_config_Roman_CGI_SPC_WFOV_Band4 import mp
 
 # #--Unsupported but included mask configs:
+# from EXAMPLE_config_Roman_CGI_SPC_RotatedBowtie_Band2 import mp
+# from EXAMPLE_config_Roman_CGI_SPC_RotatedBowtie_Band3 import mp
 # from EXAMPLE_config_Roman_CGI_HLC_NFOV_Band2 import mp
 # from EXAMPLE_config_Roman_CGI_HLC_NFOV_Band3 import mp
 # from EXAMPLE_config_Roman_CGI_HLC_NFOV_Band4 import mp
+# from EXAMPLE_config_Roman_CGI_SPC_WFOV_Band1 import mp
+# from EXAMPLE_config_Roman_CGI_SPC_Multistar_Band1 import mp
+# from EXAMPLE_config_Roman_CGI_SPC_Multistar_Band4 import mp
 
 
 # %% Define different directories for data output
@@ -40,7 +45,7 @@ from EXAMPLE_config_Roman_CGI_HLC_NFOV_Band1 import mp
 
 # ## Special Computational Settings
 mp.flagPlot = True
-mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
+mp.flagParallel = False  # whether to use multiprocessing to parallelize some large computations
 # mp.Nthreads = 2  # Number of threads to use when using multiprocessing.
 
 # Record Keeping
@@ -55,8 +60,7 @@ mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for es
 mp.Nwpsbp = 1  # Number of wavelengths to used to approximate an image in each sub-bandpass
 mp.full.pol_conds = [10, ]
 mp.estimator = 'perfect'
-mp.Nitr = 3  # Number of wavefront control iterations
-mp.flagMultiproc = False  # whether to use multiprocessing to parallelize some large computations
+mp.flagParallel = False  # whether to use multiprocessing to parallelize some large computations
 
 
 # %% Keep only the central bandpasses's FPM if using just one wavelength with HLC
@@ -72,9 +76,7 @@ if (mp.Nsbp == 1) and (mp.coro == 'HLC'):
 optval = copy.copy(mp.full)
 optval.source_x_offset = 0
 optval.use_dm1 = True
-optval.dm1_m = mp.full.dm1.flatmap
 optval.use_dm2 = True
-optval.dm2_m = mp.full.dm2.flatmap
 nout = 1024
 optval.output_dim = 1024
 optval.use_fpm = False
@@ -83,6 +85,17 @@ optval.use_lyot_stop = False
 optval.use_field_stop = False
 optval.use_pupil_lens = True
 delattr(optval, 'final_sampling_lam0')
+
+# Use non-SPC flat maps for SPC since SPM has separate aberrations
+# downstream that can't be fully captured at entrance pupil with the SPM in
+# place. The SPM aberrations are flattened in a separate step not included
+# here.
+if 'sp' in mp.coro.lower():
+    optval.dm1_m = mp.full.dm1.flatmapNoSPM
+    optval.dm2_m = mp.full.dm2.flatmapNoSPM
+else:
+    optval.dm1_m = mp.full.dm1.flatmap
+    optval.dm2_m = mp.full.dm2.flatmap
 
 if mp.Nsbp == 1:
     lambdaFacs = np.array([1.])
@@ -138,12 +151,12 @@ print(mp.runLabel)
 
 out = falco.setup.flesh_out_workspace(mp)
 
-# falco.wfsc.loop(mp, out)
+falco.wfsc.loop(mp, out)
 
 
-# # %% Plot the output
-# falco.plot.plot_trial_output(out)
+# %% Plot the output
+falco.plot.plot_trial_output(out)
 
-# # Or, load and plot the output data from pickled data
-# fnPickle = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
-# falco.plot.plot_trial_output_from_pickle(fnPickle)
+# Or, load and plot the output data from pickled data
+fnPickle = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+falco.plot.plot_trial_output_from_pickle(fnPickle)

@@ -22,7 +22,7 @@ mp.SeriesNum = 1
 mp.TrialNum = 1
 
 # Special Computational Settings
-mp.flagMultiproc = True
+mp.flagParallel = True
 mp.useGPU = False
 mp.flagPlot = False
 
@@ -207,7 +207,7 @@ mp.flagDMwfe = False  # Whether to use BMC DM quilting maps
 mp.Fend = falco.config.Object()
 
 # Final Focal Plane Properties
-mp.Fend.res = 3.30  # Sampling [ pixels per lambda0/D]. 825/500*2
+mp.Fend.res = mp.lambda0/(500e-9)*2  # Sampling [ pixels per lambda0/D]
 mp.Fend.FOV = 22.0  # half-width of the field of view in both dimensions [lambda0/D]
 
 # Correction and scoring region definition
@@ -242,12 +242,16 @@ mp.full.pol_conds = [-2, -1, 1, 2]  # Which polarization states to use when crea
 # mp.full.polaxis = 10  #   polarization condition (only used with input_field_rootname)
 mp.full.use_errors = True
 
-fn_dm1_flatmap = os.path.join(flatmap_path, 'spc_wide_band4_flattened_dm1.fits')
-fn_dm2_flatmap = os.path.join(flatmap_path, 'spc_wide_band4_flattened_dm2.fits')
+fn_dm1_flatmap = os.path.join(flatmap_path, 'dm1_m_spc-wide_band4.fits')
+fn_dm2_flatmap = os.path.join(flatmap_path, 'dm2_m_spc-wide_band4.fits')
+fn_dm1_flatmapNoSPM = os.path.join(flatmap_path, 'dm1_m_flat_hlc_band4.fits')
+fn_dm2_flatmapNoSPM = os.path.join(flatmap_path, 'dm2_m_flat_hlc_band4.fits')
 mp.full.dm1 = falco.config.Object()
 mp.full.dm2 = falco.config.Object()
 mp.full.dm1.flatmap = fits.getdata(fn_dm1_flatmap)
 mp.full.dm2.flatmap = fits.getdata(fn_dm2_flatmap)
+mp.full.dm1.flatmapNoSPM = fits.getdata(fn_dm1_flatmapNoSPM)
+mp.full.dm2.flatmapNoSPM = fits.getdata(fn_dm2_flatmapNoSPM)
 
 mp.dm1.biasMap = 50 + mp.full.dm1.flatmap/mp.dm1.VtoH  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm1.biasMap + mp.dm1.V
 mp.dm2.biasMap = 50 + mp.full.dm2.flatmap/mp.dm2.VtoH  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm2.biasMap + mp.dm2.V
