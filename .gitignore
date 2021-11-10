@@ -8,8 +8,13 @@ data/material/*.npy
 zOld/**
 
 #--Sync only example files
-roman/*.m
-!roman/EXAMPLE_*
+roman/*.py
+roman/*.fits
+roman/*.txt
+roman/flatmaps/*.fits
+!roman/EXAMPLE_*.py
+!roman/flatmaps/dm*.fits
+
 data/WFIRST/PhaseB/*.fits
 
 

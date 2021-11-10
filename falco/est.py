@@ -27,7 +27,7 @@ def perfect(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
     
-    if mp.flagMultiproc:
+    if mp.flagParallel:
         
         Emat = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode), dtype=complex)
         

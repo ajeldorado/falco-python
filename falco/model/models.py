@@ -843,7 +843,7 @@ def jacobian(mp):
                                 dtype=complex)
 
     # Calculate the Jacobian in parallel or serial
-    if(mp.flagMultiproc):
+    if(mp.flagParallel):
         print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
         with falco.util.TicToc():
              ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       

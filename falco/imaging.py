@@ -155,7 +155,7 @@ def calc_psf_norm_factor(mp):
 
     # Full Model Normalizations (at points for entire-bandpass evaluation)
     if(mp.flagSim):
-        if mp.flagMultiproc:
+        if mp.flagParallel:
             # Make all combinations of the values
             inds_list = [(x, y) for x in range(mp.Nsbp)
                          for y in range(mp.Nwpsbp)]
@@ -253,7 +253,7 @@ def get_summed_image(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    if not (mp.flagMultiproc and mp.flagSim):
+    if not (mp.flagParallel and mp.flagSim):
         Imean = 0
         for si in range(0, mp.Nsbp):
             Imean += mp.sbp_weights[si]*get_sbp_image(mp, si)
@@ -359,7 +359,7 @@ def get_sim_sbp_image(mp, si):
     Nvals = mp.Nwpsbp*Npol
 
     Iall = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
-    if mp.flagMultiproc:
+    if mp.flagParallel:
         pool = multiprocessing.Pool(processes=mp.Nthreads)
         resultsRaw = pool.starmap(_get_single_sbp_image_wvlPol,
                                   [(mp, si, ilist, inds_list)

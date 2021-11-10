@@ -288,7 +288,7 @@ def roman_phasec( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         else:
             n = 2048
         n_mft = 1400                # gridsize to FPM (propagation to/from FPM handled by MFT)
-    elif cor_type == 'spc-spec_rotated':
+    elif cor_type in ('spc-spec_rotated', 'spc-spec_rotated_band2', 'spc-spec_rotated_band3'):
         is_spc = True
         file_dir = data_dir + '/spc_20200628_specrot/'     # must have trailing "/"
         pupil_diam_pix = 1000.0     # Y axis pupil diameter in pixels
@@ -296,8 +296,13 @@ def roman_phasec( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         pupil_mask_file = file_dir + 'SPM_SPC-20200628_1000_derotated_rotated.fits'
         fpm_sampling_lam0divD = 0.05         # sampling in fpm_lam0_m/D of FPM mask 
         fpm_file = file_dir + 'FPM_SPC-20200628_res20.fits'
-        fpm_lam0_m = 0.73e-6
-        lambda0_m = fpm_lam0_m     # FPM scaled for this central wavelength
+        # fpm_lam0_m = 0.73e-6
+        # lambda0_m = fpm_lam0_m     # FPM scaled for this central wavelength
+        if cor_type == 'spc-spec_rotated_band2':
+            fpm_lam0_m = 0.660e-6
+        else:
+            fpm_lam0_m = 0.730e-6
+        lambda0_m = fpm_lam0_m        # FPM scaled for this central wavelength
         lyot_stop_file = file_dir + 'LS_SPC-20200628_1000.fits'
         if use_defocus_lens != 0 or use_pupil_lens != 0:
             n = 4096
@@ -323,7 +328,7 @@ def roman_phasec( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         else:
             n = 2048
         n_mft = 1400
-    elif cor_type == 'spc-mswc':
+    elif cor_type in ('spc-mswc', 'spc-mswc_band1', 'spc-mswc_band4'):
         is_spc = True
         file_dir = data_dir + '/spc_20200623_mswc/' # must have trailing "/"
         pupil_diam_pix = 982.0                           # Y axis pupil diameter in pixels
@@ -719,7 +724,7 @@ def roman_phasec( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         proper.prop_multiply( wavefront, pupil_mask )
         pupil_mask = 0
     if use_errors != 0: 
-        if is_spc == 1:
+        if is_spc == 1 and use_pupil_mask == 1:
             proper.prop_errormap( wavefront, map_dir+'roman_phasec_PUPILMASK_phase_error_V1.0.fits', WAVEFRONT=True )
         else:
             proper.prop_errormap( wavefront, map_dir+'roman_phasec_PUPILFOLD_phase_error_V1.0.fits', WAVEFRONT=True )

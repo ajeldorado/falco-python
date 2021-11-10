@@ -18,11 +18,11 @@ LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
 flatmap_path = os.path.join(LOCAL_PATH, 'flatmaps')
 
 # Record Keeping
-mp.SeriesNum = 1;
-mp.TrialNum = 1;
+mp.SeriesNum = 1
+mp.TrialNum = 1
 
 # Special Computational Settings
-mp.flagMultiproc = True
+mp.flagParallel = True
 mp.flagPlot = True
 mp.useGPU = False
 
@@ -44,7 +44,7 @@ mp.source_y_offset_norm = 0  # y location [lambda_c/D] in dark hole at which to 
 # %# Bandwidth and Wavelength Specs
 
 mp.lambda0 = 575e-9  # Central wavelength of the whole spectral bandpass [meters]
-mp.fracBW = 0.10  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+mp.fracBW = 0.1000  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 3  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 3  # Number of wavelengths to used to approximate an image in each sub-bandpass
 
@@ -207,7 +207,7 @@ mp.flagDMwfe = False  # Whether to use BMC DM quilting maps
 mp.Fend = falco.config.Object()
 
 # Final Focal Plane Properties
-mp.Fend.res = 2.30  # Sampling [ pixels per lambda0/D]. 825/500*2
+mp.Fend.res = mp.lambda0/(500e-9)*2  # Sampling [ pixels per lambda0/D]
 mp.Fend.FOV = 12.0  # half-width of the field of view in both dimensions [lambda0/D]
 
 # Correction and scoring region definition
@@ -228,25 +228,32 @@ mp.Fend.clockAngDeg = 0  # Amount to rotate the dark hole location
 # %% Optical Layout: Full PROPER Model
 
 mp.full.cor_type = 'hlc_band1'
-
 mp.full.flagPROPER = True  # Whether the full model is a PROPER prescription
 
 # Pupil Plane Resolutions
 mp.P1.full.Nbeam = 309
 mp.P1.full.Narr = 310
 
+mp.full.field_stop_radius_lam0 = 9.7  # [lambda0/D]
+
+# Image size and resolutino
 mp.full.output_dim = falco.util.ceil_even(1 + mp.Fend.res*(2*mp.Fend.FOV))  # dimensions of output in pixels (overrides output_dim0)
 mp.full.final_sampling_lam0 = 1/mp.Fend.res  # final sampling in lambda0/D
 
+# Aberrations and polarization
 mp.full.pol_conds = [-2, -1, 1, 2]  # Which polarization states to use when creating an image.
+mp.full.polaxis = 10  # Pol state to use when making a single call to the Roman CGI PROPER model  
 mp.full.use_errors = True
 
-fn_dm1_flatmap = os.path.join(flatmap_path, 'hlc_flattened_with_pattern_dm1.fits')
-fn_dm2_flatmap = os.path.join(flatmap_path, 'hlc_flattened_with_pattern_dm2.fits')
+# DM starting voltages (in the PROPER model only)
+fn_dm1_design = os.path.join(flatmap_path, 'dm1_m_design_hlc_band1.fits')
+fn_dm2_design = os.path.join(flatmap_path, 'dm2_m_design_hlc_band1.fits')
+fn_dm1_flatmap = os.path.join(flatmap_path, 'dm1_m_flat_hlc_band1.fits')
+fn_dm2_flatmap = os.path.join(flatmap_path, 'dm2_m_flat_hlc_band1.fits')
 mp.full.dm1 = falco.config.Object()
 mp.full.dm2 = falco.config.Object()
-mp.full.dm1.flatmap = fits.getdata(fn_dm1_flatmap)
-mp.full.dm2.flatmap = fits.getdata(fn_dm2_flatmap)
+mp.full.dm1.flatmap = fits.getdata(fn_dm1_flatmap) + fits.getdata(fn_dm1_design)
+mp.full.dm2.flatmap = fits.getdata(fn_dm2_flatmap) + fits.getdata(fn_dm2_design)
 
 mp.dm1.biasMap = 50 + mp.full.dm1.flatmap/mp.dm1.VtoH  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm1.biasMap + mp.dm1.V
 mp.dm2.biasMap = 50 + mp.full.dm2.flatmap/mp.dm2.VtoH  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm2.biasMap + mp.dm2.V
@@ -301,6 +308,9 @@ LS1 = falco.mask.rotate_shift_downsample_pupil_mask(
     LS0, 309, mp.P4.compact.Nbeam, 0, 0, 0)
 mp.P4.compact.mask = falco.util.pad_crop(LS1, falco.util.ceil_even(np.max(LS1.shape)))
 # plt.figure(22); plt.imshow(LS1); plt.colorbar(); plt.magma(); plt.gca().invert_yaxis();  plt.pause(0.5)
+
+# Pinhole used during back-end calibration
+mp.F3.pinhole_diam_m = 0.5*32.22*575e-9
 
 # Load the HLC FPM
 if mp.Nsbp == 1:

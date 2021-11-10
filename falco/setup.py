@@ -148,8 +148,8 @@ def set_optional_variables(mp):
         mp.path.ws = os.path.join(mp.path.falco, 'data', 'ws')
 
     # multiprocessing
-    if not hasattr(mp, "flagMultiproc"):
-        mp.flagMultiproc = False
+    if not hasattr(mp, "flagParallel"):
+        mp.flagParallel = False
     if not hasattr(mp, "Nthreads"):
         mp.Nthreads = psutil.cpu_count(logical=False)
 
