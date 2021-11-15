@@ -23,6 +23,7 @@ jobs:
         python-version: '3.7'
     - name: Install dependencies
       run: |
+        pip install extension-helpers
         mkdir PYPROPER
         cd PYPROPER
         curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip -o myfile.zip -L
