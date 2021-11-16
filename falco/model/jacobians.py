@@ -126,7 +126,7 @@ def lyot(mp, im, idm):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=np.complex)
+        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
         
         # Two array sizes (at same resolution) of influence functions for MFT
         # and angular spectrum
@@ -155,8 +155,8 @@ def lyot(mp, im, idm):
             if np.sum(np.abs(mp.dm1.compact.inf_datacube[:, :, iact])) > 1e-12:
                 
                 # x- and y- coordinate indices of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0,iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=np.int) # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1,iact], mp.dm1.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad1AS, dtype=np.int) # y-indices in pupil arrays for the box
+                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0,iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=int) # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1,iact], mp.dm1.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad1AS, dtype=int) # y-indices in pupil arrays for the box
                 indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
                 # x- and y- coordinates of the UN-padded influence function in the full padded pupil
                 x_box = mp.dm1.compact.x_pupPad[x_box_AS_ind] # full pupil x-coordinates of the box 
@@ -194,7 +194,7 @@ def lyot(mp, im, idm):
                     EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
                     
                     # Full Lyot plane pupil (for Babinet)
-                    EP4noFPM = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad),dtype=np.complex)
+                    EP4noFPM = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad),dtype=complex)
                     EP4noFPM[indBoxAS] = dEP2box # Propagating the E-field from P2 to P4 without masks gives the same E-field. 
                     EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering) # Get the correct orientation 
                     EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
@@ -219,7 +219,7 @@ def lyot(mp, im, idm):
 
     """ ---------- DM2 ---------- """
     if idm == 2:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=np.complex)
+        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
         
         # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
         NboxPad2AS = int(mp.dm2.compact.NboxAS)
@@ -240,8 +240,8 @@ def lyot(mp, im, idm):
             if np.sum(np.abs(mp.dm2.compact.inf_datacube[:, :, iact])) > 1e-12:  # Only compute for acutators specified for use or for influence functions that are not zeroed out
     
                 # x- and y- coordinates of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0, iact], mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS, dtype=np.int) # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1, iact], mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS, dtype=np.int) # y-indices in pupil arrays for the box
+                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0, iact], mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS, dtype=int) # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1, iact], mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS, dtype=int) # y-indices in pupil arrays for the box
                 indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
                 # x- and y- coordinates of the UN-padded influence function in the full padded pupil
                 x_box = mp.dm2.compact.x_pupPad[x_box_AS_ind]  # full pupil x-coordinates of the box 
@@ -275,7 +275,7 @@ def lyot(mp, im, idm):
                     EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering) # Subtrahend term for the Lyot plane E-field    
                     EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
                                     
-                    EP4noFPM = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=np.complex)
+                    EP4noFPM = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=complex)
                     EP4noFPM[indBoxAS] = dEP2box  # Propagating the E-field from P2 to P4 without masks gives the same E-field.
                     EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering) # Get the number or re-imaging relays between pupils P3 and P4. 
                     EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
@@ -518,7 +518,7 @@ def vortex(mp, im, idm):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=np.complex)
+        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
         
         # Array size for planes P3, F3, and P4
         Nfft1 = int(2**falco.util.nextpow2(np.max(np.array([mp.dm1.compact.NdmPad, minPadFacVortex*mp.dm1.compact.Nbox])))) # Don't crop--but do pad if necessary.
@@ -550,8 +550,8 @@ def vortex(mp, im, idm):
             if np.sum(np.abs(mp.dm1.compact.inf_datacube[:, :, iact])) > 1e-12:
                 
                 # x- and y- coordinate indices of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0, iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=np.int)  # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1, iact], mp.dm1.compact.xy_box_lowerLeft_AS[1 ,iact]+NboxPad1AS, dtype=np.int)  # y-indices in pupil arrays for the box
+                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0, iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=int)  # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1, iact], mp.dm1.compact.xy_box_lowerLeft_AS[1 ,iact]+NboxPad1AS, dtype=int)  # y-indices in pupil arrays for the box
                 indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
                 # x- and y- coordinates of the UN-padded influence function in the full padded pupil
                 x_box = mp.dm1.compact.x_pupPad[x_box_AS_ind]  # full pupil x-coordinates of the box 
@@ -603,7 +603,7 @@ def vortex(mp, im, idm):
 
     """ ---------- DM2 ---------- """
     if idm == 2:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=np.complex)
+        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
         
         # Array size for planes P3, F3, and P4
         Nfft2 = int(2**falco.util.nextpow2(np.max(np.array([mp.dm2.compact.NdmPad, minPadFacVortex*mp.dm2.compact.Nbox])))) # Don't crop--but do pad if necessary.
@@ -631,8 +631,8 @@ def vortex(mp, im, idm):
             if np.sum(np.abs(mp.dm2.compact.inf_datacube[:, :, iact])) > 1e-12:
     
                 # x- and y- coordinates of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0, iact], mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS, dtype=np.int)  # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1, iact], mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS, dtype=np.int)  # y-indices in pupil arrays for the box
+                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0, iact], mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS, dtype=int)  # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1, iact], mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS, dtype=int)  # y-indices in pupil arrays for the box
                 indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
 #               # x- and y- coordinates of the UN-padded influence function in the full padded pupil
 #                x_box = mp.dm2.compact.x_pupPad[x_box_AS_ind] # full pupil x-coordinates of the box

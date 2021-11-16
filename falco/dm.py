@@ -321,8 +321,8 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     yoff_grid = xoff_grid
     dm_grid = np.zeros([ny_grid, nx_grid], dtype = np.float64)
 
-    x = np.arange(nx_dm, dtype=np.int16) * int(inf_mag) + int(xoff_grid)
-    y = np.arange(ny_dm, dtype=np.int16) * int(inf_mag) + int(yoff_grid)
+    x = np.arange(nx_dm, dtype=int) * int(inf_mag) + int(xoff_grid)
+    y = np.arange(ny_dm, dtype=int) * int(inf_mag) + int(yoff_grid)
     dm_grid[np.tile(np.vstack(y), (nx_dm,)),
             np.tile(x, (ny_dm, 1))] = dm_z_commanded
     dm_grid = ss.fftconvolve(dm_grid, inf, mode='same')
@@ -335,8 +335,8 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
 
     if ydim > n: ydim = n
 
-    x = np.ones((ydim, 1), dtype=np.int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
-    y = (np.ones((xdim, 1), dtype=np.int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
+    x = np.ones((ydim, 1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
+    y = (np.ones((xdim, 1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
 
     a = xtilt * np.pi / 180
     b = ytilt * np.pi / 180
@@ -940,8 +940,8 @@ def surf_from_poke_cube(dm, dmFullOrCompact):
     DMsurf = np.zeros((dmFullOrCompact.NdmPad,dmFullOrCompact.NdmPad))  # Initialize the empty array
     for iact in range(dm.NactTotal):
         if(any(any(dmFullOrCompact.inf_datacube[:, :, iact])) and any(dm.VtoH(iact))):
-            y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0, iact], dmFullOrCompact.xy_box_lowerLeft[0,iact]+dmFullOrCompact.Nbox-1, dtype=np.int) # x-indices in pupil arrays for the box
-            x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[1, iact], dmFullOrCompact.xy_box_lowerLeft[1,iact]+dmFullOrCompact.Nbox-1, dtype=np.int) # y-indices in pupil arrays for the box
+            y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0, iact], dmFullOrCompact.xy_box_lowerLeft[0,iact]+dmFullOrCompact.Nbox-1, dtype=int) # x-indices in pupil arrays for the box
+            x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[1, iact], dmFullOrCompact.xy_box_lowerLeft[1,iact]+dmFullOrCompact.Nbox-1, dtype=int) # y-indices in pupil arrays for the box
             DMsurf[x_box_ind,y_box_ind] +=  dm.V.flatten()[iact]*dm.VtoH.flatten()[iact]*dmFullOrCompact.inf_datacube[: ,:, iact]
 
     # Adjust the orientation if specified
@@ -1112,8 +1112,8 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     yoff_grid = xoff_grid
     dm_grid = np.zeros([ny_grid, nx_grid], dtype = np.float64)
 
-    x = np.arange(nx_dm, dtype=np.int16) * int(inf_mag) + int(xoff_grid)
-    y = np.arange(ny_dm, dtype=np.int16) * int(inf_mag) + int(yoff_grid)
+    x = np.arange(nx_dm, dtype=int) * int(inf_mag) + int(xoff_grid)
+    y = np.arange(ny_dm, dtype=int) * int(inf_mag) + int(yoff_grid)
     dm_grid[np.tile(np.vstack(y), (nx_dm,)), np.tile(x, (ny_dm, 1))] = dm_z_commanded
     dm_grid = ss.fftconvolve(dm_grid, inf, mode='same')
 
@@ -1125,8 +1125,8 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
 
     if ydim > n: ydim = n
 
-    x = np.ones((ydim,1), dtype=np.int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
-    y = (np.ones((xdim,1), dtype=np.int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
+    x = np.ones((ydim,1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
+    y = (np.ones((xdim,1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
 
     a = xtilt * np.pi / 180
     b = ytilt * np.pi / 180
