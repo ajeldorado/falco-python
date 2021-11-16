@@ -10,7 +10,7 @@ import config_wfsc_vc as CONFIG
 def test_wfsc_vc():
 
     mp = CONFIG.mp
-    mp.flagPlot = True  # DEBUGGING
+    mp.flagPlot = False  # DEBUGGING
     LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
     mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
 

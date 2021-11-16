@@ -222,10 +222,10 @@ def gen_fpm_surf_from_cube(dm, modelType):
             and np.sum(np.abs(dm.VtoH.flatten()[iact])) >= 1e-12:
             x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0, iact],
                                   dmFullOrCompact.xy_box_lowerLeft[0, iact]
-                                  + dmFullOrCompact.Nbox, dtype=np.int)
+                                  + dmFullOrCompact.Nbox, dtype=int)
             y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[1, iact],
                                   dmFullOrCompact.xy_box_lowerLeft[1, iact]
-                                  + dmFullOrCompact.Nbox, dtype=np.int)
+                                  + dmFullOrCompact.Nbox, dtype=int)
             fpmSurf[np.ix_(y_box_ind, x_box_ind)] += dm.V.flatten()[iact] *\
             dm.VtoH.flatten()[iact]*dmFullOrCompact.inf_datacube[:, :, iact]
 

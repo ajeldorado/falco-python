@@ -38,7 +38,7 @@ def loop(mp, out):
     # Begin the Correction Iterations
     ###########################################################################
 
-    mp.flagCullActHist = np.zeros((mp.Nitr+1,), dtype=np.bool)
+    mp.flagCullActHist = np.zeros((mp.Nitr+1,), dtype=bool)
     mp.thput_vec = np.zeros(mp.Nitr+1)
 
     for Itr in range(mp.Nitr):
