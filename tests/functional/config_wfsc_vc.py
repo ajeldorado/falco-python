@@ -49,25 +49,23 @@ mp.estimator = 'perfect';
 ###--New variables for pairwise probing estimation:
 mp.est = falco.config.Object()
 mp.est.probe = falco.config.Object()
-mp.est.probe.Npairs = 3;#2;     # Number of pair-wise probe PAIRS to use.
-mp.est.probe.whichDM = 1;    # Which DM # to use for probing. 1 or 2. Default is 1
-mp.est.probe.radius = 12;#20;    # Max x/y extent of probed region [actuators].
-mp.est.probe.offsetX = 0;   # offset of probe center in x [actuators]. Use to avoid central obscurations.
-mp.est.probe.offsetY = 14;    # offset of probe center in y [actuators]. Use to avoid central obscurations.
-mp.est.probe.axis = 'alternate';     # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
-mp.est.probe.gainFudge = 1;     # empirical fudge factor to make average probe amplitude match desired value.
-
+mp.est.probe.Npairs = 3
+mp.est.probe.whichDM = 1
+mp.est.probe.radius = 12
+mp.est.probe.offsetX = 0
+mp.est.probe.offsetY = 14
+mp.est.probe.axis = 'alternate'
+mp.est.probe.gainFudge = 1
 #### Wavefront Control: General
 
 ###--Threshold for culling weak actuators from the Jacobian:
-mp.logGmin = -6;  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobians to weed out the weakest actuators
-
+mp.logGmin = -6
 ####### NEED TO DETERMINE
 ###--Zernikes to suppress with controller
 mp.jac = falco.config.Object()
 mp.jac.zerns = np.array([1])  #--Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
 mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns)) #--meters RMS of Zernike aberrations. (piston value is reset to 1 later)
-    
+
 ####### NEED TO DETERMINE
 ###--Zernikes to compute sensitivities for
 mp.eval = falco.config.Object()
@@ -75,15 +73,14 @@ mp.eval.indsZnoll = np.array([2, 3]) #--Noll indices of Zernikes to compute valu
 
 ####### NEED TO DETERMINE
 ###--Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
-mp.eval.Rsens = np.array([[2., 3.],[3., 4.],[4., 5.]]);  # [2-D ndarray]
-
+mp.eval.Rsens = np.array([[2., 3.],[3., 4.],[4., 5.]])
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.Object()
 mp.ctrl.log10regVec = np.arange(-6, -2+0.5, 0.5) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
-   
+
 ###--Spatial pixel weighting
 mp.WspatialDef = []# [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)] [ndarray]
 
@@ -155,15 +152,15 @@ mp.dm1.Nact = 32               # # of actuators across DM array
 mp.dm1.VtoH = 1e-9*np.ones((32,32))  # gains of all actuators [nm/V of free stroke]
 mp.dm1.xtilt = 0               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm1.ytilt = 0               # for foreshortening. angle of rotation about y-axis [degrees]
-mp.dm1.zrot = 0;               # clocking of DM surface [degrees]
+mp.dm1.zrot = 0
 mp.dm1.xc = (32/2 - 1/2)       # x-center location of DM surface [actuator widths]
 mp.dm1.yc = (32/2 - 1/2)       # y-center location of DM surface [actuator widths]
 mp.dm1.edgeBuffer = 1          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
 
 ##--DM2 parameters
-mp.dm2.Nact = 32;               # # of actuators across DM array
+mp.dm2.Nact = 32
 mp.dm2.VtoH = 1e-9*np.ones((32,32))  # gains of all actuators [nm/V of free stroke]
-mp.dm2.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
+mp.dm2.xtilt = 0
 mp.dm2.ytilt = 0                # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm2.zrot = 0                 # clocking of DM surface [degrees]
 mp.dm2.xc = (32/2 - 1/2)        # x-center location of DM surface [actuator widths]
@@ -172,10 +169,9 @@ mp.dm2.edgeBuffer = 1          # max radius (in actuator spacings) outside of be
 
 ##--Aperture stops at DMs
 mp.flagDM1stop = False #--Whether to apply an iris or not
-mp.dm1.Dstop = 100e-3;  #--Diameter of iris [meters]
+mp.dm1.Dstop = 100e-3
 mp.flagDM2stop = False  #--Whether to apply an iris or not
-mp.dm2.Dstop = 50e-3;   #--Diameter of iris [meters]
-
+mp.dm2.Dstop = 50e-3
 ##--DM separations
 mp.d_P2_dm1 = 0        # distance (along +z axis) from P2 pupil to DM1 [meters]
 mp.d_dm1_dm2 = 0.20   # distance between DM1 and DM2 [meters]
@@ -185,7 +181,7 @@ mp.d_dm1_dm2 = 0.20   # distance between DM1 and DM2 [meters]
 
 ##--Key Optical Layout Choices
 mp.flagSim = True      #--Simulation or not
-mp.layout = 'Fourier';  #--Which optical layout to use
+mp.layout = 'Fourier'
 mp.coro = 'vortex'
 
 ####### NEED TO DETERMINE
@@ -263,10 +259,8 @@ mp.P1.ODnorm = 1.00 # Outer diameter of the telescope [diameter]
 mp.P1.D = 7.989  # circumscribed telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
 
 # Generate the entrance pupil aperture
-inputs = {"centering": mp.centering}
+inputs = {'centering': mp.centering, 'Nbeam': mp.P1.full.Nbeam}
 
-# Full model:
-inputs["Nbeam"] = mp.P1.full.Nbeam
 mp.P1.full.mask = falco.util.pad_crop(
     falco.mask.falco_gen_pupil_LUVOIR_B(inputs),
     2**(falco.util.nextpow2(inputs["Nbeam"])))
