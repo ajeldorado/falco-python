@@ -41,7 +41,7 @@ def flesh_out_workspace(mp):
     plot_superimposed_pupil_masks(mp)  # For visual inspection
 
     # Focal plane mask
-    falco_gen_FPM(mp)
+    falco_gen_fpm(mp)
     falco_compute_fpm_coordinates(mp)
 
     # Final focal plane
@@ -52,7 +52,7 @@ def flesh_out_workspace(mp):
 
     # DM1 and DM2
     falco_configure_dm1_and_dm2(mp)  # Flesh out the dm1 and dm2 structures
-    falco_gen_DM_stops(mp)
+    falco_gen_dm_stops(mp)
     falco_set_dm_surface_padding(mp)  # Angular Spectrum Propagation with FFTs
 
     falco_set_initial_Efields(mp)
@@ -800,8 +800,8 @@ def plot_superimposed_pupil_masks(mp):
             plt.pause(0.1)
 
 
-def falco_gen_FPM(mp):
-    """Generate the FPM (for the HLC only)."""
+def falco_gen_fpm(mp):
+    """Generate the FPM. Used only for an HLC being optimized."""
     if mp.layout.lower() == 'fourier':
 
         if mp.coro == 'HLC':
@@ -1205,8 +1205,8 @@ def falco_configure_dm1_and_dm2(mp):
     return None
 
 
-def falco_gen_DM_stops(mp):
-    """Generate circular stops for the DMs."""
+def falco_gen_dm_stops(mp):
+    """Generate circular aperture stops for the DMs."""
     if not hasattr(mp.dm2, 'full'):
         mp.dm2.full = falco.config.Object()
     if not hasattr(mp.dm2, 'compact'):
@@ -1218,14 +1218,15 @@ def falco_gen_DM_stops(mp):
     if mp.flagDM2stop:
         mp.dm2.full.mask = falco.mask.falco_gen_DM_stop(mp.P2.full.dx, mp.dm2.Dstop, mp.centering)
         mp.dm2.compact.mask = falco.mask.falco_gen_DM_stop(mp.P2.compact.dx, mp.dm2.Dstop, mp.centering)
-    pass
+    
+    return None
 
 
 def falco_set_dm_surface_padding(mp):
     """Set how much the DM surface arrays get padded prior to propagation."""
-    #% DM Surface Array Sizes for Angular Spectrum Propagation with FFTs
+    # DM Surface Array Sizes for Angular Spectrum Propagation with FFTs
     # Array Sizes for Angular Spectrum Propagation with FFTs
-    
+
     # Compact Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
     if np.any(mp.dm_ind == 1) and np.any(mp.dm_ind == 2):
         NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.compact.NdmPad, mp.dm2.compact.NdmPad])))
@@ -1240,7 +1241,7 @@ def falco_set_dm_surface_padding(mp):
         # Double the zero-padding until the angular spectrum sampling requirement is not violated
         NdmPad = 2*NdmPad;
     mp.compact.NdmPad = NdmPad;
-    
+
     # Full Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
     if np.any(mp.dm_ind == 1) and np.any(mp.dm_ind == 2):
         NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.NdmPad, mp.dm2.NdmPad])))
@@ -1255,7 +1256,8 @@ def falco_set_dm_surface_padding(mp):
         (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): 
         NdmPad = 2*NdmPad
     mp.full.NdmPad = NdmPad
-    pass
+
+    return None
 
 
 def falco_set_initial_Efields(mp):
@@ -1339,7 +1341,7 @@ def init_storage_arrays(mp):
     if not hasattr(mp.eval, 'Rsens'):
         mp.eval.Rsens = []
     if not hasattr(mp.eval, 'indsZnoll'):
-        mp.eval.indsZnoll = [1, 2]
+        mp.eval.indsZnoll = [2, 3]
     Nannuli = mp.eval.Rsens.shape[0]
     Nzern = len(mp.eval.indsZnoll)
     out.Zsens = np.zeros((Nzern, Nannuli, mp.Nitr))
@@ -1392,97 +1394,3 @@ def init_storage_arrays(mp):
     out.serialDate = np.zeros(mp.Nitr)  # start time of each iteration as float
 
     return out
-
-
-def falco_gen_FPM_LC(mp):
-    """
-    Make or read in focal plane mask (FPM) amplitude for the full model.
-
-    Detailed description here
-
-    Parameters
-    ----------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    Returns
-    -------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    """
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-    
-    # Make or read in focal plane mask (FPM) amplitude for the full model
-    FPMgenInputs = {}
-    FPMgenInputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
-    FPMgenInputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-    if hasattr(mp, 'FPMampFac'):
-        FPMgenInputs["FPMampFac"] = mp.FPMampFac  # amplitude transmission of inner FPM spot
-    else:
-        FPMgenInputs["FPMampFac"] = 0.0
-    FPMgenInputs["centering"] = mp.centering
-    
-    if not hasattr(mp.F3.full, 'mask'):
-        mp.F3.full.mask = falco.config.Object()
-
-    mp.F3.full.mask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
-
-    mp.F3.full.Nxi = mp.F3.full.mask.shape[1]
-    mp.F3.full.Neta = mp.F3.full.mask.shape[0]
-
-    # Number of points across the FPM in the compact model
-    if np.isinf(mp.F3.Rout):
-        if mp.centering == 'pixel':
-            mp.F3.compact.Nxi = ceil_even((2*(mp.F3.Rin*mp.F3.compact.res + 1/2)))
-        else:
-            mp.F3.compact.Nxi = ceil_even((2*mp.F3.Rin*mp.F3.compact.res))
-
-    else:
-        if mp.centering == 'pixel':
-            mp.F3.compact.Nxi = ceil_even((2*(mp.F3.Rout*mp.F3.compact.res + 1/2)))
-        else:  # case 'interpixel'
-            mp.F3.compact.Nxi = ceil_even((2*mp.F3.Rout*mp.F3.compact.res))
-
-    mp.F3.compact.Neta = mp.F3.compact.Nxi
-    
-    # Make or read in focal plane mask (FPM) amplitude for the compact model
-    FPMgenInputs["pixresFPM"] = mp.F3.compact.res  # pixels per lambda_c/D
-    
-    if not hasattr(mp.F3.compact, 'mask'):
-        mp.F3.compact.mask = falco.config.Object()
-        
-    mp.F3.compact.mask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
-
-def falco_gen_FPM_SPLC(mp):
-    """Generate the FPM for an SPLC."""
-    if not hasattr(mp.F3, 'ang'):
-        mp.F3.ang = 180
-    
-    if(mp.full.flagGenFPM):
-        # Generate the FPM amplitude for the full model
-        inputs = {}
-        inputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-        inputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-        inputs["ang"] = mp.F3.ang  # [degrees]
-        inputs["centering"] = mp.centering;
-        inputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
-        mp.F3.full.mask = falco.mask.falco_gen_bowtie_FPM(inputs)
-    
-    if(mp.compact.flagGenFPM):
-        # Generate the FPM amplitude for the compact model
-        inputs = {}
-        inputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-        inputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-        inputs["ang"] = mp.F3.ang  # [degrees]
-        inputs["centering"] = mp.centering
-        inputs["pixresFPM"] = mp.F3.compact.res
-        mp.F3.compact.mask = falco.mask.falco_gen_bowtie_FPM(inputs)
-    
-    if not mp.full.flagPROPER:
-        mp.F3.full.Nxi = mp.F3.full.mask.shape[1]
-        mp.F3.full.Neta = mp.F3.full.mask.shape[0]
-    
-    mp.F3.compact.Nxi = mp.F3.compact.mask.shape[1]
-    mp.F3.compact.Neta = mp.F3.compact.mask.shape[0]
-    pass
