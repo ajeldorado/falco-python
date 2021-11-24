@@ -122,6 +122,8 @@ def set_optional_variables(mp):
         mp.jac = falco.config.Object()
     if not hasattr(mp, "est"):
         mp.est = falco.config.Object()
+    if not hasattr(mp.est, "probe"):
+        mp.est.probe = falco.config.Object()
     if not hasattr(mp, "detector"):
         mp.detector = falco.config.Object()
     if not hasattr(mp, "star"):
@@ -132,6 +134,8 @@ def set_optional_variables(mp):
         mp.jac.star = falco.config.Object()
     if not hasattr(mp, "path"):
         mp.path = falco.config.Object()
+    if not hasattr(mp, 'jac'):
+        mp.jac = falco.config.EmptyClass()
 
     # File Paths for Data Storage (excluded from git)
     localpath = os.path.dirname(os.path.abspath(__file__))
@@ -147,11 +151,51 @@ def set_optional_variables(mp):
     if not hasattr(mp.path, 'ws'):
         mp.path.ws = os.path.join(mp.path.falco, 'data', 'ws')
 
-    # multiprocessing
+    # Parallel processing
     if not hasattr(mp, "flagParallel"):
         mp.flagParallel = False
     if not hasattr(mp, "Nthreads"):
         mp.Nthreads = psutil.cpu_count(logical=False)
+
+    # Saving data
+    if not hasattr(mp, 'flagSaveWS'):
+        mp.flagSaveWS = False  # Save out the entire workspace at the end
+    if not hasattr(mp, 'flagSVD'):
+        mp.flagSVD = False    # Whether to compute and save the singular mode spectrum of the control Jacobian (each iteration)
+
+    # Optical model/layout
+    if not hasattr(mp, 'flagPROPER'):
+        mp.flagPROPER = False  # Whether the full model is a PROPER model
+    if not hasattr(mp, 'flagRotation'):
+        mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact and Jacobian models
+
+    # Jacobian or controller related
+    if not hasattr(mp, 'flagTrainModel'):
+        mp.flagTrainModel = False  # Whether to call the Expectation-Maximization (E-M) algorithm to improve the linearized model. 
+    if not hasattr(mp, 'flagUseLearnedJac'):
+        mp.flagUseLearnedJac = False  # Whether to load and use an improved Jacobian from the Expectation-Maximization (E-M) algorithm 
+    if not hasattr(mp.est, 'flagUseJac'):
+        mp.est.flagUseJac = False   # Whether to use the Jacobian or not for estimation. (If not using Jacobian, model is called and differenced.)
+    if not hasattr(mp.est, 'ItrStartKF'):
+        mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
+    if not hasattr(mp.ctrl, 'flagUseModel'):
+        mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
+
+    # Model options (Very specialized cases--not for the average user)
+    if not hasattr(mp, 'flagFiber'):
+        mp.flagFiber = False  # Whether to couple the final image through lenslets and a single mode fiber.
+    if not hasattr(mp, 'flagLenslet'):
+        mp.flagLenslet = False    # Whether to propagate through a lenslet array placed in Fend before coupling light into fibers
+    if not hasattr(mp, 'flagDMwfe'):
+        mp.flagDMwfe = False  # Temporary for BMC quilting study
+
+    # Using an apodizer
+    if not hasattr(mp, 'flagApod'):
+        mp.flagApod = False
+
+    # Run label
+    if not hasattr(mp, 'runLabel'):
+        mp.runLabel = 'default_label_'
 
     # How many stars to use and their positions
     # mp.star is for the full model,
@@ -176,67 +220,28 @@ def set_optional_variables(mp):
     if not hasattr(mp.jac.star, 'weights'):
         mp.jac.star.weights = np.ones(mp.compact.star.count)
 
-    # Saving data
-    if not hasattr(mp, 'flagSaveWS'):
-        mp.flagSaveWS = False
-        # Whehter to save out the entire workspace at the end of the trial.
-    if not hasattr(mp, 'flagSaveEachItr'):
-        mp.flagSaveEachItr = False  # Whether to save out the performance at each iteration. Useful for long trials in case it crashes or is stopped early.
-    if not hasattr(mp, 'flagSVD'):
-        mp.flagSVD = False    # Whether to compute and save the singular mode spectrum of the control Jacobian (each iteration)
-    # Jacobian or controller related
-    if not hasattr(mp, 'flagTrainModel'):
-        mp.flagTrainModel = False  # Whether to call the Expectation-Maximization (E-M) algorithm to improve the linearized model. 
-    if not hasattr(mp, 'flagUseLearnedJac'):
-        mp.flagUseLearnedJac = False  # Whether to load and use an improved Jacobian from the Expectation-Maximization (E-M) algorithm 
-    if not hasattr(mp.est, 'flagUseJac'):
-        mp.est.flagUseJac = False   # Whether to use the Jacobian or not for estimation. (If not using Jacobian, model is called and differenced.)
-    if not hasattr(mp.est, 'ItrStartKF'):
-        mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
-    if not hasattr(mp.ctrl, 'flagUseModel'):
-        mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
-
-    # Model options (Very specialized cases--not for the average user)
-    if not hasattr(mp, 'flagFiber'):
-        mp.flagFiber = False  # Whether to couple the final image through lenslets and a single mode fiber.
-    if not hasattr(mp, 'flagLenslet'):
-        mp.flagLenslet = False    # Whether to propagate through a lenslet array placed in Fend before coupling light into fibers
-    if not hasattr(mp, 'flagDMwfe'):
-        mp.flagDMwfe = False  # Temporary for BMC quilting study
-
-    # Detector properties for adding noise to images
-    # Default values are for the Andor Neo sCMOS detector and testbed flux
-    if not hasattr(mp, 'flagImageNoise'):
-        mp.flagImageNoise = False  # whether to include noise in the images
-    if not hasattr(mp.detector, 'gain'):
-        mp.detector.gain = 1.0  # [e-/count]
-    if not hasattr(mp.detector, 'darkCurrentRate'):
-        mp.detector.darkCurrentRate = 0.015  # [e-/pixel/second]
-    if not hasattr(mp.detector, 'readNoiseStd'):
-        mp.detector.readNoiseStd = 1.7  # [e-/count]
-    if not hasattr(mp.detector, 'wellDepth'):
-        mp.detector.wellDepth = 3e4  # [e-]
-    if not hasattr(mp.detector, 'peakFluxVec'):
-        mp.detector.peakFluxVec = 1e8 * np.ones(mp.Nsbp)  # [counts/pixel/second]
-    if not hasattr(mp.detector, 'tExpVec'):
-        mp.detector.tExpVec = 1.0 * np.ones(mp.Nsbp)  # [seconds]
-    if not hasattr(mp.detector, 'Nexp'):
-        mp.detector.Nexp = 1  # number of exposures to stack
-
-    # Optical model/layout:
-    # Whether to use a full model written in PROPER.
-    if not hasattr(mp.full, 'flagPROPER'):
-        mp.full.flagPROPER = False
-    # Whether to have the E-field rotate 180 degrees from one pupil to the next
-    # Does not apply to PROPER full models.
-    if not hasattr(mp, 'flagRotation'):
-        mp.flagRotation = True
-
-    # Optional/Hidden variables
     if not hasattr(mp.full, 'pol_conds'):
         mp.full.pol_conds = np.array([0])  # Vector of which polarization state(s) to use when creating images from the full model. Currently only used with PROPER full models from John Krist.
+
+    # AS FT type for Jacobians
     if not hasattr(mp, 'propMethodPTP'):
         mp.propMethodPTP = 'fft'  # Propagation method for postage stamps around the influence functions. 'mft' or 'fft'
+
+    # Vortex or other azithumal, phase-only FPMs
+    if not hasattr(mp.jac, 'mftToVortex'):
+        mp.jac.mftToVortex = False  # Whether to use MFTs to propagate to/from the vortex FPM
+    if not hasattr(mp.F3, 'VortexSpotDiam'):
+        mp.F3.VortexSpotDiam = 0  # Diameter of the opaque spot at the center of the vortex. [lambda0/D]
+    if not hasattr(mp.F3, 'VortexSpotOffsets'):
+        mp.F3.VortexSpotOffsets = [0, 0]  # Offsets for the opaque spot at the center of the vortex. [lambda0/D]
+    if not hasattr(mp.F3, 'phaseMaskType'):
+        mp.F3.phaseMaskType = 'vortex'  # Type of phase FPMs allowed: 'vortex', 'cos', 'sectors', and 'staircase'.
+    if not hasattr(mp.F3, 'NstepStaircase'):
+        mp.F3.NstepStaircase = 6  # Number of discrete steps per 2*pi radians of phase for a staircase phase mask at F3.
+    if not hasattr(mp.F3, 'clocking'):
+        mp.F3.clocking = 0  # Counterclockwise clocking of the phase FPM [degrees].
+    if not hasattr(mp.F3, 'phaseScaleFac'):
+        mp.F3.phaseScaleFac = 1  # Factor to apply to the phase in the phase FPM. Use a vector to add chromaticity to the model. 
 
     # Sensitivities to Zernike-Mode Perturbations
     if not hasattr(mp.full, 'ZrmsVal'):
@@ -272,35 +277,64 @@ def set_optional_variables(mp):
 
     # Deformable mirror settings
     # DM1
-    if not hasattr(mp.dm1,'orientation'):
+    if not hasattr(mp.dm1, 'orientation'):
         mp.dm1.orientation = 'rot0'  # Change to mp.dm1.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
-    if not hasattr(mp.dm1, 'Vmin'):
-        mp.dm1.Vmin = -1000.  # Min allowed voltage command
-    if not hasattr(mp.dm1, 'Vmax'):
-        mp.dm1.Vmax = 1000.  # Max allowed voltage command
+    if not hasattr(mp.dm1, 'fitType'):
+        mp.dm1.fitType = 'linear'  # Type of response for displacement vs voltage. Options are 'linear', 'quadratic', and 'fourier2'.
     if not hasattr(mp.dm1, 'pinned'):
         mp.dm1.pinned = np.array([])  # Indices of pinned actuators
     if not hasattr(mp.dm1, 'Vpinned'):
         mp.dm1.Vpinned = np.array([])  # (Fixed) voltage commands of pinned actuators
     if not hasattr(mp.dm1, 'tied'):
         mp.dm1.tied = np.zeros((0, 2))  # Indices of paired actuators. Two indices per row
-    if not hasattr(mp.dm1, 'flagNbrRule'):
-        mp.dm1.flagNbrRule = False  # Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm1.dVnbr
+    if mp.flagSim:
+        if not hasattr(mp.dm1, 'Vmin'):
+            mp.dm1.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm1, 'Vmax'):
+            mp.dm1.Vmax = 1000.  # Max allowed absolute voltage command
+    else:
+        if not hasattr(mp.dm1, 'Vmin'):
+            mp.dm1.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm1, 'Vmax'):
+            mp.dm1.Vmax = 100.  # Max allowed absolute voltage command
+    if not hasattr(mp.dm1, 'dVnbrLat'):
+        mp.dm1.dVnbrLat = mp.dm1.Vmax  # max voltage difference allowed between laterally-adjacent DM actuators
+    if not hasattr(mp.dm1, 'dVnbrDiag'):
+        mp.dm1.dVnbrDiag = mp.dm1.Vmax  # max voltage difference allowed between diagonally-adjacent DM actuators
+    if not hasattr(mp.dm1, 'biasMap'):
+        mp.dm1.biasMap = mp.dm1.Vmax/2*np.ones((mp.dm1.Nact, mp.dm1.Nact))  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm1.biasMap + mp.dm1.V
+    if not hasattr(mp.dm1, 'facesheetFlatmap'):
+        mp.dm1.facesheetFlatmap = mp.dm1.biasMap  # Voltage map that produces a flat DM1 surface. Used when enforcing the neighbor rule.
+
     # DM2
-    if not hasattr(mp.dm2,'orientation'):
-        mp.dm2.orientation = 'rot0'  # Change to mp.dm1.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
-    if not hasattr(mp.dm2, 'Vmin'):
-        mp.dm2.Vmin = -1000.  # Min allowed voltage command
-    if not hasattr(mp.dm2, 'Vmax'):
-        mp.dm2.Vmax = 1000.  # Max allowed voltage command
+    if not hasattr(mp.dm2, 'orientation'):
+        mp.dm2.orientation = 'rot0'  # Change to mp.dm2.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
+    if not hasattr(mp.dm2, 'fitType'):
+        mp.dm2.fitType = 'linear'  # Type of response for displacement vs voltage. Options are 'linear', 'quadratic', and 'fourier2'.
     if not hasattr(mp.dm2, 'pinned'):
         mp.dm2.pinned = np.array([])  # Indices of pinned actuators
     if not hasattr(mp.dm2, 'Vpinned'):
         mp.dm2.Vpinned = np.array([])  # (Fixed) voltage commands of pinned actuators
     if not hasattr(mp.dm2, 'tied'):
         mp.dm2.tied = np.zeros((0, 2))  # Indices of paired actuators. Two indices per row
-    if not hasattr(mp.dm2, 'flagNbrRule'):
-        mp.dm2.flagNbrRule = False  # Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm2.dVnbr
+    if mp.flagSim:
+        if not hasattr(mp.dm2, 'Vmin'):
+            mp.dm2.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm2, 'Vmax'):
+            mp.dm2.Vmax = 1000.  # Max allowed absolute voltage command
+    else:
+        if not hasattr(mp.dm2, 'Vmin'):
+            mp.dm2.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm2, 'Vmax'):
+            mp.dm2.Vmax = 100.  # Max allowed absolute voltage command
+    if not hasattr(mp.dm2, 'dVnbrLat'):
+        mp.dm2.dVnbrLat = mp.dm2.Vmax  # max voltage difference allowed between laterally-adjacent DM actuators
+    if not hasattr(mp.dm2, 'dVnbrDiag'):
+        mp.dm2.dVnbrDiag = mp.dm2.Vmax  # max voltage difference allowed between diagonally-adjacent DM actuators
+    if not hasattr(mp.dm2, 'biasMap'):
+        mp.dm2.biasMap = mp.dm2.Vmax/2*np.ones((mp.dm2.Nact, mp.dm2.Nact))  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm2.biasMap + mp.dm2.V
+    if not hasattr(mp.dm2, 'facesheetFlatmap'):
+        mp.dm2.facesheetFlatmap = mp.dm2.biasMap  # Voltage map that produces a flat dm2 surface. Used when enforcing the neighbor rule.
 
     # Loading previous DM commands as the starting point
     # Stash DM8 and DM9 starting commands if they are given in the main script
@@ -331,15 +365,43 @@ def set_optional_variables(mp):
     if np.any(mp.dm_ind == 9):
         mp.dm9.dV = 0
 
-#    # First delta DM settings are zero (for covariance calculation in Kalman filters)
-#    mp.dm1.dV = np.zeros((mp.dm1.Nact, mp.dm1.Nact))  # delta voltage on DM1;
-#    mp.dm2.dV = np.zeros((mp.dm2.Nact, mp.dm2.Nact))  # delta voltage on DM2;
-#    mp.dm8.dV = np.zeros((mp.dm8.NactTotal,1))  # delta voltage on DM8;
-#    mp.dm9.dV = np.zeros((mp.dm9.NactTotal,1))  # delta voltage on DM9;
+    # Detector properties for adding noise to images
+    # Default values are for the Andor Neo sCMOS detector and testbed flux
+    if not hasattr(mp, 'flagImageNoise'):
+        mp.flagImageNoise = False  # whether to include noise in the images
+    if not hasattr(mp.detector, 'gain'):
+        mp.detector.gain = 1.0  # [e-/count]
+    if not hasattr(mp.detector, 'darkCurrentRate'):
+        mp.detector.darkCurrentRate = 0.015  # [e-/pixel/second]
+    if not hasattr(mp.detector, 'readNoiseStd'):
+        mp.detector.readNoiseStd = 1.7  # [e-/count]
+    if not hasattr(mp.detector, 'wellDepth'):
+        mp.detector.wellDepth = 3e4  # [e-]
+    if not hasattr(mp.detector, 'peakFluxVec'):
+        mp.detector.peakFluxVec = 1e8 * np.ones(mp.Nsbp)  # [counts/pixel/second]
+    if not hasattr(mp.detector, 'tExpVec'):
+        mp.detector.tExpVec = 1.0 * np.ones(mp.Nsbp)  # [seconds]
+    if not hasattr(mp.detector, 'Nexp'):
+        mp.detector.Nexp = 1  # number of exposures to stack
+
 
     # Control
     if not hasattr(mp, 'WspatialDef'):
         mp.WspatialDef = np.array([])  # spatial weight matrix for the Jacobian
+    if not hasattr(mp, 'minimizeNI'):
+        mp.minimizeNI = False  # Have EFC minimize normalized intensity instead of intensity
+    if not hasattr(mp.jac, 'zerns'):
+        mp.jac.zerns = np.array([1])  # Noll Zernike modes in Jacobian
+    if not hasattr(mp.jac, 'Zcoef'):
+        mp.jac.Zcoef = np.array([1])  # coefficients (i.e., weights) of Zernike modes in Jacobian. Weight for piston is always 1.
+
+    # Estimation
+    if not hasattr(mp.est.probe, 'whichDM'):
+        mp.est.probe.whichDM = 1  # Which DM to use for probing
+    if not hasattr(mp.est, 'InormProbeMax'):
+        mp.est.InormProbeMax = 1e-4  # Max probe intensity allowed (in NI)
+    if not hasattr(mp.est, 'Ithreshold'):
+        mp.est.Ithreshold = 1e-2  # Lower estimated intensities to this value if they exceed this (probably due to a bad inversion)
 
     # Performance Evaluation
     # Conversion factor: milliarcseconds (mas) to lambda0/D
@@ -353,7 +415,7 @@ def set_optional_variables(mp):
     if not hasattr(mp.P1, 'IDnorm'):
         mp.P1.IDnorm = 0.0
 
-    pass
+    return None
 
 
 def falco_set_spectral_properties(mp):
@@ -470,13 +532,8 @@ def falco_set_jacobian_modal_weights(mp):
 
     # Which Zernike modes to include in Jacobian. A vector of Noll indices.
     # 1 is the on-axis piston mode.
-    if not hasattr(mp.jac, 'zerns'):
-        mp.jac.zerns = np.array([1])
-        mp.jac.Zcoef = np.array([1])
-    else:
-        mp.jac.zerns = np.atleast_1d(mp.jac.zerns)
-        mp.jac.Zcoef = np.atleast_1d(mp.jac.Zcoef)
-
+    mp.jac.zerns = np.atleast_1d(mp.jac.zerns)
+    mp.jac.Zcoef = np.atleast_1d(mp.jac.Zcoef)
     mp.jac.Nzern = np.size(mp.jac.zerns)
     # Reset coefficient for piston term to 1
     mp.jac.Zcoef[mp.jac.zerns == 1] = 1
@@ -1126,6 +1183,26 @@ def falco_configure_dm1_and_dm2(mp):
     if not hasattr(mp.dm2, 'V'):
         mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
     pass
+
+    # Initialize the number of elements used per DM
+    if np.any(mp.dm_ind == 1):
+        mp.dm1.Nele = len(mp.dm1.act_ele)
+    else:
+        mp.dm1.Nele = 0
+    if np.any(mp.dm_ind == 2):
+        mp.dm2.Nele = len(mp.dm2.act_ele)
+    else:
+        mp.dm2.Nele = 0
+    if np.any(mp.dm_ind == 8):
+        mp.dm8.Nele = len(mp.dm8.act_ele)
+    else:
+        mp.dm8.Nele = 0
+    if np.any(mp.dm_ind == 9):
+        mp.dm9.Nele = len(mp.dm9.act_ele)
+    else:
+        mp.dm9.Nele = 0
+
+    return None
 
 
 def falco_gen_DM_stops(mp):
