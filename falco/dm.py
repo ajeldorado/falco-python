@@ -84,13 +84,13 @@ def gen_surf_from_act(dm, dx, N):
         elif dm.orientation.lower() == 'rot270':
             heightMap = np.rot90(heightMap, 3)
         elif dm.orientation.lower() == 'flipxrot0':
-            heightMap = np.flipx(heightMap)
+            heightMap = np.fliplr(heightMap)
         elif dm.orientation.lower() == 'flipxrot90':
-            heightMap = np.rot90(np.flipx(heightMap), 1)
+            heightMap = np.rot90(np.fliplr(heightMap), 1)
         elif dm.orientation.lower() == 'flipxrot180':
-            heightMap = np.rot90(np.flipx(heightMap), 2)
+            heightMap = np.rot90(np.fliplr(heightMap), 2)
         elif dm.orientation.lower() == 'flipxrot270':
-            heightMap = np.rot90(np.flipx(heightMap), 3)
+            heightMap = np.rot90(np.fliplr(heightMap), 3)
         else:
             raise ValueError('invalid value of dm.orientation')
 
