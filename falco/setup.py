@@ -29,6 +29,7 @@ def flesh_out_workspace(mp):
     """
     set_optional_variables(mp)  # Optional/hidden variables
     verify_key_values(mp)
+    convert_to_one_dim_arrays(mp)
 
     falco_set_spectral_properties(mp)
     falco_set_jacobian_modal_weights(mp)  # Zernike Modes and Subband Weighting
@@ -130,12 +131,12 @@ def set_optional_variables(mp):
         mp.star = falco.config.Object()
     if not hasattr(mp.compact, "star"):
         mp.compact.star = falco.config.Object()
-    if not hasattr(mp.jac, "star"):
-        mp.jac.star = falco.config.Object()
     if not hasattr(mp, "path"):
         mp.path = falco.config.Object()
     if not hasattr(mp, 'jac'):
         mp.jac = falco.config.EmptyClass()
+    if not hasattr(mp.jac, "star"):
+        mp.jac.star = falco.config.Object()
 
     # File Paths for Data Storage (excluded from git)
     localpath = os.path.dirname(os.path.abspath(__file__))
@@ -164,8 +165,8 @@ def set_optional_variables(mp):
         mp.flagSVD = False    # Whether to compute and save the singular mode spectrum of the control Jacobian (each iteration)
 
     # Optical model/layout
-    if not hasattr(mp, 'flagPROPER'):
-        mp.flagPROPER = False  # Whether the full model is a PROPER model
+    if not hasattr(mp.full, 'flagPROPER'):
+        mp.full.flagPROPER = False  # Whether the full model is a PROPER model
     if not hasattr(mp, 'flagRotation'):
         mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact and Jacobian models
 
@@ -203,19 +204,19 @@ def set_optional_variables(mp):
     if not hasattr(mp.star, 'count'):
         mp.star.count = 1
     if not hasattr(mp.star, 'xiOffsetVec'):
-        mp.star.xiOffsetVec = 0
+        mp.star.xiOffsetVec = [0]
     if not hasattr(mp.star, 'etaOffsetVec'):
-        mp.star.etaOffsetVec = 0
+        mp.star.etaOffsetVec = [0]
     if not hasattr(mp.star, 'weights'):
-        mp.star.weights = 1
+        mp.star.weights = [1]
     if not hasattr(mp.compact.star, 'count'):
         mp.compact.star.count = 1
     if not hasattr(mp.compact.star, 'xiOffsetVec'):
-        mp.compact.star.xiOffsetVec = 0
+        mp.compact.star.xiOffsetVec = [0]
     if not hasattr(mp.compact.star, 'etaOffsetVec'):
-        mp.compact.star.etaOffsetVec = 0
+        mp.compact.star.etaOffsetVec = [0]
     if not hasattr(mp.compact.star, 'weights'):
-        mp.compact.star.weights = 1
+        mp.compact.star.weights = [1]
     # Spatial weighting in the Jacobian by star:
     if not hasattr(mp.jac.star, 'weights'):
         mp.jac.star.weights = np.ones(mp.compact.star.count)
@@ -384,12 +385,11 @@ def set_optional_variables(mp):
     if not hasattr(mp.detector, 'Nexp'):
         mp.detector.Nexp = 1  # number of exposures to stack
 
-
     # Control
     if not hasattr(mp, 'WspatialDef'):
         mp.WspatialDef = np.array([])  # spatial weight matrix for the Jacobian
-    if not hasattr(mp, 'minimizeNI'):
-        mp.minimizeNI = False  # Have EFC minimize normalized intensity instead of intensity
+    if not hasattr(mp.jac, 'minimizeNI'):
+        mp.jac.minimizeNI = False  # Have EFC minimize normalized intensity instead of intensity
     if not hasattr(mp.jac, 'zerns'):
         mp.jac.zerns = np.array([1])  # Noll Zernike modes in Jacobian
     if not hasattr(mp.jac, 'Zcoef'):
@@ -416,6 +416,13 @@ def set_optional_variables(mp):
         mp.P1.IDnorm = 0.0
 
     return None
+
+
+def convert_to_one_dim_arrays(mp):
+    """Make sure certain inputs are iterables with np.atleast_1d()."""
+    mp.eval.indsZnoll = np.atleast_1d(mp.eval.indsZnoll)
+    mp.eval.Rsens = np.atleast_1d(mp.eval.Rsens)
+    mp.ctrl.log10regVec = np.atleast_1d(mp.ctrl.log10regVec)
 
 
 def falco_set_spectral_properties(mp):
@@ -526,25 +533,25 @@ def falco_set_jacobian_modal_weights(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    # Initialize mp.jac if it doesn't exist
-    if not hasattr(mp, 'jac'):
-        mp.jac = falco.config.EmptyClass()
-
-    # Which Zernike modes to include in Jacobian. A vector of Noll indices.
-    # 1 is the on-axis piston mode.
     mp.jac.zerns = np.atleast_1d(mp.jac.zerns)
     mp.jac.Zcoef = np.atleast_1d(mp.jac.Zcoef)
     mp.jac.Nzern = np.size(mp.jac.zerns)
-    # Reset coefficient for piston term to 1
-    mp.jac.Zcoef[mp.jac.zerns == 1] = 1
+
+    if not np.any(mp.jac.zerns == 1):
+        raise ValueError('Piston must be included as a controlled Zernike.')
+    elif list(mp.jac.zerns) != list(set(mp.jac.zerns)):
+        raise ValueError('mp.jac.zerns cannot have repeated values.')
+    else:
+        # Reset coefficient for piston term to 1
+        mp.jac.Zcoef[mp.jac.zerns == 1] = 1
 
     # Initialize weighting matrix of each Zernike-wavelength mode for the controller
     mp.jac.weightMat = np.zeros((mp.Nsbp, mp.jac.Nzern))
-    for izern in range(0, mp.jac.Nzern):
+    for izern in range(mp.jac.Nzern):
         whichZern = mp.jac.zerns[izern]
         if whichZern == 1:  # Include all wavelengths for piston Zernike mode
             mp.jac.weightMat[:, 0] = np.ones(mp.Nsbp)
-        else:  # Include just middle and end wavelengths for Zernike mode 2 and up
+        else:  # Include just middle and end wavelengths for non-piston
             mp.jac.weightMat[0, izern] = 1
             mp.jac.weightMat[mp.si_ref, izern] = 1
             mp.jac.weightMat[mp.Nsbp-1, izern] = 1
@@ -567,21 +574,32 @@ def falco_set_jacobian_modal_weights(mp):
             mp.jac.weightMat[:, izern] = 0*mp.jac.weightMat[:, izern]
 
     # Indices of the non-zero control Jacobian modes in the weighting matrix
-    mp.jac.weightMat_ele = np.nonzero(mp.jac.weightMat > 0)
+    mp.jac.weightMatInd = np.nonzero(mp.jac.weightMat > 0)
+    NmodePerStar = len(mp.jac.weightMatInd[0])
+    mp.jac.NmodePerStar = NmodePerStar
     # Vector of control Jacobian mode weights
-    mp.jac.weights = mp.jac.weightMat[mp.jac.weightMat_ele]
-    # Number of (Zernike-wavelength pair) modes in the control Jacobian
-    mp.jac.Nmode = np.size(mp.jac.weights)
+    mp.jac.weights = np.tile(mp.jac.weightMat[mp.jac.weightMatInd],
+                             mp.compact.star.count)
+    # Number of (Zernike-wavelength-star) modes in the control Jacobian
+    mp.jac.Nmode = mp.compact.star.count * NmodePerStar
 
     # Get the wavelength indices for the nonzero values in the weight matrix.
-    tempMat = np.tile(np.arange(mp.Nsbp).reshape((mp.Nsbp, 1)), (1, mp.jac.Nzern))
-    mp.jac.sbp_inds = tempMat[mp.jac.weightMat_ele]
+    tempMat = np.tile(np.arange(mp.Nsbp).reshape((mp.Nsbp, 1)),
+                      (1, mp.jac.Nzern))
+    mp.jac.sbp_inds = np.tile(tempMat[mp.jac.weightMatInd],
+                              mp.compact.star.count)
 
     # Get the Zernike indices for the nonzero elements in the weight matrix.
     tempMat = np.tile(mp.jac.zerns, (mp.Nsbp, 1))
-    mp.jac.zern_inds = tempMat[mp.jac.weightMat_ele]
+    mp.jac.zern_inds = np.tile(tempMat[mp.jac.weightMatInd],
+                               mp.compact.star.count)
 
-    pass
+    # Get the star indices for each mode
+    mp.jac.star_inds = np.zeros(mp.jac.Nmode, dtype=int)
+    for iStar in range(mp.compact.star.count):
+        mp.jac.star_inds[iStar*NmodePerStar:(iStar+1)*NmodePerStar] = iStar*np.ones(NmodePerStar, dtype=int)
+
+    return None
 
 
 def compute_entrance_pupil_coordinates(mp):
@@ -1092,7 +1110,7 @@ def falco_set_spatial_weights(mp):
 
     # Define 2-D coordinate grid
     [XISLAMD, ETASLAMD] = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
-    RHOS = np.sqrt(XISLAMD**2+ETASLAMD**2)
+    RHOS = np.sqrt(XISLAMD**2 + ETASLAMD**2)
     mp.Wspatial = mp.Fend.corr.maskBool.astype(float)
     if hasattr(mp, 'WspatialDef'):
         if(np.size(mp.WspatialDef) > 0):
@@ -1103,10 +1121,15 @@ def falco_set_spatial_weights(mp):
                 mp.Wspatial = mp.Wspatial*Wannulus
 
     mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]
-    if(mp.flagFiber and mp.flagLenslet):
-        mp.WspatialVec = np.ones((mp.Fend.Nlens,))
 
-    pass
+    # Spatial weighting vector (for each star)
+    Npix = np.sum(mp.Fend.corr.maskBool.astype(int))
+    mp.WspatialVec = np.zeros((Npix, mp.compact.star.count))
+    for iStar in range(mp.compact.star.count):
+        mp.WspatialVec[:, iStar] = (mp.jac.star.weights[iStar] *
+                                    mp.Wspatial[mp.Fend.corr.maskBool])
+
+    return None
 
 
 def falco_configure_dm1_and_dm2(mp):

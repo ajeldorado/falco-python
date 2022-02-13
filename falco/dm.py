@@ -739,10 +739,10 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
     check.twoD_array(Vin, 'Vin', TypeError)
     check.real_scalar(Vlim, 'Vlim', TypeError)
     check.positive_scalar_integer(Nact, 'Nact', TypeError)
-    
+
     Vout = Vin  # Initialize output voltage map
     indPair = np.zeros((0,2))  # Initialize the paired indices list. [nPairs x 2]
-    
+
     kx1 = np.array([[0, 1], [1, 1], [1, 0]])              # R1-C1
     kx2 = np.array([[0,1], [1,1], [1,0], [1,-1]])         # R1, C2 - C47
     kx3 = np.array([[1,0], [1,-1]])                       # R1, C48
@@ -751,10 +751,10 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
     kx6 = np.array([[1,0], [1,-1]])                       # R2-47, C8
     kx7 = np.array([[-1,1], [0,1]])                       # R48, C1 - C47
     kx8 = np.array([[-1,-1]])                             # R48, C48
-    
+
     for jj in range(Nact):            # Row
         for ii in range(Nact):        # Col
-                    
+
             if jj == 0:
                 if ii == 0:
                     kx = kx1
@@ -774,35 +774,35 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
                     kx = kx7
                 else:
                     kx = kx8
-                
+
             kr = jj + kx[:,0]
             kc = ii + kx[:,1]
             nNbr = kr.size  # length(kr); # Number of neighbors
-                    
+
             if nNbr >= 1:
                 for iNbr in range(nNbr):
-                    
+
                     a1 = Vout[jj, ii] - Vout[kr[iNbr],kc[iNbr]] # Compute the delta voltage
-                    
+
                     if (np.abs(a1) > Vlim):  # If neighbor rule is violated
-                        
+
                         indLinCtr = (ii-1)*Nact + jj  # linear index of center actuator
                         indLinNbr = (kc[iNbr]-1)*Nact + kr[iNbr]  # linear index of neigboring actuator
                         indPair = np.array([indPair, np.array([indLinCtr, indLinNbr]).reshape(1, 2)])
                         indPair = np.vstack([indPair, np.array([indLinCtr, indLinNbr]).reshape(1, 2)])
-    
+
                         fx = (np.abs(a1) - Vlim) / 2.
                         Vout[jj, ii] = Vout[jj, ii] - np.sign(a1)*fx
                         Vout[kr[iNbr], kc[iNbr]] = Vout[kr[iNbr], kc[iNbr]] +\
                                                     np.sign(a1)*fx
 
     return Vout, indPair
-    
+
 
 def enforce_constraints(dm):
     """
     Enforce various constraints on DM actuator commands.
-    
+
     1) Apply min/max bounds.
     2) Set commands for pinned, railed, or dead actuators.
     3) Determine which actuators violate the neighbor rule.
@@ -821,30 +821,33 @@ def enforce_constraints(dm):
     """
     # 1) Find actuators that exceed min and max values. Any actuators reaching
     # those limits are added to the pinned actuator list.
+
     # Min voltage limit
-    new_inds = np.nonzero(dm.V.flatten()<dm.Vmin)[0]  # linear indices of new actuators breaking their bounds
+    Vtotal = dm.V + dm.biasMap
+    new_inds = np.nonzero(Vtotal.flatten()<dm.Vmin)[0]  # linear indices of new actuators breaking their bounds
     new_vals = dm.Vmin*np.ones(new_inds.size)
     dm.pinned = np.hstack([dm.pinned, new_inds])  # Augment the vector of pinned actuator linear indices
     dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  # Augment the vector of pinned actuator values
+
     # Max voltage limit
-    new_inds = np.nonzero(dm.V.flatten() > dm.Vmax)[0] # linear indices of new actuators breaking their bounds
+    new_inds = np.nonzero(Vtotal.flatten() > dm.Vmax)[0] # linear indices of new actuators breaking their bounds
     new_vals = dm.Vmax*np.ones(new_inds.size)
     dm.pinned = np.hstack([dm.pinned, new_inds])     # Augment the vector of pinned actuator linear indices
     dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  # Augment the vector of pinned actuator values
-    
+
     # 2) Enforce pinned (or railed or dead) actuator values
     if(dm.pinned.size > 0):
         Vflat = dm.V.flatten()
         Vflat[dm.pinned.astype(int)] = dm.Vpinned
         dm.V = Vflat.reshape(dm.V.shape)
-    
-    # 3) Find which actuators violate the DM neighbor rule. (This restricts 
-    # the maximum voltage between an actuator and each of its 8 neighbors.) 
-    # Add those actuator pairs to the list of tied actuators.
-    if(dm.flagNbrRule):
-        dm.V, indPair1 = apply_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
-        dm.tied = np.vstack([dm.tied, indPair1])  # Tie together actuators violating the neighbor rule
-        
+
+    # # 3) Find which actuators violate the DM neighbor rule. (This restricts 
+    # # the maximum voltage between an actuator and each of its 8 neighbors.) 
+    # # Add those actuator pairs to the list of tied actuators.
+    # if(dm.flagNbrRule):
+    #     dm.V, indPair1 = apply_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
+    #     dm.tied = np.vstack([dm.tied, indPair1])  # Tie together actuators violating the neighbor rule
+
     # 4) Enforce tied actuator pairs
     # In each pair of tied actuators, assign the command for the first actuator to that of the 2nd actuator
     if (dm.tied.size > 0):

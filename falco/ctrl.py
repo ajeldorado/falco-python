@@ -6,6 +6,8 @@ import numpy as np
 # import matplotlib.pyplot as plt
 import falco
 
+from scipy.io import savemat
+
 
 def wrapper(mp, cvar, jacStruct):
     """
@@ -31,30 +33,47 @@ def wrapper(mp, cvar, jacStruct):
 
     # with falco.util.TicToc('Using the Jacobian to make other matrices'):
     print('Using the Jacobian to make other matrices...', end='')
-    
+
     # Compute matrices for linear control with regular EFC
     cvar.GstarG_wsum = np.zeros((cvar.NeleAll, cvar.NeleAll))
     cvar.RealGstarEab_wsum = np.zeros((cvar.NeleAll, 1))
+    Eest = cvar.Eest.copy()
 
-    for im in range(mp.jac.Nmode):
+    for iMode in range(mp.jac.Nmode):
 
-        Gmode = np.zeros((mp.Fend.corr.Npix, 1), dtype=complex)  # Initialize a row to concatenate onto
-        if(any(mp.dm_ind == 1)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G1[:,:,im])))
-        if(any(mp.dm_ind == 2)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G2[:,:,im])))
-        if(any(mp.dm_ind == 8)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G8[:,:,im])))
-        if(any(mp.dm_ind == 9)): Gmode = np.hstack((Gmode,np.squeeze(jacStruct.G9[:,:,im])))
-        Gmode = Gmode[:, 1:]  # Remove the zero column used for initialization
+        Gstack = np.zeros((mp.Fend.corr.Npix, 1), dtype=complex)  # Initialize a row to concatenate onto
+        if any(mp.dm_ind == 1):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G1[:, :, iMode])))
+        if any(mp.dm_ind == 2):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G2[:, :, iMode])))
+        if any(mp.dm_ind == 8):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G8[:, :, iMode])))
+        if any(mp.dm_ind == 9):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G9[:, :, iMode])))
+        Gstack = Gstack[:, 1:]  # Remove the column used for initialization
 
         # Square matrix part stays the same if no re-linearization has occurrred.
-        cvar.GstarG_wsum += mp.jac.weights[im]*np.real(np.conj(Gmode).T @ Gmode)
+        cvar.GstarG_wsum += mp.jac.weights[iMode]*np.real(np.conj(Gstack).T @ Gstack)
+
+        if mp.jac.minimizeNI:
+            modvar = falco.config.ModelVariables()
+            modvar.whichSource = 'star'
+            modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+            modvar.zernIndex = mp.jac.zern_inds[iMode]
+            modvar.starIndex = mp.jac.star_inds[iMode]
+            Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
+            _, indPeak = np.max(np.abs(Eunocculted))
+            Epeak = Eunocculted(indPeak)
+            Eest[:, iMode] = cvar.Eest[:, iMode] / Epeak
 
         # The G^*E part changes each iteration because the E-field changes.
         # Apply 2-D spatial weighting to E-field in dark hole pixels.
-        Eweighted = mp.WspatialVec*cvar.EfieldVec[:, im]
+        iStar = mp.jac.star_inds[iMode]
+        Eweighted = mp.WspatialVec[:, iStar] * Eest[:, iMode]
         # Apply the Jacobian weights and add to the total.
-        cvar.RealGstarEab_wsum += mp.jac.weights[im]*np.real(
-            np.conj(Gmode).T @ Eweighted.reshape(mp.Fend.corr.Npix, 1))
-    
+        cvar.RealGstarEab_wsum += mp.jac.weights[iMode]*np.real(
+            np.conj(Gstack).T @ Eweighted.reshape(mp.Fend.corr.Npix, 1))
+
     # Make the regularization matrix. (Define only diagonal here to save RAM.)
     cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
     cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
@@ -67,7 +86,7 @@ def wrapper(mp, cvar, jacStruct):
         dDM = _planned_efc(mp, cvar)
     elif mp.controller.lower() == 'gridsearchefc':
         dDM = _grid_search_efc(mp, cvar)
-            
+
     # Update the DM commands by adding the delta control signal
     if(any(mp.dm_ind == 1)): mp.dm1.V += dDM.dDM1V
     if(any(mp.dm_ind == 2)): mp.dm2.V += dDM.dDM2V
@@ -80,8 +99,14 @@ def wrapper(mp, cvar, jacStruct):
     if(any(mp.dm_ind == 8)): mp.dm8.dV = dDM.dDM8V
     if(any(mp.dm_ind == 9)): mp.dm9.dV = dDM.dDM9V
 
+    # falco_ctrl_update_dm_commands(mp, dDM);
+    mdict = {'dDM':dDM, 'cvar':cvar}
+    savemat('/Users/ajriggs/Downloads/jac_python.mat', mdict)
 
-def cull_actuators(mp, cvar, jacStruct):
+    return None
+
+
+def cull_weak_actuators(mp, cvar, jacStruct):
     """
     Remove weak actuators from the controlled set.
 
@@ -101,11 +126,62 @@ def cull_actuators(mp, cvar, jacStruct):
     """
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-    
+
+    if cvar.Itr == 0:
+        cvar.flagCullAct = True
+    else:
+        if hasattr(mp, 'dm_ind_sched'):
+            schedPre = np.sort(mp.dm_ind_sched[cvar.Itr-1])
+            schedNow = np.sort(mp.dm_ind_sched[cvar.Itr])
+            if not schedPre.size == schedNow.size:
+                cvar.flagCullAct = True
+            else:  # when they are same size
+                doesEachValueMatch = np.not_equal(schedNow, schedPre)
+                if all(doesEachValueMatch):
+                    cvar.flagCullAct = False
+                else:
+                    cvar.flagCullAct = True
+        else:
+            cvar.flagCullAct = False
+
+    if not hasattr(mp, 'flagCullActHist'):
+        mp.flagCullActHist = np.zeros((mp.Nitr, ))
+    mp.flagCullActHist[cvar.Itr] = cvar.flagCullAct
+
+    # Before performing new cull, include all actuators again
+    if cvar.flagCullAct:
+        # Re-include all actuators in the basis set.
+        if np.any(mp.dm_ind == 1):
+            mp.dm1.act_ele = list(range(mp.dm1.NactTotal))
+        if np.any(mp.dm_ind == 2):
+            mp.dm2.act_ele = list(range(mp.dm2.NactTotal))
+        if np.any(mp.dm_ind == 8):
+            mp.dm8.act_ele = list(range(mp.dm8.NactTotal))
+        if np.any(mp.dm_ind == 9):
+            mp.dm9.act_ele = list(range(mp.dm9.NactTotal))
+
+        # Update the number of elements used per DM
+        if np.any(mp.dm_ind == 1):
+            mp.dm1.Nele = len(mp.dm1.act_ele)
+        else:
+            mp.dm1.Nele = 0
+        if np.any(mp.dm_ind == 2):
+            mp.dm2.Nele = len(mp.dm2.act_ele)
+        else:
+            mp.dm2.Nele = 0
+        if np.any(mp.dm_ind == 8):
+            mp.dm8.Nele = len(mp.dm8.act_ele)
+        else:
+            mp.dm8.Nele = 0
+        if np.any(mp.dm_ind == 9):
+            mp.dm9.Nele = len(mp.dm9.act_ele)
+        else:
+            mp.dm9.Nele = 0
+
     # Reduce the number of actuators used based on their relative strength
     # in the Jacobian
-    if(cvar.flagCullAct and cvar.flagRelin):
-        
+    if cvar.flagCullAct and cvar.flagRelin:
+
         print('Weeding out weak actuators from the control Jacobian...')
         if(any(mp.dm_ind == 1)):
             G1intNorm = np.sum(np.mean(np.abs(jacStruct.G1)**2, axis=2), axis=0)
@@ -161,7 +237,7 @@ def cull_actuators(mp, cvar, jacStruct):
 #                end
 #                mp.dm9.act_ele = sort(mp.dm9.act_ele);
 #            end
-            
+
         # Update the number of elements used per DM
         if(any(mp.dm_ind == 1)): mp.dm1.Nele = mp.dm1.act_ele.size
         if(any(mp.dm_ind == 2)): mp.dm2.Nele = mp.dm2.act_ele.size
@@ -172,7 +248,7 @@ def cull_actuators(mp, cvar, jacStruct):
         if(any(mp.dm_ind == 2)): print('  DM2: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm2.Nele, mp.dm2.NactTotal, 100*mp.dm2.Nele/mp.dm2.NactTotal))
         if(any(mp.dm_ind == 8)): print('  DM8: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm8.Nele, mp.dm8.NactTotal, 100*mp.dm8.Nele/mp.dm8.NactTotal))
         if(any(mp.dm_ind == 9)): print('  DM9: %d/%d (%.2f%%) actuators kept for Jacobian' % (mp.dm9.Nele, mp.dm9.NactTotal, 100*mp.dm9.Nele/mp.dm9.NactTotal))
-        
+
         # Crop out unused actuators from the control Jacobian
         if(any(mp.dm_ind == 1)): jacStruct.G1 = jacStruct.G1[:, mp.dm1.act_ele, :]
         if(any(mp.dm_ind == 2)): jacStruct.G2 = jacStruct.G2[:, mp.dm2.act_ele, :]
@@ -245,7 +321,7 @@ def _grid_search_efc(mp, cvar):
     print('\nlog10reg:    \t', end='')
     for ni in range(Nvals):
         print('%.1f\t\t' % (vals_list[ni][0]), end='')
-    
+
     print('\nInorm:       \t', end='')
     for ni in range(Nvals):
         print('%.2e\t' % (InormVec[ni]), end='')
@@ -263,6 +339,7 @@ def _grid_search_efc(mp, cvar):
     if(any(mp.dm_ind == 8)): dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
     if(any(mp.dm_ind == 9)): dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
 
+    cvar.checking = -1
     cvar.log10regUsed = vals_list[indBest][0]
     dmfacBest = vals_list[indBest][1]
     if(mp.ctrl.flagUseModel):
@@ -271,7 +348,7 @@ def _grid_search_efc(mp, cvar):
     else:
         print('Empirical grid search finds log10reg, = %.1f,\t dmfac = %.2f,\t %4.2e normalized intensity.'
               % (cvar.log10regUsed, dmfacBest, cvar.cMin))
-    
+
     return dDM
 
 
@@ -303,9 +380,9 @@ def _planned_efc(mp, cvar):
 
     # Step 1: Empirically find the "optimal" regularization value
     # (if told to for this iteration).
-    
+
     if relinearizeNow:
-        
+
         # Temporarily store computed DM commands so that the best one does
         # not have to be re-computed
         if(any(mp.dm_ind == 1)):
@@ -316,26 +393,33 @@ def _planned_efc(mp, cvar):
             dDM8V_store = np.zeros((mp.dm8.NactTotal, Nvals))
         if(any(mp.dm_ind == 9)):
             dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
-        
+
         for ni in range(Nvals):
             [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
             # delta voltage commands
-            if(any(mp.dm_ind == 1)): dDM1V_store[:, :, ni] = dDM_temp.dDM1V
-            if(any(mp.dm_ind == 2)): dDM2V_store[:, :, ni] = dDM_temp.dDM2V
-            if(any(mp.dm_ind == 8)): dDM8V_store[:, ni] = dDM_temp.dDM8V
-            if(any(mp.dm_ind == 9)): dDM9V_store[:, ni] = dDM_temp.dDM9V
+            if(any(mp.dm_ind == 1)):
+                dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+            if(any(mp.dm_ind == 2)):
+                dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+            if(any(mp.dm_ind == 8)):
+                dDM8V_store[:, ni] = dDM_temp.dDM8V
+            if(any(mp.dm_ind == 9)):
+                dDM9V_store[:, ni] = dDM_temp.dDM9V
 
         # Print out results to the command line
         print('Scaling factor:\t', end='')
-        for ni in range(Nvals): print('%.2f\t\t' % (vals_list[ni][1]), end='')
-    
+        for ni in range(Nvals):
+            print('%.2f\t\t' % (vals_list[ni][1]), end='')
+
         print('\nlog10reg:    \t', end='')
-        for ni in range(Nvals): print('%.1f\t\t' % (vals_list[ni][0]), end='')
-        
+        for ni in range(Nvals):
+            print('%.1f\t\t' % (vals_list[ni][0]), end='')
+
         print('\nInorm:       \t', end='')
-        for ni in range(Nvals): print('%.2e\t' % (InormVec[ni]), end='')
+        for ni in range(Nvals):
+            print('%.2e\t' % (InormVec[ni]), end='')
         print('\n', end='')
-    
+
         # Find the best scaling factor and Lagrange multiplier pair based on
         # the best contrast.
         # [cvar.cMin,indBest] = np.min(InormVec)
@@ -343,7 +427,7 @@ def _planned_efc(mp, cvar):
         cvar.cMin = np.min(InormVec)
         cvar.latestBestlog10reg = vals_list[indBest][0]
         cvar.latestBestDMfac = vals_list[indBest][1]
-        
+
         if(mp.ctrl.flagUseModel):
             print(('Model-based grid search expects log10reg, = %.1f,\t ' +
                   'dmfac = %.2f,\t %4.2e normalized intensity.') %
@@ -352,17 +436,21 @@ def _planned_efc(mp, cvar):
             print(('Empirical grid search finds log10reg, = %.1f,\t dmfac' +
                   ' = %.2f,\t %4.2e normalized intensity.') %
                   (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
-    
+
     # Skip steps 2 and 3 if the schedule for this iteration is just to use the
     # "optimal" regularization AND if grid search was performed this iteration.
     if relinearizeNow and useBestLog10Reg and realLog10RegIsZero:
         # delta voltage commands
         dDM = falco.config.Object()  # Initialize
-        if(any(mp.dm_ind == 1)): dDM.dDM1V = np.squeeze(dDM1V_store[:, :, indBest])
-        if(any(mp.dm_ind == 2)): dDM.dDM2V = np.squeeze(dDM2V_store[:, :, indBest])
-        if(any(mp.dm_ind == 8)): dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
-        if(any(mp.dm_ind == 9)): dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
-        
+        if(any(mp.dm_ind == 1)):
+            dDM.dDM1V = np.squeeze(dDM1V_store[:, :, indBest])
+        if(any(mp.dm_ind == 2)):
+            dDM.dDM2V = np.squeeze(dDM2V_store[:, :, indBest])
+        if(any(mp.dm_ind == 8)):
+            dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
+        if(any(mp.dm_ind == 9)):
+            dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
+
         log10regSchedOut = cvar.latestBestlog10reg
     else:
         # Step 2: For this iteration in the schedule, replace the imaginary
@@ -378,8 +466,8 @@ def _planned_efc(mp, cvar):
         if not hasattr(cvar, 'latestBestDMfac'):
             cvar.latestBestDMfac = 1
         vals_list = [(x, y) for y in np.array([cvar.latestBestDMfac])
-                      for x in np.array([log10regSchedOut])]
-    
+                     for x in np.array([log10regSchedOut])]
+
         [cvar.cMin, dDM] = _efc(ni, vals_list, mp, cvar)
         if mp.ctrl.flagUseModel:
             print(('Model expects scheduled log10(reg) = %.1f\t to give ' +
@@ -388,9 +476,9 @@ def _planned_efc(mp, cvar):
         else:
             print(('Scheduled log10reg = %.1f\t gives %4.2e normalized' +
                   ' intensity.') % (log10regSchedOut, cvar.cMin))
-    
+
     cvar.log10regUsed = log10regSchedOut
-    
+
     return dDM
 
 
@@ -433,7 +521,7 @@ def efc_schedule_generator(scheduleMatrix):
     """
     # Number of correction iterations
     Nitr = int(np.real(np.sum(scheduleMatrix[:, 0])))
-    
+
     # Create the vectors of:
     #  1) iteration numbers at which to relinearize the Jacobian
     #  2) log10(regularization) at each correction iteration
@@ -443,7 +531,7 @@ def efc_schedule_generator(scheduleMatrix):
     dmIndList = np.zeros((Nitr,), dtype=int)  # Initialize
     iterCount = 0
     for iRow in range(scheduleMatrix.shape[0]):
-        
+
         # When to re-linearize
         if int(np.real(scheduleMatrix[iRow, 3])) == 1:
             relinItrVec = np.append(relinItrVec, iterCount)
@@ -451,7 +539,7 @@ def efc_schedule_generator(scheduleMatrix):
         # When to re-do the empirical EFC grid search
         if int(np.real(scheduleMatrix[iRow, 4])) == 1:
             gridSearchItrVec.append(iterCount)
-                
+
         # Make the vector of regularizations at each iteration
         deltaIter = int(np.real(scheduleMatrix[iRow, 0]))
         if not deltaIter == 0:
@@ -499,8 +587,6 @@ def _efc(ni, vals_list, mp, cvar):
     dDM : ModelParameters
         Structure containing the delta DM commands for each DM
     """
-    #  function [InormAvg,dDM] = _efc(ni,vals_list,mp,cvar)
-
     if(any(mp.dm_ind == 1)):
         DM1V0 = mp.dm1.V.copy()
     if(any(mp.dm_ind == 2)):
@@ -509,34 +595,34 @@ def _efc(ni, vals_list, mp, cvar):
         DM8V0 = mp.dm8.V.copy()
     if(any(mp.dm_ind == 9)):
         DM9V0 = mp.dm9.V.copy()
-        
+
     # Initializations
     log10reg = vals_list[ni][0]  # log 10 of regularization value
     dmfac = vals_list[ni][1]  # Scaling factor for entire DM command
-    
+
     # Save starting point for each delta command to be added to.
     # Get the indices of each DM's command vector within the single
     # concatenated command vector
     init(mp, cvar)  # Modifies cvar
-    
+
     # Least-squares solution with regularization:
     duVecNby1 = \
-        -dmfac*np.linalg.solve((10**log10reg*np.diag(cvar.EyeGstarGdiag) +
+        -dmfac*np.linalg.solve((10.0**log10reg*np.diag(cvar.EyeGstarGdiag) +
                                 cvar.GstarG_wsum), cvar.RealGstarEab_wsum)
     # Convert to true 1-D array from a 2-D, Nx1 array
     duVec = duVecNby1.reshape((-1,))
-     
+
     # Parse the command vector by DM and assign the output commands
     mp, dDM = wrapup(mp, cvar, duVec)
-    
+
     # Take images and compute average intensity in dark hole
-    if(mp.ctrl.flagUseModel):  # Get simulated image from compact model
+    if mp.ctrl.flagUseModel:  # Get simulated image from compact model
         Itotal = falco.imaging.get_expected_summed_image(mp, cvar, dDM)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
     else:  # Get actual image from full model or testbed
         Itotal = falco.imaging.get_summed_image(mp)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
-        
+
     # Reset voltage commands in mp
     if(any(mp.dm_ind == 1)):
         mp.dm1.V = DM1V0
@@ -546,7 +632,7 @@ def _efc(ni, vals_list, mp, cvar):
         mp.dm8.V = DM8V0
     if(any(mp.dm_ind == 9)):
         mp.dm9.V = DM9V0
-        
+
     return InormAvg, dDM
 
 
@@ -571,7 +657,7 @@ def init(mp, cvar):
     if(any(mp.dm_ind == 2)): cvar.DM2Vnom = mp.dm2.V
     if(any(mp.dm_ind == 8)): cvar.DM8Vnom = mp.dm8.V
     if(any(mp.dm_ind == 9)): cvar.DM9Vnom = mp.dm9.V
-    
+
     # Make the vector of total DM commands from before
     u1 = mp.dm1.V.reshape(mp.dm1.NactTotal)[mp.dm1.act_ele] if(any(mp.dm_ind == 1)) else np.array([])
     u2 = mp.dm2.V.reshape(mp.dm2.NactTotal)[mp.dm2.act_ele] if(any(mp.dm_ind == 2)) else np.array([])
@@ -579,14 +665,14 @@ def init(mp, cvar):
     u9 = mp.dm9.V.reshape(mp.dm9.NactTotal)[mp.dm9.act_ele] if(any(mp.dm_ind == 9)) else np.array([])
     cvar.uVec = np.concatenate((u1, u2, u8, u9))
     cvar.NeleAll = cvar.uVec.size
-    
+
     # Get the indices of each DM's command within the full command
     u1dummy = 1*np.ones(mp.dm1.Nele, dtype=int) if(any(mp.dm_ind == 1)) else np.array([])
     u2dummy = 2*np.ones(mp.dm2.Nele, dtype=int) if(any(mp.dm_ind == 2)) else np.array([])
     u8dummy = 8*np.ones(mp.dm8.Nele, dtype=int) if(any(mp.dm_ind == 8)) else np.array([])
     u9dummy = 9*np.ones(mp.dm9.Nele, dtype=int) if(any(mp.dm_ind == 9)) else np.array([])
     cvar.uLegend = np.concatenate((u1dummy, u2dummy, u8dummy, u9dummy))
-    
+
 
 def wrapup(mp, cvar, duVec):
     """
@@ -609,7 +695,7 @@ def wrapup(mp, cvar, duVec):
         Structure containing the delta DM commands for each DM
     """
     dDM = falco.config.Object()
-    
+
     # Parse the command vector by DM and apply weighting
     if(any(mp.dm_ind == 1)):
         dDM1Vvec = np.zeros(mp.dm1.NactTotal)
@@ -625,7 +711,7 @@ def wrapup(mp, cvar, duVec):
     if(any(mp.dm_ind == 9)):
         dDM.dDM9V = np.zeros(mp.dm9.NactTotal)
         dDM.dDM9V[mp.dm9.act_ele] = mp.dm9.weight*duVec[cvar.uLegend == 9]
-    
+
     # Enforce tied actuator pair commands.
     #   Assign command of first actuator to the second as well.
 #    if(any(mp.dm_ind == 8)):
@@ -637,9 +723,13 @@ def wrapup(mp, cvar, duVec):
 #            dDM.dDM9V(mp.dm9.tied(ti,2)) = dDM.dDM9V(mp.dm9.tied(ti,1));
 
     # Combine the delta command with the previous command
-    if(any(mp.dm_ind == 1)): mp.dm1.V = cvar.DM1Vnom + dDM.dDM1V
-    if(any(mp.dm_ind == 2)): mp.dm2.V = cvar.DM2Vnom + dDM.dDM2V
-    if(any(mp.dm_ind == 8)): mp.dm8.V = cvar.DM8Vnom + dDM.dDM8V
-    if(any(mp.dm_ind == 9)): mp.dm9.V = cvar.DM9Vnom + dDM.dDM9V
+    if(any(mp.dm_ind == 1)):
+        mp.dm1.V = cvar.DM1Vnom + dDM.dDM1V
+    if(any(mp.dm_ind == 2)):
+        mp.dm2.V = cvar.DM2Vnom + dDM.dDM2V
+    if(any(mp.dm_ind == 8)):
+        mp.dm8.V = cvar.DM8Vnom + dDM.dDM8V
+    if(any(mp.dm_ind == 9)):
+        mp.dm9.V = cvar.DM9Vnom + dDM.dDM9V
 
     return mp, dDM

@@ -42,13 +42,13 @@ def plot_trial_output(out):
     plt.ylabel('RMS DM Surface (nm)')
 
     plt.figure()
-    plt.imshow(out.DM1V)
+    plt.imshow(out.dm1.Vall[:, :, -1])
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('Final DM1 Voltages')
 
     plt.figure()
-    plt.imshow(out.DM2V)
+    plt.imshow(out.dm2.Vall[:, :, -1])
     plt.gca().invert_yaxis()
     plt.colorbar()
     plt.title('Final DM2 Voltages')

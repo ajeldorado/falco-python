@@ -1183,13 +1183,15 @@ def falco_gen_pupil_LUVOIR_B(inputs, **kwargs):
     flagRot180deg = inputs.get("flagRot180deg", False)
     shearMax = np.max(np.abs(np.array([xShear, yShear])))  # [pupil diameters]
 
-    Nbeam = inputs["Nbeam"]  # number of points across the incoming beam
+    Nbeam0 = inputs["Nbeam"]  # points across the circumscribed circle
+    scaleFac = 0.96075
+    Nbeam = scaleFac*Nbeam0  # Change Nbeam to be flat-to-flat. makes the beam size match the hypergaussian approach
     nrings = 4
     width_hex0 = 0.955  # flat-to-flat (m)
     Dap = ((2*nrings)*width_hex0 + (2*nrings-1)*wGap_m)  # (12*width_hex0 + 12*hexgap0)
     dx = Dap/Nbeam
-    xShearM = Dap*xShear  # meters
-    yShearM = Dap*yShear  # meters
+    xShearM = 1/scaleFac*Dap*xShear  # meters
+    yShearM = 1/scaleFac*Dap*yShear  # meters
 
     if "pixel" == centering:
         Narray = ceil_even((1+2*shearMax) * 1.02 * Nbeam *
