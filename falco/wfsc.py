@@ -26,13 +26,9 @@ def loop(mp, out):
     """
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
-    pass
 
-    # Measured, mean raw contrast in scoring regino of dark hole.
-    InormHist = np.zeros((mp.Nitr+1,))
-
-    # Take initial broadband image
-    Im = falco.imaging.get_summed_image(mp)
+    # # Take initial broadband image
+    # Im = falco.imaging.get_summed_image(mp)
 
     cvar = falco.config.Object()
     ev = falco.config.Object()
@@ -152,7 +148,7 @@ def loop(mp, out):
         falco.est.wrapper(mp, ev, jacStruct)
 
         store_intensities(mp, out, ev, Itr)
-        
+
         # %% !!!!!!!!! Move to ctrl.py
 
         # # Add spatially-dependent weighting to the control Jacobians
@@ -200,9 +196,9 @@ def loop(mp, out):
         # Store key data in out object
         out.log10regHist[Itr] = cvar.log10regUsed
         if hasattr(cvar, 'Im') and not mp.ctrl.flagUseModel:
-            out.InormHist[Itr+1] = np.mean(cvar.Im(mp.Fend.corr.maskBool))
-            out.IrawCorrHist[Itr+1] = np.mean(cvar.Im(mp.Fend.corr.maskBool))
-            out.IrawScoreHist[Itr+1] = np.mean(cvar.Im(mp.Fend.score.maskBool))
+            out.IrawScoreHist[Itr+1] = np.mean(cvar.Im[mp.Fend.score.maskBool])
+            out.IrawCorrHist[Itr+1] = np.mean(cvar.Im[mp.Fend.corr.maskBool])
+            out.InormHist[Itr+1] = out.IrawCorrHist[Itr+1]
 
         # Enforce constraints on DM commands
         if any(mp.dm_ind == 1):
@@ -220,18 +216,21 @@ def loop(mp, out):
 
         falco_compute_dm_stats(mp, out, Itr)
 
-        # Calculate sensitivities to 1nm RMS of Zernike phase aberrations at entrance pupil.
+        # Calculate sensitivities Zernike phase aberrations at entrance pupil.
         if (mp.eval.Rsens.size > 0) and (mp.eval.indsZnoll.size > 0):
             out.Zsens[:, :, Itr] = falco.zern.calc_zern_sens(mp)
 
         # Report Normalized Intensity
-        if hasattr(cvar, 'cMin') and mp.ctrl.flagUseModel == False:
-            print('Prev and New Measured Normalized Intensity:\t\t\t %.2e\t->\t%.2e\t (%.2f x smaller)  \n\n' %
-                  (InormHist[Itr], InormHist[Itr+1], InormHist[Itr]/InormHist[Itr+1]))
+        if np.abs(out.InormHist[Itr+1]) > np.finfo(float).eps:
+            print('Prev and New Measured Normalized Intensity:\t\t\t '
+                  '%.2e\t->\t%.2e\t (%.2f x smaller)  \n\n' %
+                  (out.InormHist[Itr],
+                   out.InormHist[Itr+1],
+                   out.InormHist[Itr]/out.InormHist[Itr+1]))
             if not mp.flagSim:
                 print('')
         else:
-            print('Previous Measured NI:\t\t\t %.2e ', out.InormHist(Itr))
+            print('Previous Measured NI:\t\t\t %.2e ' % (out.InormHist[Itr]))
 
         # Save just the 'out' object to a pickle file
         fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
@@ -251,7 +250,7 @@ def loop(mp, out):
 
     # Calculate the core throughput (at higher resolution to be more accurate)
     thput, ImSimOffaxis = falco.imaging.calc_thput(mp)
-    out.thput[Itr] = thput;
+    out.thput[Itr] = thput
     mp.thput_vec[Itr] = np.max(thput)
 
     # Update progress plot using image from controller (if new image was taken)

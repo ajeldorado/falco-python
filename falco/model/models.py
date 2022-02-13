@@ -3,7 +3,6 @@ import copy
 import numpy as np
 import multiprocessing
 import matplotlib.pyplot as plt
-from scipy.io import savemat
 
 from . import jacobians
 import falco
@@ -391,10 +390,6 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
             pass
         pass
 
-    # LS = mp.P4.full.croppedMask
-    # mdict = {'EP1':EP1, 'EP2':EP2, 'EP3':EP3, 'EP4':EP4, 'LS':LS}
-
-
     """ Back to common propagation any coronagraph type """
     # Apply the (cropped-down) Lyot stop
     EP4 *= mp.P4.full.croppedMask
@@ -404,11 +399,6 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     EFend = falco.prop.mft_p2f(EP4, mp.fl, wvl, mp.P4.full.dx, mp.Fend.dxi,
                                mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta,
                                mp.centering)
-
-    # mdict['EFend'] = EFend
-    # savemat('/Users/ajriggs/Downloads/pyvar.mat', mdict)
-    # plt.figure(); plt.imshow(abs(EP4)); plt.pause(0.1);
-    # plt.figure(); plt.imshow(abs(EFend)); plt.pause(0.1);
 
     # Don't apply FPM if normalization value is being found
     if normFac == 0:
@@ -791,9 +781,6 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
     EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
     EFend = falco.prop.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, dxi, Nxi,
                                deta, Neta, mp.centering)
-
-    mdict = {'EP1': EP1, 'EP2': EP2, 'EP3': EP3, 'EP4': EP4, 'EFend': EFend}
-    savemat('/Users/ajriggs/Downloads/jac_vars_compact.mat', mdict)
 
     # Don't apply FPM if normalization value is being found
     if normFac == 0:
