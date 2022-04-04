@@ -28,7 +28,7 @@ def lyot(mp, iMode, idm):
 
     Returns
     -------
-    Gzdl : numpy ndarray
+    Gmode : numpy ndarray
         Complex-valued, 2-D array containing the Jacobian for the
         specified Zernike mode, DM number, subband, and star.
 
@@ -127,6 +127,15 @@ def lyot(mp, iMode, idm):
         Edm2WFE = np.ones((NdmPad, NdmPad))
 
     """Propagation"""
+    # Get the unocculted peak E-field and coronagraphic E-field
+    if mp.jac.minimizeNI:
+        modvar.whichSource = 'star';
+        Eocculted = falco.model.compact(mp, modvar)
+        Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
+        indPeak = np.unravel_index(np.argmax(np.abs(Eunocculted), axis=None),
+                                   Eunocculted.shape)
+        Epeak = Eunocculted[indPeak]
+
     # Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein  # E-field at pupil plane P1
     EP2 = fp.relay(EP1, NrelayFactor*mp.Nrelay1to2, mp.centering)
@@ -140,7 +149,7 @@ def lyot(mp, iMode, idm):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
 
         # Two array sizes (at same resolution) of influence functions for MFT
         # and angular spectrum
@@ -227,13 +236,19 @@ def lyot(mp, iMode, idm):
                 EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering) # Rotate the final image 180 degrees if necessary
                 EFend = fp.mft_p2f(EP4, mp.fl,wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-                Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
+        if mp.jac.minimizeNI:
+            JacOfPeak = no_fpm(mp, iMode, idm)
+            Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm1.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
+
+        Gmode *= mp.dm1.weight
+
     """ ---------- DM2 ---------- """
     if idm == 2:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
 
         # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
         NboxPad2AS = int(mp.dm2.compact.NboxAS)
@@ -309,13 +324,19 @@ def lyot(mp, iMode, idm):
                 EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-                Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
+        if mp.jac.minimizeNI:
+            JacOfPeak = no_fpm(mp, iMode, idm)
+            Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm2.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
+
+        Gmode *= mp.dm2.weight
+
     """ ---------- DM9 (HLC only) ---------- """
     if idm == 9:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele), dtype=complex)
         Nbox9 = int(mp.dm9.compact.Nbox)
 
         # Adjust the step size in the Jacobian, then divide back out. Used for
@@ -361,14 +382,14 @@ def lyot(mp, iMode, idm):
                 indBox = np.ix_(eta_box_ind, xi_box_ind)
                 xi_box = mp.dm9.compact.x_pupPad[xi_box_ind]
                 eta_box = mp.dm9.compact.y_pupPad[eta_box_ind]
-                
+
                 # Obtain values for the "poked" FPM's complex transmission (only in the sub-array where poked)
                 Nxi = Nbox9
                 Neta = Nbox9
                 DM9surfCropNew = stepFac*mp.dm9.VtoH[iact]*mp.dm9.compact.inf_datacube[:, :, iact] + mp.dm9.surf[indBox]  # New DM9 surface profile in the poked region (meters)
                 DM9transInd = falco.hlc.discretize_fpm_surf(DM9surfCropNew, mp.t_diel_nm_vec,  mp.dt_diel_nm)
                 DM8transInd = DM8transIndAll[indBox]  # Cropped region of the FPM.
-    
+
                 # Look up table to compute complex transmission coefficient of the FPM at each pixel
                 fpmPoked = np.zeros((Neta, Nxi), dtype=complex)  # Initialize output array of FPM's complex transmission
                 for ix in range(Nxi):
@@ -377,28 +398,28 @@ def lyot(mp, iMode, idm):
                         ind_diel = DM9transInd[iy, ix]
                         fpmPoked[iy, ix] = mp.complexTransCompact[ind_diel, ind_metal, modvar.sbpIndex]
 
-    
+
                 dEF3box = ((transOuterFPM-fpmPoked) - (transOuterFPM-fpm[indBox])) * EF3inc[indBox]  # Delta field (in a small region) at the FPM
-    
+
                 # Matrices for the MFT from the FPM stamp to the Lyot stop
                 rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(mp.P4.compact.ys, eta_box)/(wvl*mp.fl)) *\
                     np.sqrt(mp.P4.compact.dx*mp.P4.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
                 rect_mat_post = np.exp(-2*np.pi*1j*np.outer(xi_box, mp.P4.compact.xs)/(wvl*mp.fl))
-    
+
                 # MFT from FPM to Lyot stop (Nominal term transOuterFPM*EP4noFPM subtracts out to 0 since it ignores the FPM change).
                 EP4 = 0 - rect_mat_pre @ dEF3box @ rect_mat_post  # MFT from FPM (F3) to Lyot stop plane (P4)
                 EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
                 EP4 = mp.P4.compact.croppedMask * EP4  # Apply Lyot stop
-    
+
                 # MFT to final focal plane
                 EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
-    
-                Gzdl[:, Gindex] = mp.dm9.act_sens / stepFac * mp.dm9.weight*EFend[mp.Fend.corr.maskBool] / np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+
+                Gmode[:, Gindex] = mp.dm9.act_sens / stepFac * mp.dm9.weight*EFend[mp.Fend.corr.maskBool] / np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
-        
-    return Gzdl
+
+    return Gmode
 
 
 def vortex(mp, iMode, idm):
@@ -422,7 +443,7 @@ def vortex(mp, iMode, idm):
 
     Returns
     -------
-    Gzdl : numpy ndarray
+    Gmode : numpy ndarray
         Complex-valued, 2-D array containing the Jacobian for the
         specified Zernike mode, DM number, subband, and star.
 
@@ -533,6 +554,15 @@ def vortex(mp, iMode, idm):
         Edm2WFE = np.ones((NdmPad, NdmPad))
 
     """Propagation"""
+    # Get the unocculted peak E-field and coronagraphic E-field
+    if mp.jac.minimizeNI:
+        modvar.whichSource = 'star'
+        Eocculted = falco.model.compact(mp, modvar)
+        Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
+        indPeak = np.unravel_index(np.argmax(np.abs(Eunocculted), axis=None),
+                                   Eunocculted.shape)
+        Epeak = Eunocculted[indPeak]
+
     # Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein  # E-field at pupil plane P1
     EP2 = fp.relay(EP1, NrelayFactor*mp.Nrelay1to2, mp.centering)
@@ -546,7 +576,7 @@ def vortex(mp, iMode, idm):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
 
         # Array size for planes P3, F3, and P4
         Nfft1 = int(2**falco.util.nextpow2(np.max(np.array([mp.dm1.compact.NdmPad, minPadFacVortex*mp.dm1.compact.Nbox])))) # Don't crop--but do pad if necessary.
@@ -625,13 +655,19 @@ def vortex(mp, iMode, idm):
                 EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-                Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
+        if mp.jac.minimizeNI:
+            JacOfPeak = no_fpm(mp, iMode, idm)
+            Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm1.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
+
+        Gmode *= mp.dm1.weight
+
     """ ---------- DM2 ---------- """
     if idm == 2:
-        Gzdl = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
 
         # Array size for planes P3, F3, and P4
         Nfft2 = int(2**falco.util.nextpow2(np.max(np.array([mp.dm2.compact.NdmPad, minPadFacVortex*mp.dm2.compact.Nbox])))) # Don't crop--but do pad if necessary.
@@ -705,9 +741,292 @@ def vortex(mp, iMode, idm):
                 EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
                 EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-                Gzdl[:, Gindex] = EFend[mp.Fend.corr.maskBool] / \
+                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool] / \
                     np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
-    return Gzdl
+        if mp.jac.minimizeNI:
+            JacOfPeak = no_fpm(mp, iMode, idm)
+            Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm2.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
+
+        Gmode *= mp.dm2.weight
+
+    return Gmode
+
+
+def no_fpm(mp, iMode, idm):
+    """
+    Compute the control Jacobian with the FPM removed.
+
+    Used when EFC is suppressing the normalized intensity, for which the
+    normalization peak is computed with the FPM removed from the beam.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    iMode : int
+        index of the subband, Zernike mode, and star combinations
+    idm : int
+        Which DM the Jacobian is being computed for
+
+    Returns
+    -------
+    Gmode : numpy ndarray
+        Complex-valued, 2-D array containing the Jacobian for the
+        specified Zernike mode, DM number, subband, and star.
+
+    """
+    modvar = falco.config.ModelVariables()
+    modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+    modvar.zernIndex = mp.jac.zern_inds[iMode]
+    modvar.starIndex = mp.jac.star_inds[iMode]
+
+    wvl = mp.sbp_centers[modvar.sbpIndex]
+    surfIntoPhase = 2.  # Phase change is twice the DM surface height.
+    NdmPad = int(mp.compact.NdmPad)
+
+    if mp.flagRotation:
+        NrelayFactor = 1
+    else:
+        NrelayFactor = 0  # zero out the number of relays
+
+    """Input E-fields"""
+
+    # Include the star position and weight in the starting wavefront
+    iStar = modvar.starIndex
+    xiOffset = mp.compact.star.xiOffsetVec[iStar]
+    etaOffset = mp.compact.star.etaOffsetVec[iStar]
+    starWeight = mp.compact.star.weights[iStar]
+    TTphase = (-1)*(2*np.pi*(xiOffset*mp.P2.compact.XsDL +
+                             etaOffset*mp.P2.compact.YsDL))
+    Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
+    Ein = np.sqrt(starWeight) * Ett * \
+        np.squeeze(mp.P1.compact.E[:, :, modvar.sbpIndex])
+
+    EttUndoAtP2 = 1./falco.prop.relay(Ett, NrelayFactor*mp.Nrelay1to2)
+
+    # Apply a Zernike (in amplitude) at input pupil
+    # Used only for Zernike sensitivity control.
+    if not (modvar.zernIndex == 1):
+        indsZnoll = modvar.zernIndex  # Just send in 1 Zernike mode
+        zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(
+            mp.P1.compact.Nbeam, mp.centering, indsZnoll))
+        zernMat = pad_crop(zernMat, mp.P1.compact.Narr)
+        Ein *= zernMat*(2*np.pi/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
+                                                  modvar.zernIndex]
+
+    """ Masks and DM surfaces """
+    if mp.P4.compact.Nbeam != mp.P1.compact.Nbeam:
+        if not hasattr(mp.P4.compact, 'maskAtP1res'):
+            raise ValueError(
+                'For peak Jacobian calculation, there must be a Lyot stop '
+                'named mp.P4.compact.maskAtP1res that is sampled at the same '
+                'resolution as the input pupil.'
+            )
+        else:
+            lyotStopReimaged = falco.prop.relay(
+                pad_crop(mp.P4.compact.maskAtP1res, NdmPad),
+                NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4))
+
+    else:
+        lyotStopReimaged = falco.prop.relay(
+            pad_crop(mp.P4.compact.mask, NdmPad),
+            NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4))
+
+    pupil = pad_crop(mp.P1.compact.mask, NdmPad)
+    Ein = pad_crop(Ein, NdmPad)
+
+    if mp.flagDM1stop:
+        DM1stop = pad_crop(mp.dm1.compact.mask, NdmPad)
+    else:
+        DM1stop = np.ones((NdmPad, NdmPad))
+    if mp.flagDM2stop:
+        DM2stop = pad_crop(mp.dm2.compact.mask, NdmPad)
+    else:
+        DM2stop = np.ones((NdmPad, NdmPad))
+
+    # Compute the DM surfaces for the current DM commands
+    if any(mp.dm_ind == 1):
+        DM1surf = pad_crop(mp.dm1.compact.surfM, NdmPad)
+        # DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, NdmPad)
+    else:
+        DM1surf = np.zeros((NdmPad, NdmPad))
+    if any(mp.dm_ind == 2):
+        DM2surf = pad_crop(mp.dm2.compact.surfM, NdmPad)
+        # DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, NdmPad)
+    else:
+        DM2surf = np.zeros((NdmPad, NdmPad))
+
+    # Re-image the apodizer from pupil P3 back to pupil P2.
+    if mp.flagApod:
+        apodReimaged = pad_crop(mp.P3.compact.mask, NdmPad)
+        apodReimaged = fp.relay(apodReimaged, NrelayFactor*mp.Nrelay2to3, mp.centering)
+    else:
+        apodReimaged = np.ones((NdmPad, NdmPad))
+
+    # Default is that F3 focal plane sampling does not vary with wavelength
+    scaleFac = 1
+    # if mp.coro == 'HLC':
+    #     if mp.layout in ('fpm_scale', 'proper', 'roman_phasec_proper', 'wfirst_phaseb_proper'):
+    #         scaleFac = wvl/mp.lambda0 # Focal plane sampling varies with wavelength
+
+    # This block is for BMC surface error testing
+    if(mp.flagDMwfe):
+        if any(mp.dm_ind == 1):
+            Edm1WFE = np.exp(2*np.pi*1j/wvl*pad_crop(mp.dm1.compact.wfe,
+                                                     NdmPad, 'extrapval', 0))
+        else:
+            Edm1WFE = np.ones((NdmPad, NdmPad))
+        if any(mp.dm_ind == 2):
+            Edm2WFE = np.exp(2*np.pi*1j/wvl*pad_crop(mp.dm2.compact.wfe,
+                                                     NdmPad, 'extrapval', 0))
+        else:
+            Edm2WFE = np.ones((NdmPad, NdmPad))
+    else:
+        Edm1WFE = np.ones((NdmPad, NdmPad))
+        Edm2WFE = np.ones((NdmPad, NdmPad))
+
+    transOuterFPM = 1
+
+    """Propagation"""
+    # # Get the unocculted peak E-field and coronagraphic E-field
+    # if mp.jac.minimizeNI:
+    #     modvar.whichSource = 'star'
+    #     Eocculted = falco.model.compact(mp, modvar)
+    #     Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
+    #     indPeak = np.unravel_index(np.argmax(np.abs(Eunocculted), axis=None),
+    #                                Eunocculted.shape)
+    #     Epeak = Eunocculted[indPeak]
+
+    # Define pupil P1 and Propagate to pupil P2
+    EP1 = pupil*Ein  # E-field at pupil plane P1
+    EP2 = fp.relay(EP1, NrelayFactor*mp.Nrelay1to2, mp.centering)
+
+    # Propagate from P2 to DM1, and apply DM1 surface and aperture stop
+    if not (abs(mp.d_P2_dm1) == 0):  # E-field arriving at DM1
+        Edm1 = fp.ptp(EP2, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
+    else:
+        Edm1 = EP2
+    Edm1out = Edm1*Edm1WFE*DM1stop*np.exp(surfIntoPhase*2*np.pi*1j*DM1surf/wvl)
+
+    """ ---------- DM1 ---------- """
+    if idm == 1:
+        Gmode = np.zeros((1, mp.dm1.Nele), dtype=complex)
+
+        # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
+        NboxPad1AS = int(mp.dm1.compact.NboxAS)  # array size for FFT-AS propagations from DM1->DM2->DM1
+        mp.dm1.compact.xy_box_lowerLeft_AS = mp.dm1.compact.xy_box_lowerLeft - (mp.dm1.compact.NboxAS-mp.dm1.compact.Nbox)/2. # Adjust the sub-array location of the influence function for the added zero padding
+
+        if any(mp.dm_ind == 2):
+            DM2surf = pad_crop(DM2surf, mp.dm1.compact.NdmPad)
+        else:
+            DM2surf = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad))
+
+        if mp.flagDM2stop:
+            DM2stop = pad_crop(DM2stop, mp.dm1.compact.NdmPad)
+        else:
+            DM2stop = np.ones((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad))
+
+        Edm1pad = pad_crop(Edm1out, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
+        Edm2WFEpad = pad_crop(Edm2WFE, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
+        apodReimaged = pad_crop(apodReimaged, mp.dm1.compact.NdmPad)
+        lyotStopReimaged = pad_crop(lyotStopReimaged, mp.dm1.compact.NdmPad)
+        EttUndoAtP2 = pad_crop(EttUndoAtP2, mp.dm1.compact.NdmPad)
+
+        # Propagate each actuator from DM1 through the optical system
+        Gindex = 0  # initialize index counter
+        for iact in mp.dm1.act_ele:
+            # Compute only for influence functions that are not zeroed out
+            if np.sum(np.abs(mp.dm1.compact.inf_datacube[:, :, iact])) > 1e-12:
+
+                # x- and y- coordinate indices of the padded influence function in the full padded pupil
+                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0, iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=int)  # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1, iact], mp.dm1.compact.xy_box_lowerLeft_AS[1 ,iact]+NboxPad1AS, dtype=int)  # y-indices in pupil arrays for the box
+                indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
+
+                # Propagate from DM1 to DM2, and then back to P2
+                dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:, :, iact]), NboxPad1AS) # Pad influence function at DM1 for angular spectrum propagation.
+                dEbox = fp.ptp(dEbox*Edm1pad[indBoxAS], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
+                dEP2box = fp.ptp(dEbox*Edm2WFEpad[indBoxAS]*DM2stop[indBoxAS]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[indBoxAS]), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to DM1
+
+                # Apply the reimaged apodizer at P2
+                dEP2box = apodReimaged[indBoxAS] * dEP2box
+
+                # Put the star back on-axis (if it isn't already)
+                dEP2box = EttUndoAtP2[indBoxAS] * dEP2box
+
+                # Apply the reimaged Lyot stop at P2
+                dEP2box = lyotStopReimaged[indBoxAS] * dEP2box
+
+                dEFendPeak = (np.sum(dEP2box) * transOuterFPM *
+                              np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx) *
+                              scaleFac * np.sqrt(mp.Fend.dxi*mp.Fend.deta) /
+                              (wvl*mp.fl))
+
+                Gmode[:, Gindex] = dEFendPeak / \
+                    np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+
+            Gindex += 1
+
+    """ ---------- DM2 ---------- """
+    if idm == 2:
+        Gmode = np.zeros((1, mp.dm2.Nele), dtype=complex)
+
+        # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
+        NboxPad2AS = int(mp.dm2.compact.NboxAS)
+        mp.dm2.compact.xy_box_lowerLeft_AS = mp.dm2.compact.xy_box_lowerLeft - (NboxPad2AS-mp.dm2.compact.Nbox)/2 # Account for the padding of the influence function boxes
+
+        apodReimaged = pad_crop(apodReimaged, mp.dm2.compact.NdmPad)
+        DM2stopPad = pad_crop(DM2stop, mp.dm2.compact.NdmPad)
+        Edm2WFEpad = pad_crop(Edm2WFE, mp.dm2.compact.NdmPad)
+        lyotStopReimaged = pad_crop(lyotStopReimaged, mp.dm2.compact.NdmPad)
+        EttUndoAtP2 = pad_crop(EttUndoAtP2, mp.dm2.compact.NdmPad)
+
+        # Propagate full field to DM2 before back-propagating in small boxes
+        Edm2inc = pad_crop(fp.ptp(Edm1out, mp.compact.NdmPad*mp.P2.compact.dx,wvl, mp.d_dm1_dm2), mp.dm2.compact.NdmPad) # E-field incident upon DM2
+        Edm2inc = pad_crop(Edm2inc, mp.dm2.compact.NdmPad);
+        Edm2 = DM2stopPad * Edm2WFEpad * Edm2inc * np.exp(surfIntoPhase*2*np.pi*1j/wvl * pad_crop(DM2surf, mp.dm2.compact.NdmPad)) # Initial E-field at DM2 including its own phase contribution
+
+        # Propagate each actuator from DM2 through the rest of the optical system
+        Gindex = 0  # initialize index counter
+        for iact in mp.dm2.act_ele:
+            # Only compute for acutators specified for use or for influence functions that are not zeroed out
+            if np.sum(np.abs(mp.dm2.compact.inf_datacube[:, :, iact])) > 1e-12:
+
+                # x- and y- coordinates of the padded influence function
+                # in the full padded pupil
+                x_box_AS_ind = np.arange(
+                    mp.dm2.compact.xy_box_lowerLeft_AS[0, iact],
+                    mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS,
+                    dtype=int)  # x-indices in pupil arrays for the box
+                y_box_AS_ind = np.arange(
+                    mp.dm2.compact.xy_box_lowerLeft_AS[1, iact],
+                    mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS,
+                    dtype=int)  # y-indices in pupil arrays for the box
+                indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
+
+                dEbox = (mp.dm2.VtoH.reshape(mp.dm2.Nact**2)[iact])*(surfIntoPhase*2*np.pi*1j/wvl)*pad_crop(np.squeeze(mp.dm2.compact.inf_datacube[:, :, iact]), NboxPad2AS) # the padded influence function at DM2
+                dEP2box = fp.ptp(dEbox*Edm2[indBoxAS], mp.P2.compact.dx*NboxPad2AS, wvl, -1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
+
+                # Apply the reimaged apodizer at P2
+                dEP2box = apodReimaged[indBoxAS] * dEP2box
+
+                # Put the star back on-axis (if it isn't already)
+                dEP2box = EttUndoAtP2[indBoxAS] * dEP2box
+
+                # Apply the reimaged Lyot stop at P2
+                dEP2box = lyotStopReimaged[indBoxAS] * dEP2box
+
+                dEFendPeak = (np.sum(dEP2box) * transOuterFPM *
+                              np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx) *
+                              scaleFac * np.sqrt(mp.Fend.dxi*mp.Fend.deta) /
+                              (wvl*mp.fl))
+
+                Gmode[:, Gindex] = dEFendPeak / \
+                    np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+
+            Gindex += 1
+
+    return Gmode

@@ -77,11 +77,15 @@ def flesh_out_workspace(mp):
 def verify_key_values(mp):
     """Verify that important text options are valid."""
     mp.allowedCenterings = frozenset(('pixel', 'interpixel'))
-    mp.allowedCoronagraphTypes = frozenset(('VC', 'VORTEX', 'LC', 'APLC',
-                                            'FLC', 'SPLC', 'HLC'))
-    mp.allowedLayouts = frozenset(('fourier', 'fpm_scale', 'proper',
-                                   'roman_phasec_proper',
-                                   'wfirst_phaseb_proper'))
+    mp.allowedCoronagraphTypes = frozenset((
+        'VC', 'VORTEX', 'LC', 'APLC', 'FLC', 'SPLC', 'HLC'))
+    mp.allowedLayouts = frozenset((
+        'fourier', 'fpm_scale', 'proper',
+        'roman_phasec_proper', 'wfirst_phaseb_proper'))
+    mp.allowedEstimators = frozenset((
+        'perfect', 'pairwise', 'pairwise-square', 'pwp-bp-square',
+        'pairwise-rect', 'pwp-bp', 'pwp-kf'))
+    mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc'))
 
     # Check centering
     mp.centering = mp.centering.lower()
@@ -98,6 +102,18 @@ def verify_key_values(mp):
     mp.layout = mp.layout.lower()
     if mp.layout not in mp.allowedLayouts:
         raise ValueError('%s is not an allowed value of mp.layout.', mp.layout)
+
+    # Check estimator
+    mp.estimator = mp.estimator.lower()
+    if mp.estimator not in mp.allowedEstimators:
+        raise ValueError('%s is not an allowed value of mp.estimator.',
+                         mp.estimator)
+
+    # Check controller
+    mp.controller = mp.controller.lower()
+    if mp.controller not in mp.allowedControllers:
+        raise ValueError('%s is not an allowed value of mp.controller.',
+                         mp.controller)
 
 
 def set_optional_variables(mp):
@@ -396,8 +412,8 @@ def set_optional_variables(mp):
         mp.jac.Zcoef = np.array([1])  # coefficients (i.e., weights) of Zernike modes in Jacobian. Weight for piston is always 1.
 
     # Estimation
-    if not hasattr(mp.est.probe, 'whichDM'):
-        mp.est.probe.whichDM = 1  # Which DM to use for probing
+    if not hasattr(mp.est, 'probeSchedule'):
+        mp.est.probeSchedule = falco.config.ProbeSchedule()
     if not hasattr(mp.est, 'InormProbeMax'):
         mp.est.InormProbeMax = 1e-4  # Max probe intensity allowed (in NI)
     if not hasattr(mp.est, 'Ithreshold'):
@@ -423,6 +439,16 @@ def convert_to_one_dim_arrays(mp):
     mp.eval.indsZnoll = np.atleast_1d(mp.eval.indsZnoll)
     mp.eval.Rsens = np.atleast_1d(mp.eval.Rsens)
     mp.ctrl.log10regVec = np.atleast_1d(mp.ctrl.log10regVec)
+    mp.dm_ind = np.atleast_1d(mp.dm_ind)
+    mp.relinItrVec = np.atleast_1d(mp.relinItrVec)
+
+    mp.est.probe.gainFudge = np.atleast_1d(mp.est.probe.gainFudge)
+    mp.est.probe.xiOffset = np.atleast_1d(mp.est.probe.xiOffset)
+    mp.est.probe.etaOffset = np.atleast_1d(mp.est.probe.etaOffset)
+    mp.est.probe.width = np.atleast_1d(mp.est.probe.width)
+    mp.est.probe.height = np.atleast_1d(mp.est.probe.height)
+
+    return None
 
 
 def falco_set_spectral_properties(mp):
@@ -1288,16 +1314,22 @@ def falco_set_initial_Efields(mp):
     # Initial Electric Fields for Star and Exoplanet
 
     if not hasattr(mp.P1.full, 'E'):  # Input E-field at entrance pupil
-        mp.P1.full.E = np.ones((mp.P1.full.Narr, mp.P1.full.Narr, mp.Nwpsbp,
-                                mp.Nsbp), dtype=complex)
-
-    # Initialize the input E-field for the planet at the entrance pupil.
-    # Will apply the phase ramp later
-    mp.Eplanet = mp.P1.full.E
+        mp.P1.full.E = np.ones(
+            (mp.P1.full.Narr, mp.P1.full.Narr, mp.Nwpsbp, mp.Nsbp),
+            dtype=complex)
+    else:  # If loading, pad to the correct size
+        if mp.P1.full.E.shape[0] != mp.P1.full.Narr:
+            EarrayTemp = mp.P1.full.E.copy()
+            mp.P1.full.E = np.ones((mp.P1.full.Narr, mp.P1.full.Narr,
+                                    mp.Nwpsbp, mp.Nsbp), dtype=complex)
+            for si in range(mp.Nsbp):
+                for wi in range(mp.Nwpsbp):
+                    mp.P1.full.E[:, :, wi, si] = falco.util.pad_crop(EarrayTemp[:, :, wi, si], mp.P1.full.Narr)
+            del EarrayTemp
 
     if not hasattr(mp.P1.compact, 'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr,
-                                   mp.Nsbp), dtype=complex)
+        mp.P1.compact.E = np.ones(
+            (mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
     else:
         if mp.P1.compact.E.shape[0] != mp.P1.compact.Narr:
             EcubeTemp = copy.deepcopy(mp.P1.compact.E)
@@ -1306,10 +1338,11 @@ def falco_set_initial_Efields(mp):
             for si in range(mp.Nsbp):
                 mp.P1.compact.E[:, :, si] = pad_crop(EcubeTemp[:, :, si],
                                                      mp.P1.compact.Narr)
+            del EcubeTemp
 
-    # Throughput is computed with the compact model
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(
-        np.mean(mp.P1.compact.E, 2), mp.P1.compact.mask.shape[0]))**2))
+    # # Throughput is computed with the compact model
+    # mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(
+    #     np.mean(mp.P1.compact.E, 2), mp.P1.compact.mask.shape[0]))**2))
 
 
 def init_storage_arrays(mp):

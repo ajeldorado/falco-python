@@ -2,7 +2,6 @@
 import copy
 import numpy as np
 import multiprocessing
-import matplotlib.pyplot as plt
 
 from . import jacobians
 import falco
@@ -763,6 +762,10 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
 
         # Downsample the beam if Lyot plane has lower resolution
         if mp.P4.compact.Nbeam != mp.P1.compact.Nbeam:
+            # Make sure array is oversized before downsampling
+            padFac = 1.2
+            EP4 = pad_crop(EP4,
+                           falco.util.ceil_even(padFac*mp.P1.compact.Nbeam))
 
             EP4tempReal = falco.mask.rotate_shift_downsample_pupil_mask(
                 np.real(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
@@ -770,6 +773,8 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
                 np.imag(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
 
             EP4 = EP4tempReal + 1j*EP4tempImag
+            # Preserve summed intensity in the pupil:
+            EP4 *= mp.P1.compact.Nbeam/mp.P4.compact.Nbeam
 
         EP4 = pad_crop(EP4, mp.P4.compact.Narr)
 
@@ -845,53 +850,34 @@ def jacobian(mp):
                                 dtype=complex)
 
     # Calculate the Jacobian in parallel or serial
-    if(mp.flagParallel):
-        print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
-        with falco.util.TicToc():
-             ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
-            results_order = [(im, idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
-
-            print(zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind))))
-
-            output = multiprocessing.Queue()
-            processes = [multiprocessing.Process(target=_jac_middle_layer_process,
-                         args=(mp,im,idm,output)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
-
-            # if __name__ == '__main__':
-            jobs = []
-            for p in processes:
-                jobs.append(p)
-                p.start()
-
-            # for j in jobs:
-            #     j.join()
-
-            for p in processes:
-                p.terminate()
-
-            for p in processes:
-                p.join()
-
-            results_Jac = [output.get() for p in processes]
-
-            # Reorder Jacobian by mode and DM from the list
-            for ii in range(mp.jac.Nmode*mp.dm_ind.size):
-                im = results_order[ii][0]
-                idm = results_order[ii][1]
-                if idm == 1:
-                    jacStruct.G1[:, :, im] = results_Jac[ii]
-                if idm == 2:
-                    jacStruct.G2[:, :, im] = results_Jac[ii]
-
-        # print('Computing control Jacobian matrices in parallel...', end='')
-        # pool = multiprocessing.Pool(processes=mp.Nthreads)
-
+    if mp.flagParallel:
+        # print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
         # with falco.util.TicToc():
-        #     results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
-        #     results = pool.starmap(_jac_middle_layer, [(mp,im,idm)for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind)))])
-        #     results_Jac = results
-        #     pool.close()
-        #     pool.join()
+        #      ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
+        #     results_order = [(im, idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
+
+        #     print(zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind))))
+
+        #     output = multiprocessing.Queue()
+        #     processes = [multiprocessing.Process(target=_jac_middle_layer_process,
+        #                  args=(mp,im,idm,output)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
+
+        #     # if __name__ == '__main__':
+        #     jobs = []
+        #     for p in processes:
+        #         jobs.append(p)
+        #         p.start()
+
+        #     # for j in jobs:
+        #     #     j.join()
+
+        #     for p in processes:
+        #         p.terminate()
+
+        #     for p in processes:
+        #         p.join()
+
+        #     results_Jac = [output.get() for p in processes]
 
         #     # Reorder Jacobian by mode and DM from the list
         #     for ii in range(mp.jac.Nmode*mp.dm_ind.size):
@@ -901,12 +887,33 @@ def jacobian(mp):
         #             jacStruct.G1[:, :, im] = results_Jac[ii]
         #         if idm == 2:
         #             jacStruct.G2[:, :, im] = results_Jac[ii]
-        #         if idm == 8:
-        #             jacStruct.G8[:, :, im] = results_Jac[ii]
-        #         if idm == 9:
-        #             jacStruct.G9[:, :, im] = results_Jac[ii]
 
-        #     print('done.')
+        print('Computing control Jacobian matrices in parallel...', end='')
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+
+        with falco.util.TicToc():
+            results_order = [(im, idm) for idm in mp.dm_ind for im in range(mp.jac.Nmode)]
+            results = pool.starmap(
+                _jac_middle_layer,
+                [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))])
+            results_Jac = results
+            pool.close()
+            pool.join()
+
+            # Reorder Jacobian by mode and DM from the list
+            for ii in range(mp.jac.Nmode*mp.dm_ind.size):
+                im = results_order[ii][0]
+                idm = results_order[ii][1]
+                if idm == 1:
+                    jacStruct.G1[:, :, im] = results_Jac[ii]
+                if idm == 2:
+                    jacStruct.G2[:, :, im] = results_Jac[ii]
+                if idm == 8:
+                    jacStruct.G8[:, :, im] = results_Jac[ii]
+                if idm == 9:
+                    jacStruct.G9[:, :, im] = results_Jac[ii]
+
+            print('done.')
 
     else:
         print('Computing control Jacobian matrices in serial:\n  ', end='')

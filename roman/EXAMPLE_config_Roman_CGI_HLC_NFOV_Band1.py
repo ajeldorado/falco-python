@@ -24,7 +24,6 @@ mp.TrialNum = 1
 # Special Computational Settings
 mp.flagParallel = True
 mp.flagPlot = True
-mp.useGPU = False
 
 # General
 mp.centering = 'pixel'
@@ -41,7 +40,7 @@ mp.thput_eval_y = 0  # y location [lambda_c/D] in dark hole at which to evaluate
 mp.source_x_offset_norm = 7  # x location [lambda_c/D] in dark hole at which to compute intensity normalization
 mp.source_y_offset_norm = 0  # y location [lambda_c/D] in dark hole at which to compute intensity normalization
 
-# %# Bandwidth and Wavelength Specs
+# Bandwidth and Wavelength Specs
 
 mp.lambda0 = 575e-9  # Central wavelength of the whole spectral bandpass [meters]
 mp.fracBW = 0.1000  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
@@ -97,11 +96,6 @@ mp.WspatialDef = []  # [3, 4.5, 3]; # spatial control Jacobian weighting by annu
 mp.dm1.weight = 1
 mp.dm2.weight = 1
 
-# Voltage range restrictions
-mp.dm1.maxAbsV = 1000;  # Max absolute voltage (+/-) for each actuator [volts] # NOT ENFORCED YET
-mp.dm2.maxAbsV = 1000;  # Max absolute voltage (+/-) for each actuator [volts] # NOT ENFORCED YET
-mp.maxAbsdV = 1000;     # Max +/- delta voltage step for each actuator for DMs 1 and 2 [volts] # NOT ENFORCED YET
-
 # %% Wavefront Control: Controller Specific
 # Controller options: 
 #  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
@@ -111,7 +105,7 @@ mp.controller = 'gridsearchEFC'
 # # GRID SEARCH EFC DEFAULTS
 # WFSC Iterations and Control Matrix Relinearization
 mp.Nitr = 5  # Number of estimation+control iterations to perform
-mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  # Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
+mp.relinItrVec = np.arange(0, mp.Nitr)  # Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1, 2]) # Which DMs to use [1-D ndarray]
 
 # # PLANNED SEARCH EFC DEFAULTS     

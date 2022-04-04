@@ -79,8 +79,8 @@ def calc_thput(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    ImSimOffaxis = falco.imaging.get_sim_offaxis_image_compact(mp,
-                            mp.thput_eval_x, mp.thput_eval_y, isEvalMode=True)
+    ImSimOffaxis = falco.imaging.get_sim_offaxis_image_compact(
+        mp, mp.thput_eval_x, mp.thput_eval_y, isEvalMode=True)
 
     # Absolute energy within half-max isophote(s)
     if mp.thput_metric.lower() == 'hmi':
@@ -126,6 +126,10 @@ def calc_psf_norm_factor(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
+    mp.sumPupil = np.sum(np.abs(
+        mp.P1.compact.mask * falco.util.pad_crop(
+            np.mean(mp.P1.compact.E, axis=2), mp.P1.compact.mask.shape))**2)
+
     # Initialize Model Normalizations
     if not hasattr(mp.Fend, 'compact'):
         mp.Fend.compact = falco.config.Object()
@@ -157,24 +161,23 @@ def calc_psf_norm_factor(mp):
     # Full Model Normalizations (at points for entire-bandpass evaluation)
     if mp.flagSim:
         if mp.flagParallel:
-            pass
-            # # Make all combinations of the values
-            # inds_list = [(x, y) for x in range(mp.Nsbp)
-            #              for y in range(mp.Nwpsbp)]
-            # Nvals = mp.Nsbp*mp.Nwpsbp
+            # Make all combinations of the values
+            inds_list = [(x, y) for x in range(mp.Nsbp)
+                         for y in range(mp.Nwpsbp)]
+            Nvals = mp.Nsbp*mp.Nwpsbp
 
-            # pool = multiprocessing.Pool(processes=mp.Nthreads)
-            # resultsRaw = pool.starmap(_model_full_norm_wrapper,
-            #                           [(mp, ilist, inds_list)
-            #                            for ilist in range(Nvals)])
-            # I00list = resultsRaw
-            # pool.close()
-            # pool.join()
+            pool = multiprocessing.Pool(processes=mp.Nthreads)
+            resultsRaw = pool.starmap(_model_full_norm_wrapper,
+                                      [(mp, ilist, inds_list)
+                                       for ilist in range(Nvals)])
+            I00list = resultsRaw
+            pool.close()
+            pool.join()
 
-            # for ilist in range(Nvals):
-            #     si = inds_list[ilist][0]
-            #     wi = inds_list[ilist][1]
-            #     mp.Fend.full.I00[si, wi] = I00list[ilist]
+            for ilist in range(Nvals):
+                si = inds_list[ilist][0]
+                wi = inds_list[ilist][1]
+                mp.Fend.full.I00[si, wi] = I00list[ilist]
 
         else:
             for si in range(mp.Nsbp):
@@ -362,24 +365,23 @@ def get_sim_sbp_image(mp, si):
 
     Iall = np.zeros((Ncombos, mp.Fend.Neta, mp.Fend.Nxi))
     if mp.flagParallel:
-        pass
-        # pool = multiprocessing.Pool(processes=mp.Nthreads)
-        # resultsRaw = pool.starmap(_get_single_sbp_image_wvlPol,
-        #                           [(mp, si, ilist, inds_list)
-        #                            for ilist in range(Ncombos)])
-        # results = resultsRaw
 
-        # pool.close()
-        # pool.join()
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        resultsRaw = pool.starmap(_get_subband_image_component,
+                                  [(mp, si, ilist, inds_list)
+                                   for ilist in range(Ncombos)])
+        results = resultsRaw
 
-        # for ilist in range(Ncombos):
-        #     Iall[ilist, :, :] = results[ilist]
+        pool.close()
+        pool.join()
+
+        for ilist in range(Ncombos):
+            Iall[ilist, :, :] = results[ilist]
 
     else:
         for iCombo in range(Ncombos):
-            Iall[iCombo, :, :] = _get_subband_image_component(mp, si,
-                                                              iCombo,
-                                                              inds_list)
+            Iall[iCombo, :, :] = _get_subband_image_component(
+                mp, si, iCombo, inds_list)
 
     subbandImage = 0
     for iCombo in range(Ncombos):

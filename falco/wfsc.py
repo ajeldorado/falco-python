@@ -69,66 +69,6 @@ def loop(mp, out):
         out.thput[Itr] = np.max(thput)
         mp.thput_vec[Itr] = np.max(thput)
 
-        # %% Plotting (OLD)
-        # if mp.flagPlot:
-
-        #     # Compute the DM surfaces
-        #     if np.any(mp.dm_ind == 1):
-        #         DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.compact.dx, mp.dm1.compact.Ndm)
-        #     else:
-        #         DM1surf = np.zeros((mp.dm1.compact.Ndm, mp.dm1.compact.Ndm))
-
-        #     if np.any(mp.dm_ind == 2):
-        #         DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.compact.dx, mp.dm2.compact.Ndm)
-        #     else:
-        #         DM2surf = np.zeros((mp.dm2.compact.Ndm, mp.dm2.compact.Ndm))
-
-        #     if Itr == 0:
-        #         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-        #     # else:
-        #     #     ax1.clear()
-        #     #     ax2.clear()
-        #     #     ax3.clear()
-        #     #     ax4.clear()
-
-        #     fig.subplots_adjust(hspace=0.4, wspace=0.0)
-        #     fig.suptitle(mp.coro+': Iteration %d' % Itr)
-
-        #     im1 = ax1.imshow(np.log10(Im), cmap='magma', interpolation='none',
-        #                      extent=[np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL),
-        #                              np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL)])
-        #     ax1.set_title('Stellar PSF: NI=%.2e' % InormHist[Itr])
-        #     ax1.tick_params(labelbottom=False)
-        #     # cbar1 = fig.colorbar(im1, ax=ax1)
-
-        #     im3 = ax3.imshow(ImSimOffaxis/np.max(ImSimOffaxis), cmap=plt.cm.get_cmap('Blues'),
-        #                      interpolation='none', extent=[np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL),
-        #                                                    np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL)])
-        #     ax3.set_title('Off-axis Thput = %.2f%%' % (100*thput))
-        #     # cbar3 = fig.colorbar(im3, ax=ax3)
-        #     # cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
-        #     # cbar3.set_ticklabels(['0', '0.5', '1'])
-
-        #     im2 = ax2.imshow(1e9*DM1surf, cmap='viridis')
-        #     ax2.set_title('DM1 Surface (nm)')
-        #     ax2.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)
-        #     # cbar2 = fig.colorbar(im2, ax=ax2)
-
-        #     im4 = ax4.imshow(1e9*DM2surf, cmap='viridis')
-        #     ax4.set_title('DM2 Surface (nm)')
-        #     ax4.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)
-        #     # cbar4 = fig.colorbar(im4, ax=ax4)
-
-        #     if Itr == 0:
-        #         cbar1 = fig.colorbar(im1, ax=ax1)
-        #         cbar2 = fig.colorbar(im2, ax=ax2)
-        #         cbar3 = fig.colorbar(im3, ax=ax3)
-        #         cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
-        #         cbar3.set_ticklabels(['0', '0.5', '1'])
-        #         cbar4 = fig.colorbar(im4, ax=ax4)
-
-        #     plt.pause(0.1)
-
         # %% Control Jacobian
 
         # Re-compute the Jacobian weights
@@ -145,9 +85,14 @@ def loop(mp, out):
 
         if Itr > 0:
             EestPrev = ev.Eest  # save previous estimate for Delta E plot
+
         falco.est.wrapper(mp, ev, jacStruct)
 
         store_intensities(mp, out, ev, Itr)
+
+        # %% Progress plots (PSF, NI, and DM surfaces)
+
+        falco.plot.wfsc_progress(mp, out, ev, Itr, ImSimOffaxis)
 
         # %% !!!!!!!!! Move to ctrl.py
 
@@ -161,24 +106,14 @@ def loop(mp, out):
         # if np.any(mp.dm_ind == 9):
         #     jacStruct.G9 = jacStruct.G9*np.moveaxis(np.tile(mp.WspatialVec[:, None], [mp.jac.Nmode, 1, mp.dm9.Nele]), 0, -1)
 
-
-        # %% Progress plots (PSF, NI, and DM surfaces)
-
-        # # if Itr == 0:
-        # #     # fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-        # #     figObj = plt.subplots(2, 2)
-        # # figObj = plot_progress(mp, out, ev, figObj, Itr, ImSimOffaxis, Im)
-        
-        # plot_progress(mp, out, Itr, ImSimOffaxis, Im)
-
         # %% Plot the expected and measured delta E-fields
 
-        # if Itr > 0:
-        #     EsimPrev = Esim  # save previous value for Delta E plot
-        # Esim = compute_simulated_efield_for_delta_efield_plot(mp)
+        if Itr > 0:
+            EsimPrev = Esim  # save previous value for Delta E plot
+        Esim = compute_simulated_efield_for_delta_efield_plot(mp)
 
-        # if Itr > 0:
-        #     out = falco_plot_DeltaE(mp, out, ev.Eest, EestPrev, Esim, EsimPrev, Itr)
+        if Itr > 0:
+            falco.plot.delta_efield(mp, out, ev.Eest, EestPrev, Esim, EsimPrev, Itr)
 
         # %% Compute and Plot the Singular Mode Spectrum of the Electric Field
 
@@ -412,7 +347,6 @@ def falco_compute_dm_stats(mp, out, Itr):
 
 def store_intensities(mp, out, ev, Itr):
     """Store newest intensities in the out object."""
-
     # ## Calculate the average measured, coherent, and incoherent intensities
 
     # Apply subband weights and then sum over subbands
@@ -539,3 +473,17 @@ def plot_progress(mp, out, Itr, ImSimOffaxis, Im):
         plt.pause(0.1)
 
         return None
+
+
+def compute_simulated_efield_for_delta_efield_plot(mp):
+    """Compute E-field for Delta E plot."""
+    modvar = falco.config.ModelVariables()
+    modvar.whichSource = 'star'
+    modvar.starIndex = 0  # 1ST STAR ONLY
+    Esim = np.zeros((np.sum(mp.Fend.corr.maskBool), mp.Nsbp), dtype=complex)
+    for iSubband in range(mp.Nsbp):
+        modvar.sbpIndex = iSubband
+        Etemp = falco.model.compact(mp, modvar)
+        Esim[:, iSubband] = Etemp[mp.Fend.corr.maskBool]
+
+    return Esim

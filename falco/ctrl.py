@@ -1,7 +1,7 @@
 """Control functions for WFSC."""
 
 import numpy as np
-# import multiprocessing
+import multiprocessing
 # from astropy.io import fits
 # import matplotlib.pyplot as plt
 import falco
@@ -62,8 +62,9 @@ def wrapper(mp, cvar, jacStruct):
             modvar.zernIndex = mp.jac.zern_inds[iMode]
             modvar.starIndex = mp.jac.star_inds[iMode]
             Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
-            _, indPeak = np.max(np.abs(Eunocculted))
-            Epeak = Eunocculted(indPeak)
+            indPeak = np.unravel_index(
+                np.argmax(np.abs(Eunocculted), axis=None), Eunocculted.shape)
+            Epeak = Eunocculted[indPeak]
             Eest[:, iMode] = cvar.Eest[:, iMode] / Epeak
 
         # The G^*E part changes each iteration because the E-field changes.
@@ -133,20 +134,13 @@ def cull_weak_actuators(mp, cvar, jacStruct):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    if cvar.Itr == 0:
+    if cvar.Itr == 0:  # Cull in first iteration
         cvar.flagCullAct = True
-    else:
+    else:  # Cull when actuators used change
         if hasattr(mp, 'dm_ind_sched'):
             schedPre = np.sort(mp.dm_ind_sched[cvar.Itr-1])
             schedNow = np.sort(mp.dm_ind_sched[cvar.Itr])
-            if not schedPre.size == schedNow.size:
-                cvar.flagCullAct = True
-            else:  # when they are same size
-                doesEachValueMatch = np.not_equal(schedNow, schedPre)
-                if all(doesEachValueMatch):
-                    cvar.flagCullAct = False
-                else:
-                    cvar.flagCullAct = True
+            cvar.flagCullAct = not np.array_equal(schedPre, schedNow)
         else:
             cvar.flagCullAct = False
 
@@ -314,32 +308,48 @@ def _grid_search_efc(mp, cvar):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
     # Empirically find the regularization value giving the best contrast
-#    if(mp.flagParallel and mp.ctrl.flagUseModel):
-#        # Run the controller in parallel
-#        pool = multiprocessing.Pool(processes=mp.Nthreads)
-#        results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
-#        results_ctrl = [p.get() for p in results] # All the Jacobians in a list
-#        pool.close()
-#        pool.join()
-#
-#        # Convert from a list to arrays:
-#        for ni in range(Nvals):
-#            InormVec[ni] = results_ctrl[ni][0]
-#            if any(mp.dm_ind == 1): dDM1V_store[:,:,ni] = results_ctrl[ni][1].dDM1V
-#            if any(mp.dm_ind == 2): dDM2V_store[:,:,ni] = results_ctrl[ni][1].dDM2V
-#    else:
-    for ni in range(Nvals):
-        [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
-        ImCube[ni, :, :] = dDM_temp.Itotal
-        # delta voltage commands
-        if any(mp.dm_ind == 1):
-            dDM1V_store[:, :, ni] = dDM_temp.dDM1V
-        if any(mp.dm_ind == 2):
-            dDM2V_store[:, :, ni] = dDM_temp.dDM2V
-        if any(mp.dm_ind == 8):
-            dDM8V_store[:, ni] = dDM_temp.dDM8V
-        if any(mp.dm_ind == 9):
-            dDM9V_store[:, ni] = dDM_temp.dDM9V
+    if(mp.flagParallel and mp.ctrl.flagUseModel):
+        # # Run the controller in parallel
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
+        # results_ctrl = [p.get() for p in results] # All the Jacobians in a list
+        # pool.close()
+        # pool.join()
+
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        results = pool.starmap(
+            _efc, [(ni, vals_list, mp, cvar) for ni in range(Nvals)]
+        )
+        results_ctrl = results
+        pool.close()
+        pool.join()
+
+        # [(mp, ilist, vals_list) for ilist in range(Nvals)]
+
+        # Convert from a list to arrays:
+        for ni in range(Nvals):
+            InormVec[ni] = results_ctrl[ni][0]
+            if any(mp.dm_ind == 1):
+                dDM1V_store[:, :, ni] = results_ctrl[ni][1].dDM1V
+            if any(mp.dm_ind == 2):
+                dDM2V_store[:, :, ni] = results_ctrl[ni][1].dDM2V
+            if any(mp.dm_ind == 8):
+                dDM8V_store[:, ni] = results_ctrl[ni][1].dDM8V
+            if any(mp.dm_ind == 9):
+                dDM9V_store[:, ni] = results_ctrl[ni][1].dDM9V
+    else:
+        for ni in range(Nvals):
+            [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
+            ImCube[ni, :, :] = dDM_temp.Itotal
+            # delta voltage commands
+            if any(mp.dm_ind == 1):
+                dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+            if any(mp.dm_ind == 2):
+                dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+            if any(mp.dm_ind == 8):
+                dDM8V_store[:, ni] = dDM_temp.dDM8V
+            if any(mp.dm_ind == 9):
+                dDM9V_store[:, ni] = dDM_temp.dDM9V
 
     # Print out results to the command line
     print('Scaling factor:\t\t', end='')
@@ -717,7 +727,7 @@ def init(mp, cvar):
     u8dummy = 8*np.ones(mp.dm8.Nele, dtype=int) if(any(mp.dm_ind == 8)) else np.array([])
     u9dummy = 9*np.ones(mp.dm9.Nele, dtype=int) if(any(mp.dm_ind == 9)) else np.array([])
     cvar.uLegend = np.concatenate((u1dummy, u2dummy, u8dummy, u9dummy))
-    
+
     return None
 
 
