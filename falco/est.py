@@ -232,19 +232,34 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     #     ev.dm1 = falco.config.Object()
     #     ev.dm2 = falco.config.Object()
 
-    # If scheduled, change the probe's center location on the DM.
-    # Empty values mean they are not scheduled.
-    if (mp.est.probeSchedule.xOffsetVec is not None and mp.est.probeSchedule.yOffsetVec is not None):
+    # If scheduled, change some aspects of the probe.
+    # None values mean they are not scheduled.
+    if mp.est.probeSchedule.xOffsetVec is not None:
+        check.oneD_array(mp.est.probeSchedule.xOffsetVec)
+        if len(mp.est.probeSchedule.xOffsetVec) < mp.Nitr:
+            raise ValueError('mp.est.probeSchedule.xOffsetVec must have '
+                             'enough values for all WFSC iterations.')
+        mp.est.probe.xOffset = mp.est.probeSchedule.xOffsetVec[Itr]
 
-        if (len(mp.est.probeSchedule.xOffsetVec) != len(mp.est.probeSchedule.yOffsetVec)):
-            raise ValueError(
-                'mp.est.probeSchedule.xOffsetVec and '
-                'mp.est.probeSchedule.yOffsetVec must have the same length')
+    if mp.est.probeSchedule.yOffsetVec is not None:
+        check.oneD_array(mp.est.probeSchedule.yOffsetVec)
+        if len(mp.est.probeSchedule.yOffsetVec) < mp.Nitr:
+            raise ValueError('mp.est.probeSchedule.yOffsetVec must have '
+                             'enough values for all WFSC iterations.')
+        mp.est.probe.yOffset = mp.est.probeSchedule.yOffsetVec[Itr]
 
-        mp.est.probe.xOffset = mp.est.probeSchedule.xOffsetVec(Itr);
-        mp.est.probe.yOffset = mp.est.probeSchedule.yOffsetVec(Itr);
-        print('Setting probe offsets at the DM as (x=%d, y=%d) actuators.' %
-              (mp.est.probe.xOffset, mp.est.probe.yOffset))
+    if mp.est.probeSchedule.rotationVec is not None:
+        check.oneD_array(mp.est.probeSchedule.rotationVec)
+        if len(mp.est.probeSchedule.rotationVec) < mp.Nitr:
+            raise ValueError('mp.est.probeSchedule.rotationVec must have '
+                             'enough values for all WFSC iterations.')
+        mp.est.probe.rotation = mp.est.probeSchedule.rotationVec[Itr]
+
+    if mp.est.probeSchedule.InormProbeVec is not None:
+        check.oneD_array(mp.est.probeSchedule.InormProbeVec)
+        if len(mp.est.probeSchedule.InormProbeVec) < mp.Nitr:
+            raise ValueError('mp.est.probeSchedule.InormProbeVec must have '
+                             'enough values for all WFSC iterations.')
 
     # Temporarily augment which DMs are used if the probing DM isn't used for control.
     mp.dm_ind_init = mp.dm_ind.copy()
@@ -388,12 +403,17 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             for iProbe in range(2*Npairs):
 
                 # Generate the command map for the probe
-                if mp.estimator in ('pairwise', 'pairwise-square', 'pwp-bp-square'):
+                if mp.estimator in ('pairwise', 'pairwise-square',
+                                    'pwp-bp-square'):
                     probeCmd = gen_pairwise_probe_square(
-                        mp, InormProbe, probePhaseVec[iProbe], badAxisVec[iProbe])
+                        mp, InormProbe, probePhaseVec[iProbe],
+                        badAxisVec[iProbe], mp.est.probe.rotation,
+                    )
                 elif mp.estimator in ('pairwise-rect', 'pwp-bp', 'pwp-kf'):
                     probeCmd = gen_pairwise_probe(
-                        mp, InormProbe, probePhaseVec[iProbe], iStar)
+                        mp, InormProbe, probePhaseVec[iProbe], iStar,
+                        mp.est.probe.rotation,
+                    )
 
                 # Select which DM to use for probing. Allocate probe to that DM
                 if whichDM == 1:
@@ -535,7 +555,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             # Batch process the measurements to estimate the electric field in the
             # dark hole. Done pixel by pixel.
 
-            if (mp.estimator in ('pairwise', 'pairwise-square', 'pairwise-rect', 'pwp-bp', 'pwp-bp-square')) or \
+            if (mp.estimator in ('pairwise', 'pairwise-square','pairwise-rect', 'pwp-bp', 'pwp-bp-square')) or \
                 (mp.estimator == 'pwp-kf' and ev.Itr < mp.est.ItrStartKF):
 
                 Eest = np.zeros((mp.Fend.corr.Npix,), dtype=complex)
@@ -623,7 +643,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     return None
 
 
-def gen_pairwise_probe_square(mp, InormDes, psi, badAxis):
+def gen_pairwise_probe_square(mp, InormDes, psi, badAxis, rotation):
     """
     Generate delta DM commands that probe the dark hole.
 
@@ -663,6 +683,15 @@ def gen_pairwise_probe_square(mp, InormDes, psi, badAxis):
     ys = np.arange(-(Nact-1)/2, (Nact+1)/2)/Nact - \
         np.round(mp.est.probe.yOffset)/Nact
     [XS, YS] = np.meshgrid(xs, ys)
+
+    # Rotate the coordinates
+    if np.abs(rotation) > 10*np.finfo(float).eps:
+        RS = np.sqrt(XS**2 + YS**2)
+        THETAS = np.arctan2(YS, XS)
+        rotRad = np.radians(rotation)
+        XS = RS*np.cos(THETAS-rotRad)
+        YS = RS*np.sin(THETAS-rotRad)
+        
 
     # Restrict the probing region if it is not possible to achieve
     if mp.est.probe.radius > Nact/2.0:
@@ -704,7 +733,7 @@ def gen_pairwise_probe_square(mp, InormDes, psi, badAxis):
     return probeCmd
 
 
-def gen_pairwise_probe(mp, InormDes, phaseShift, starIndex):
+def gen_pairwise_probe(mp, InormDes, phaseShift, starIndex, rotation):
     """
     Compute rectangular pair-wise probe commands.
 
@@ -746,6 +775,14 @@ def gen_pairwise_probe(mp, InormDes, phaseShift, starIndex):
     ys = np.linspace(-(Nact-1)/2, (Nact-1)/2, Nact)/Nact - \
         float(round(mp.est.probe.yOffset))/Nact
     [XS, YS] = np.meshgrid(xs, ys)
+
+    # Rotate the coordinates
+    if np.abs(rotation) > 10*np.finfo(float).eps:
+        RS = np.sqrt(XS**2 + YS**2)
+        THETAS = np.arctan2(YS, XS)
+        rotRad = np.radians(rotation)
+        XS = RS*np.cos(THETAS-rotRad)
+        YS = RS*np.sin(THETAS-rotRad)
 
     # Convert units from lambda/D to actuators
     lamDIntoAct = Nact / NactPerBeam

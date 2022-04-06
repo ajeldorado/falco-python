@@ -42,7 +42,7 @@ class TestPairwiseProbing(unittest.TestCase):
         LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
         mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
 
-        out = falco.setup.flesh_out_workspace(mp)
+        _ = falco.setup.flesh_out_workspace(mp)
         N = mp.P1.full.E.shape[0]
         alpha = 2.5
         mirror_figure = 1e-10
@@ -54,7 +54,7 @@ class TestPairwiseProbing(unittest.TestCase):
         N = mp.P1.compact.E.shape[0]
         mp.P1.compact.E = np.ones((N, N, mp.Nsbp), dtype=complex)
         # mp.P1.compact.E[:, :, 0] = temp
-        Im = falco.imaging.get_summed_image(mp)
+        # Im = falco.imaging.get_summed_image(mp)
         falco.imaging.calc_psf_norm_factor(mp)
 
         # Get exact E-field for comparison:
@@ -81,6 +81,7 @@ class TestPairwiseProbing(unittest.TestCase):
         mp.est.probe.radius = 12  # Max x/y extent of probed region [lambda/D].
         mp.est.probe.xOffset = 0  # offset of probe center in x [actuators]. Use to avoid central obscurations.
         mp.est.probe.yOffset = 0  # offset of probe center in y [actuators]. Use to avoid central obscurations.
+        mp.est.probe.rotation = 10
         mp.est.probe.axis = 'alternate'  #  which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
         mp.est.probe.gainFudge = 1  #  empirical fudge factor to make average probe amplitude match desired value.
         ev.Itr = 1
@@ -105,7 +106,7 @@ class TestPairwiseProbing(unittest.TestCase):
         Etrue = self.Etrue
 
         # Estimate E-field with rectangle-defined probing region
-        mp.estimator = 'pairwise-rect';
+        mp.estimator = 'pairwise-rect'
         # mp.est = rmfield(mp.est, 'probe');
         mp.est.probe = falco.config.Probe()
         mp.est.probe.Npairs = 3  # Number of pair-wise probe PAIRS to use.
@@ -119,7 +120,7 @@ class TestPairwiseProbing(unittest.TestCase):
         mp.est.probe.etaOffset = 0
         mp.est.probe.width = 12
         mp.est.probe.height = 24
-        out = falco.setup.flesh_out_workspace(mp)
+        _ = falco.setup.flesh_out_workspace(mp)
 
         ev.Itr = 1
         falco.est.pairwise_probing(mp, ev)
