@@ -169,10 +169,10 @@ def loop(mp, out):
 
         # Save just the 'out' object to a pickle file
         fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
-        print('Saving data snippet to:\n\t%s...' % (fnSnippet), end='')
+        print('Saving data snippet to:\n\t%s  ...' % (fnSnippet), end='')
         with open(fnSnippet, 'wb') as f:
             pickle.dump(out, f)
-        print('done.')
+        print('done.', end='\n\n')
 
         # END OF ESTIMATION + CONTROL LOOP
 

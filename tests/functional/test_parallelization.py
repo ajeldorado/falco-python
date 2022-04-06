@@ -1,5 +1,5 @@
 """FALCO regression test of WFSC with a vortex coronagraph."""
-from copy import deepcopy
+from copy import copy, deepcopy
 import numpy as np
 import os
 # from math import isclose
@@ -20,27 +20,126 @@ import config_wfsc_vc as CONFIG
 
 #     # assert np.allclose(out.log10regHist, np.array([-4.5, -4, -4]), rtol=1e-2)
 
-def test_parallel_images():
 
-    # del mp
+def test_parallel_grid_search_efc_controller():
+
     mp = deepcopy(CONFIG.mp)
-    mp.fracBW = 0.20
-    mp.Nsbp = 4
-
-    # mp.P1.compact.E = np.ones((256, 256, mp.Nsbp))
-    # mp.P1.full.E = np.ones((256, 256, mp.Nwpsbp, mp.Nsbp))
+    mp.controller = 'gridsearchefc'
+    mp.fracBW = 0.10
+    mp.Nsbp = 1
 
     mp.flagPlot = False
     LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
     mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
 
-    # Generate the label associated with this trial
-    mp.runLabel = 'testing_wfsc_vc'
-
-    # Perform the Wavefront Sensing and Control
+    mp.runLabel = 'testing_parallel_controller'
 
     mp.flagParallel = False
-    out = falco.setup.flesh_out_workspace(mp)
+    _ = falco.setup.flesh_out_workspace(mp)
+
+    cvar = falco.config.Object()
+    ev = falco.config.Object()
+
+    cvar.Itr = 0
+    ev.Itr = 0
+
+    cvar.flagRelin = True
+    cvar.flagCullAct = True
+
+    # Re-compute the Jacobian weights
+    falco.setup.falco_set_jacobian_modal_weights(mp)
+
+    # Compute the control Jacobians for each DM
+
+    jacStruct = falco.model.jacobian(mp)
+    falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
+
+    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+
+    falco.est.wrapper(mp, ev, jacStruct)
+
+    cvar.Eest = ev.Eest
+    cvar.NeleAll = mp.dm1.Nele + mp.dm2.Nele + mp.dm3.Nele + mp.dm4.Nele +\
+        mp.dm5.Nele + mp.dm6.Nele + mp.dm7.Nele + mp.dm8.Nele + mp.dm9.Nele
+
+    falco.ctrl.wrapper(mp, cvar, jacStruct)
+    V1serial = copy(mp.dm1.V)
+    V2serial = copy(mp.dm2.V)
+
+    mp.flagParallel = True
+    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+
+    falco.ctrl.wrapper(mp, cvar, jacStruct)
+    V1parallel = copy(mp.dm1.V)
+    V2parallel = copy(mp.dm2.V)
+
+
+    # with falco.util.TicToc('Taking image in serial'):
+    #     imageSerial = falco.imaging.get_summed_image(mp)
+
+    # with falco.util.TicToc('Taking image in parallel'):
+    #     imageParallel = falco.imaging.get_summed_image(mp)
+
+    diff1 = V1serial - V1parallel
+    diff2 = V2serial - V2parallel
+
+    assert np.max(np.abs(diff1)) < 10*np.finfo(float).eps
+    assert np.max(np.abs(diff2)) < 10*np.finfo(float).eps
+
+
+def test_parallel_planned_efc_controller():
+    pass
+
+
+def test_parallel_zern_sens():
+    mp = deepcopy(CONFIG.mp)
+    mp.fracBW = 0.20
+    mp.Nsbp = 2
+
+    mp.flagPlot = False
+    LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
+    mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
+
+    mp.eval.indsZnoll = [2, 3, 4]
+    mp.eval.Rsens = np.array([[3., 4.], [4., 8.], [8, 9]])
+
+    mp.runLabel = 'testing_parallel_sensitivities'
+    mp.flagParallel = False
+    _ = falco.setup.flesh_out_workspace(mp)
+
+    Nannuli = mp.eval.Rsens.shape[0]
+    Nzern = len(mp.eval.indsZnoll)
+    zernSensSerial = np.zeros((Nzern, Nannuli))
+    zernSensParallel = np.zeros((Nzern, Nannuli))
+
+    with falco.util.TicToc('Computing in serial'):
+        zernSensSerial = falco.zern.calc_zern_sens(mp)
+
+    mp.flagParallel = True
+    with falco.util.TicToc('Computing in parallel'):
+        zernSensParallel = falco.zern.calc_zern_sens(mp)
+
+    diff = zernSensSerial - zernSensParallel
+
+    assert np.max(np.abs(diff)) < 10*np.finfo(float).eps
+
+
+def test_parallel_images():
+
+    mp = deepcopy(CONFIG.mp)
+    mp.fracBW = 0.20
+    mp.Nsbp = 4
+
+    mp.flagPlot = False
+    LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
+    mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
+
+    mp.runLabel = 'testing_parallel_images'
+
+    mp.flagParallel = False
+    _ = falco.setup.flesh_out_workspace(mp)
 
     with falco.util.TicToc('Taking image in serial'):
         imageSerial = falco.imaging.get_summed_image(mp)
@@ -57,7 +156,7 @@ def test_parallel_images():
 def test_parallel_jacobian():
     """Verify that Jacobian calculation gives the same result in parallel."""
     mp = deepcopy(CONFIG.mp)
-    mp.runLabel = 'test_lc'
+    mp.runLabel = 'testing_jacobian'
 
     mp.fracBW = 0.20
     mp.Nsbp = 1
@@ -95,7 +194,7 @@ def test_parallel_jacobian():
 def test_parallel_perfect_estimate():
     """Verify that perfect estimator gives the same result in parallel."""
     mp = deepcopy(CONFIG.mp)
-    mp.runLabel = 'test_lc'
+    mp.runLabel = 'testing_estimator'
 
     mp.fracBW = 0.10
     mp.Nsbp = 3
@@ -106,7 +205,6 @@ def test_parallel_perfect_estimate():
     mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
     _ = falco.setup.flesh_out_workspace(mp)
 
-    #
     mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
     mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
@@ -129,11 +227,9 @@ def test_parallel_perfect_estimate():
     assert np.max(np.abs(diff2)) < 10*np.finfo(float).eps
 
 
-def test_parallel_controller():
-    pass
-
-
 if __name__ == '__main__':
+    test_parallel_grid_search_efc_controller()
+    test_parallel_zern_sens()
     test_parallel_images()
     test_parallel_jacobian()
     test_parallel_perfect_estimate()

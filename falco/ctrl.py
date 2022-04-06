@@ -308,7 +308,7 @@ def _grid_search_efc(mp, cvar):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
     # Empirically find the regularization value giving the best contrast
-    if(mp.flagParallel and mp.ctrl.flagUseModel):
+    if mp.flagParallel and mp.ctrl.flagUseModel:
         # # Run the controller in parallel
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
         # results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
@@ -416,17 +416,16 @@ def _planned_efc(mp, cvar):
     vals_list = [(x, y) for y in mp.ctrl.dmfacVec for x in mp.ctrl.log10regVec]
     Nvals = len(mp.ctrl.log10regVec) * len(mp.ctrl.dmfacVec)
     InormVec = np.zeros(Nvals)
-    ImCube = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
 
     # Make more obvious names for conditions:
-    relinearizeNow = any(np.array(mp.gridSearchItrVec) == cvar.Itr)
+    runNewGridSearch = any(np.array(mp.gridSearchItrVec) == cvar.Itr)
     useBestLog10Reg = np.imag(mp.ctrl.log10regSchedIn[cvar.Itr]) != 0
     realLog10RegIsZero = np.real(mp.ctrl.log10regSchedIn[cvar.Itr]) == 0
 
     # Step 1: Empirically find the "optimal" regularization value
     # (if told to for this iteration).
 
-    if relinearizeNow:
+    if runNewGridSearch:
 
         # Temporarily store computed DM commands so that the best one does
         # not have to be re-computed
@@ -439,20 +438,45 @@ def _planned_efc(mp, cvar):
         if any(mp.dm_ind == 9):
             dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
-        for ni in range(Nvals):
+        ImCube = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
 
-            [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
-            ImCube[ni, :, :] = dDM_temp.Itotal
+        if mp.flagParfor and (mp.flagSim or mp.ctrl.flagUseModel):
 
-            # delta voltage commands
-            if any(mp.dm_ind == 1):
-                dDM1V_store[:, :, ni] = dDM_temp.dDM1V
-            if any(mp.dm_ind == 2):
-                dDM2V_store[:, :, ni] = dDM_temp.dDM2V
-            if any(mp.dm_ind == 8):
-                dDM8V_store[:, ni] = dDM_temp.dDM8V
-            if any(mp.dm_ind == 9):
-                dDM9V_store[:, ni] = dDM_temp.dDM9V
+            pool = multiprocessing.Pool(processes=mp.Nthreads)
+            results_ctrl = pool.starmap(
+                _efc, [(ni, vals_list, mp, cvar) for ni in range(Nvals)]
+            )
+            pool.close()
+            pool.join()
+
+            # Convert from a list to arrays:
+            for ni in range(Nvals):
+                InormVec[ni] = results_ctrl[ni][0]
+                if any(mp.dm_ind == 1):
+                    dDM1V_store[:, :, ni] = results_ctrl[ni][1].dDM1V
+                if any(mp.dm_ind == 2):
+                    dDM2V_store[:, :, ni] = results_ctrl[ni][1].dDM2V
+                if any(mp.dm_ind == 8):
+                    dDM8V_store[:, ni] = results_ctrl[ni][1].dDM8V
+                if any(mp.dm_ind == 9):
+                    dDM9V_store[:, ni] = results_ctrl[ni][1].dDM9V
+
+        else:
+
+            for ni in range(Nvals):
+
+                [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
+                ImCube[ni, :, :] = dDM_temp.Itotal
+
+                # delta voltage commands
+                if any(mp.dm_ind == 1):
+                    dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+                if any(mp.dm_ind == 2):
+                    dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+                if any(mp.dm_ind == 8):
+                    dDM8V_store[:, ni] = dDM_temp.dDM8V
+                if any(mp.dm_ind == 9):
+                    dDM9V_store[:, ni] = dDM_temp.dDM9V
 
         # Print out results to the command line
         print('Scaling factor:\t\t', end='')
@@ -488,7 +512,7 @@ def _planned_efc(mp, cvar):
 
     # Skip steps 2 and 3 if the schedule for this iteration is just to use the
     # "optimal" regularization AND if grid search was performed this iteration.
-    if relinearizeNow and useBestLog10Reg and realLog10RegIsZero:
+    if runNewGridSearch and useBestLog10Reg and realLog10RegIsZero:
         # delta voltage commands
         dDM = falco.config.Object()  # Initialize
         if any(mp.dm_ind == 1):

@@ -3,7 +3,6 @@ import falco
 import numpy as np
 import multiprocessing
 import copy
-import math
 
 import proper
 
@@ -23,13 +22,14 @@ def calc_zern_sens(mp):
     Returns
     -------
     dE2mat : numpy ndarray
-        A 2-D array of Zernike sensitivities for different radial zones and Zernike modes.
+        A 2-D array of Zernike sensitivities for different radial zones
+        and Zernike modes.
     """
     indsZnoll = mp.eval.indsZnoll
     Rsens = mp.eval.Rsens  # Radii ranges. Can overlap.
     Nannuli = Rsens.shape[0]
     Nzern = indsZnoll.size
- 
+
     # Make scoring masks
     maskCube = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nannuli))
     for ni in range(Nannuli):
@@ -47,15 +47,16 @@ def calc_zern_sens(mp):
             maskDict["shape"] = np.atleast_1d(mp.Fend.shape)[0]
         maskCube[:, :, ni], xisDL, etasDL = falco.mask.falco_gen_SW_mask(maskDict)
 
-    if not mp.full.flagPROPER:  # When using full models completely made with PROPER
+    if not mp.full.flagPROPER:  # When using full models made with PROPER
         # Generate cube of normalized (RMS = 1) Zernike modes.
-        ZmapCube = gen_norm_zern_maps(mp.P1.full.Nbeam, mp.centering, indsZnoll)
+        ZmapCube = gen_norm_zern_maps(mp.P1.full.Nbeam, mp.centering,
+                                      indsZnoll)
         # Make sure ZmapCube is padded or cropped to the right array size
         if not ZmapCube.shape[0] == mp.P1.full.Narr:
             ZmapCubeTemp = np.zeros((mp.P1.full.Narr, mp.P1.full.Narr, Nzern))
             for zi in range(Nzern):
-                ZmapCubeTemp[:, :, zi] = falco.util.pad_crop(np.squeeze(ZmapCube[:, :, zi]),
-                                                             mp.P1.full.Narr)
+                ZmapCubeTemp[:, :, zi] = falco.util.pad_crop(
+                    np.squeeze(ZmapCube[:, :, zi]), mp.P1.full.Narr)
             ZmapCube = ZmapCubeTemp
             del ZmapCubeTemp
 
@@ -69,26 +70,38 @@ def calc_zern_sens(mp):
 
     # Get unaberrated E-fields
     # Loop over all wavelengths and polarizations
-    inds_list = [(x, y) for x in np.arange(mp.full.NlamUnique) for y in np.arange(Npol)]
+    inds_list = [(x, y) for x in np.arange(mp.full.NlamUnique)
+                 for y in np.arange(Npol)]
     Nvals = mp.full.NlamUnique*Npol
 
-    # Get nominal, unaberrated final E-field at each wavelength and polarization
-    E0array = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol), dtype=complex)
-    Eunab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nvals), dtype=complex)  # Temporary array
+    # Get nominal, unaberrated E-field at each wavelength and polarization
+    E0array = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol),
+                       dtype=complex)
+    Eunab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, Nvals), dtype=complex)
 
-    print('Computing unaberrated E-fields for Zernike sensitivities...\t', end='')
+    print('Computing unaberrated E-fields for Zernike sensitivities...\t',
+          end='')
     if mp.flagParallel:
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPol,
+        #                                args=(iv, inds_list, mp)) for iv in range(Nvals)]
+        # results = [p.get() for p in resultsRaw]  # All the E-fields in a list
+        # pool.close()
+        # pool.join()
+        # for iv in range(Nvals):
+        #     Eunab[:, :, iv] = results[iv]
+
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPol,
-                                       args=(iv, inds_list, mp)) for iv in range(Nvals)]
-        results = [p.get() for p in resultsRaw]  # All the E-fields in a list
+        results = pool.starmap(falco_get_single_sim_Efield_LamPol,
+                               [(iv, inds_list, mp) for iv in range(Nvals)])
         pool.close()
         pool.join()
         for iv in range(Nvals):
             Eunab[:, :, iv] = results[iv]
     else:
         for iv in range(Nvals):
-            Eunab[:, :, iv] = falco_get_single_sim_Efield_LamPol(iv, inds_list, mp)
+            Eunab[:, :, iv] = falco_get_single_sim_Efield_LamPol(iv, inds_list,
+                                                                 mp)
     print('done.')
 
     # Reorganize the output
@@ -105,16 +118,24 @@ def calc_zern_sens(mp):
     NvalsZern = mp.full.NlamUnique*Npol*Nzern
 
     # Get nominal, unaberrated final E-field at each wavelength and polarization
-    dEZarray = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol, Nzern),
+    dEZarray = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.full.NlamUnique, Npol,
+                         Nzern),
                         dtype=complex)
     Eab = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, NvalsZern), dtype=complex)
 
     print('Computing aberrated E-fields for Zernike sensitivities...\t', end='')
     if mp.flagParallel:
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPolZern,
+        #                                args=(iv, inds_list_zern, mp)) for iv in range(NvalsZern)]
+        # results = [p.get() for p in resultsRaw]  # All the E-fields in a list
+        # pool.close()
+        # pool.join()
+
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        resultsRaw = [pool.apply_async(falco_get_single_sim_Efield_LamPolZern,
-                                       args=(iv, inds_list_zern, mp)) for iv in range(NvalsZern)]
-        results = [p.get() for p in resultsRaw]  # All the E-fields in a list
+        results = pool.starmap(falco_get_single_sim_Efield_LamPolZern,
+                               [(iv, inds_list_zern, mp)
+                                for iv in range(NvalsZern)])
         pool.close()
         pool.join()
         for iv in range(NvalsZern):
