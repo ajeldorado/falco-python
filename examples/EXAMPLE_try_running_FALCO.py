@@ -1,12 +1,14 @@
 """Simple functional example used to verify that FALCO runs correctly."""
-import numpy as np
+from copy import deepcopy
+# import numpy as np
 
 import falco
 
 import EXAMPLE_config_try_running_FALCO as CONFIG
 
 # %% Load the config file (a script)
-mp = CONFIG.mp
+
+mp = deepcopy(CONFIG.mp)
 
 
 # %% Define directories for data output
@@ -37,18 +39,18 @@ mp.Nwpsbp = 1          # Number of wavelengths to used to approximate an image i
 mp.Nitr = 3  # Number of wavefront control iterations
 
 
-# %% Generate the label associated with this trial
+# %% Perform the Wavefront Sensing and Control
+
 mp.runLabel = ('Series%04d_Trial%04d_%s' %
                (mp.SeriesNum, mp.TrialNum, mp.coro))
-print(mp.runLabel)
 
-
-# %% Perform the Wavefront Sensing and Control
 out = falco.setup.flesh_out_workspace(mp)
+
 falco.wfsc.loop(mp, out)
 
 
 # %% Plot the output
+
 falco.plot.plot_trial_output(out)
 
 fnPickle = mp.runLabel + '_snippet.pkl'

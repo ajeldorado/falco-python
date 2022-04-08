@@ -2,7 +2,7 @@
 falco/.idea/**
 falco/data/brief/**
 falco/data/ws/**
-
+examples/**
 
 data/material/*.npy
 zOld/**
@@ -14,6 +14,8 @@ roman/*.txt
 roman/flatmaps/*.fits
 !roman/EXAMPLE_*.py
 !roman/flatmaps/dm*.fits
+
+!examples/EXAMPLE_*.py
 
 data/WFIRST/PhaseB/*.fits
 

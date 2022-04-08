@@ -40,7 +40,7 @@ mp.Nwpsbp = 1  # Number of wavelengths to used to approximate an image in each s
 
 # Estimator Options:
 # - 'perfect' for exact numerical answer from full model
-# - 'pwp-bp' for pairwise probing with batch process estimation
+# - 'pairwise' for pairwise probing with batch process estimation
 mp.estimator = 'perfect'
 
 # Pairwise probing:
@@ -48,7 +48,7 @@ mp.est = falco.config.Object()
 mp.est.probe = falco.config.Probe()
 mp.est.probe.Npairs = 3  # Number of pair-wise probe PAIRS to use.
 mp.est.probe.whichDM = 1  # Which DM # to use for probing. 1 or 2. Default is 1
-mp.est.probe.radius = 12  # Max x/y extent of probed region [actuators].
+mp.est.probe.radius = 12  # Max x/y extent of probed region [lambda/D].
 mp.est.probe.xOffset = 0  # offset of probe center in x [actuators]. Use to avoid central obscurations.
 mp.est.probe.yOffset = 0  # offset of probe center in y [actuators]. Use to avoid central obscurations.
 mp.est.probe.axis = 'alternate'  # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
@@ -85,7 +85,6 @@ mp.WspatialDef = []  # [3, 4.5, 3]; #--spatial control Jacobian weighting by ann
 # DM weighting
 mp.dm1.weight = 1.
 mp.dm2.weight = 1.
-
 
 # %% Wavefront Control: Controller Specific
 # Controller options: 

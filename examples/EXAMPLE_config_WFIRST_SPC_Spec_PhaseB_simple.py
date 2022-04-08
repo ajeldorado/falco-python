@@ -47,14 +47,12 @@ mp.Nwpsbp = 3;          #--Number of wavelengths to used to approximate an image
 
 ###--Estimator Options:
 ### - 'perfect' for exact numerical answer from full model
-### - 'pwp-bp' for pairwise probing with batch process estimation
-### - 'pwp-kf' for pairwise probing with Kalman filter [NOT TESTED YET]
-### - 'pwp-iekf' for pairwise probing with iterated extended Kalman filter  [NOT AVAILABLE YET]
-mp.estimator = 'perfect';
+### - 'pairwise' for pairwise probing with batch process estimation
+mp.estimator = 'pairwise'
 
 ###--New variables for pairwise probing estimation:
 mp.est = falco.config.Object()
-mp.est.probe = falco.config.Object()
+mp.est.probe = falco.config.Probe()
 mp.est.probe.Npairs = 3;#2;     # Number of pair-wise probe PAIRS to use.
 mp.est.probe.whichDM = 1;    # Which DM # to use for probing. 1 or 2. Default is 1
 mp.est.probe.radius = 12;#20;    # Max x/y extent of probed region [actuators].
@@ -84,7 +82,7 @@ mp.eval.indsZnoll = np.array([2,3,4,5,6]) #--Noll indices of Zernikes to compute
 mp.eval.Rsens = np.array([[3., 4.], [4., 5.], [5., 8.], [8., 9.]]);  # [2-D ndarray]
 
 ###--Grid- or Line-Search Settings
-mp.ctrl.log10regVec = np.arange(-6,-2,1/2) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
+mp.ctrl.log10regVec = np.arange(-6, -1.5, 1) # log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
    
@@ -96,17 +94,11 @@ mp.WspatialDef = [];# [3, 4.5, 3]; #--spatial control Jacobian weighting by annu
 mp.dm1.weight = 1.;
 mp.dm2.weight = 1.;
 
-###--Voltage range restrictions
-mp.dm1.maxAbsV = 1000;  #--Max absolute voltage (+/-) for each actuator [volts] #--NOT ENFORCED YET
-mp.dm2.maxAbsV = 1000;  #--Max absolute voltage (+/-) for each actuator [volts] #--NOT ENFORCED YET
-mp.maxAbsdV = 1000;     #--Max +/- delta voltage step for each actuator for DMs 1 and 2 [volts] #--NOT ENFORCED YET
-
 #### Wavefront Control: Controller Specific
 ### Controller options: 
 ###  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
 ###  - 'plannedEFC' for EFC with an automated regularization schedule
-###  - 'SM-CVX' for constrained EFC using CVX. --> DEVELOPMENT ONLY
-mp.controller = 'gridsearchEFC';
+mp.controller = 'gridsearchEFC'
 
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
@@ -211,7 +203,7 @@ mp.Fend.score.Rin = 3.0;  # inner radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.Rout = 9.0;  # outer radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.ang = 65;  # angular opening of dark hole scoring region [degrees]
 #
-mp.Fend.sides = 'both'; #--Which side(s) for correction: 'both', 'left', 'right', 'top', 'bottom'
+mp.Fend.sides = 'leftright'  # Which side(s) for correction: 'left', 'right', 'top', 'up', 'bottom', 'down', 'lr', 'rl', 'leftright', 'rightleft', 'tb', 'bt', 'ud', 'du', 'topbottom', 'bottomtop', 'updown', 'downup'
 
 ### Optical Layout: Compact Model (and Jacobian Model)
 ## NOTE for HLC and LC: Lyot plane resolution must be the same as input pupil's in order to use Babinet's principle
@@ -220,12 +212,12 @@ mp.Fend.sides = 'both'; #--Which side(s) for correction: 'both', 'left', 'right'
 mp.fl = 1.; #--[meters] Focal length value used for all FTs in the compact model. Don't need different values since this is a Fourier model.
 
 ##--Pupil Plane Diameters
-mp.P2.D = 46.2987e-3;
-mp.P3.D = 46.2987e-3;
-mp.P4.D = 46.2987e-3;
+mp.P2.D = 46.2987e-3
+mp.P3.D = 46.2987e-3
+mp.P4.D = 46.2987e-3
 
 ##--Pupil Plane Resolutions
-mp.P1.compact.Nbeam = 386
+mp.P1.compact.Nbeam = 300
 #mp.P2.compact.Nbeam = 386
 #mp.P3.compact.Nbeam = 386
 mp.P4.compact.Nbeam = 60
@@ -248,28 +240,26 @@ mp.F3.compact.res = 4    # sampling of FPM for full model [pixels per lambda0/D]
 #
 ##--Pupil Plane Resolutions
 mp.P1.full.Nbeam = 1000
-#mp.P2.full.Nbeam = 250;
-#mp.P3.full.Nbeam = 250;
+# mp.P2.full.Nbeam = 250
+# mp.P3.full.Nbeam = 250
 mp.P4.full.Nbeam = 250
 
 mp.F3.full.res = 4;    # sampling of FPM for full model [pixels per lambda0/D]
 
 ### Mask Definitions
 
-#--Shaped Pupil Mask: Load and downsample.
-mp.compact.flagGenApod = False
-mp.full.flagGenApod = False
-mp.SPname = 'SPC-20190130';
+# %% Shaped Pupil Mask (P3): Load and downsample.
+
 SP0 = fits.getdata('../data/WFIRST/PhaseB/SPM_SPC-20190130.fits', ext=0)
-if(mp.P1.compact.Nbeam == 1000):
+if mp.P1.compact.Nbeam == 1000:
     mp.P3.compact.mask = SP0
 else:
     nBeamIn = 1000
     nBeamOut = mp.P1.compact.Nbeam
     dx = 0
     dy = 0
-    mp.P3.compact.mask = falco.mask.rotate_shift_downsample_pupil_mask(SP0, nBeamIn,
-                                                                       nBeamOut, dx, dy, 0.)
+    mp.P3.compact.mask = falco.mask.rotate_shift_downsample_pupil_mask(
+        SP0, nBeamIn, nBeamOut, dx, dy, 0.)
 
 if(mp.P1.full.Nbeam == 1000):
     mp.P3.full.mask = SP0
@@ -278,26 +268,61 @@ else:
     nBeamOut = mp.P1.full.Nbeam
     dx = 0
     dy = 0
-    mp.P3.full.mask = falco.mask.rotate_shift_downsample_pupil_mask(SP0, nBeamIn,
-                                                                    nBeamOut, dx, dy, 0.)
+    mp.P3.full.mask = falco.mask.rotate_shift_downsample_pupil_mask(
+        SP0, nBeamIn, nBeamOut, dx, dy, 0.)
 
 
-##--Pupil definition
-mp.whichPupil = 'WFIRST180718';
-mp.P1.IDnorm = 0.303; #--ID of the central obscuration [diameter]. Used only for computing the RMS DM surface from the ID to the OD of the pupil. OD is assumed to be 1.
-mp.P1.D = 2.3631; #--telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
-mp.P1.Dfac = 1; #--Factor scaling inscribed OD to circumscribed OD for the telescope pupil.
+# %% Entrance Pupil (P1) Definition and Generation
 
-##--Lyot stop padding
-mp.LSshape = 'bowtie'
-mp.P4.IDnorm = 0.38 #--Lyot stop ID [Dtelescope]
-mp.P4.ODnorm = 0.92 #--Lyot stop OD [Dtelescope]
-mp.P4.ang = 90      #--Lyot stop opening angle [degrees]
-mp.P4.wStrut = 0;    #--Lyot stop strut width [pupil diameters]
+# mp.whichPupil = 'WFIRST180718'  # Used only for run label
+mp.P1.IDnorm = 0.303  # ID of the central obscuration [diameter]. Used only for computing the RMS DM surface from the ID to the OD of the pupil. OD is assumed to be 1.
+mp.P1.D = 2.3631  # telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
+mp.P1.Dfac = 1  # Factor scaling inscribed OD to circumscribed OD for the telescope pupil.
+mp.P1.full.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.full.Nbeam, mp.centering)
+mp.P1.compact.mask = falco.mask.falco_gen_pupil_WFIRST_CGI_180718(mp.P1.compact.Nbeam, mp.centering)
 
-##--FPM size
-mp.F3.Rin = 2.6;    # maximum radius of inner part of the focal plane mask [lambda0/D]
-#mp.F3.RinA = 2.6;   # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
-mp.F3.Rout = 9.0;   # radius of outer opaque edge of FPM [lambda0/D]
-mp.F3.ang = 65;    # on each side, opening angle [degrees]
 
+# %% Lyot Stop (P4) Definition and Generation
+
+# Lyot stop geometry
+mp.P4.IDnorm = 0.38  # Lyot stop ID [Dtelescope]
+mp.P4.ODnorm = 0.92  # Lyot stop OD [Dtelescope]
+mp.P4.ang = 90  # Lyot stop opening angle [degrees]
+
+# Both models
+inputs = {}
+inputs["ID"] = mp.P4.IDnorm
+inputs["OD"] = mp.P4.ODnorm
+inputs["ang"] = mp.P4.ang
+
+# Full model
+inputs["Nbeam"] = mp.P4.full.Nbeam
+mp.P4.full.mask = falco.mask.gen_bowtie_lyot_stop(inputs)
+
+# Compact model
+inputs["Nbeam"] = mp.P4.compact.Nbeam
+mp.P4.compact.mask = falco.mask.gen_bowtie_lyot_stop(inputs)
+
+# %% FPM (F3) Definition and Generation
+
+# FPM size
+mp.F3.Rin = 2.6  # maximum radius of inner part of the focal plane mask [lambda0/D]
+mp.F3.Rout = 9.0  # radius of outer opaque edge of FPM [lambda0/D]
+mp.F3.ang = 65  # on each side, opening angle [degrees]
+mp.F3.compact.res = 4    # sampling of FPM for full model [pixels per lambda0/D]
+mp.F3.full.res = 6    # sampling of FPM for full model [pixels per lambda0/D]
+
+# Both models
+FPM = {}
+FPM["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
+FPM["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
+FPM["centering"] = mp.centering
+FPM["ang"] = mp.F3.ang = 65
+
+# Full model
+FPM["pixresFPM"] = mp.F3.full.res
+mp.F3.full.mask = falco.mask.gen_bowtie_fpm(FPM)
+
+# Compact model
+FPM["pixresFPM"] = mp.F3.compact.res
+mp.F3.compact.mask = falco.mask.gen_bowtie_fpm(FPM)
