@@ -440,43 +440,45 @@ def _planned_efc(mp, cvar):
 
         ImCube = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
 
-        if mp.flagParfor and (mp.flagSim or mp.ctrl.flagUseModel):
+        # # Don't use because _efc() also calls multiprocessing, and there
+        # # can't be nested parallelization calls.
+        # if mp.flagParallel and (mp.flagSim or mp.ctrl.flagUseModel):
 
-            pool = multiprocessing.Pool(processes=mp.Nthreads)
-            results_ctrl = pool.starmap(
-                _efc, [(ni, vals_list, mp, cvar) for ni in range(Nvals)]
-            )
-            pool.close()
-            pool.join()
+        #     pool = multiprocessing.Pool(processes=mp.Nthreads)
+        #     results_ctrl = pool.starmap(
+        #         _efc, [(ni, vals_list, mp, cvar) for ni in range(Nvals)]
+        #     )
+        #     pool.close()
+        #     pool.join()
 
-            # Convert from a list to arrays:
-            for ni in range(Nvals):
-                InormVec[ni] = results_ctrl[ni][0]
-                if any(mp.dm_ind == 1):
-                    dDM1V_store[:, :, ni] = results_ctrl[ni][1].dDM1V
-                if any(mp.dm_ind == 2):
-                    dDM2V_store[:, :, ni] = results_ctrl[ni][1].dDM2V
-                if any(mp.dm_ind == 8):
-                    dDM8V_store[:, ni] = results_ctrl[ni][1].dDM8V
-                if any(mp.dm_ind == 9):
-                    dDM9V_store[:, ni] = results_ctrl[ni][1].dDM9V
+        #     # Convert from a list to arrays:
+        #     for ni in range(Nvals):
+        #         InormVec[ni] = results_ctrl[ni][0]
+        #         if any(mp.dm_ind == 1):
+        #             dDM1V_store[:, :, ni] = results_ctrl[ni][1].dDM1V
+        #         if any(mp.dm_ind == 2):
+        #             dDM2V_store[:, :, ni] = results_ctrl[ni][1].dDM2V
+        #         if any(mp.dm_ind == 8):
+        #             dDM8V_store[:, ni] = results_ctrl[ni][1].dDM8V
+        #         if any(mp.dm_ind == 9):
+        #             dDM9V_store[:, ni] = results_ctrl[ni][1].dDM9V
 
-        else:
+        # else:
 
-            for ni in range(Nvals):
+        for ni in range(Nvals):
 
-                [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
-                ImCube[ni, :, :] = dDM_temp.Itotal
+            [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
+            ImCube[ni, :, :] = dDM_temp.Itotal
 
-                # delta voltage commands
-                if any(mp.dm_ind == 1):
-                    dDM1V_store[:, :, ni] = dDM_temp.dDM1V
-                if any(mp.dm_ind == 2):
-                    dDM2V_store[:, :, ni] = dDM_temp.dDM2V
-                if any(mp.dm_ind == 8):
-                    dDM8V_store[:, ni] = dDM_temp.dDM8V
-                if any(mp.dm_ind == 9):
-                    dDM9V_store[:, ni] = dDM_temp.dDM9V
+            # delta voltage commands
+            if any(mp.dm_ind == 1):
+                dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+            if any(mp.dm_ind == 2):
+                dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+            if any(mp.dm_ind == 8):
+                dDM8V_store[:, ni] = dDM_temp.dDM8V
+            if any(mp.dm_ind == 9):
+                dDM9V_store[:, ni] = dDM_temp.dDM9V
 
         # Print out results to the command line
         print('Scaling factor:\t\t', end='')

@@ -158,7 +158,7 @@ def loop(mp, out):
         # Report Normalized Intensity
         if np.abs(out.InormHist[Itr+1]) > np.finfo(float).eps:
             print('Prev and New Measured Normalized Intensity:\t\t\t '
-                  '%.2e\t->\t%.2e\t (%.2f x smaller)  \n\n' %
+                  '%.2e\t->\t%.2e\t (%.2f x smaller)' %
                   (out.InormHist[Itr],
                    out.InormHist[Itr+1],
                    out.InormHist[Itr]/out.InormHist[Itr+1]))

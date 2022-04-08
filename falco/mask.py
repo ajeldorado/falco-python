@@ -907,6 +907,10 @@ def gen_annular_fpm(inputs):
 
 
 def falco_gen_bowtie_LS(inputs):
+    return gen_bowtie_lyot_stop(inputs)
+
+
+def gen_bowtie_lyot_stop(inputs):
     """
     Generate a sideways-bowtie-shaped Lyot stop using PROPER.
 
@@ -1475,10 +1479,9 @@ def falco_gen_pupil_Simple(inputs):
             rcStrut0 = lStrut / 2.0
             for iStrut in range(angStrutVec.size):
                 ang = angStrutVec[iStrut] + clocking
-                proper.prop_rectangular_obscuration(bm, lStrut, wStrut,
-                                        rcStrut0*cosd(ang)+cshift+xShear,
-                                        rcStrut0*sind(ang)+cshift+yShear,
-                                        ROTATION=ang)
+                proper.prop_rectangular_obscuration(
+                    bm, lStrut, wStrut, rcStrut0*cosd(ang)+cshift+xShear,
+                    rcStrut0*sind(ang)+cshift+yShear, ROTATION=ang)
             apStruts = np.fft.ifftshift(np.abs(bm.wfarr))
 
         # Combine all features
