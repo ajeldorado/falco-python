@@ -322,11 +322,24 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             for _iter in range(2*Npairs):
                 badAxisVec += 'x'
         elif mp.est.probe.axis.lower() in ('alt', 'xy', 'alternate'):
-            for iPair in range(2*Npairs):
-                if (iPair+1) % 4 == 1 or (iPair+1) % 4 == 2:
-                    badAxisVec += 'x'
-                elif (iPair+1) % 4 == 3 or (iPair+1) % 4 == 0:
-                    badAxisVec += 'y'
+
+            # Change probe ordering for odd- vs even-numbered WFSC iterations.
+            if Itr % 2 == 0:
+
+                for iPair in range(2*Npairs):
+                    if (iPair+1) % 4 == 1 or (iPair+1) % 4 == 2:
+                        badAxisVec += 'x'
+                    elif (iPair+1) % 4 == 3 or (iPair+1) % 4 == 0:
+                        badAxisVec += 'y'
+
+            else:
+
+                for iPair in range(2*Npairs):
+                    if (iPair+1) % 4 == 1 or (iPair+1) % 4 == 2:
+                        badAxisVec += 'y'
+                    elif (iPair+1) % 4 == 3 or (iPair+1) % 4 == 0:
+                        badAxisVec += 'x'
+
         elif mp.est.probe.axis.lower() in ('m', 'multi'):
             for _iter in range(2*Npairs):
                 badAxisVec += 'm'
