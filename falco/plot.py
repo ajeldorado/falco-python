@@ -272,18 +272,6 @@ def delta_efield(mp, out, Eest, EestPrev, Esim, EsimPrev, Itr):
                                         cmap=cmaps[col])
                 fig.colorbar(pcm, ax=axs[:, col], shrink=0.6)
 
-            # axs[0, 0].imshow(np.abs(dEsim2D))
-            # axs[0, 0].set_title('abs($dE_{model}$)')
-            # axs[0, 0].invert_yaxis()
 
-            # axs[1, 0].imshow(np.abs(dEmeas2D))
-            # axs[1, 0].set_title('abs($dE_{meas}$)')
-            # axs[1, 0].invert_yaxis()
-
-            # axs[0, 1].imshow(np.angle(dEsim2D))
-            # axs[0, 1].set_title('angle($dE_{model}$)')
-            # axs[0, 1].invert_yaxis()
-
-            # axs[1, 1].imshow(np.angle(dEmeas2D))
-            # axs[1, 1].set_title('angle($dE_{meas}$)')
-            # axs[1, 1].invert_yaxis()
+def singular_mode_spectrum_of_Efield(mp, out, jacStruct, Eest, Itr):
+    pass

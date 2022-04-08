@@ -1,4 +1,5 @@
 """WFSC Loop Function."""
+from copy import copy
 import numpy as np
 import os
 import time
@@ -94,17 +95,6 @@ def loop(mp, out):
 
         falco.plot.wfsc_progress(mp, out, ev, Itr, ImSimOffaxis)
 
-        # %% !!!!!!!!! Move to ctrl.py
-
-        # # Add spatially-dependent weighting to the control Jacobians
-        # if np.any(mp.dm_ind == 1):
-        #     jacStruct.G1 = jacStruct.G1*np.moveaxis(np.tile(mp.WspatialVec[:, None], [mp.jac.Nmode, 1, mp.dm1.Nele]), 0, -1)
-        # if np.any(mp.dm_ind == 2):
-        #     jacStruct.G2 = jacStruct.G2*np.moveaxis(np.tile(mp.WspatialVec[:, None], [mp.jac.Nmode, 1, mp.dm2.Nele]), 0 ,-1)
-        # if np.any(mp.dm_ind == 8):
-        #     jacStruct.G8 = jacStruct.G8*np.moveaxis(np.tile(mp.WspatialVec[:, None], [mp.jac.Nmode, 1, mp.dm8.Nele]), 0, -1)
-        # if np.any(mp.dm_ind == 9):
-        #     jacStruct.G9 = jacStruct.G9*np.moveaxis(np.tile(mp.WspatialVec[:, None], [mp.jac.Nmode, 1, mp.dm9.Nele]), 0, -1)
 
         # %% Plot the expected and measured delta E-fields
 
@@ -118,15 +108,18 @@ def loop(mp, out):
         # %% Compute and Plot the Singular Mode Spectrum of the Electric Field
 
         if mp.flagSVD:
-            pass
-            # out = falco_plot_singular_mode_spectrum_of_Efield(mp, out, jacStruct, ev.Eest, Itr)
+            falco.plot.singular_mode_spectrum_of_Efield(
+                mp, out, jacStruct, ev.Eest, Itr)
 
         # %% Wavefront Control
 
         cvar.Eest = ev.Eest
         cvar.NeleAll = mp.dm1.Nele + mp.dm2.Nele + mp.dm3.Nele + mp.dm4.Nele +\
             mp.dm5.Nele + mp.dm6.Nele + mp.dm7.Nele + mp.dm8.Nele + mp.dm9.Nele
-        falco.ctrl.wrapper(mp, cvar, jacStruct)
+
+        # Send a copy of jacStruct so that spatial weights don't show up 
+        # outside the controller or get applied multiple times.
+        falco.ctrl.wrapper(mp, cvar, copy(jacStruct))
 
         # Store key data in out object
         out.log10regHist[Itr] = cvar.log10regUsed

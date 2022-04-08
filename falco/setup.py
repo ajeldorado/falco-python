@@ -1137,16 +1137,17 @@ def falco_set_spatial_weights(mp):
     # Define 2-D coordinate grid
     [XISLAMD, ETASLAMD] = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
     RHOS = np.sqrt(XISLAMD**2 + ETASLAMD**2)
-    mp.Wspatial = mp.Fend.corr.maskBool.astype(float)
+    mp.Wspatial = copy.copy(mp.Fend.corr.maskBool).astype(float)
     if hasattr(mp, 'WspatialDef'):
-        if(np.size(mp.WspatialDef) > 0):
+        mp.WspatialDef = np.atleast_2d(mp.WspatialDef)
+        if mp.WspatialDef.size > 0:
             for kk in range(0, mp.WspatialDef.shape[0]):
                 Wannulus = 1. + (np.sqrt(mp.WspatialDef[kk, 2])-1.) *\
                     ((RHOS >= mp.WspatialDef[kk, 0]) &
                      (RHOS < mp.WspatialDef[kk, 1]))
                 mp.Wspatial = mp.Wspatial*Wannulus
 
-    mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]
+    # mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]
 
     # Spatial weighting vector (for each star)
     Npix = np.sum(mp.Fend.corr.maskBool.astype(int))

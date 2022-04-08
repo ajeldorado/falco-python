@@ -31,6 +31,8 @@ def wrapper(mp, cvar, jacStruct):
 #        raise TypeError('Input "mp" must be of type ModelParameters')
 #    pass
 
+    apply_spatial_weighting_to_Jacobian(mp, jacStruct)
+
     # with falco.util.TicToc('Using the Jacobian to make other matrices'):
     print('Using the Jacobian to make other matrices...', end='')
 
@@ -711,6 +713,39 @@ def _efc(ni, vals_list, mp, cvar):
         mp.dm9.V = DM9V0
 
     return InormAvg, dDM
+
+
+def apply_spatial_weighting_to_Jacobian(mp, jacStruct):
+    """
+    Add spatially-dependent weighting to the control Jacobians.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    jacStruct : Object
+        Object containing the Jacobians for each DM.
+
+    Returns
+    -------
+    None.
+
+    """
+    for iStar in range(mp.compact.star.count):
+
+        if np.any(mp.dm_ind == 1):
+            jacStruct.G1[:, :, mp.jac.star_inds == iStar] = \
+                jacStruct.G1[:, :, mp.jac.star_inds == iStar] * \
+                np.moveaxis(
+                    np.tile(mp.WspatialVec[:, iStar].reshape([-1]),
+                            [mp.dm1.Nele, mp.jac.NmodePerStar, 1]), 2, 0)
+
+        if np.any(mp.dm_ind == 2):
+            jacStruct.G2[:, :, mp.jac.star_inds == iStar] = \
+                jacStruct.G2[:, :, mp.jac.star_inds == iStar] * \
+                np.moveaxis(
+                    np.tile(mp.WspatialVec[:, iStar].reshape([-1]),
+                            [mp.dm2.Nele, mp.jac.NmodePerStar, 1]), 2, 0)
 
 
 def init(mp, cvar):
