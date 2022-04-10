@@ -10,17 +10,6 @@ import falco
 import config_wfsc_vc as CONFIG
 
 
-# plt.figure(1)
-# plt.title('Serial')
-# plt.imshow(np.log10(imageSerial))
-# plt.gca().invert_yaxis()
-# plt.colorbar()
-# plt.clim(-10, -5)
-# plt.pause(0.1)
-
-#     # assert np.allclose(out.log10regHist, np.array([-4.5, -4, -4]), rtol=1e-2)
-
-
 def test_parallel_grid_search_efc_controller():
 
     mp = deepcopy(CONFIG.mp)
@@ -46,16 +35,15 @@ def test_parallel_grid_search_efc_controller():
     cvar.flagRelin = True
     cvar.flagCullAct = True
 
+    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+
     # Re-compute the Jacobian weights
     falco.setup.falco_set_jacobian_modal_weights(mp)
 
     # Compute the control Jacobians for each DM
-
     jacStruct = falco.model.jacobian(mp)
     falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
-
-    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
-    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
     falco.est.wrapper(mp, ev, jacStruct)
 
@@ -74,13 +62,6 @@ def test_parallel_grid_search_efc_controller():
     falco.ctrl.wrapper(mp, cvar, jacStruct)
     V1parallel = copy(mp.dm1.V)
     V2parallel = copy(mp.dm2.V)
-
-
-    # with falco.util.TicToc('Taking image in serial'):
-    #     imageSerial = falco.imaging.get_summed_image(mp)
-
-    # with falco.util.TicToc('Taking image in parallel'):
-    #     imageParallel = falco.imaging.get_summed_image(mp)
 
     diff1 = V1serial - V1parallel
     diff2 = V2serial - V2parallel
@@ -141,12 +122,13 @@ def test_parallel_images():
     mp.flagParallel = False
     _ = falco.setup.flesh_out_workspace(mp)
 
-    with falco.util.TicToc('Taking image in serial'):
-        imageSerial = falco.imaging.get_summed_image(mp)
-
     mp.flagParallel = True
     with falco.util.TicToc('Taking image in parallel'):
         imageParallel = falco.imaging.get_summed_image(mp)
+
+    mp.flagParallel = False
+    with falco.util.TicToc('Taking image in serial'):
+        imageSerial = falco.imaging.get_summed_image(mp)
 
     diff = imageSerial - imageParallel
 

@@ -598,3 +598,26 @@ def gen_simple_psd_errormap(N, alpha, mirror_figure):
     out = out/np.sqrt(np.sum(out**2))*mirror_figure*N
 
     return out
+
+
+def smooth(y, box_pts):
+    """
+    Smooth the values in a vector.
+
+    Parameters
+    ----------
+    y : array_like
+        1-D array of values to smooth.
+    box_pts : int
+        Number of points across to use in smoothing.
+
+    Returns
+    -------
+    y_smooth : array_like
+        1-D array of smoothed values.
+
+    """
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+
+    return y_smooth

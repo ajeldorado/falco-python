@@ -1394,6 +1394,12 @@ def init_storage_arrays(mp):
     out.dm8.Srms = np.zeros(mp.Nitr)
     out.dm9.Srms = np.zeros(mp.Nitr)
 
+    # SVD
+    out.EforSpectra = []
+    out.smspectra = []
+    out.sm = []
+    out.alpha2 = []
+
     # Sensitivities Zernike-Mode Perturbations
     if not hasattr(mp.eval, 'Rsens'):
         mp.eval.Rsens = []

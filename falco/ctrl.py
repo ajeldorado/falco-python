@@ -747,6 +747,15 @@ def apply_spatial_weighting_to_Jacobian(mp, jacStruct):
                     np.tile(mp.WspatialVec[:, iStar].reshape([-1]),
                             [mp.dm2.Nele, mp.jac.NmodePerStar, 1]), 2, 0)
 
+        # if np.any(mp.dm_ind == 8):
+        #     jacStruct.G8 = jacStruct.G8*np.moveaxis(
+        #         np.tile(mp.WspatialVec[:, None],
+        #                 [mp.jac.Nmode, 1, mp.dm8.Nele]), 0, -1)
+        # if np.any(mp.dm_ind == 9):
+        #     jacStruct.G9 = jacStruct.G9*np.moveaxis(
+        #         np.tile(mp.WspatialVec[:, None],
+        #                 [mp.jac.Nmode, 1, mp.dm9.Nele]), 0, -1)
+
 
 def init(mp, cvar):
     """

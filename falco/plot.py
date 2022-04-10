@@ -263,6 +263,7 @@ def delta_efield(mp, out, Eest, EestPrev, Esim, EsimPrev, Itr):
                     ax = axs[row, col]
                     ax.set_title(titles[row][col])
                     ax.invert_yaxis()
+                    ax.set_box_aspect(1)
                     if row == 0:
                         ax.tick_params(labelbottom=False, bottom=False)
                     if col == 1:
@@ -270,8 +271,54 @@ def delta_efield(mp, out, Eest, EestPrev, Esim, EsimPrev, Itr):
 
                     pcm = ax.pcolormesh(data[row][col],
                                         cmap=cmaps[col])
-                fig.colorbar(pcm, ax=axs[:, col], shrink=0.6)
+                fig.colorbar(pcm, ax=axs[:, col]) #, shrink=0.6)
 
 
 def singular_mode_spectrum_of_Efield(mp, out, jacStruct, Eest, Itr):
-    pass
+
+    iMode = 0
+    Gcomplex = np.concatenate((jacStruct.G1[:, :, iMode],
+                               jacStruct.G2[:, :, iMode],
+                               jacStruct.G8[:, :, iMode],
+                               jacStruct.G9[:, :, iMode]), axis=1)
+    Gall = np.zeros((mp.jac.Nmode*Gcomplex.shape[0], Gcomplex.shape[1]),
+                    dtype=complex)
+    Eall = np.zeros((mp.jac.Nmode*Eest.shape[0], 1), dtype=complex)
+
+    for iMode in range(mp.jac.Nmode):
+        N = Gcomplex.shape[0]
+        Gcomplex = np.concatenate((jacStruct.G1[:, :, iMode],
+                                   jacStruct.G2[:, :, iMode],
+                                   jacStruct.G8[:, :, iMode],
+                                   jacStruct.G9[:, :, iMode]), axis=1)
+        Gall[iMode*N:(iMode+1)*N, :] = Gcomplex
+        Eall[iMode*N:(iMode+1)*N, 0] = Eest[:, iMode]
+
+    Eri = np.concatenate((np.real(Eall), np.imag(Eall)), axis=0)
+    alpha2 = np.max(np.diag(np.real(Gall.conj().T @ Gall)))
+    Gri = np.concatenate((np.real(Gall), np.imag(Gall)), axis=0)
+    U, s, _ = np.linalg.svd(Gri, full_matrices=False)
+
+    EriPrime = U.conj().T @ Eri
+    IriPrime = np.abs(EriPrime)**2
+
+    # Store data for later analysis
+    out.EforSpectra.append(EriPrime)
+    out.smspectra.append(IriPrime)
+    out.sm.append(s)
+    out.alpha2.append(alpha2)
+
+    if mp.flagPlot:
+        plt.figure(401)
+        if Itr > 0:
+            plt.clf()
+        for ii in range(Itr+1):
+            plt.loglog(
+                (out.sm[ii]**2/out.alpha2[ii]).reshape([-1]),
+                falco.util.smooth(out.smspectra[ii].reshape([-1]), 31),
+                color=(0.3, 1-(0.2+(ii+1)/(Itr+1))/(1.3), 1)
+                )
+        plt.title('Singular Mode Spectrum')
+        plt.xlim(1e-10, 2*np.max(s**2/alpha2))
+        plt.ylim(1e-12, 1e-0)
+        plt.pause(1e-2)

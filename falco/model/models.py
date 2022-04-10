@@ -819,13 +819,13 @@ def jacobian(mp):
     # Pre-compute the DM surfaces to save time
     NdmPad = int(mp.compact.NdmPad)
     if any(mp.dm_ind == 1):
-        mp.dm1.compact.surfM = falco.dm.gen_surf_from_act(mp.dm1,
-                                                    mp.dm1.compact.dx, NdmPad)
+        mp.dm1.compact.surfM = falco.dm.gen_surf_from_act(
+            mp.dm1, mp.dm1.compact.dx, NdmPad)
     else:
         mp.dm1.compact.surfM = np.zeros((NdmPad, NdmPad))
     if any(mp.dm_ind == 2):
-        mp.dm2.compact.surfM = falco.dm.gen_surf_from_act(mp.dm2,
-                                                    mp.dm2.compact.dx, NdmPad)
+        mp.dm2.compact.surfM = falco.dm.gen_surf_from_act(
+            mp.dm2, mp.dm2.compact.dx, NdmPad)
     else:
         mp.dm2.compact.surfM = np.zeros((NdmPad, NdmPad))
 
@@ -836,18 +836,14 @@ def jacobian(mp):
                 falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
 
     # Initialize the Jacobians for each DM
-    if any(mp.dm_ind == 1):
-        jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
-                                dtype=complex)
-    if any(mp.dm_ind == 2):
-        jacStruct.G2 = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele, mp.jac.Nmode),
-                                dtype=complex)
-    if any(mp.dm_ind == 8):
-        jacStruct.G8 = np.zeros((mp.Fend.corr.Npix, mp.dm8.Nele, mp.jac.Nmode),
-                                dtype=complex)
-    if any(mp.dm_ind == 9):
-        jacStruct.G9 = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele, mp.jac.Nmode),
-                                dtype=complex)
+    jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G2 = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G8 = np.zeros((mp.Fend.corr.Npix, mp.dm8.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G9 = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele, mp.jac.Nmode),
+                            dtype=complex)
 
     # Calculate the Jacobian in parallel or serial
     if mp.flagParallel:

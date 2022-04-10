@@ -1,6 +1,7 @@
 """Functions for generating images in FALCO."""
 import numpy as np
 import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 import matplotlib.pyplot as plt
 
 import falco
@@ -268,11 +269,24 @@ def get_summed_image(mp):
                      for pol in mp.full.pol_conds]
         Nvals = mp.full.NlamUnique*len(mp.full.pol_conds)
 
+#         result = map(
+#             lambda p: _get_single_sim_full_image(*p),
+#             [(mp, ilist, vals_list) for ilist in range(Nvals)]
+#         )
+#         result_image = tuple(result)
+
+#         with ProcessPoolExecutor(max_workers=mp.Nthreads) as executor:
+#             result = executor.map(
+#                 lambda p: _get_single_sim_full_image(*p),
+#                 # _get_single_sim_full_image,
+#                 [(mp, ilist, vals_list) for ilist in range(Nvals)]
+#             )
+#         result_image = tuple(result)
+
+#         pool = multiprocessing.get_context("spawn").Pool(processes=mp.Nthreads)
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        results = pool.starmap(_get_single_sim_full_image,
-                               [(mp, ilist, vals_list)
-                                for ilist in range(Nvals)])
-        results_img = results
+        result_image = pool.starmap(_get_single_sim_full_image,
+                                [(mp, ilist, vals_list) for ilist in range(Nvals)])
         pool.close()
         pool.join()
 
@@ -282,7 +296,7 @@ def get_summed_image(mp):
             ilam = vals_list[ilist][0]
             # pol = vals_list[ilist][1]
             summedImage += mp.full.lambda_weights_all[ilam] / \
-                len(mp.full.pol_conds) * results_img[ilist]
+                len(mp.full.pol_conds) * result_image[ilist]
 
     return summedImage
 
