@@ -322,3 +322,65 @@ def singular_mode_spectrum_of_Efield(mp, out, jacStruct, Eest, Itr):
         plt.xlim(1e-10, 2*np.max(s**2/alpha2))
         plt.ylim(1e-12, 1e-0)
         plt.pause(1e-2)
+
+
+def pairwise_probes(mp, ev, dDMVplus, ampSq2Dcube, iSubband):
+
+    if mp.flagPlot:
+
+        if mp.est.probe.whichDM == 1:
+            VtoH = mp.dm1.VtoH
+        elif mp.est.probe.whichDM == 2:
+            VtoH = mp.dm2.VtoH
+
+        Npairs = mp.est.probe.Npairs
+        Ncols = 4
+
+        # Npairs rows, and 4 columns
+        figNum = 90 + ev.iStar
+        plt.figure(figNum)
+        plt.clf()
+        fig, axs = plt.subplots(nrows=Npairs, ncols=Ncols, num=figNum)
+        cmaps = Ncols*['gray']
+        cmaps[0] = 'viridis'
+        titles = ['DM Command (nm)', '+Probe Image', '-Probe Image',
+                  'Probe Intensity, $|\Delta p|^2$']
+
+        plusImageCube = ev.imageArray[:, :, 1::2, iSubband]
+        minusImageCube = ev.imageArray[:, :, 2::2, iSubband]
+
+        for col in range(Ncols):
+            for row in range(Npairs):
+                ax = axs[row, col]
+                ax.set_title(titles[col])
+                ax.invert_yaxis()
+                ax.set_box_aspect(1)
+                if row != Npairs-1:
+                    ax.tick_params(labelbottom=False, bottom=False)
+                if col != 0:
+                    ax.tick_params(labelleft=False, left=False)
+
+                if col == 0:
+                    datacube = 1e9*dDMVplus * \
+                        np.moveaxis((np.tile(VtoH, [Npairs, 1, 1])), 0, 2)
+                elif col == Ncols-1:
+                    datacube = ampSq2Dcube
+                elif col > 0 and col % 2 == 1:
+                    datacube = plusImageCube
+                elif col > 0 and col % 2 == 0:
+                    datacube = minusImageCube
+
+                if col == 0:
+                    pcm = ax.pcolormesh(datacube[:, :, row], cmap=cmaps[col])
+                else:
+                    pcm = ax.pcolormesh(log10nonneg(datacube[:, :, row]),
+                                        cmap=cmaps[col])
+
+            fig.colorbar(pcm, ax=axs[:, col])  #, shrink=0.6)
+
+        return None
+
+
+def log10nonneg(array):
+    array[array < 0] = 0
+    return np.log10(array)

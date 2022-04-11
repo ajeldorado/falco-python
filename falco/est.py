@@ -407,7 +407,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
                                      ev.InormProbeMax])
                 print('Chosen probe intensity: %.2e' % InormProbe)
             else:
-                InormProbe = mp.est.probeSchedule.InormProbeVec(Itr);
+                InormProbe = mp.est.probeSchedule.InormProbeVec(Itr)
                 print('Scheduled probe intensity: %.2e' % InormProbe)
 
             # Perform the probing
@@ -498,9 +498,11 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
                       (iProbe, np.mean(ampSq2D[mp.Fend.corr.maskBool])))
 
             # Plot relevant data for all the probes
-            # falco_plot_pairwi1se_probes(mp, ev,
-            #         DM1Vplus-repmat(DM1Vnom, [1,1,size(DM1Vplus,3)]),
-            #         ampSq2Dcube)
+            ev.iStar = iStar
+            dDMVplus = np.zeros_like(DM1Vplus)
+            for ii in range(Npairs):
+                dDMVplus[:, :, ii] = DM1Vplus[:, :, ii] - DM1Vnom
+            falco.plot.pairwise_probes(mp, ev, dDMVplus, ampSq2Dcube, iSubband)
 
             # ################# Perform the estimation #######################
 
