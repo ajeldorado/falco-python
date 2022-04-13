@@ -1006,7 +1006,7 @@ def falco_configure_dark_hole_region(mp):
         CORR["etaFOV"] = mp.Fend.etaFOV
     if hasattr(mp.Fend, 'Nxi'):
         CORR["Nxi"] = mp.Fend.Nxi
-    if hasattr(mp.Fend, 'etaFOV'):
+    if hasattr(mp.Fend, 'Neta'):
         CORR["Neta"] = mp.Fend.Neta
 
     if not hasattr(mp.Fend, 'shape'):
