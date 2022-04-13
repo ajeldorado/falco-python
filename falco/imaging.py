@@ -1,6 +1,7 @@
 """Functions for generating images in FALCO."""
 import numpy as np
 import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 import matplotlib.pyplot as plt
 
 import falco
@@ -79,8 +80,8 @@ def calc_thput(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    ImSimOffaxis = falco.imaging.get_sim_offaxis_image_compact(mp,
-                            mp.thput_eval_x, mp.thput_eval_y, isEvalMode=True)
+    ImSimOffaxis = falco.imaging.get_sim_offaxis_image_compact(
+        mp, mp.thput_eval_x, mp.thput_eval_y, isEvalMode=True)
 
     # Absolute energy within half-max isophote(s)
     if mp.thput_metric.lower() == 'hmi':
@@ -126,6 +127,10 @@ def calc_psf_norm_factor(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
+    mp.sumPupil = np.sum(np.abs(
+        mp.P1.compact.mask * falco.util.pad_crop(
+            np.mean(mp.P1.compact.E, axis=2), mp.P1.compact.mask.shape))**2)
+
     # Initialize Model Normalizations
     if not hasattr(mp.Fend, 'compact'):
         mp.Fend.compact = falco.config.Object()
@@ -137,9 +142,10 @@ def calc_psf_norm_factor(mp):
     mp.Fend.eval.I00 = np.ones(mp.Nsbp)
     mp.Fend.full.I00 = np.ones((mp.Nsbp, mp.Nwpsbp))
 
-    modvar = falco.config.Object()
+    modvar = falco.config.ModelVariables()
     modvar.zernIndex = 1
     modvar.whichSource = 'star'
+    modvar.starIndex = 0  # Always use first star for image normalization
 
     # Compact Model Normalizations
     for si in range(mp.Nsbp):
@@ -154,7 +160,7 @@ def calc_psf_norm_factor(mp):
         mp.Fend.eval.I00[si] = (np.abs(Eeval)**2).max()
 
     # Full Model Normalizations (at points for entire-bandpass evaluation)
-    if(mp.flagSim):
+    if mp.flagSim:
         if mp.flagParallel:
             # Make all combinations of the values
             inds_list = [(x, y) for x in range(mp.Nsbp)
@@ -180,15 +186,17 @@ def calc_psf_norm_factor(mp):
                     modvar.sbpIndex = si
                     modvar.wpsbpIndex = wi
                     Efull = falco.model.full(mp, modvar, isNorm=False)
-                    mp.Fend.full.I00[si, wi] = (np.abs(Efull)**2).max()
+                    mp.Fend.full.I00[si, wi] = np.max(np.abs(Efull)**2)
 
     # Visually verify the normalized coronagraphic PSF
     if mp.flagPlot:
-        modvar = falco.config.Object()  # reset
-        modvar.ttIndex = 1
+        modvar = falco.config.ModelVariables()  # reset
         modvar.sbpIndex = mp.si_ref
-        # modvar.wpsbpIndex = mp.wi_ref
+        modvar.wpsbpIndex = mp.wi_ref
         modvar.whichSource = 'star'
+        modvar.starIndex = 0
+        modvar.zernIndex = 1
+
         E0c = falco.model.compact(mp, modvar)
         I0c = np.abs(E0c)**2
 
@@ -200,11 +208,6 @@ def calc_psf_norm_factor(mp):
         plt.title('Compact Model Normalization')
         plt.pause(1e-2)
 
-        modvar = falco.config.Object()  # reset
-        modvar.ttIndex = 1
-        modvar.sbpIndex = mp.si_ref
-        modvar.wpsbpIndex = mp.wi_ref
-        modvar.whichSource = 'star'
         E0f = falco.model.full(mp, modvar)
         I0f = np.abs(E0f)**2
 
@@ -222,11 +225,12 @@ def _model_full_norm_wrapper(mp, ilist, inds_list):
     si = inds_list[ilist][0]
     wi = inds_list[ilist][1]
 
-    modvar = falco.config.Object()
+    modvar = falco.config.ModelVariables()
     modvar.sbpIndex = si  # mp.full.indsLambdaMat[ilam, 0]
     modvar.wpsbpIndex = wi  # mp.full.indsLambdaMat[ilam, 1]
     modvar.zernIndex = 1
     modvar.whichSource = 'star'
+    modvar.starIndex = 0
 
     Etemp = falco.model.full(mp, modvar, isNorm=False)
     return np.max(np.abs(Etemp)**2)
@@ -254,9 +258,9 @@ def get_summed_image(mp):
         raise TypeError('Input "mp" must be of type ModelParameters')
 
     if not (mp.flagParallel and mp.flagSim):
-        Imean = 0
-        for si in range(0, mp.Nsbp):
-            Imean += mp.sbp_weights[si]*get_sbp_image(mp, si)
+        summedImage = 0
+        for si in range(mp.Nsbp):
+            summedImage += mp.sbp_weights[si] * get_sbp_image(mp, si)
 
     else:  # Compute simulated images in parallel
 
@@ -265,23 +269,36 @@ def get_summed_image(mp):
                      for pol in mp.full.pol_conds]
         Nvals = mp.full.NlamUnique*len(mp.full.pol_conds)
 
+#         result = map(
+#             lambda p: _get_single_sim_full_image(*p),
+#             [(mp, ilist, vals_list) for ilist in range(Nvals)]
+#         )
+#         result_image = tuple(result)
+
+#         with ProcessPoolExecutor(max_workers=mp.Nthreads) as executor:
+#             result = executor.map(
+#                 lambda p: _get_single_sim_full_image(*p),
+#                 # _get_single_sim_full_image,
+#                 [(mp, ilist, vals_list) for ilist in range(Nvals)]
+#             )
+#         result_image = tuple(result)
+
+#         pool = multiprocessing.get_context("spawn").Pool(processes=mp.Nthreads)
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        results = pool.starmap(_get_single_sim_full_image,
-                               [(mp, ilist, vals_list)
-                                for ilist in range(Nvals)])
-        results_img = results
+        result_image = pool.starmap(_get_single_sim_full_image,
+                                [(mp, ilist, vals_list) for ilist in range(Nvals)])
         pool.close()
         pool.join()
 
         # Apply the spectral weights and sum
-        Imean = 0
+        summedImage = 0
         for ilist in np.arange(Nvals, dtype=int):
             ilam = vals_list[ilist][0]
             # pol = vals_list[ilist][1]
-            Imean += mp.full.lambda_weights_all[ilam] / \
-                len(mp.full.pol_conds) * results_img[ilist]
+            summedImage += mp.full.lambda_weights_all[ilam] / \
+                len(mp.full.pol_conds) * result_image[ilist]
 
-    return Imean
+    return summedImage
 
 
 def _get_single_sim_full_image(mp, ilist, vals_list):
@@ -289,12 +306,13 @@ def _get_single_sim_full_image(mp, ilist, vals_list):
     ilam = vals_list[ilist][0]
     pol = vals_list[ilist][1]
 
-    modvar = falco.config.Object()  # Initialize the new structure
+    modvar = falco.config.ModelVariables()  # Initialize the new structure
     modvar.sbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam], 0]
     modvar.wpsbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],
                                               1]
     mp.full.polaxis = pol  # mp.full.pol_conds[ipol]
     modvar.whichSource = 'star'
+    modvar.starIndex = 0
     Estar = falco.model.full(mp, modvar)
 
     return np.abs(Estar)**2  # Apply spectral weighting outside this function
@@ -354,33 +372,34 @@ def get_sim_sbp_image(mp, si):
 
     Npol = len(mp.full.pol_conds)  # Number of polarization states used
 
-    # Loop over all wavelengths and polarizations
-    inds_list = [(x, y) for x in range(mp.Nwpsbp) for y in range(Npol)]
-    Nvals = mp.Nwpsbp*Npol
+    # Loop over all wavelengths and polarizations and stars
+    inds_list = [(x, y, z) for x in range(mp.Nwpsbp) for y in range(Npol)
+                 for z in range(mp.star.count)]
+    Ncombos = mp.Nwpsbp*Npol*mp.star.count
 
-    Iall = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
+    Iall = np.zeros((Ncombos, mp.Fend.Neta, mp.Fend.Nxi))
     if mp.flagParallel:
+
         pool = multiprocessing.Pool(processes=mp.Nthreads)
-        resultsRaw = pool.starmap(_get_single_sbp_image_wvlPol,
+        resultsRaw = pool.starmap(_get_subband_image_component,
                                   [(mp, si, ilist, inds_list)
-                                   for ilist in range(Nvals)])
+                                   for ilist in range(Ncombos)])
         results = resultsRaw
 
         pool.close()
         pool.join()
 
-        for ilist in range(Nvals):
+        for ilist in range(Ncombos):
             Iall[ilist, :, :] = results[ilist]
 
     else:
-        for ilist in range(Nvals):
-            Iall[ilist, :, :] = _get_single_sbp_image_wvlPol(mp, si,
-                                                             ilist, inds_list)
+        for iCombo in range(Ncombos):
+            Iall[iCombo, :, :] = _get_subband_image_component(
+                mp, si, iCombo, inds_list)
 
-    # Apply the spectral weights and sum
     subbandImage = 0
-    for ilist in range(Nvals):
-        subbandImage += np.squeeze(Iall[ilist, :, :])
+    for iCombo in range(Ncombos):
+        subbandImage += np.squeeze(Iall[iCombo, :, :])
 
     if mp.flagImageNoise:
         subbandImage = add_noise_to_subband_image(mp, subbandImage, si)
@@ -388,7 +407,7 @@ def get_sim_sbp_image(mp, si):
     return subbandImage
 
 
-def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
+def _get_subband_image_component(mp, si, ilist, inds_list):
     """
     Use only with get_sim_sbp_image for parallel processing.
 
@@ -401,19 +420,20 @@ def _get_single_sbp_image_wvlPol(mp, si, ilist, inds_list):
 
     wi = inds_list[ilist][0]
     ipol = inds_list[ilist][1]
+    iStar = inds_list[ilist][2]
 
     # Get the starlight image
-    modvar = falco.config.Object()
+    modvar = falco.config.ModelVariables()
     modvar.sbpIndex = si
     modvar.wpsbpIndex = wi
     mp.full.polaxis = mp.full.pol_conds[ipol]
     modvar.whichSource = 'star'
+    modvar.starIndex = iStar
     Estar = falco.model.full(mp, modvar)
-    Iout = np.abs(Estar)**2  # Apply spectral weighting outside this function
 
     # Apply weight within the sub-bandpass.
     # Assume polarizations are evenly weighted.
-    Iout = mp.full.lambda_weights[wi]/len(mp.full.pol_conds)*Iout
+    Iout = mp.full.lambda_weights[wi]/len(mp.full.pol_conds)*np.abs(Estar)**2
 
     return Iout
 
@@ -458,9 +478,8 @@ def get_expected_summed_image(mp, cvar, dDM):
     EoldTempVecArray = np.zeros((mp.Fend.corr.Npix, mp.Nsbp), dtype=complex)
 
     # Generate the model-based E-field with the new DM setting
-    modvar = falco.config.Object()  # Initialize the new structure
+    modvar = falco.config.ModelVariables()  # Initialize the new structure
     modvar.whichSource = 'star'
-    modvar.wpsbpIndex = 0  # Dummy, placeholder value
     for si in range(mp.Nsbp):
         modvar.sbpIndex = si
         Etemp = falco.model.compact(mp, modvar)
@@ -486,7 +505,7 @@ def get_expected_summed_image(mp, cvar, dDM):
 
     # Compute the expected new 2-D intensity image
     for si in range(mp.Nsbp):
-        EexpectedVec = cvar.EfieldVec[:, si] + \
+        EexpectedVec = cvar.Eest[:, si] + \
             (EnewTempVecArray[:, si] - EoldTempVecArray[:, si])
         Eexpected2D = np.zeros((mp.Fend.Neta, mp.Fend.Nxi), dtype=complex)
         Eexpected2D[mp.Fend.corr.maskBool] = EexpectedVec
@@ -536,18 +555,21 @@ def get_sim_offaxis_image_compact(mp, x_offset, y_offset, isEvalMode=False):
     if not isinstance(isEvalMode, bool):
         raise TypeError('isEvalMode must be a bool')
 
-    modvar = falco.config.Object()
+    modvar = falco.config.ModelVariables()
     modvar.whichSource = 'offaxis'
     modvar.x_offset = x_offset
     modvar.y_offset = y_offset
-    modvar.zernIndex = 1
-    modvar.wpsbpIndex = mp.wi_ref
 
     Iout = 0.
-    for si in range(mp.Nsbp):
-        modvar.sbpIndex = si
-        E2D = falco.model.compact(mp, modvar, isEvalMode=isEvalMode)
-        Iout = Iout + (np.abs(E2D)**2)*mp.jac.weightMat[si, 0]
+    for iStar in range(mp.star.count):
+        modvar.starIndex = iStar
+
+        for si in range(mp.Nsbp):
+            modvar.sbpIndex = si
+            modvar.zernIndex = 1
+
+            E2D = falco.model.compact(mp, modvar, isEvalMode=isEvalMode)
+            Iout += (np.abs(E2D)**2) * mp.jac.weightMat[si, 0]
 
     return Iout
 

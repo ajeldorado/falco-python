@@ -1,9 +1,11 @@
+"""Module for DM-related functions."""
 import os
 import numpy as np
 from math import sin, cos, radians
 import scipy.signal as ss
 from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline
+from astropy.io import fits
 
 import proper
 import falco
@@ -12,12 +14,10 @@ from falco import check
 if not proper.use_cubic_conv:
     from scipy.ndimage.interpolation import map_coordinates
 
-# import matplotlib.pyplot as plt
-# from astropy.io import fits
 
-def gen_surf_from_act(dm, dx, N):
+def gen_surf_from_act(dm, dx, Nout):
     """
-    Function to compute the surface shape of a deformable mirror. Uses PROPER.
+    Compute the surface shape of a deformable mirror using PROPER.
 
     Parameters
     ----------
@@ -25,7 +25,7 @@ def gen_surf_from_act(dm, dx, N):
         Structure containing parameter values for the DM
     dx : float
         Pixel width [meters] at the DM plane
-    N : int
+    Nout : int
         Number of points across the array to return at the DM plane
 
     Returns
@@ -35,20 +35,21 @@ def gen_surf_from_act(dm, dx, N):
 
     """
     check.real_positive_scalar(dx, 'dx', TypeError)
-    check.positive_scalar_integer(N, 'N', TypeError)
-    # if type(dm) is not falco.config.Object:
-    #     raise TypeError('Input "dm" must be of type falco.config.Object')
+    check.positive_scalar_integer(Nout, 'Nout', TypeError)
+    # if dm.NdmPad % 2 != 0:
+    #     raise ValueError('dm.NdmPad must be even')
+
 
     # Set the order of operations
     flagXYZ = True
-    if(hasattr(dm, 'flagZYX')):
-        if(dm.flagZYX):
+    if hasattr(dm, 'flagZYX'):
+        if dm.flagZYX:
             flagXYZ = False
 
     # Adjust the centering of the output DM surface. The shift needs to be in
     # units of actuators, not meters, for prop_dm.m.
-    Darray = dm.NdmPad*dm.dx
-    Narray = dm.NdmPad
+    Darray = Nout*dx #dm.NdmPad*dx
+    Narray = Nout #dm.NdmPad
     if dm.centering == 'interpixel':
         cshift = -Darray/2./Narray/dm.dm_spacing
     elif dm.centering == 'pixel':
@@ -57,7 +58,7 @@ def gen_surf_from_act(dm, dx, N):
     pupil_ratio = 1  # beam diameter fraction
     wl_dummy = 1e-6  # dummy value needed to initialize PROPER (meters)
 
-    bm = proper.prop_begin(N*dx, wl_dummy, N, pupil_ratio)
+    bm = proper.prop_begin(Narray*dx, wl_dummy, Narray, pupil_ratio)
 
     # Apply various constraints to DM commands
     dm = enforce_constraints(dm)
@@ -65,8 +66,8 @@ def gen_surf_from_act(dm, dx, N):
     # Quantization of DM actuation steps based on least significant bit of the
     # DAC (digital-analog converter). In height, so called HminStep
     # If HminStep (minimum step in H) is defined, then quantize the DM voltages
-    if(hasattr(dm, 'HminStep')):
-        if not(hasattr(dm, 'HminStepMethod')):
+    if hasattr(dm, 'HminStep'):
+        if not hasattr(dm, 'HminStepMethod'):
             dm.HminStepMethod = 'round'
         # Discretize/Quantize the DM voltages (creates dm.Vquantized)
         dm = discretize_surf(dm, dm.HminStepMethod)
@@ -84,26 +85,52 @@ def gen_surf_from_act(dm, dx, N):
         elif dm.orientation.lower() == 'rot270':
             heightMap = np.rot90(heightMap, 3)
         elif dm.orientation.lower() == 'flipxrot0':
-            heightMap = np.flipx(heightMap)
+            heightMap = np.fliplr(heightMap)
         elif dm.orientation.lower() == 'flipxrot90':
-            heightMap = np.rot90(np.flipx(heightMap), 1)
+            heightMap = np.rot90(np.fliplr(heightMap), 1)
         elif dm.orientation.lower() == 'flipxrot180':
-            heightMap = np.rot90(np.flipx(heightMap), 2)
+            heightMap = np.rot90(np.fliplr(heightMap), 2)
         elif dm.orientation.lower() == 'flipxrot270':
-            heightMap = np.rot90(np.flipx(heightMap), 3)
+            heightMap = np.rot90(np.fliplr(heightMap), 3)
         else:
             raise ValueError('invalid value of dm.orientation')
 
     # Generate the DM surface
-    DMsurf = falco.dm.propcustom_dm(bm, heightMap, dm.xc-cshift, dm.yc-cshift,
-    dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ,
-    inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
+    DMsurf = falco.dm.propcustom_dm(
+        bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
+        XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ,
+        inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+    )
+
+    # DMsurf = falco.util.pad_crop(DMsurf, Nout)
 
     return DMsurf
 
 
 def discretize_surf(dm, HminStepMethod):
+    """
+    Discretize the DM commands used to make the DM surface map.
 
+    Parameters
+    ----------
+    dm : TYPE
+        DESCRIPTION.
+    HminStepMethod : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    TypeError
+        DESCRIPTION.
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    dm : TYPE
+        DESCRIPTION.
+
+    """
     if not isinstance(HminStepMethod, str):
         raise TypeError('HminStepMethod must be a str')
 
@@ -243,12 +270,12 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
         dm_z = proper.prop_fits_read(dm_z0)  # Read DM setting from FITS file
     else:
         dm_z = dm_z0
-    
+
     if "inf_fn" in kwargs:
         inf_fn = kwargs["inf_fn"]
     else:
         inf_fn = "influence_dm5v2.fits"
-        
+
     if "inf_sign" in kwargs:
         if(kwargs["inf_sign"] == '+'):
             sign_factor = 1.
@@ -268,15 +295,21 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
                             "data")
     inf = proper.prop_fits_read(os.path.join(dir_path, inf_fn))
     inf = sign_factor*np.squeeze(inf)
-    
+
     s = inf.shape
     nx_inf = s[1]
     ny_inf = s[0]
     xc_inf = nx_inf // 2
     yc_inf = ny_inf // 2
-    dx_inf = 0.1e-3  # influence function spacing in meters
-    dx_dm_inf = 1.0e-3  # nominal spacing between DM actuators in meters
-    inf_mag = 10
+    # dx_inf = 0.1e-3  # influence function spacing in meters
+    # dx_dm_inf = 1.0e-3  # nominal spacing between DM actuators in meters
+    # inf_mag = 10
+    header = fits.getheader(inf_fn)
+    dx_inf = header["P2PDX_M"]  # pixel width in meters
+    dx_dm_inf = header["C2CDX_M"]  # center2cen dist of actuators in meters
+    inf_mag = round(dx_dm_inf/dx_inf)
+    if np.abs(inf_mag - dx_dm_inf/dx_inf) > 1e-8:
+        raise ValueError('%s must have an integer number of pixels per actuator' % (inf_fn))
 
     if spacing != 0 and "N_ACT_ACROSS_PUPIL" in kwargs:
         raise ValueError("PROP_DM: User cannot specify both actuator spacing" +
@@ -317,30 +350,38 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     margin = 9 * inf_mag
     nx_grid = nx_dm * inf_mag + 2 * margin
     ny_grid = ny_dm * inf_mag + 2 * margin
-    xoff_grid = margin + inf_mag/2           # pixel location of 1st actuator center in subsampled grid
+    xoff_grid = margin + inf_mag/2  # pixel location of 1st actuator center in subsampled grid
     yoff_grid = xoff_grid
-    dm_grid = np.zeros([ny_grid, nx_grid], dtype = np.float64)
+    dm_grid = np.zeros([ny_grid, nx_grid], dtype=float)
 
     x = np.arange(nx_dm, dtype=int) * int(inf_mag) + int(xoff_grid)
     y = np.arange(ny_dm, dtype=int) * int(inf_mag) + int(yoff_grid)
     dm_grid[np.tile(np.vstack(y), (nx_dm,)),
             np.tile(x, (ny_dm, 1))] = dm_z_commanded
+    # hdu = fits.PrimaryHDU(dm_grid)
+    # hdu.writeto('/Users/ajriggs/Downloads/dm_grid_every4.fits', overwrite=True)
     dm_grid = ss.fftconvolve(dm_grid, inf, mode='same')
-    
+    # hdu = fits.PrimaryHDU(dm_grid)
+    # hdu.writeto('/Users/ajriggs/Downloads/dm_grid_every4_after_convolving.fits', overwrite=True)
+
     # 3D rotate DM grid and project orthogonally onto wavefront
-    xdim = int(np.round(np.sqrt(2) * nx_grid * dx_inf / dx_surf)) # grid dimensions (pix) projected onto wavefront
+    xdim = int(np.round(np.sqrt(2) * nx_grid * dx_inf / dx_surf))  # grid dimensions (pix) projected onto wavefront
     ydim = int(np.round(np.sqrt(2) * ny_grid * dx_inf / dx_surf))
 
-    if xdim > n: xdim = n
+    if xdim > n:
+        xdim = n
 
-    if ydim > n: ydim = n
+    if ydim > n:
+        ydim = n
 
-    x = np.ones((ydim, 1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
-    y = (np.ones((xdim, 1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
+    x = np.ones((ydim, 1)) * ((np.arange(xdim) - xdim // 2) * dx_surf)
+    y = (np.ones((xdim, 1)) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
+    # x = np.ones((ydim, 1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
+    # y = (np.ones((xdim, 1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
 
     a = xtilt * np.pi / 180
     b = ytilt * np.pi / 180
-    g = ztilt * np.pi /180
+    g = ztilt * np.pi / 180
 
     if XYZ:
         m = np.array([[cos(b)*cos(g), -cos(b)*sin(g), sin(b), 0],
@@ -375,11 +416,11 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     ydm = (ys + dm_yc * dx_dm) / dx_inf + yoff_grid
 
     if proper.use_cubic_conv:
-        grid = proper.prop_cubic_conv(dm_grid.T, xdm, ydm, GRID = False)
+        grid = proper.prop_cubic_conv(dm_grid.T, xdm, ydm, GRID=False)
         grid = grid.reshape([xdm.shape[1], xdm.shape[0]])
     else:
         grid = map_coordinates(dm_grid.T, [xdm, ydm], order=3,
-                               mode="nearest", prefilter = True)
+                               mode="nearest", prefilter=True)
 
     dmap = np.zeros([n, n], dtype=np.float64)
     nx_grid, ny_grid = grid.shape
@@ -540,19 +581,19 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
         if dm.orientation.lower() == 'rot0':
             pass  # no change
         elif dm.orientation.lower() == 'rot90':
-            actIndMat = np.rot90(actIndMat, 1)
+            actIndMat = np.rot90(actIndMat, -1)
         elif dm.orientation.lower() == 'rot180':
-            actIndMat = np.rot90(actIndMat, 2)
+            actIndMat = np.rot90(actIndMat, -2)
         elif dm.orientation.lower() == 'rot270':
-            actIndMat = np.rot90(actIndMat, 3)
+            actIndMat = np.rot90(actIndMat, -3)
         elif dm.orientation.lower() == 'flipxrot0':
-            actIndMat = np.flipx(actIndMat)
+            actIndMat = np.fliplr(actIndMat)
         elif dm.orientation.lower() == 'flipxrot90':
-            actIndMat = np.rot90(np.flipx(actIndMat), 1)
+            actIndMat = np.rot90(np.fliplr(actIndMat), 1)
         elif dm.orientation.lower() == 'flipxrot180':
-            actIndMat = np.rot90(np.flipx(actIndMat), 2)
+            actIndMat = np.rot90(np.fliplr(actIndMat), 2)
         elif dm.orientation.lower() == 'flipxrot270':
-            actIndMat = np.rot90(np.flipx(actIndMat), 3)
+            actIndMat = np.rot90(np.fliplr(actIndMat), 3)
         else:
             raise ValueError('invalid value of dm.orientation')
 
@@ -739,10 +780,10 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
     check.twoD_array(Vin, 'Vin', TypeError)
     check.real_scalar(Vlim, 'Vlim', TypeError)
     check.positive_scalar_integer(Nact, 'Nact', TypeError)
-    
+
     Vout = Vin  # Initialize output voltage map
     indPair = np.zeros((0,2))  # Initialize the paired indices list. [nPairs x 2]
-    
+
     kx1 = np.array([[0, 1], [1, 1], [1, 0]])              # R1-C1
     kx2 = np.array([[0,1], [1,1], [1,0], [1,-1]])         # R1, C2 - C47
     kx3 = np.array([[1,0], [1,-1]])                       # R1, C48
@@ -751,10 +792,10 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
     kx6 = np.array([[1,0], [1,-1]])                       # R2-47, C8
     kx7 = np.array([[-1,1], [0,1]])                       # R48, C1 - C47
     kx8 = np.array([[-1,-1]])                             # R48, C48
-    
+
     for jj in range(Nact):            # Row
         for ii in range(Nact):        # Col
-                    
+
             if jj == 0:
                 if ii == 0:
                     kx = kx1
@@ -774,35 +815,35 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
                     kx = kx7
                 else:
                     kx = kx8
-                
+
             kr = jj + kx[:,0]
             kc = ii + kx[:,1]
             nNbr = kr.size  # length(kr); # Number of neighbors
-                    
+
             if nNbr >= 1:
                 for iNbr in range(nNbr):
-                    
+
                     a1 = Vout[jj, ii] - Vout[kr[iNbr],kc[iNbr]] # Compute the delta voltage
-                    
+
                     if (np.abs(a1) > Vlim):  # If neighbor rule is violated
-                        
+
                         indLinCtr = (ii-1)*Nact + jj  # linear index of center actuator
                         indLinNbr = (kc[iNbr]-1)*Nact + kr[iNbr]  # linear index of neigboring actuator
                         indPair = np.array([indPair, np.array([indLinCtr, indLinNbr]).reshape(1, 2)])
                         indPair = np.vstack([indPair, np.array([indLinCtr, indLinNbr]).reshape(1, 2)])
-    
+
                         fx = (np.abs(a1) - Vlim) / 2.
                         Vout[jj, ii] = Vout[jj, ii] - np.sign(a1)*fx
                         Vout[kr[iNbr], kc[iNbr]] = Vout[kr[iNbr], kc[iNbr]] +\
                                                     np.sign(a1)*fx
 
     return Vout, indPair
-    
+
 
 def enforce_constraints(dm):
     """
     Enforce various constraints on DM actuator commands.
-    
+
     1) Apply min/max bounds.
     2) Set commands for pinned, railed, or dead actuators.
     3) Determine which actuators violate the neighbor rule.
@@ -821,30 +862,33 @@ def enforce_constraints(dm):
     """
     # 1) Find actuators that exceed min and max values. Any actuators reaching
     # those limits are added to the pinned actuator list.
+
     # Min voltage limit
-    new_inds = np.nonzero(dm.V.flatten()<dm.Vmin)[0]  # linear indices of new actuators breaking their bounds
+    Vtotal = dm.V + dm.biasMap
+    new_inds = np.nonzero(Vtotal.flatten()<dm.Vmin)[0]  # linear indices of new actuators breaking their bounds
     new_vals = dm.Vmin*np.ones(new_inds.size)
     dm.pinned = np.hstack([dm.pinned, new_inds])  # Augment the vector of pinned actuator linear indices
     dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  # Augment the vector of pinned actuator values
+
     # Max voltage limit
-    new_inds = np.nonzero(dm.V.flatten() > dm.Vmax)[0] # linear indices of new actuators breaking their bounds
+    new_inds = np.nonzero(Vtotal.flatten() > dm.Vmax)[0] # linear indices of new actuators breaking their bounds
     new_vals = dm.Vmax*np.ones(new_inds.size)
     dm.pinned = np.hstack([dm.pinned, new_inds])     # Augment the vector of pinned actuator linear indices
     dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  # Augment the vector of pinned actuator values
-    
+
     # 2) Enforce pinned (or railed or dead) actuator values
     if(dm.pinned.size > 0):
         Vflat = dm.V.flatten()
         Vflat[dm.pinned.astype(int)] = dm.Vpinned
         dm.V = Vflat.reshape(dm.V.shape)
-    
-    # 3) Find which actuators violate the DM neighbor rule. (This restricts 
-    # the maximum voltage between an actuator and each of its 8 neighbors.) 
-    # Add those actuator pairs to the list of tied actuators.
-    if(dm.flagNbrRule):
-        dm.V, indPair1 = apply_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
-        dm.tied = np.vstack([dm.tied, indPair1])  # Tie together actuators violating the neighbor rule
-        
+
+    # # 3) Find which actuators violate the DM neighbor rule. (This restricts 
+    # # the maximum voltage between an actuator and each of its 8 neighbors.) 
+    # # Add those actuator pairs to the list of tied actuators.
+    # if(dm.flagNbrRule):
+    #     dm.V, indPair1 = apply_neighbor_rule(dm.V, dm.dVnbr, dm.Nact);
+    #     dm.tied = np.vstack([dm.tied, indPair1])  # Tie together actuators violating the neighbor rule
+
     # 4) Enforce tied actuator pairs
     # In each pair of tied actuators, assign the command for the first actuator to that of the 2nd actuator
     if (dm.tied.size > 0):
@@ -872,14 +916,14 @@ def fit_surf_to_act(dm, surfaceToFit):
         2-D array of DM voltage commands
     """
     check.twoD_array(surfaceToFit, 'surfaceToFit', TypeError)
-    
+
     [mSurface, nSurface] = surfaceToFit.shape
 
     # Starting influence function (must be square)
     inf1 = dm.inf0
     N1 = inf1.shape[0]
     actres1 = dm.dm_spacing/dm.dx_inf0
-    x = np.linspace(-(N1-1.)/2.,(N1-1.)/2., N1)/actres1
+    x = np.linspace(-(N1-1.)/2., (N1-1.)/2., N1)/actres1
     [X, Y] = np.meshgrid(x, x)
 
     # Influence function resampled to actuator map resolution
@@ -890,81 +934,87 @@ def fit_surf_to_act(dm, surfaceToFit):
     # inf2 = interp2(X,Y,inf1,Xq,Yq,'cubic',0); # MATLAB way
     interp_spline = RectBivariateSpline(x, x, inf1)  # RectBivariateSpline is faster in 2-D than interp2d
     infFuncAtActRes = interp_spline(xq, xq)
-            
+
     # Set the order of operations
     flagXYZ = True
     if(hasattr(dm, 'flagZYX')):
         if(dm.flagZYX):
             flagXYZ = False
-            
+
     # Perform the fit
     if(nSurface == dm.Nact):
         gridDerotAtActRes = surfaceToFit
-    
+
     elif(nSurface > dm.Nact):
         # Adjust the centering of the output DM surface. The shift needs to be
         # in units of actuators, not meters
         wArray = nSurface*dm.dx
         cshift = -wArray/2./nSurface/dm.dm_spacing if(dm.centering == 'interpixel') else 0.
-    
+
         gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
         dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt,
         YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign,
         inf_fn=dm.inf_fn)
-    
+
     elif(nSurface < dm.Nact):
         raise ValueError('surfaceToFit cannot be smaller than [Nact x Nact].')
-    
+
     [Vout, surfaceOut] = proper.prop_fit_dm(gridDerotAtActRes, infFuncAtActRes)
 
     return Vout
 
-        
-def surf_from_poke_cube(dm, dmFullOrCompact):
+
+def gen_surf_from_poke_cube(dm, model_type):
     """
     Produce a DM surface by superposing actuators from a datacube.
-    
+
     Parameters
     ----------
     dm : numpy ndarray
         2-D array of DM voltage commands
-    dmFullOrCompact : ModelParameters
-        Structure containing parameter values for the DM in either the full or
-        compact model
+    model_type : {'compact', 'full'}
+        String telling whether to make the surface based on the compact
+        model or full model.
 
     Returns
     -------
-    DMsurf : numpy ndarray
+    dmSurf : numpy ndarray
         2-D array of DM surface map
     """
-    DMsurf = np.zeros((dmFullOrCompact.NdmPad,dmFullOrCompact.NdmPad))  # Initialize the empty array
+    if model_type not in ('compact', 'full'):
+        raise ValueError("model_type must be 'compact' or 'full'.")
+
+    if model_type == 'compact':
+        NdmPad = dm.compact.NdmPad
+        Nbox = dm.compact.Nbox
+        inf_datacube = dm.compact.inf_datacube
+        xy_box_lowerLeft = dm.compact.xy_box_lowerLeft
+    elif model_type == 'full':
+        NdmPad = dm.NdmPad
+        Nbox = dm.Nbox
+        inf_datacube = dm.inf_datacube
+        xy_box_lowerLeft = dm.xy_box_lowerLeft
+
+    dmSurf = np.zeros((NdmPad, NdmPad))
     for iact in range(dm.NactTotal):
-        if(any(any(dmFullOrCompact.inf_datacube[:, :, iact])) and any(dm.VtoH(iact))):
-            y_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[0, iact], dmFullOrCompact.xy_box_lowerLeft[0,iact]+dmFullOrCompact.Nbox-1, dtype=int) # x-indices in pupil arrays for the box
-            x_box_ind = np.arange(dmFullOrCompact.xy_box_lowerLeft[1, iact], dmFullOrCompact.xy_box_lowerLeft[1,iact]+dmFullOrCompact.Nbox-1, dtype=int) # y-indices in pupil arrays for the box
-            DMsurf[x_box_ind,y_box_ind] +=  dm.V.flatten()[iact]*dm.VtoH.flatten()[iact]*dmFullOrCompact.inf_datacube[: ,:, iact]
+        if np.sum(np.abs(inf_datacube[:, :, iact])) > 1e-12:
+            x_box_ind = np.arange(xy_box_lowerLeft[0, iact],
+                                  xy_box_lowerLeft[0, iact] + Nbox, dtype=int)
+            y_box_ind = np.arange(xy_box_lowerLeft[1, iact],
+                                  xy_box_lowerLeft[1, iact] + Nbox, dtype=int)
+            inds = np.ix_(y_box_ind, x_box_ind)
+            V = dm.V[np.unravel_index(iact, dm.V.shape)]
+            gain = dm.VtoH[np.unravel_index(iact, dm.VtoH.shape)]
+            dmSurf[inds] += V*gain*inf_datacube[:, :, iact]
 
-    # Adjust the orientation if specified
-    if(hasattr(dm, 'fliplr')):
-        if(dm.fliplr):
-            DMsurf = np.fliplr(DMsurf)
-            pass
-        pass
-    
-    if(hasattr(dm, 'flipud')):
-        if(dm.flipud):
-            DMsurf = np.flipud(DMsurf)
-            pass
-        pass
-
-    return DMsurf
+    return dmSurf
 
 
 def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
                             **kwargs):
     """
     Derotate and resize a DM surface to size and alignment of actuator grid.
-    
+
     Does the order of operations in the reverse order of PROPER's prop_dm.
 
 
@@ -1012,7 +1062,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
             'P2PDY_M' % pixel width y (m)
             'C2CDX_M' % actuator pitch x (m)
             'C2CDY_M' % actuator pitch y (m)
-    
+
     inf_sign : {+,-}
         specifies the sign (+/-) of the influence function. Given as an option because
         the default influence function file is positive, but positive DM actuator
@@ -1029,7 +1079,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     check.real_scalar(dm_xc, 'dm_xc', TypeError)
     check.real_scalar(dm_yc, 'dm_yc', TypeError)
     check.real_positive_scalar(spacing, 'spacing', TypeError)
-    
+
     if "ZYX" in kwargs and "XYZ" in kwargs:
         raise ValueError('Error: Cannot specify both XYZ and ZYX rotation' +
                          ' orders. Stopping')
@@ -1059,12 +1109,12 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
         ztilt = 0.
 
     dm_z = np.eye(Nact)
-    
+
     if "inf_fn" in kwargs:
         inf_fn = kwargs["inf_fn"]
     else:
         inf_fn = "influence_dm5v2.fits"
-        
+
     if "inf_sign" in kwargs:
         if(kwargs["inf_sign"] == '+'):
             sign_factor = 1.
@@ -1083,15 +1133,22 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
                             "data")
     inf = proper.prop_fits_read(os.path.join(dir_path, inf_fn))
     inf = sign_factor*np.squeeze(inf)
-    
+
     s = inf.shape
     nx_inf = s[1]
     ny_inf = s[0]
     xc_inf = nx_inf // 2
     yc_inf = ny_inf // 2
-    dx_inf = 0.1e-3  # influence function spacing in meters
-    dx_dm_inf = 1.e-3  # spacing between DM actuators in meters assumed by influence function
-    inf_mag = 10
+    # dx_inf = 0.1e-3  # influence function spacing in meters
+    # dx_dm_inf = 1.e-3  # spacing between DM actuators in meters assumed by influence function
+    # inf_mag = 10
+
+    header = fits.getheader(inf_fn)
+    dx_inf = header["P2PDX_M"]  # pixel width in meters
+    dx_dm_inf = header["C2CDX_M"]  # center2cen dist of actuators in meters
+    inf_mag = round(dx_dm_inf/dx_inf)
+    if np.abs(inf_mag - dx_dm_inf/dx_inf) > 1e-8:
+        raise ValueError('%s must have an integer number of pixels per actuator' % (inf_fn))
 
     dx_dm = spacing
 
@@ -1110,7 +1167,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     ny_grid = ny_dm * inf_mag + 2 * margin
     xoff_grid = margin + inf_mag/2  # pixel location of 1st actuator center in subsampled grid
     yoff_grid = xoff_grid
-    dm_grid = np.zeros([ny_grid, nx_grid], dtype = np.float64)
+    dm_grid = np.zeros([ny_grid, nx_grid], dtype=float)
 
     x = np.arange(nx_dm, dtype=int) * int(inf_mag) + int(xoff_grid)
     y = np.arange(ny_dm, dtype=int) * int(inf_mag) + int(yoff_grid)
@@ -1199,7 +1256,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     #  influence function.
     xOffsetInAct = ((Nact/2 - 1/2) - dm_xc)
     yOffsetInAct = ((Nact/2 - 1/2) - dm_yc)
- 
+
     multipleOfCommandGrid = int(falco.util.ceil_odd(spacing/dx))
     N1 = Nact*multipleOfCommandGrid
     N2 = dm_grid.shape[0]
@@ -1212,7 +1269,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     interp_spline = RectBivariateSpline(xs2, xs2, gridDerot)
     gridDerotResize = interp_spline(xs1-xOffsetInAct/Nact,
                                     xs1-yOffsetInAct/Nact)
-        
+
     xyOffset = int(np.floor(multipleOfCommandGrid/2.))
     gridDerotAtActRes = gridDerotResize[xyOffset::multipleOfCommandGrid,
                                         xyOffset::multipleOfCommandGrid]

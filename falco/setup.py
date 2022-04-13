@@ -29,6 +29,7 @@ def flesh_out_workspace(mp):
     """
     set_optional_variables(mp)  # Optional/hidden variables
     verify_key_values(mp)
+    convert_to_one_dim_arrays(mp)
 
     falco_set_spectral_properties(mp)
     falco_set_jacobian_modal_weights(mp)  # Zernike Modes and Subband Weighting
@@ -41,7 +42,7 @@ def flesh_out_workspace(mp):
     plot_superimposed_pupil_masks(mp)  # For visual inspection
 
     # Focal plane mask
-    falco_gen_FPM(mp)
+    falco_gen_fpm(mp)
     falco_compute_fpm_coordinates(mp)
 
     # Final focal plane
@@ -52,7 +53,7 @@ def flesh_out_workspace(mp):
 
     # DM1 and DM2
     falco_configure_dm1_and_dm2(mp)  # Flesh out the dm1 and dm2 structures
-    falco_gen_DM_stops(mp)
+    falco_gen_dm_stops(mp)
     falco_set_dm_surface_padding(mp)  # Angular Spectrum Propagation with FFTs
 
     falco_set_initial_Efields(mp)
@@ -76,11 +77,15 @@ def flesh_out_workspace(mp):
 def verify_key_values(mp):
     """Verify that important text options are valid."""
     mp.allowedCenterings = frozenset(('pixel', 'interpixel'))
-    mp.allowedCoronagraphTypes = frozenset(('VC', 'VORTEX', 'LC', 'APLC',
-                                            'FLC', 'SPLC', 'HLC'))
-    mp.allowedLayouts = frozenset(('fourier', 'fpm_scale', 'proper',
-                                   'roman_phasec_proper',
-                                   'wfirst_phaseb_proper'))
+    mp.allowedCoronagraphTypes = frozenset((
+        'VC', 'VORTEX', 'LC', 'APLC', 'FLC', 'SPLC', 'HLC'))
+    mp.allowedLayouts = frozenset((
+        'fourier', 'fpm_scale', 'proper',
+        'roman_phasec_proper', 'wfirst_phaseb_proper'))
+    mp.allowedEstimators = frozenset((
+        'perfect', 'pairwise', 'pairwise-square', 'pwp-bp-square',
+        'pairwise-rect', 'pwp-bp', 'pwp-kf'))
+    mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc'))
 
     # Check centering
     mp.centering = mp.centering.lower()
@@ -97,6 +102,18 @@ def verify_key_values(mp):
     mp.layout = mp.layout.lower()
     if mp.layout not in mp.allowedLayouts:
         raise ValueError('%s is not an allowed value of mp.layout.', mp.layout)
+
+    # Check estimator
+    mp.estimator = mp.estimator.lower()
+    if mp.estimator not in mp.allowedEstimators:
+        raise ValueError('%s is not an allowed value of mp.estimator.',
+                         mp.estimator)
+
+    # Check controller
+    mp.controller = mp.controller.lower()
+    if mp.controller not in mp.allowedControllers:
+        raise ValueError('%s is not an allowed value of mp.controller.',
+                         mp.controller)
 
 
 def set_optional_variables(mp):
@@ -122,16 +139,20 @@ def set_optional_variables(mp):
         mp.jac = falco.config.Object()
     if not hasattr(mp, "est"):
         mp.est = falco.config.Object()
+    if not hasattr(mp.est, "probe"):
+        mp.est.probe = falco.config.Object()
     if not hasattr(mp, "detector"):
         mp.detector = falco.config.Object()
     if not hasattr(mp, "star"):
         mp.star = falco.config.Object()
     if not hasattr(mp.compact, "star"):
         mp.compact.star = falco.config.Object()
-    if not hasattr(mp.jac, "star"):
-        mp.jac.star = falco.config.Object()
     if not hasattr(mp, "path"):
         mp.path = falco.config.Object()
+    if not hasattr(mp, 'jac'):
+        mp.jac = falco.config.EmptyClass()
+    if not hasattr(mp.jac, "star"):
+        mp.jac.star = falco.config.Object()
 
     # File Paths for Data Storage (excluded from git)
     localpath = os.path.dirname(os.path.abspath(__file__))
@@ -147,43 +168,24 @@ def set_optional_variables(mp):
     if not hasattr(mp.path, 'ws'):
         mp.path.ws = os.path.join(mp.path.falco, 'data', 'ws')
 
-    # multiprocessing
+    # Parallel processing
     if not hasattr(mp, "flagParallel"):
         mp.flagParallel = False
     if not hasattr(mp, "Nthreads"):
         mp.Nthreads = psutil.cpu_count(logical=False)
 
-    # How many stars to use and their positions
-    # mp.star is for the full model,
-    # and mp.compact.star is for the compact andJacobian models.
-    if not hasattr(mp.star, 'count'):
-        mp.star.count = 1
-    if not hasattr(mp.star, 'xiOffsetVec'):
-        mp.star.xiOffsetVec = 0
-    if not hasattr(mp.star, 'etaOffsetVec'):
-        mp.star.etaOffsetVec = 0
-    if not hasattr(mp.star, 'weights'):
-        mp.star.weights = 1
-    if not hasattr(mp.compact.star, 'count'):
-        mp.compact.star.count = 1
-    if not hasattr(mp.compact.star, 'xiOffsetVec'):
-        mp.compact.star.xiOffsetVec = 0
-    if not hasattr(mp.compact.star, 'etaOffsetVec'):
-        mp.compact.star.etaOffsetVec = 0
-    if not hasattr(mp.compact.star, 'weights'):
-        mp.compact.star.weights = 1
-    # Spatial weighting in the Jacobian by star:
-    if not hasattr(mp.jac.star, 'weights'):
-        mp.jac.star.weights = np.ones(mp.compact.star.count)
-
     # Saving data
     if not hasattr(mp, 'flagSaveWS'):
-        mp.flagSaveWS = False
-        # Whehter to save out the entire workspace at the end of the trial.
-    if not hasattr(mp, 'flagSaveEachItr'):
-        mp.flagSaveEachItr = False  # Whether to save out the performance at each iteration. Useful for long trials in case it crashes or is stopped early.
+        mp.flagSaveWS = False  # Save out the entire workspace at the end
     if not hasattr(mp, 'flagSVD'):
         mp.flagSVD = False    # Whether to compute and save the singular mode spectrum of the control Jacobian (each iteration)
+
+    # Optical model/layout
+    if not hasattr(mp.full, 'flagPROPER'):
+        mp.full.flagPROPER = False  # Whether the full model is a PROPER model
+    if not hasattr(mp, 'flagRotation'):
+        mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact and Jacobian models
+
     # Jacobian or controller related
     if not hasattr(mp, 'flagTrainModel'):
         mp.flagTrainModel = False  # Whether to call the Expectation-Maximization (E-M) algorithm to improve the linearized model. 
@@ -204,39 +206,59 @@ def set_optional_variables(mp):
     if not hasattr(mp, 'flagDMwfe'):
         mp.flagDMwfe = False  # Temporary for BMC quilting study
 
-    # Detector properties for adding noise to images
-    # Default values are for the Andor Neo sCMOS detector and testbed flux
-    if not hasattr(mp, 'flagImageNoise'):
-        mp.flagImageNoise = False  # whether to include noise in the images
-    if not hasattr(mp.detector, 'gain'):
-        mp.detector.gain = 1.0  # [e-/count]
-    if not hasattr(mp.detector, 'darkCurrentRate'):
-        mp.detector.darkCurrentRate = 0.015  # [e-/pixel/second]
-    if not hasattr(mp.detector, 'readNoiseStd'):
-        mp.detector.readNoiseStd = 1.7  # [e-/count]
-    if not hasattr(mp.detector, 'wellDepth'):
-        mp.detector.wellDepth = 3e4  # [e-]
-    if not hasattr(mp.detector, 'peakFluxVec'):
-        mp.detector.peakFluxVec = 1e8 * np.ones(mp.Nsbp)  # [counts/pixel/second]
-    if not hasattr(mp.detector, 'tExpVec'):
-        mp.detector.tExpVec = 1.0 * np.ones(mp.Nsbp)  # [seconds]
-    if not hasattr(mp.detector, 'Nexp'):
-        mp.detector.Nexp = 1  # number of exposures to stack
+    # Using an apodizer
+    if not hasattr(mp, 'flagApod'):
+        mp.flagApod = False
 
-    # Optical model/layout:
-    # Whether to use a full model written in PROPER.
-    if not hasattr(mp.full, 'flagPROPER'):
-        mp.full.flagPROPER = False
-    # Whether to have the E-field rotate 180 degrees from one pupil to the next
-    # Does not apply to PROPER full models.
-    if not hasattr(mp, 'flagRotation'):
-        mp.flagRotation = True
+    # Run label
+    if not hasattr(mp, 'runLabel'):
+        mp.runLabel = 'default_label_'
 
-    # Optional/Hidden variables
+    # How many stars to use and their positions
+    # mp.star is for the full model,
+    # and mp.compact.star is for the compact andJacobian models.
+    if not hasattr(mp.star, 'count'):
+        mp.star.count = 1
+    if not hasattr(mp.star, 'xiOffsetVec'):
+        mp.star.xiOffsetVec = [0]
+    if not hasattr(mp.star, 'etaOffsetVec'):
+        mp.star.etaOffsetVec = [0]
+    if not hasattr(mp.star, 'weights'):
+        mp.star.weights = [1]
+    if not hasattr(mp.compact.star, 'count'):
+        mp.compact.star.count = 1
+    if not hasattr(mp.compact.star, 'xiOffsetVec'):
+        mp.compact.star.xiOffsetVec = [0]
+    if not hasattr(mp.compact.star, 'etaOffsetVec'):
+        mp.compact.star.etaOffsetVec = [0]
+    if not hasattr(mp.compact.star, 'weights'):
+        mp.compact.star.weights = [1]
+    # Spatial weighting in the Jacobian by star:
+    if not hasattr(mp.jac.star, 'weights'):
+        mp.jac.star.weights = np.ones(mp.compact.star.count)
+
     if not hasattr(mp.full, 'pol_conds'):
         mp.full.pol_conds = np.array([0])  # Vector of which polarization state(s) to use when creating images from the full model. Currently only used with PROPER full models from John Krist.
+
+    # AS FT type for Jacobians
     if not hasattr(mp, 'propMethodPTP'):
         mp.propMethodPTP = 'fft'  # Propagation method for postage stamps around the influence functions. 'mft' or 'fft'
+
+    # Vortex or other azithumal, phase-only FPMs
+    if not hasattr(mp.jac, 'mftToVortex'):
+        mp.jac.mftToVortex = False  # Whether to use MFTs to propagate to/from the vortex FPM
+    if not hasattr(mp.F3, 'VortexSpotDiam'):
+        mp.F3.VortexSpotDiam = 0  # Diameter of the opaque spot at the center of the vortex. [lambda0/D]
+    if not hasattr(mp.F3, 'VortexSpotOffsets'):
+        mp.F3.VortexSpotOffsets = [0, 0]  # Offsets for the opaque spot at the center of the vortex. [lambda0/D]
+    if not hasattr(mp.F3, 'phaseMaskType'):
+        mp.F3.phaseMaskType = 'vortex'  # Type of phase FPMs allowed: 'vortex', 'cos', 'sectors', and 'staircase'.
+    if not hasattr(mp.F3, 'NstepStaircase'):
+        mp.F3.NstepStaircase = 6  # Number of discrete steps per 2*pi radians of phase for a staircase phase mask at F3.
+    if not hasattr(mp.F3, 'clocking'):
+        mp.F3.clocking = 0  # Counterclockwise clocking of the phase FPM [degrees].
+    if not hasattr(mp.F3, 'phaseScaleFac'):
+        mp.F3.phaseScaleFac = 1  # Factor to apply to the phase in the phase FPM. Use a vector to add chromaticity to the model. 
 
     # Sensitivities to Zernike-Mode Perturbations
     if not hasattr(mp.full, 'ZrmsVal'):
@@ -272,35 +294,64 @@ def set_optional_variables(mp):
 
     # Deformable mirror settings
     # DM1
-    if not hasattr(mp.dm1,'orientation'):
+    if not hasattr(mp.dm1, 'orientation'):
         mp.dm1.orientation = 'rot0'  # Change to mp.dm1.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
-    if not hasattr(mp.dm1, 'Vmin'):
-        mp.dm1.Vmin = -1000.  # Min allowed voltage command
-    if not hasattr(mp.dm1, 'Vmax'):
-        mp.dm1.Vmax = 1000.  # Max allowed voltage command
+    if not hasattr(mp.dm1, 'fitType'):
+        mp.dm1.fitType = 'linear'  # Type of response for displacement vs voltage. Options are 'linear', 'quadratic', and 'fourier2'.
     if not hasattr(mp.dm1, 'pinned'):
         mp.dm1.pinned = np.array([])  # Indices of pinned actuators
     if not hasattr(mp.dm1, 'Vpinned'):
         mp.dm1.Vpinned = np.array([])  # (Fixed) voltage commands of pinned actuators
     if not hasattr(mp.dm1, 'tied'):
         mp.dm1.tied = np.zeros((0, 2))  # Indices of paired actuators. Two indices per row
-    if not hasattr(mp.dm1, 'flagNbrRule'):
-        mp.dm1.flagNbrRule = False  # Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm1.dVnbr
+    if mp.flagSim:
+        if not hasattr(mp.dm1, 'Vmin'):
+            mp.dm1.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm1, 'Vmax'):
+            mp.dm1.Vmax = 1000.  # Max allowed absolute voltage command
+    else:
+        if not hasattr(mp.dm1, 'Vmin'):
+            mp.dm1.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm1, 'Vmax'):
+            mp.dm1.Vmax = 100.  # Max allowed absolute voltage command
+    if not hasattr(mp.dm1, 'dVnbrLat'):
+        mp.dm1.dVnbrLat = mp.dm1.Vmax  # max voltage difference allowed between laterally-adjacent DM actuators
+    if not hasattr(mp.dm1, 'dVnbrDiag'):
+        mp.dm1.dVnbrDiag = mp.dm1.Vmax  # max voltage difference allowed between diagonally-adjacent DM actuators
+    if not hasattr(mp.dm1, 'biasMap'):
+        mp.dm1.biasMap = mp.dm1.Vmax/2*np.ones((mp.dm1.Nact, mp.dm1.Nact))  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm1.biasMap + mp.dm1.V
+    if not hasattr(mp.dm1, 'facesheetFlatmap'):
+        mp.dm1.facesheetFlatmap = mp.dm1.biasMap  # Voltage map that produces a flat DM1 surface. Used when enforcing the neighbor rule.
+
     # DM2
-    if not hasattr(mp.dm2,'orientation'):
-        mp.dm2.orientation = 'rot0'  # Change to mp.dm1.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
-    if not hasattr(mp.dm2, 'Vmin'):
-        mp.dm2.Vmin = -1000.  # Min allowed voltage command
-    if not hasattr(mp.dm2, 'Vmax'):
-        mp.dm2.Vmax = 1000.  # Max allowed voltage command
+    if not hasattr(mp.dm2, 'orientation'):
+        mp.dm2.orientation = 'rot0'  # Change to mp.dm2.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
+    if not hasattr(mp.dm2, 'fitType'):
+        mp.dm2.fitType = 'linear'  # Type of response for displacement vs voltage. Options are 'linear', 'quadratic', and 'fourier2'.
     if not hasattr(mp.dm2, 'pinned'):
         mp.dm2.pinned = np.array([])  # Indices of pinned actuators
     if not hasattr(mp.dm2, 'Vpinned'):
         mp.dm2.Vpinned = np.array([])  # (Fixed) voltage commands of pinned actuators
     if not hasattr(mp.dm2, 'tied'):
         mp.dm2.tied = np.zeros((0, 2))  # Indices of paired actuators. Two indices per row
-    if not hasattr(mp.dm2, 'flagNbrRule'):
-        mp.dm2.flagNbrRule = False  # Whether to set constraints on neighboring actuator voltage differences. If set to true, need to define mp.dm2.dVnbr
+    if mp.flagSim:
+        if not hasattr(mp.dm2, 'Vmin'):
+            mp.dm2.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm2, 'Vmax'):
+            mp.dm2.Vmax = 1000.  # Max allowed absolute voltage command
+    else:
+        if not hasattr(mp.dm2, 'Vmin'):
+            mp.dm2.Vmin = 0.  # Min allowed absolute voltage command
+        if not hasattr(mp.dm2, 'Vmax'):
+            mp.dm2.Vmax = 100.  # Max allowed absolute voltage command
+    if not hasattr(mp.dm2, 'dVnbrLat'):
+        mp.dm2.dVnbrLat = mp.dm2.Vmax  # max voltage difference allowed between laterally-adjacent DM actuators
+    if not hasattr(mp.dm2, 'dVnbrDiag'):
+        mp.dm2.dVnbrDiag = mp.dm2.Vmax  # max voltage difference allowed between diagonally-adjacent DM actuators
+    if not hasattr(mp.dm2, 'biasMap'):
+        mp.dm2.biasMap = mp.dm2.Vmax/2*np.ones((mp.dm2.Nact, mp.dm2.Nact))  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm2.biasMap + mp.dm2.V
+    if not hasattr(mp.dm2, 'facesheetFlatmap'):
+        mp.dm2.facesheetFlatmap = mp.dm2.biasMap  # Voltage map that produces a flat dm2 surface. Used when enforcing the neighbor rule.
 
     # Loading previous DM commands as the starting point
     # Stash DM8 and DM9 starting commands if they are given in the main script
@@ -331,15 +382,42 @@ def set_optional_variables(mp):
     if np.any(mp.dm_ind == 9):
         mp.dm9.dV = 0
 
-#    # First delta DM settings are zero (for covariance calculation in Kalman filters)
-#    mp.dm1.dV = np.zeros((mp.dm1.Nact, mp.dm1.Nact))  # delta voltage on DM1;
-#    mp.dm2.dV = np.zeros((mp.dm2.Nact, mp.dm2.Nact))  # delta voltage on DM2;
-#    mp.dm8.dV = np.zeros((mp.dm8.NactTotal,1))  # delta voltage on DM8;
-#    mp.dm9.dV = np.zeros((mp.dm9.NactTotal,1))  # delta voltage on DM9;
+    # Detector properties for adding noise to images
+    # Default values are for the Andor Neo sCMOS detector and testbed flux
+    if not hasattr(mp, 'flagImageNoise'):
+        mp.flagImageNoise = False  # whether to include noise in the images
+    if not hasattr(mp.detector, 'gain'):
+        mp.detector.gain = 1.0  # [e-/count]
+    if not hasattr(mp.detector, 'darkCurrentRate'):
+        mp.detector.darkCurrentRate = 0.015  # [e-/pixel/second]
+    if not hasattr(mp.detector, 'readNoiseStd'):
+        mp.detector.readNoiseStd = 1.7  # [e-/count]
+    if not hasattr(mp.detector, 'wellDepth'):
+        mp.detector.wellDepth = 3e4  # [e-]
+    if not hasattr(mp.detector, 'peakFluxVec'):
+        mp.detector.peakFluxVec = 1e8 * np.ones(mp.Nsbp)  # [counts/pixel/second]
+    if not hasattr(mp.detector, 'tExpVec'):
+        mp.detector.tExpVec = 1.0 * np.ones(mp.Nsbp)  # [seconds]
+    if not hasattr(mp.detector, 'Nexp'):
+        mp.detector.Nexp = 1  # number of exposures to stack
 
     # Control
     if not hasattr(mp, 'WspatialDef'):
         mp.WspatialDef = np.array([])  # spatial weight matrix for the Jacobian
+    if not hasattr(mp.jac, 'minimizeNI'):
+        mp.jac.minimizeNI = False  # Have EFC minimize normalized intensity instead of intensity
+    if not hasattr(mp.jac, 'zerns'):
+        mp.jac.zerns = np.array([1])  # Noll Zernike modes in Jacobian
+    if not hasattr(mp.jac, 'Zcoef'):
+        mp.jac.Zcoef = np.array([1])  # coefficients (i.e., weights) of Zernike modes in Jacobian. Weight for piston is always 1.
+
+    # Estimation
+    if not hasattr(mp.est, 'probeSchedule'):
+        mp.est.probeSchedule = falco.config.ProbeSchedule()
+    if not hasattr(mp.est, 'InormProbeMax'):
+        mp.est.InormProbeMax = 1e-4  # Max probe intensity allowed (in NI)
+    if not hasattr(mp.est, 'Ithreshold'):
+        mp.est.Ithreshold = 1e-2  # Lower estimated intensities to this value if they exceed this (probably due to a bad inversion)
 
     # Performance Evaluation
     # Conversion factor: milliarcseconds (mas) to lambda0/D
@@ -353,7 +431,24 @@ def set_optional_variables(mp):
     if not hasattr(mp.P1, 'IDnorm'):
         mp.P1.IDnorm = 0.0
 
-    pass
+    return None
+
+
+def convert_to_one_dim_arrays(mp):
+    """Make sure certain inputs are iterables with np.atleast_1d()."""
+    mp.eval.indsZnoll = np.atleast_1d(mp.eval.indsZnoll)
+    mp.eval.Rsens = np.atleast_1d(mp.eval.Rsens)
+    mp.ctrl.log10regVec = np.atleast_1d(mp.ctrl.log10regVec)
+    mp.dm_ind = np.atleast_1d(mp.dm_ind)
+    mp.relinItrVec = np.atleast_1d(mp.relinItrVec)
+
+    mp.est.probe.gainFudge = np.atleast_1d(mp.est.probe.gainFudge)
+    mp.est.probe.xiOffset = np.atleast_1d(mp.est.probe.xiOffset)
+    mp.est.probe.etaOffset = np.atleast_1d(mp.est.probe.etaOffset)
+    mp.est.probe.width = np.atleast_1d(mp.est.probe.width)
+    mp.est.probe.height = np.atleast_1d(mp.est.probe.height)
+
+    return None
 
 
 def falco_set_spectral_properties(mp):
@@ -464,30 +559,25 @@ def falco_set_jacobian_modal_weights(mp):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    # Initialize mp.jac if it doesn't exist
-    if not hasattr(mp, 'jac'):
-        mp.jac = falco.config.EmptyClass()
-
-    # Which Zernike modes to include in Jacobian. A vector of Noll indices.
-    # 1 is the on-axis piston mode.
-    if not hasattr(mp.jac, 'zerns'):
-        mp.jac.zerns = np.array([1])
-        mp.jac.Zcoef = np.array([1])
-    else:
-        mp.jac.zerns = np.atleast_1d(mp.jac.zerns)
-        mp.jac.Zcoef = np.atleast_1d(mp.jac.Zcoef)
-
+    mp.jac.zerns = np.atleast_1d(mp.jac.zerns)
+    mp.jac.Zcoef = np.atleast_1d(mp.jac.Zcoef)
     mp.jac.Nzern = np.size(mp.jac.zerns)
-    # Reset coefficient for piston term to 1
-    mp.jac.Zcoef[mp.jac.zerns == 1] = 1
+
+    if not np.any(mp.jac.zerns == 1):
+        raise ValueError('Piston must be included as a controlled Zernike.')
+    elif list(mp.jac.zerns) != list(set(mp.jac.zerns)):
+        raise ValueError('mp.jac.zerns cannot have repeated values.')
+    else:
+        # Reset coefficient for piston term to 1
+        mp.jac.Zcoef[mp.jac.zerns == 1] = 1
 
     # Initialize weighting matrix of each Zernike-wavelength mode for the controller
     mp.jac.weightMat = np.zeros((mp.Nsbp, mp.jac.Nzern))
-    for izern in range(0, mp.jac.Nzern):
+    for izern in range(mp.jac.Nzern):
         whichZern = mp.jac.zerns[izern]
         if whichZern == 1:  # Include all wavelengths for piston Zernike mode
             mp.jac.weightMat[:, 0] = np.ones(mp.Nsbp)
-        else:  # Include just middle and end wavelengths for Zernike mode 2 and up
+        else:  # Include just middle and end wavelengths for non-piston
             mp.jac.weightMat[0, izern] = 1
             mp.jac.weightMat[mp.si_ref, izern] = 1
             mp.jac.weightMat[mp.Nsbp-1, izern] = 1
@@ -510,21 +600,32 @@ def falco_set_jacobian_modal_weights(mp):
             mp.jac.weightMat[:, izern] = 0*mp.jac.weightMat[:, izern]
 
     # Indices of the non-zero control Jacobian modes in the weighting matrix
-    mp.jac.weightMat_ele = np.nonzero(mp.jac.weightMat > 0)
+    mp.jac.weightMatInd = np.nonzero(mp.jac.weightMat > 0)
+    NmodePerStar = len(mp.jac.weightMatInd[0])
+    mp.jac.NmodePerStar = NmodePerStar
     # Vector of control Jacobian mode weights
-    mp.jac.weights = mp.jac.weightMat[mp.jac.weightMat_ele]
-    # Number of (Zernike-wavelength pair) modes in the control Jacobian
-    mp.jac.Nmode = np.size(mp.jac.weights)
+    mp.jac.weights = np.tile(mp.jac.weightMat[mp.jac.weightMatInd],
+                             mp.compact.star.count)
+    # Number of (Zernike-wavelength-star) modes in the control Jacobian
+    mp.jac.Nmode = mp.compact.star.count * NmodePerStar
 
     # Get the wavelength indices for the nonzero values in the weight matrix.
-    tempMat = np.tile(np.arange(mp.Nsbp).reshape((mp.Nsbp, 1)), (1, mp.jac.Nzern))
-    mp.jac.sbp_inds = tempMat[mp.jac.weightMat_ele]
+    tempMat = np.tile(np.arange(mp.Nsbp).reshape((mp.Nsbp, 1)),
+                      (1, mp.jac.Nzern))
+    mp.jac.sbp_inds = np.tile(tempMat[mp.jac.weightMatInd],
+                              mp.compact.star.count)
 
     # Get the Zernike indices for the nonzero elements in the weight matrix.
     tempMat = np.tile(mp.jac.zerns, (mp.Nsbp, 1))
-    mp.jac.zern_inds = tempMat[mp.jac.weightMat_ele]
+    mp.jac.zern_inds = np.tile(tempMat[mp.jac.weightMatInd],
+                               mp.compact.star.count)
 
-    pass
+    # Get the star indices for each mode
+    mp.jac.star_inds = np.zeros(mp.jac.Nmode, dtype=int)
+    for iStar in range(mp.compact.star.count):
+        mp.jac.star_inds[iStar*NmodePerStar:(iStar+1)*NmodePerStar] = iStar*np.ones(NmodePerStar, dtype=int)
+
+    return None
 
 
 def compute_entrance_pupil_coordinates(mp):
@@ -743,8 +844,8 @@ def plot_superimposed_pupil_masks(mp):
             plt.pause(0.1)
 
 
-def falco_gen_FPM(mp):
-    """Generate the FPM (for the HLC only)."""
+def falco_gen_fpm(mp):
+    """Generate the FPM. Used only for an HLC being optimized."""
     if mp.layout.lower() == 'fourier':
 
         if mp.coro == 'HLC':
@@ -905,7 +1006,7 @@ def falco_configure_dark_hole_region(mp):
         CORR["etaFOV"] = mp.Fend.etaFOV
     if hasattr(mp.Fend, 'Nxi'):
         CORR["Nxi"] = mp.Fend.Nxi
-    if hasattr(mp.Fend, 'etaFOV'):
+    if hasattr(mp.Fend, 'Neta'):
         CORR["Neta"] = mp.Fend.Neta
 
     if not hasattr(mp.Fend, 'shape'):
@@ -1035,21 +1136,27 @@ def falco_set_spatial_weights(mp):
 
     # Define 2-D coordinate grid
     [XISLAMD, ETASLAMD] = np.meshgrid(mp.Fend.xisDL, mp.Fend.etasDL)
-    RHOS = np.sqrt(XISLAMD**2+ETASLAMD**2)
-    mp.Wspatial = mp.Fend.corr.maskBool.astype(float)
+    RHOS = np.sqrt(XISLAMD**2 + ETASLAMD**2)
+    mp.Wspatial = copy.copy(mp.Fend.corr.maskBool).astype(float)
     if hasattr(mp, 'WspatialDef'):
-        if(np.size(mp.WspatialDef) > 0):
+        mp.WspatialDef = np.atleast_2d(mp.WspatialDef)
+        if mp.WspatialDef.size > 0:
             for kk in range(0, mp.WspatialDef.shape[0]):
                 Wannulus = 1. + (np.sqrt(mp.WspatialDef[kk, 2])-1.) *\
                     ((RHOS >= mp.WspatialDef[kk, 0]) &
                      (RHOS < mp.WspatialDef[kk, 1]))
                 mp.Wspatial = mp.Wspatial*Wannulus
 
-    mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]
-    if(mp.flagFiber and mp.flagLenslet):
-        mp.WspatialVec = np.ones((mp.Fend.Nlens,))
+    # mp.WspatialVec = mp.Wspatial[mp.Fend.corr.maskBool]
 
-    pass
+    # Spatial weighting vector (for each star)
+    Npix = np.sum(mp.Fend.corr.maskBool.astype(int))
+    mp.WspatialVec = np.zeros((Npix, mp.compact.star.count))
+    for iStar in range(mp.compact.star.count):
+        mp.WspatialVec[:, iStar] = (mp.jac.star.weights[iStar] *
+                                    mp.Wspatial[mp.Fend.corr.maskBool])
+
+    return None
 
 
 def falco_configure_dm1_and_dm2(mp):
@@ -1127,9 +1234,29 @@ def falco_configure_dm1_and_dm2(mp):
         mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
     pass
 
+    # Initialize the number of elements used per DM
+    if np.any(mp.dm_ind == 1):
+        mp.dm1.Nele = len(mp.dm1.act_ele)
+    else:
+        mp.dm1.Nele = 0
+    if np.any(mp.dm_ind == 2):
+        mp.dm2.Nele = len(mp.dm2.act_ele)
+    else:
+        mp.dm2.Nele = 0
+    if np.any(mp.dm_ind == 8):
+        mp.dm8.Nele = len(mp.dm8.act_ele)
+    else:
+        mp.dm8.Nele = 0
+    if np.any(mp.dm_ind == 9):
+        mp.dm9.Nele = len(mp.dm9.act_ele)
+    else:
+        mp.dm9.Nele = 0
 
-def falco_gen_DM_stops(mp):
-    """Generate circular stops for the DMs."""
+    return None
+
+
+def falco_gen_dm_stops(mp):
+    """Generate circular aperture stops for the DMs."""
     if not hasattr(mp.dm2, 'full'):
         mp.dm2.full = falco.config.Object()
     if not hasattr(mp.dm2, 'compact'):
@@ -1141,14 +1268,15 @@ def falco_gen_DM_stops(mp):
     if mp.flagDM2stop:
         mp.dm2.full.mask = falco.mask.falco_gen_DM_stop(mp.P2.full.dx, mp.dm2.Dstop, mp.centering)
         mp.dm2.compact.mask = falco.mask.falco_gen_DM_stop(mp.P2.compact.dx, mp.dm2.Dstop, mp.centering)
-    pass
+    
+    return None
 
 
 def falco_set_dm_surface_padding(mp):
     """Set how much the DM surface arrays get padded prior to propagation."""
-    #% DM Surface Array Sizes for Angular Spectrum Propagation with FFTs
+    # DM Surface Array Sizes for Angular Spectrum Propagation with FFTs
     # Array Sizes for Angular Spectrum Propagation with FFTs
-    
+
     # Compact Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
     if np.any(mp.dm_ind == 1) and np.any(mp.dm_ind == 2):
         NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.compact.NdmPad, mp.dm2.compact.NdmPad])))
@@ -1163,7 +1291,7 @@ def falco_set_dm_surface_padding(mp):
         # Double the zero-padding until the angular spectrum sampling requirement is not violated
         NdmPad = 2*NdmPad;
     mp.compact.NdmPad = NdmPad;
-    
+
     # Full Model: Set nominal DM plane array sizes as a power of 2 for angular spectrum propagation with FFTs
     if np.any(mp.dm_ind == 1) and np.any(mp.dm_ind == 2):
         NdmPad = 2**np.ceil(1 + np.log2(np.max([mp.dm1.NdmPad, mp.dm2.NdmPad])))
@@ -1178,7 +1306,8 @@ def falco_set_dm_surface_padding(mp):
         (NdmPad < np.min(mp.full.lambdas)*np.abs(mp.d_P2_dm1)/mp.P2.full.dx**2): 
         NdmPad = 2*NdmPad
     mp.full.NdmPad = NdmPad
-    pass
+
+    return None
 
 
 def falco_set_initial_Efields(mp):
@@ -1186,16 +1315,22 @@ def falco_set_initial_Efields(mp):
     # Initial Electric Fields for Star and Exoplanet
 
     if not hasattr(mp.P1.full, 'E'):  # Input E-field at entrance pupil
-        mp.P1.full.E = np.ones((mp.P1.full.Narr, mp.P1.full.Narr, mp.Nwpsbp,
-                                mp.Nsbp), dtype=complex)
-
-    # Initialize the input E-field for the planet at the entrance pupil.
-    # Will apply the phase ramp later
-    mp.Eplanet = mp.P1.full.E
+        mp.P1.full.E = np.ones(
+            (mp.P1.full.Narr, mp.P1.full.Narr, mp.Nwpsbp, mp.Nsbp),
+            dtype=complex)
+    else:  # If loading, pad to the correct size
+        if mp.P1.full.E.shape[0] != mp.P1.full.Narr:
+            EarrayTemp = mp.P1.full.E.copy()
+            mp.P1.full.E = np.ones((mp.P1.full.Narr, mp.P1.full.Narr,
+                                    mp.Nwpsbp, mp.Nsbp), dtype=complex)
+            for si in range(mp.Nsbp):
+                for wi in range(mp.Nwpsbp):
+                    mp.P1.full.E[:, :, wi, si] = falco.util.pad_crop(EarrayTemp[:, :, wi, si], mp.P1.full.Narr)
+            del EarrayTemp
 
     if not hasattr(mp.P1.compact, 'E'):
-        mp.P1.compact.E = np.ones((mp.P1.compact.Narr, mp.P1.compact.Narr,
-                                   mp.Nsbp), dtype=complex)
+        mp.P1.compact.E = np.ones(
+            (mp.P1.compact.Narr, mp.P1.compact.Narr, mp.Nsbp), dtype=complex)
     else:
         if mp.P1.compact.E.shape[0] != mp.P1.compact.Narr:
             EcubeTemp = copy.deepcopy(mp.P1.compact.E)
@@ -1204,10 +1339,11 @@ def falco_set_initial_Efields(mp):
             for si in range(mp.Nsbp):
                 mp.P1.compact.E[:, :, si] = pad_crop(EcubeTemp[:, :, si],
                                                      mp.P1.compact.Narr)
+            del EcubeTemp
 
-    # Throughput is computed with the compact model
-    mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(
-        np.mean(mp.P1.compact.E, 2), mp.P1.compact.mask.shape[0]))**2))
+    # # Throughput is computed with the compact model
+    # mp.sumPupil = np.sum(np.sum(np.abs(mp.P1.compact.mask*falco.util.pad_crop(
+    #     np.mean(mp.P1.compact.E, 2), mp.P1.compact.mask.shape[0]))**2))
 
 
 def init_storage_arrays(mp):
@@ -1258,11 +1394,17 @@ def init_storage_arrays(mp):
     out.dm8.Srms = np.zeros(mp.Nitr)
     out.dm9.Srms = np.zeros(mp.Nitr)
 
+    # SVD
+    out.EforSpectra = []
+    out.smspectra = []
+    out.sm = []
+    out.alpha2 = []
+
     # Sensitivities Zernike-Mode Perturbations
     if not hasattr(mp.eval, 'Rsens'):
         mp.eval.Rsens = []
     if not hasattr(mp.eval, 'indsZnoll'):
-        mp.eval.indsZnoll = [1, 2]
+        mp.eval.indsZnoll = [2, 3]
     Nannuli = mp.eval.Rsens.shape[0]
     Nzern = len(mp.eval.indsZnoll)
     out.Zsens = np.zeros((Nzern, Nannuli, mp.Nitr))
@@ -1315,97 +1457,3 @@ def init_storage_arrays(mp):
     out.serialDate = np.zeros(mp.Nitr)  # start time of each iteration as float
 
     return out
-
-
-def falco_gen_FPM_LC(mp):
-    """
-    Make or read in focal plane mask (FPM) amplitude for the full model.
-
-    Detailed description here
-
-    Parameters
-    ----------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    Returns
-    -------
-    mp: falco.config.ModelParameters
-        Structure of model parameters
-    """
-    if type(mp) is not falco.config.ModelParameters:
-        raise TypeError('Input "mp" must be of type ModelParameters')
-    
-    # Make or read in focal plane mask (FPM) amplitude for the full model
-    FPMgenInputs = {}
-    FPMgenInputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
-    FPMgenInputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-    if hasattr(mp, 'FPMampFac'):
-        FPMgenInputs["FPMampFac"] = mp.FPMampFac  # amplitude transmission of inner FPM spot
-    else:
-        FPMgenInputs["FPMampFac"] = 0.0
-    FPMgenInputs["centering"] = mp.centering
-    
-    if not hasattr(mp.F3.full, 'mask'):
-        mp.F3.full.mask = falco.config.Object()
-
-    mp.F3.full.mask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
-
-    mp.F3.full.Nxi = mp.F3.full.mask.shape[1]
-    mp.F3.full.Neta = mp.F3.full.mask.shape[0]
-
-    # Number of points across the FPM in the compact model
-    if np.isinf(mp.F3.Rout):
-        if mp.centering == 'pixel':
-            mp.F3.compact.Nxi = ceil_even((2*(mp.F3.Rin*mp.F3.compact.res + 1/2)))
-        else:
-            mp.F3.compact.Nxi = ceil_even((2*mp.F3.Rin*mp.F3.compact.res))
-
-    else:
-        if mp.centering == 'pixel':
-            mp.F3.compact.Nxi = ceil_even((2*(mp.F3.Rout*mp.F3.compact.res + 1/2)))
-        else:  # case 'interpixel'
-            mp.F3.compact.Nxi = ceil_even((2*mp.F3.Rout*mp.F3.compact.res))
-
-    mp.F3.compact.Neta = mp.F3.compact.Nxi
-    
-    # Make or read in focal plane mask (FPM) amplitude for the compact model
-    FPMgenInputs["pixresFPM"] = mp.F3.compact.res  # pixels per lambda_c/D
-    
-    if not hasattr(mp.F3.compact, 'mask'):
-        mp.F3.compact.mask = falco.config.Object()
-        
-    mp.F3.compact.mask = falco.mask.falco_gen_annular_FPM(FPMgenInputs)
-
-def falco_gen_FPM_SPLC(mp):
-    """Generate the FPM for an SPLC."""
-    if not hasattr(mp.F3, 'ang'):
-        mp.F3.ang = 180
-    
-    if(mp.full.flagGenFPM):
-        # Generate the FPM amplitude for the full model
-        inputs = {}
-        inputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-        inputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-        inputs["ang"] = mp.F3.ang  # [degrees]
-        inputs["centering"] = mp.centering;
-        inputs["pixresFPM"] = mp.F3.full.res  # pixels per lambda_c/D
-        mp.F3.full.mask = falco.mask.falco_gen_bowtie_FPM(inputs)
-    
-    if(mp.compact.flagGenFPM):
-        # Generate the FPM amplitude for the compact model
-        inputs = {}
-        inputs["rhoInner"] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-        inputs["rhoOuter"] = mp.F3.Rout  # radius of outer opaque FPM ring (in lambda_c/D)
-        inputs["ang"] = mp.F3.ang  # [degrees]
-        inputs["centering"] = mp.centering
-        inputs["pixresFPM"] = mp.F3.compact.res
-        mp.F3.compact.mask = falco.mask.falco_gen_bowtie_FPM(inputs)
-    
-    if not mp.full.flagPROPER:
-        mp.F3.full.Nxi = mp.F3.full.mask.shape[1]
-        mp.F3.full.Neta = mp.F3.full.mask.shape[0]
-    
-    mp.F3.compact.Nxi = mp.F3.compact.mask.shape[1]
-    mp.F3.compact.Neta = mp.F3.compact.mask.shape[0]
-    pass

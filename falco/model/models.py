@@ -2,7 +2,6 @@
 import copy
 import numpy as np
 import multiprocessing
-import matplotlib.pyplot as plt
 
 from . import jacobians
 import falco
@@ -39,33 +38,40 @@ def full(mp, modvar, isNorm=True):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    if hasattr(modvar, 'sbpIndex'):
-        normFac = mp.Fend.full.I00[modvar.sbpIndex, modvar.wpsbpIndex]
-        # Value to normalize the PSF. Set to 0 when finding the norm factor
-
-    # Optional Keyword arguments
-    if not isNorm:
+    if isNorm:
+        if hasattr(modvar, 'sbpIndex') and hasattr(modvar, 'wpsbpIndex'):
+            normFac = mp.Fend.full.I00[modvar.sbpIndex, modvar.wpsbpIndex]
+        else:
+            raise ValueError("modvar must have attributes 'sbpIndex' and "
+                             "'wpsbpIndex'.")
+    else:
         normFac = 0
 
     # Set the wavelength
-    if(hasattr(modvar, 'wvl')):  # For FALCO or standalone use of full model
+    if hasattr(modvar, 'wvl'):  # For FALCO or standalone use of full model
         wvl = modvar.wvl
-    elif(hasattr(modvar, 'sbpIndex')):  # For use in FALCO
+    elif hasattr(modvar, 'sbpIndex'):  # For use in FALCO
         wvl = mp.full.lambdasMat[modvar.sbpIndex, modvar.wpsbpIndex]
     else:
         raise ValueError('Need to specify value or indices for wavelength.')
 
-    """ Input E-fields """
+    # %% Input E-fields
+
+    # Include the tip/tilt in the input wavefront
+    iStar = modvar.starIndex
+    xiOffset = mp.star.xiOffsetVec[iStar]
+    etaOffset = mp.star.etaOffsetVec[iStar]
+    starWeight = mp.star.weights[iStar]
+    TTphase = (-1)*(2*np.pi*(xiOffset*mp.P2.full.XsDL + etaOffset*mp.P2.full.YsDL))
+    Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
+    Ein = np.sqrt(starWeight) * Ett * \
+        np.squeeze(mp.P1.full.E[:, :, modvar.wpsbpIndex, modvar.sbpIndex])
+
     if modvar.whichSource.lower() == 'offaxis':  # Use for thput calculations
         TTphase = (-1.)*(2*np.pi*(modvar.x_offset*mp.P2.full.XsDL +
                                   modvar.y_offset*mp.P2.full.YsDL))
         Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        Ein = Ett*np.squeeze(mp.P1.full.E[:, :, modvar.wpsbpIndex,
-                                          modvar.sbpIndex])
-
-    else:  # Default to using the starlight
-        Ein = np.squeeze(mp.P1.full.E[:, :, modvar.wpsbpIndex,
-                                      modvar.sbpIndex])
+        Ein *= Ett
 
     # Shift the source off-axis to compute the intensity normalization value.
     # This replaces the previous way of taking the FPM out in the optical model
@@ -75,12 +81,11 @@ def full(mp, modvar, isNorm=True):
         TTphase = (-1)*(2*np.pi*(source_x_offset*mp.P2.full.XsDL +
                                  source_y_offset*mp.P2.full.YsDL))
         Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        Ein = Ett*np.squeeze(mp.P1.full.E[:, :, modvar.wpsbpIndex,
-                                          modvar.sbpIndex])
+        Ein *= Ett
 
     # Apply a Zernike (in amplitude) at input pupil if specified
-    if not (hasattr(modvar, 'zernIndex')):
-        modvar.zernIndex = 1
+    # if not (hasattr(modvar, 'zernIndex')):
+    #     modvar.zernIndex = 1
     if not modvar.zernIndex == 1:
         indsZnoll = modvar.zernIndex  # Just send in 1 Zernike mode
         zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(mp.P1.full.Nbeam,
@@ -222,19 +227,11 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     """ Masks and DM surfaces """
     if any(mp.dm_ind == 1):
         DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, NdmPad)
-#        try:
-#            DM1surf = pad_crop(mp.dm1.surfM, NdmPad)
-#        except AttributeError:  # No surfM parameter exists, create DM surface
-#            DM1surf = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, NdmPad)
     else:
         DM1surf = np.zeros((NdmPad, NdmPad))
 
     if any(mp.dm_ind == 2):
         DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.dx, NdmPad)
-#        try:
-#            DM2surf = pad_crop(mp.dm2.surfM, NdmPad)
-#        except AttributeError:  # No surfM parameter exists, create DM surface
-#            DM2surf = falco.dm.gen_surf_from_act(mp.dm2, mp.dm2.dx, NdmPad)
     else:
         DM2surf = np.zeros((NdmPad, NdmPad))
 
@@ -292,19 +289,14 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
         EP3 = mp.P3.full.mask*pad_crop(EP3, mp.P3.full.Narr)
 
     # Propagations Specific to the Coronagraph Type
-    if mp.coro.upper() in ('LC', 'APLC', 'RODDIER'):
+    if mp.coro.upper() in ('LC', 'APLC'):
         # MFT from apodizer plane to FPM (i.e., P3 to F3)
         EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
                                     fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi,
                                     fpmScaleFac*mp.F3.full.deta,
                                     mp.F3.full.Neta, mp.centering)
         # Apply (1-FPM) for Babinet's principle later
-        if mp.coro.upper() == 'RODDIER':
-            FPM = mp.F3.full.mask*np.exp(1j*2*np.pi/wvl*(mp.F3.n(wvl)-1) *
-                                            mp.F3.t*mp.F3.full.mask.phzSupport)
-            EF3 = (1.-FPM)*EF3inc  # Apply (1-FPM) for Babinet's princ. later
-        else:
-            EF3 = (1.-mp.F3.full.mask)*EF3inc
+        EF3 = (1.-mp.F3.full.mask)*EF3inc
         #  Use Babinet's principle at the Lyot plane.
         EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
         #  MFT from FPM to Lyot Plane (i.e., F3 to P4)
@@ -358,7 +350,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
                                  mp.P4.full.Narr, mp.centering)
         EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-    elif mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+    elif mp.coro.upper() in ('VORTEX', 'VC'):
         # Get FPM charge
         if isinstance(mp.F3.VortexCharge, np.ndarray):
             # Passing an array for mp.F3.VortexCharge with
@@ -416,7 +408,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     return Eout
 
 
-def compact(mp, modvar, isNorm=True, isEvalMode=False):
+def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True):
     """
     Simplified (aka compact) model used by estimator and controller.
 
@@ -436,6 +428,8 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False):
     isEvalMode : bool
         If set, uses a higher resolution in the focal plane for
         measuring performance metrics such as throughput.
+    useFPM : bool
+        Whether to include the FPM in the model
 
     Returns
     -------
@@ -446,21 +440,18 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-    # Set default values of input parameters
-    normFac = mp.Fend.compact.I00[modvar.sbpIndex]  # Value to normalize PSF.
-    flagEval = False  # use a different res at final focal plane for eval
-    modvar.wpsbpIndex = -1  # Dummy index since not needed in compact model
+    # use a different res at final focal plane for eval
+    flagEval = isEvalMode
 
-    # Optional Keyword arguments
+    # Is image already normalized?
     if not isNorm:
         normFac = 0.
-    if isEvalMode:
-        flagEval = True
 
-    # Normalization factor for compact evaluation model
-    if(isNorm and isEvalMode):
+    elif isNorm and isEvalMode:
         normFac = mp.Fend.eval.I00[modvar.sbpIndex]
-        # Value to normalize the PSF. Set to 0 when finding the norm factor
+
+    else:
+        normFac = mp.Fend.compact.I00[modvar.sbpIndex]
 
     # Set the wavelength
     if hasattr(modvar, 'wvl'):
@@ -468,36 +459,32 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False):
     else:
         wvl = mp.sbp_centers[modvar.sbpIndex]
 
-    """ Input E-fields """
+    # %% Input E-fields
 
-    # Include the tip/tilt in the input wavefront
-#    if(hasattr(mp,'ttx')):
-#         %--Scale by wvl/lambda0 because ttx and tty are in lambda0/D
-#         x_offset = mp.ttx(modvar.ttIndex)*(mp.lambda0/wvl);
-#         y_offset = mp.tty(modvar.ttIndex)*(mp.lambda0/wvl);
-#
-#         TTphase = (-1)*(2*np.pi*(x_offset*mp.P2.compact.XsDL +
-#                    y_offset*mp.P2.compact.YsDL));
-#         Ett = exp(1j*TTphase*mp.lambda0/wvl);
-#         Ein = Ett.*mp.P1.compact.E(:,:,modvar.sbpIndex)
+    # Include the star position and weight in the starting wavefront
+    iStar = modvar.starIndex
+    xiOffset = mp.compact.star.xiOffsetVec[iStar]
+    etaOffset = mp.compact.star.etaOffsetVec[iStar]
+    starWeight = mp.compact.star.weights[iStar]
+    TTphase = (-1)*(2*np.pi*(xiOffset*mp.P2.compact.XsDL +
+                             etaOffset*mp.P2.compact.YsDL))
+    Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
+    Ein = np.sqrt(starWeight) * Ett * mp.P1.compact.E[:, :, modvar.sbpIndex]
+
     if modvar.whichSource.lower() == 'offaxis':  # Use for throughput calc
         TTphase = (-1)*(2*np.pi*(modvar.x_offset*mp.P2.compact.XsDL +
                                  modvar.y_offset*mp.P2.compact.YsDL))
         Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        Ein = Ett*mp.P1.compact.E[:, :, modvar.sbpIndex]
-    else:  # Backward compatible with code without tip/tilt offsets in Jacobian
-        Ein = mp.P1.compact.E[:, :, modvar.sbpIndex]
+        Ein *= Ett
 
     # Shift the source off-axis to compute the intensity normalization value.
     # This replaces the previous way of taking the FPM out in optical model.
     if normFac == 0:
-        # source offset in lambda0/D for normalization
-        source_x_offset = mp.source_x_offset_norm
-        source_y_offset = mp.source_y_offset_norm
-        TTphase = (-1.)*(2*np.pi*(source_x_offset*mp.P2.compact.XsDL +
-                                  source_y_offset*mp.P2.compact.YsDL))
+        TTphase = (-1)*(2*np.pi*(mp.source_x_offset_norm*mp.P2.compact.XsDL +
+                                 mp.source_y_offset_norm*mp.P2.compact.YsDL))
         Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        Ein = Ett*mp.P1.compact.E[:, :, modvar.sbpIndex]
+        Ein *= Ett
+        # Ein = Ett*mp.P1.compact.E[:, :, modvar.sbpIndex]
 
     # Apply a Zernike (in amplitude) at input pupil if specified
     if not hasattr(modvar, 'zernIndex'):
@@ -511,37 +498,37 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False):
                                                            mp.centering,
                                                            indsZnoll))
         zernMat = pad_crop(zernMat, mp.P1.compact.Narr)
-        Ein = Ein*zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
-                                                        modvar.zernIndex]
+        Ein *= zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
+                                                     modvar.zernIndex]
 
     # Define what the complex-valued FPM is if the coro is some type of HLC.
-    if mp.layout.lower() == 'fourier':
-        if mp.coro.upper() in ('HLC',):
-            mp.F3.compact.mask = falco.hlc.gen_fpm_from_LUT(mp,
-                                                modvar.sbpIndex, -1, 'compact')
-    elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
-        if mp.coro.upper() in ('HLC',):
+    if mp.coro.upper() in ('HLC',):
+        if mp.layout.lower() == 'fourier':
+            mp.F3.compact.mask = falco.hlc.gen_fpm_from_LUT(
+                mp, modvar.sbpIndex, -1, 'compact')
+        elif mp.layout.lower() in ('roman_phasec_proper',
+                                   'wfirst_phaseb_proper',
+                                   'fpm_scale', 'proper'):
             mp.F3.compact.mask = mp.compact.fpmCube[:, :, modvar.sbpIndex]
+        else:
+            raise ValueError('Incompatible values of mp.layout and mp.coro.')
 
     # Select which optical layout's compact model to use and get E-field
-    if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
-        Eout = compact_general(mp, wvl, Ein, normFac, flagEval)
+    if mp.layout.lower() == 'fourier':
+        Eout = compact_general(mp, wvl, Ein, normFac, flagEval, useFPM=useFPM)
 
-    elif mp.layout.lower() == 'fpm_scale':
-        if mp.coro.upper() in ('HLC', 'SPLC'):
-            Eout = compact_general(mp, wvl, Ein, normFac, flagEval,
-                                   flagScaleFPM=True)
-
-    elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
+    elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
+                               'proper', 'fpm_scale'):
         if mp.coro.upper() == 'HLC':
             Eout = compact_general(mp, wvl, Ein, normFac, flagEval,
-                                   flagScaleFPM=True)
-        elif 'SP' in mp.coro.upper():
-            Eout = compact_general(mp, wvl, Ein, normFac, flagEval)
+                                   flagScaleFPM=True, useFPM=useFPM)
+        else:
+            Eout = compact_general(mp, wvl, Ein, normFac, flagEval,
+                                   useFPM=useFPM)
     return Eout
 
 
-def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
+def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=True):
     """
     Compact model with a general-purpose optical layout.
 
@@ -563,8 +550,10 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
         Intensity normalization factor
     flagEval : bool
         Whether to use a higher resolution in final image plane for evaluation.
-    flagScaleFPM : bool, optional
+    flagScaleFPM : bool
         Whether to scale the diameter of the FPM inversely with wavelength.
+    useFPM : bool
+        Whether to include the FPM in the model.
 
     Returns
     -------
@@ -579,6 +568,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
 
     mirrorFac = 2.  # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
+    transOuterFPM = 1
 
     if mp.flagRotation:
         NrelayFactor = 1
@@ -647,7 +637,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
         Edm1WFE = np.ones((NdmPad, NdmPad))
         Edm2WFE = np.ones((NdmPad, NdmPad))
 
-    """Propagation"""
+    """Propagation from P1 to P3"""
 
     # Define pupil P1 and Propagate to pupil P2
     EP1 = pupil*Ein  # E-field at pupil plane P1
@@ -676,100 +666,117 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False):
     EP3 = falco.prop.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
 
     # Apply apodizer mask.
-    if(mp.flagApod):
+    if mp.flagApod:
         EP3 = mp.P3.compact.mask*pad_crop(EP3, mp.P3.compact.Narr)
 
-    """  Select propagation based on coronagraph type   """
-    if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'RODDIER'):
-        # MFT from SP to FPM (i.e., P3 to F3)
-        # E-field incident upon the FPM
-        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
-                                    fpmScaleFac*mp.F3.compact.dxi,
-                                    mp.F3.compact.Nxi,
-                                    fpmScaleFac*mp.F3.compact.deta,
-                                    mp.F3.compact.Neta, mp.centering)
-        # Apply (1-FPM) for Babinet's principle later
-        if mp.coro.upper() == 'RODDIER':
-            pass
-        elif mp.coro.upper() == 'HLC':
-            FPM = mp.F3.compact.mask  # Complex transmission of the FPM
-            transOuterFPM = FPM[0, 0]  # Complex trans of points outside FPM
-            EF3 = (transOuterFPM - FPM)*EF3inc
-            # transOuterFPM instead of 1 because of the complex transmission of
-            # the glass as well as the arbitrary phase shift.
-        else:
-            EF3 = (1. - mp.F3.compact.mask)*EF3inc
-        # Use Babinet's principle at the Lyot plane.
-        EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
-        EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)
-        if mp.coro.upper() == 'HLC':
-            EP4noFPM = transOuterFPM*EP4noFPM
-        # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        # Subtrahend term for Babinet's principle
-        EP4sub = falco.prop.mft_f2p(EF3, mp.fl, wvl,
-                                    fpmScaleFac*mp.F3.compact.dxi,
-                                    fpmScaleFac*mp.F3.compact.deta,
-                                    mp.P4.compact.dx, mp.P4.compact.Narr,
-                                    mp.centering)
-        EP4subRelay = falco.prop.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-        # Babinet's principle at P4
-        EP4 = (EP4noFPM-EP4subRelay)
 
-    elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
-        # MFT from SP to FPM (i.e., P3 to F3)
-        # E-field incident upon the FPM
-        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
-                                    mp.F3.compact.dxi, mp.F3.compact.Nxi,
-                                    mp.F3.compact.deta, mp.F3.compact.Neta,
-                                    mp.centering)
-
-        # Apply FPM
-        EF3 = mp.F3.compact.mask * EF3inc
-
-        # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-        EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi,
-                                 mp.F3.compact.deta, mp.P4.compact.dx,
-                                 mp.P4.compact.Narr, mp.centering)
-        EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-
-    elif mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
-
-        # Get FPM charge
-        if isinstance(mp.F3.VortexCharge, np.ndarray):
-            # Passing an array for mp.F3.VortexCharge with
-            # corresponding wavelengths mp.F3.VortexCharge_lambdas
-            # represents a chromatic vortex FPM
-            if mp.F3.VortexCharge.size == 1:
-                charge = mp.F3.VortexCharge
-            else:
-                np.interp(wvl, mp.F3.VortexCharge_lambdas, mp.F3.VortexCharge,
-                          'linear', 'extrap')
-
-        elif isinstance(mp.F3.VortexCharge, (int, float)):
-            # single value indicates fully achromatic mask
-            charge = mp.F3.VortexCharge
-        else:
-            raise TypeError("mp.F3.VortexCharge must be int, float or numpy\
-                            ndarray.")
-            pass
-        EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
-        EP4 = pad_crop(EP4, mp.P4.compact.Narr)
-
-        # Undo the rotation inherent to falco.prop.mft_p2v2p.m
-        if not mp.flagRotation:
-            EP4 = falco.prop.relay(EP4, -1, mp.centering)
-
-    else:
-        raise ValueError("Value of mp.coro not recognized.")
-        pass
-
+    """Propagation from P3 to P4 depends on coronagraph type."""
     # Remove FPM completely if normalization value is being found for vortex
     if normFac == 0:
         if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
-            EP4 = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+            useFPM = False
+
+    if useFPM:
+
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+
+            # Get FPM charge
+            if isinstance(mp.F3.VortexCharge, np.ndarray):
+                # Passing an array for mp.F3.VortexCharge with
+                # corresponding wavelengths mp.F3.VortexCharge_lambdas
+                # represents a chromatic vortex FPM
+                if mp.F3.VortexCharge.size == 1:
+                    charge = mp.F3.VortexCharge
+                else:
+                    np.interp(wvl, mp.F3.VortexCharge_lambdas,
+                              mp.F3.VortexCharge, 'linear', 'extrap')
+
+            elif isinstance(mp.F3.VortexCharge, (int, float)):
+                # single value indicates fully achromatic mask
+                charge = mp.F3.VortexCharge
+            else:
+                raise TypeError("mp.F3.VortexCharge must be int, float or numpy\
+                                ndarray.")
+                pass
+            EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
             EP4 = pad_crop(EP4, mp.P4.compact.Narr)
-            pass
-        pass
+
+            # Undo the rotation inherent to falco.prop.mft_p2v2p.m
+            if not mp.flagRotation:
+                EP4 = falco.prop.relay(EP4, -1, mp.centering)
+
+        elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
+            # MFT from SP to FPM (i.e., P3 to F3)
+            # E-field incident upon the FPM
+            EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
+                                        mp.F3.compact.dxi, mp.F3.compact.Nxi,
+                                        mp.F3.compact.deta, mp.F3.compact.Neta,
+                                        mp.centering)
+
+            # Apply FPM
+            EF3 = mp.F3.compact.mask * EF3inc
+
+            # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+            EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi,
+                                     mp.F3.compact.deta, mp.P4.compact.dx,
+                                     mp.P4.compact.Narr, mp.centering)
+            EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+
+        elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+            # MFT from SP to FPM (i.e., P3 to F3)
+            # E-field incident upon the FPM
+            EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
+                                        fpmScaleFac*mp.F3.compact.dxi,
+                                        mp.F3.compact.Nxi,
+                                        fpmScaleFac*mp.F3.compact.deta,
+                                        mp.F3.compact.Neta, mp.centering)
+            # Apply (1-FPM) for Babinet's principle later
+            if mp.coro.upper() == 'HLC':
+                FPM = mp.F3.compact.mask  # Complex transmission of the FPM
+                transOuterFPM = FPM[0, 0]  # Complex trans of points outside FPM
+                EF3 = (transOuterFPM - FPM)*EF3inc
+                # transOuterFPM instead of 1 because of the complex transmission of
+                # the glass as well as the arbitrary phase shift.
+            else:
+                EF3 = (1. - mp.F3.compact.mask)*EF3inc
+            # Use Babinet's principle at the Lyot plane.
+            EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+            EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)
+            if mp.coro.upper() == 'HLC':
+                EP4noFPM = transOuterFPM*EP4noFPM
+            # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+            # Subtrahend term for Babinet's principle
+            EP4sub = falco.prop.mft_f2p(EF3, mp.fl, wvl,
+                                        fpmScaleFac*mp.F3.compact.dxi,
+                                        fpmScaleFac*mp.F3.compact.deta,
+                                        mp.P4.compact.dx, mp.P4.compact.Narr,
+                                        mp.centering)
+            EP4subRelay = falco.prop.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # Babinet's principle at P4
+            EP4 = (EP4noFPM-EP4subRelay)
+
+    else:  # No FPM
+
+        EP4 = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+        EP4 *= transOuterFPM
+
+        # Downsample the beam if Lyot plane has lower resolution
+        if mp.P4.compact.Nbeam != mp.P1.compact.Nbeam:
+            # Make sure array is oversized before downsampling
+            padFac = 1.2
+            EP4 = pad_crop(EP4,
+                           falco.util.ceil_even(padFac*mp.P1.compact.Nbeam))
+
+            EP4tempReal = falco.mask.rotate_shift_downsample_pupil_mask(
+                np.real(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
+            EP4tempImag = falco.mask.rotate_shift_downsample_pupil_mask(
+                np.imag(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
+
+            EP4 = EP4tempReal + 1j*EP4tempImag
+            # Preserve summed intensity in the pupil:
+            EP4 *= mp.P1.compact.Nbeam/mp.P4.compact.Nbeam
+
+        EP4 = pad_crop(EP4, mp.P4.compact.Narr)
 
     """  Back to common propagation any coronagraph type   """
     # Apply the Lyot stop
@@ -812,13 +819,13 @@ def jacobian(mp):
     # Pre-compute the DM surfaces to save time
     NdmPad = int(mp.compact.NdmPad)
     if any(mp.dm_ind == 1):
-        mp.dm1.compact.surfM = falco.dm.gen_surf_from_act(mp.dm1,
-                                                    mp.dm1.compact.dx, NdmPad)
+        mp.dm1.compact.surfM = falco.dm.gen_surf_from_act(
+            mp.dm1, mp.dm1.compact.dx, NdmPad)
     else:
         mp.dm1.compact.surfM = np.zeros((NdmPad, NdmPad))
     if any(mp.dm_ind == 2):
-        mp.dm2.compact.surfM = falco.dm.gen_surf_from_act(mp.dm2,
-                                                    mp.dm2.compact.dx, NdmPad)
+        mp.dm2.compact.surfM = falco.dm.gen_surf_from_act(
+            mp.dm2, mp.dm2.compact.dx, NdmPad)
     else:
         mp.dm2.compact.surfM = np.zeros((NdmPad, NdmPad))
 
@@ -829,67 +836,44 @@ def jacobian(mp):
                 falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
 
     # Initialize the Jacobians for each DM
-    if any(mp.dm_ind == 1):
-        jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
-                                dtype=complex)
-    if any(mp.dm_ind == 2):
-        jacStruct.G2 = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele, mp.jac.Nmode),
-                                dtype=complex)
-    if any(mp.dm_ind == 8):
-        jacStruct.G8 = np.zeros((mp.Fend.corr.Npix, mp.dm8.Nele, mp.jac.Nmode),
-                                dtype=complex)
-    if any(mp.dm_ind == 9):
-        jacStruct.G9 = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele, mp.jac.Nmode),
-                                dtype=complex)
+    jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G2 = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G8 = np.zeros((mp.Fend.corr.Npix, mp.dm8.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G9 = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele, mp.jac.Nmode),
+                            dtype=complex)
 
     # Calculate the Jacobian in parallel or serial
-    if(mp.flagParallel):
-        print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
-        with falco.util.TicToc():
-             ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
-            results_order = [(im, idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
-
-            print(zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind))))
-
-            output = multiprocessing.Queue()
-            processes = [multiprocessing.Process(target=_jac_middle_layer_process,
-                         args=(mp,im,idm,output)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
-
-            # if __name__ == '__main__':
-            jobs = []
-            for p in processes:
-                jobs.append(p)
-                p.start()
-
-            # for j in jobs:
-            #     j.join()
-
-            for p in processes:
-                p.terminate()
-
-            for p in processes:
-                p.join()
-
-            results_Jac = [output.get() for p in processes]
-
-            # Reorder Jacobian by mode and DM from the list
-            for ii in range(mp.jac.Nmode*mp.dm_ind.size):
-                im = results_order[ii][0]
-                idm = results_order[ii][1]
-                if idm == 1:
-                    jacStruct.G1[:, :, im] = results_Jac[ii]
-                if idm == 2:
-                    jacStruct.G2[:, :, im] = results_Jac[ii]
-
-        # print('Computing control Jacobian matrices in parallel...', end='')
-        # pool = multiprocessing.Pool(processes=mp.Nthreads)
-
+    if mp.flagParallel:
+        # print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
         # with falco.util.TicToc():
-        #     results_order = [(im,idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
-        #     results = pool.starmap(_jac_middle_layer, [(mp,im,idm)for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind)))])
-        #     results_Jac = results
-        #     pool.close()
-        #     pool.join()
+        #      ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
+        #     results_order = [(im, idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
+
+        #     print(zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind))))
+
+        #     output = multiprocessing.Queue()
+        #     processes = [multiprocessing.Process(target=_jac_middle_layer_process,
+        #                  args=(mp,im,idm,output)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
+
+        #     # if __name__ == '__main__':
+        #     jobs = []
+        #     for p in processes:
+        #         jobs.append(p)
+        #         p.start()
+
+        #     # for j in jobs:
+        #     #     j.join()
+
+        #     for p in processes:
+        #         p.terminate()
+
+        #     for p in processes:
+        #         p.join()
+
+        #     results_Jac = [output.get() for p in processes]
 
         #     # Reorder Jacobian by mode and DM from the list
         #     for ii in range(mp.jac.Nmode*mp.dm_ind.size):
@@ -899,12 +883,33 @@ def jacobian(mp):
         #             jacStruct.G1[:, :, im] = results_Jac[ii]
         #         if idm == 2:
         #             jacStruct.G2[:, :, im] = results_Jac[ii]
-        #         if idm == 8:
-        #             jacStruct.G8[:, :, im] = results_Jac[ii]
-        #         if idm == 9:
-        #             jacStruct.G9[:, :, im] = results_Jac[ii]
 
-        #     print('done.')
+        print('Computing control Jacobian matrices in parallel...', end='')
+        pool = multiprocessing.Pool(processes=mp.Nthreads)
+
+        with falco.util.TicToc():
+            results_order = [(im, idm) for idm in mp.dm_ind for im in range(mp.jac.Nmode)]
+            results = pool.starmap(
+                _jac_middle_layer,
+                [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))])
+            results_Jac = results
+            pool.close()
+            pool.join()
+
+            # Reorder Jacobian by mode and DM from the list
+            for ii in range(mp.jac.Nmode*mp.dm_ind.size):
+                im = results_order[ii][0]
+                idm = results_order[ii][1]
+                if idm == 1:
+                    jacStruct.G1[:, :, im] = results_Jac[ii]
+                if idm == 2:
+                    jacStruct.G2[:, :, im] = results_Jac[ii]
+                if idm == 8:
+                    jacStruct.G8[:, :, im] = results_Jac[ii]
+                if idm == 9:
+                    jacStruct.G9[:, :, im] = results_Jac[ii]
+
+            print('done.')
 
     else:
         print('Computing control Jacobian matrices in serial:\n  ', end='')

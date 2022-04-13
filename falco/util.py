@@ -520,23 +520,23 @@ def offcenter_crop(arrayIn, centerRow, centerCol, nRowOut, nColOut):
         colBuffer = 0
 
     arrayOut = arrayPadded[
-       centerRow-nRowOut//2:centerRow+nRowOut//2 + rowBuffer,
-       centerCol-nColOut//2:centerCol+nColOut//2 + colBuffer]
+        centerRow-nRowOut//2:centerRow+nRowOut//2 + rowBuffer,
+        centerCol-nColOut//2:centerCol+nColOut//2 + colBuffer]
 
     return arrayOut
-    
+
 
 def bin_downsample(Ain, dsfac):
     """
     Downsample an array by binning.
-    
+
     Parameters
     ----------
     Ain : 2-D array
         The matrix to be downsampled
     dsfac : int
         Downsampling factor for the matrix
-    
+
     Returns
     -------
     Aout : 2-D array
@@ -545,7 +545,7 @@ def bin_downsample(Ain, dsfac):
     # Error checks on inputs
     check.twoD_array(Ain, 'Ain', ValueError)
     check.positive_scalar_integer(dsfac, 'dsfac', ValueError)
-    
+
     # Array Sizes
     ny0, nx0 = Ain.shape
     if (nx0 % dsfac != 0) or (ny0 % dsfac != 0):
@@ -553,12 +553,71 @@ def bin_downsample(Ain, dsfac):
 
     nx1 = int(nx0/dsfac)
     ny1 = int(ny0/dsfac)
-    
+
     # Bin and average values from the high-res array into the low-res array
     Aout = np.zeros((ny1, nx1))
     for ix in range(nx1):
         for iy in range(ny1):
             Aout[iy, ix] = np.sum(Ain[dsfac*iy:dsfac*(iy+1),
                                       dsfac*ix:dsfac*(ix+1)])/dsfac/dsfac
-            
+
     return Aout
+
+
+def gen_simple_psd_errormap(N, alpha, mirror_figure):
+    """
+    Generate the phase error of a mirror as 1/f^(alpha) noise.
+
+    Parameters
+    ----------
+    N : int
+        number of samples along both dimensions. width of the output array.
+    alpha : float
+        the 1/f noise power.
+    mirror_figure : float
+        the peak-to-valley noise variation [arbitrary units].
+
+    Returns
+    -------
+    out : array_like
+        2-D map of the PSD errormap
+
+    """
+    aber = np.random.rand(N, N)
+    FT = np.fft.fft2(aber)
+
+    x = np.tile(np.arange(N) - N/2, [N, 1]).T
+    y = np.tile(np.arange(N) - N/2, [N, 1])
+
+    envelope = np.fft.fftshift(1./(x**2 + y**2)**(alpha/4))
+    envelope[0, 0] = 0  # DC component undefined, set to 0
+
+    FT = FT * envelope
+    out = np.real(np.fft.fftshift(np.fft.ifft2(FT)))
+    # out = out/(max(max(out)) - min(min(out)))*mirror_figure;
+    out = out/np.sqrt(np.sum(out**2))*mirror_figure*N
+
+    return out
+
+
+def smooth(y, box_pts):
+    """
+    Smooth the values in a vector.
+
+    Parameters
+    ----------
+    y : array_like
+        1-D array of values to smooth.
+    box_pts : int
+        Number of points across to use in smoothing.
+
+    Returns
+    -------
+    y_smooth : array_like
+        1-D array of smoothed values.
+
+    """
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+
+    return y_smooth

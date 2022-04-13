@@ -18,3 +18,4 @@ from . import model
 from ._globals import INFLUENCE_XINETICS
 from ._globals import INFLUENCE_BMC_KILO
 from ._globals import INFLUENCE_BMC_2K
+from ._globals import INFLUENCE_BMC_2K_RES20

@@ -907,6 +907,10 @@ def gen_annular_fpm(inputs):
 
 
 def falco_gen_bowtie_LS(inputs):
+    return gen_bowtie_lyot_stop(inputs)
+
+
+def gen_bowtie_lyot_stop(inputs):
     """
     Generate a sideways-bowtie-shaped Lyot stop using PROPER.
 
@@ -1183,13 +1187,15 @@ def falco_gen_pupil_LUVOIR_B(inputs, **kwargs):
     flagRot180deg = inputs.get("flagRot180deg", False)
     shearMax = np.max(np.abs(np.array([xShear, yShear])))  # [pupil diameters]
 
-    Nbeam = inputs["Nbeam"]  # number of points across the incoming beam
+    Nbeam0 = inputs["Nbeam"]  # points across the circumscribed circle
+    scaleFac = 0.96075
+    Nbeam = scaleFac*Nbeam0  # Change Nbeam to be flat-to-flat. makes the beam size match the hypergaussian approach
     nrings = 4
     width_hex0 = 0.955  # flat-to-flat (m)
     Dap = ((2*nrings)*width_hex0 + (2*nrings-1)*wGap_m)  # (12*width_hex0 + 12*hexgap0)
     dx = Dap/Nbeam
-    xShearM = Dap*xShear  # meters
-    yShearM = Dap*yShear  # meters
+    xShearM = 1/scaleFac*Dap*xShear  # meters
+    yShearM = 1/scaleFac*Dap*yShear  # meters
 
     if "pixel" == centering:
         Narray = ceil_even((1+2*shearMax) * 1.02 * Nbeam *
@@ -1398,7 +1404,7 @@ def falco_gen_pupil_Simple(inputs):
     wStrut = inputs.get("wStrut", 0.)  # width of each strut [pupil diameters]
     angStrut = inputs.get("angStrut", [])
     angStrutVec = np.atleast_1d(angStrut)
-    
+
     # if 'angStrut' in inputs:
     #     angStrutVec = inputs["angStrut"]  # Azimuthal locations
     #     angStrutVec = np.array(angStrutVec)
@@ -1412,7 +1418,7 @@ def falco_gen_pupil_Simple(inputs):
     xShear = inputs.get("xShear", 0.)  # [pupil diameters]
     yShear = inputs.get("yShear", 0.)  # [pupil diameters]
     flagHG = inputs.get("flagHG", False)
-    
+
     # Checks on dict keys
     check.real_nonnegative_scalar(wStrut, 'wStrut', TypeError)
     check.centering(centering)
@@ -1466,26 +1472,26 @@ def falco_gen_pupil_Simple(inputs):
             elif centering == 'interpixel':
                 cshift = -dx/2.
             bm = proper.prop_begin(Dbeam, wl_dummy, Narray, bdf)
-            
+            proper.prop_set_antialiasing(101)
+
             # STRUTS
             lStrut = 0.6  # [pupil diameters]
             rcStrut0 = lStrut / 2.0
             for iStrut in range(angStrutVec.size):
                 ang = angStrutVec[iStrut] + clocking
-                proper.prop_rectangular_obscuration(bm, lStrut, wStrut,
-                                        rcStrut0*cosd(ang)+cshift+xShear,
-                                        rcStrut0*sind(ang)+cshift+yShear,
-                                        ROTATION=ang)
+                proper.prop_rectangular_obscuration(
+                    bm, lStrut, wStrut, rcStrut0*cosd(ang)+cshift+xShear,
+                    rcStrut0*sind(ang)+cshift+yShear, ROTATION=ang)
             apStruts = np.fft.ifftshift(np.abs(bm.wfarr))
-        
+
         # Combine all features
         pupil = apOuter*apInner*apStruts
-    
+
     else:
         hg_expon = 1000  # hyper-gaussian exponent for anti-aliasing
         hg_expon_spider = 100  # hyper-gaussian exponent for anti-aliasing
         apRad = Nbeam/2.  # aperture radius in samples
-        
+
         # Create coordinates
         if centering == 'pixel':
             x = np.arange(-Narray/2, Narray/2)
@@ -1493,13 +1499,13 @@ def falco_gen_pupil_Simple(inputs):
             x = np.arange(-(Narray-1)/2, (Narray-1)/2+1)
         RHO = falco.util.radial_grid(x, xStretch=xStretch)
         THETA = falco.util.azimuthal_grid(x, xStretch=xStretch)
-    
+
         if ID > 0:
             pupil = np.exp(-(RHO/(apRad*OD))**hg_expon) - \
                 np.exp(-(RHO/(apRad*ID))**hg_expon)
         else:
             pupil = np.exp(-(RHO/(apRad*OD))**hg_expon)
-            
+
         # Create spiders
         if wStrut > 0:
             try:
@@ -1640,9 +1646,9 @@ def falco_gen_vortex_mask(charge, N):
 
 
 def gen_ellipse(inputs):
-    
+
     pupil = falco_gen_ellipse(inputs)
-    
+
     return pupil
 
 
@@ -1700,7 +1706,7 @@ def falco_gen_ellipse(inputs):
     grayInds = np.array(np.nonzero(pupil == -1))
     # print('Number of grayscale points = %d' % grayInds.shape[1])
 
-    upsampleFactor = 100
+    upsampleFactor = 101
     dxUp = dx/float(upsampleFactor)
     xUp = np.linspace(-(upsampleFactor-1)/2., (upsampleFactor-1)/2., upsampleFactor)*dxUp
     # xUp = (-(upsampleFactor-1)/2:(upsampleFactor-1)/2)*dxUp
@@ -1761,7 +1767,7 @@ def rotate_shift_downsample_pupil_mask(arrayIn, nBeamIn, nBeamOut, xOffset,
         raise ValueError('This function is for downsampling only.')
     else:
         if arrayIn.shape[0] % 2 == 0:  # if in an even-sized array
-            # Crop assuming SP is pixel centered with row 0 and column 0 empty.
+            # Crop assuming mask is pixel centered with row 0 and column 0 empty.
             arrayIn = arrayIn[1::, 1::]
 
         # Array sizes

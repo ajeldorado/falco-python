@@ -13,7 +13,7 @@ _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CE
 def relay(E_in, Nrelay, centering='pixel'):
     """
     Perform re-imaging of the input E-field through optical relays.
-    
+
     Propagate a field through Nrelay optical relays, without any intermediate
     mask multiplications. This results in a 180-degree rotation of the array 
     for each optical relay. Correct centering of the array must be maintained.
@@ -41,16 +41,16 @@ def relay(E_in, Nrelay, centering='pixel'):
     check.twoD_array(E_in, 'E_in', TypeError)
     check.scalar_integer(Nrelay, 'Nrelay', TypeError)
 
-    #--Only rotate if odd number of 180-degree rotations. If even, no change.
-    if(np.mod(Nrelay,2)==1):
+    # Only rotate if odd number of 180-degree rotations. If even, no change.
+    if np.mod(Nrelay, 2) == 1:
         # Reverse and scale input to account for propagation
-        E_out = E_in[::-1, ::-1]  
+        E_out = E_in[::-1, ::-1]
         if centering == 'pixel':
             # Move the DC pixel back to the right place
-            E_out = np.roll(E_out, (1, 1), axis=(0, 1))  
+            E_out = np.roll(E_out, (1, 1), axis=(0, 1))
     else:
         E_out = E_in
-        
+
     return E_out
 
 
@@ -79,10 +79,10 @@ def ptp(E_in, full_width, wavelength, dz):
     check.real_positive_scalar(full_width, 'full_width', TypeError)
     check.real_positive_scalar(wavelength, 'wavelength', TypeError)
     check.real_scalar(dz, 'dz', TypeError)
-    
+
     M, N = E_in.shape
     dx = full_width / N
-    N_critical = int(np.floor(wavelength * np.abs(dz) / (dx ** 2)))  # Critical sampling
+    N_critical = int(np.floor(wavelength * np.abs(dz) / (dx ** 2)))
 
     if M != N:  # Input array is not square
         raise ValueError('Input array is not square')
@@ -106,7 +106,7 @@ def ptp(E_in, full_width, wavelength, dz):
 
 def mft_f2p(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
     """
-    Propagate a field from a focal plane to a pupil plane, using a matrix-multiply DFT.
+    Propagate a field from a focus to a pupil plane using an MFT.
 
     Parameters
     ----------
@@ -121,18 +121,18 @@ def mft_f2p(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
     deta : float
         Step size along vertical axis of focal plane
     dx : float
-        Step size along either axis of focal plane.  The vertical and horizontal step sizes are
-        assumed to be equal.
+        Step size along either axis of focal plane. The vertical and
+        horizontal step sizes are assumed to be equal.
     N : int
         Number of datapoints along each side of the pupil-plane (output) array
     centering : string
-        Whether the input and output arrays are pixel-centered or inter-pixel-centered.
+        How the input and output arrays are centered in the array.
         Possible values: 'pixel', 'interpixel'
 
     Returns
     -------
     array_like
-        Field in pupil plane, after propagating through Fourier transforming lens
+        Field in pupil plane.
 
     """
     if centering not in _VALID_CENTERING:
@@ -179,8 +179,8 @@ def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
     wavelength : float
         Propagation wavelength
     dx : float
-        Step size along either axis of focal plane.  The vertical and horizontal step sizes are
-        assumed to be equal.
+        Step size along either axis of focal plane.  The vertical and
+        horizontal step sizes are assumed to be equal.
     dxi : float
         Step size along horizontal axis of focal plane
     Nxi : int
@@ -190,13 +190,13 @@ def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
     Neta : int
         Number of samples along vertical axis of focal plane.
     centering : string
-        Whether the input and output arrays are pixel-centered or inter-pixel-centered.
+        How the input and output arrays are centered in the array.
         Possible values: 'pixel', 'interpixel'
 
     Returns
     -------
     array_like
-        Field in pupil plane, after propagating through Fourier transforming lens
+        Field in focal plane
 
     """
     if centering not in _VALID_CENTERING:
@@ -236,7 +236,7 @@ def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
 def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal):
     """
     Propagate from the pupil plane before a vortex FPM to pupil plane after it.
-    
+
     Compute a radial Tukey window for propagating through a vortex coroangraph.
 
     Parameters
@@ -251,7 +251,7 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal):
         Ask Gary
     outVal : float
         Ask Gary
-        
+
     Returns
     -------
     pupilPost : array_like
@@ -263,29 +263,29 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal):
     check.real_positive_scalar(beamRadius, 'beamRadius', TypeError)
     check.real_positive_scalar(inVal, 'inVal', TypeError)
     check.real_positive_scalar(outVal, 'outVal', TypeError)
-    
-    # showPlots2debug = False 
+
+    # showPlots2debug = False
 
     D = 2.0*beamRadius
     lambdaOverD = 4. # samples per lambda/D
-    
+
     NA = pupilPre.shape[1]
     NB = util.ceil_even(lambdaOverD*D)
-    
+
     # [X,Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float),np.arange(-NB/2., NB/2., dtype=float))
     # [RHO,THETA] = util.cart2pol(Y,X)
     RHO = util.radial_grid(np.arange(-NB/2., NB/2., dtype=float))
-   
+
     windowKnee = 1.-inVal/outVal
-    
+
     windowMask1 = gen_tukey_for_vortex(2*outVal*lambdaOverD, RHO, windowKnee)
     windowMask2 = gen_tukey_for_vortex(NB, RHO, windowKnee)
 
-    # DFT vectors 
+    # DFT vectors
     x = np.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D
     u1 = np.arange(-NB/2,NB/2,dtype=float)/lambdaOverD #(-NB/2:NB/2-1)/lambdaOverD
     u2 = np.arange(-NB/2,NB/2,dtype=float)*2*outVal/NB # (-NB/2:NB/2-1)*2*outVal/N
-    
+
     FPM = falco_gen_vortex_mask(charge, NB)
 
     #if showPlots2debug; figure;imagesc(abs(pupilPre));axis image;colorbar; title('pupil'); end;
@@ -327,7 +327,7 @@ def gen_tukey_for_vortex(Nwindow, RHO, alpha):
     Returns
     -------
     windowTukey : array_like
-        Tukey window of same size as input RHO 
+        Tukey window of same size as input RHO
 
     """
     check.real_scalar(Nwindow, 'Nwindow', TypeError)
@@ -335,7 +335,7 @@ def gen_tukey_for_vortex(Nwindow, RHO, alpha):
 
     Nlut = int(10*Nwindow)
     rhos0 = np.linspace(-Nwindow/2, Nwindow/2, Nlut)
-    lut = tukey(Nlut, alpha) #,left=0,right=0)
+    lut = tukey(Nlut, alpha)  #,left=0,right=0)
     windowTukey = np.interp(RHO, rhos0, lut)
 
     return windowTukey

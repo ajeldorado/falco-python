@@ -298,17 +298,17 @@ def solver(n, d0, theta, lam, tetm=False):
     
     T = Pn*np.abs(tt)**2
     tt = np.sqrt(Pn)*tt
-    
+
     return [R, T, rr, tt]
-   
+
 
 def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
     """
     Calculate 3-D look-up table for thin film transmission data.
-    
+
     Calculate thin-film complex transmission data cube. The three dimensions
     are for metal thickness, dielectric thickness, and wavelength.
-    
+
     Parameters
     ----------
     mp : ModelParameters
@@ -327,17 +327,17 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
         Complex transmission datacube for FALCO's full model.
     """
     localpath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
+
     mp.F3.metal = 'Ni'
     mp.F3.diel = 'PMGI'
-    
+
     fn_compact = ('ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1fN%d_%.1fdeg_compact.npy' %
         (SUBSTRATE, mp.t_Ti_nm, mp.F3.metal, np.min(mp.t_metal_nm_vec),
          np.max(mp.t_metal_nm_vec), mp.dt_metal_nm, mp.F3.diel,
          np.min(mp.t_diel_nm_vec), np.max(mp.t_diel_nm_vec), mp.dt_diel_nm,
          1e9*mp.lambda0, 100*mp.fracBW, mp.Nsbp, mp.aoi))
     fn_cube_compact = os.path.join(localpath, 'data', 'material', fn_compact)
-    
+
     fn_full = ('ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1f_%dN%d_%.1fdeg_full.npy' %
         (SUBSTRATE, mp.t_Ti_nm, mp.F3.metal, np.min(mp.t_metal_nm_vec), np.max(mp.t_metal_nm_vec), mp.dt_metal_nm,
         mp.F3.diel, np.min(mp.t_diel_nm_vec), np.max(mp.t_diel_nm_vec), mp.dt_diel_nm,
@@ -347,35 +347,35 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
     if(flagRefl):
         fn_cube_compact = fn_cube_compact[0:-4] + '_refl.mat'
         fn_cube_full = fn_cube_full[0:-4] + '_refl.mat'
-    
+
     t_Ti_m = 1e-9*mp.t_Ti_nm  # Static base layer of titanium beneath nickel.
     aoi = mp.aoi
     Nsbp = mp.Nsbp
     t_diel_m_vec = 1e-9*mp.t_diel_nm_vec  # PMGI thickness range
     t_metal_m_vec = 1e-9*mp.t_metal_nm_vec  # nickel thickness range
-    
+
     Nmetal = len(mp.t_metal_nm_vec)
     Ndiel = len(mp.t_diel_nm_vec)
-    
+
     # Compact Model: Load the data if it has been generated before; otherwise generate it.
     if(isfile(fn_cube_compact)):
         complexTransCompact = np.load(fn_cube_compact)
         print('Loaded complex transmission datacube for compact model: %s' % fn_cube_compact)
     else:
-    
+
         print('Computing thin film equations for compact model:')
         complexTransCompact = np.zeros((Ndiel, Nmetal, mp.Nsbp), dtype=complex)
         sbp_centers = mp.sbp_centers
-        
+
         # Parallel/distributed computing
         # To be completed later
-        
+
         # Regular (serial) computing
         for si in range(Nsbp):
             lam = sbp_centers[si]
             d0 = lam * mp.F3.d0fac  # Max thickness of PMGI + Ni
-            [tCoef, rCoef] = calc_complex_occulter(lam, aoi, t_Ti_m,
-                                            t_metal_m_vec, t_diel_m_vec, d0, 2)
+            [tCoef, rCoef] = calc_complex_occulter(
+                lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
             if(flagRefl):
                 complexTransCompact[:, :, si] = rCoef
             else:
@@ -387,7 +387,7 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
         np.save(fn_cube_compact, complexTransCompact)
         print('Saved complex transmission datacube: %s' % fn_cube_compact)
         pass
-    
+
     # Full Model: Load the data if it has been generated before; otherwise generate it.
     if isfile(fn_cube_full):
         complexTransFull = np.load(fn_cube_full)
@@ -400,16 +400,16 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
             complexTransFull = np.zeros((Ndiel, Nmetal, mp.Nsbp*mp.Nwpsbp),
                                         dtype=complex)
             lambdas = mp.full.lambdas
-            
+
             # Parallel/distributed computing
             # To be completed later
-            
+
             # Regular (serial) computing
             for li in range(len(lambdas)):
                 lam = lambdas[li]
                 d0 = lam * mp.F3.d0fac  # Max thickness of PMGI + Ni
-                [tCoef, rCoef] = calc_complex_occulter(lam, aoi, t_Ti_m,
-                                            t_metal_m_vec, t_diel_m_vec, d0, 2)
+                [tCoef, rCoef] = calc_complex_occulter(
+                    lam, aoi, t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
                 if(flagRefl):
                     complexTransFull[:, :, li] = rCoef
                 else:
@@ -417,9 +417,9 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
                     pass
                 print('\tDone computing wavelength %d of %d.\n' %
                       (li, len(lambdas)))
-        
+
         # Save out for future use
         np.save(fn_cube_full, complexTransFull)
         print('Saved complex transmission datacube: %s\n' % fn_cube_full)
-    
+
     return complexTransCompact, complexTransFull

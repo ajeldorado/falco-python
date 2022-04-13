@@ -24,7 +24,6 @@ mp.TrialNum = 1
 # Special Computational Settings
 mp.flagParallel = True
 mp.flagPlot = True
-mp.useGPU = False
 
 # General
 mp.centering = 'pixel'
@@ -41,7 +40,7 @@ mp.thput_eval_y = 0  # y location [lambda_c/D] in dark hole at which to evaluate
 mp.source_x_offset_norm = 7  # x location [lambda_c/D] in dark hole at which to compute intensity normalization
 mp.source_y_offset_norm = 0  # y location [lambda_c/D] in dark hole at which to compute intensity normalization
 
-# %# Bandwidth and Wavelength Specs
+# Bandwidth and Wavelength Specs
 
 mp.lambda0 = 575e-9  # Central wavelength of the whole spectral bandpass [meters]
 mp.fracBW = 0.1000  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
@@ -57,12 +56,12 @@ mp.estimator = 'pwp-bp'
 
 # Pairwise probing:
 mp.est = falco.config.Object()
-mp.est.probe = falco.config.Object()
+mp.est.probe = falco.config.Probe()
 mp.est.probe.Npairs = 3  # Number of pair-wise probe PAIRS to use.
 mp.est.probe.whichDM = 1  # Which DM # to use for probing. 1 or 2. Default is 1
 mp.est.probe.radius = 12  # Max x/y extent of probed region [actuators].
-mp.est.probe.offsetX = 0  # offset of probe center in x [actuators]. Use to avoid central obscurations.
-mp.est.probe.offsetY = 14  # offset of probe center in y [actuators]. Use to avoid central obscurations.
+mp.est.probe.xOffset = 0  # offset of probe center in x [actuators]. Use to avoid central obscurations.
+mp.est.probe.yOffset = 14  # offset of probe center in y [actuators]. Use to avoid central obscurations.
 mp.est.probe.axis = 'alternate'  # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
 mp.est.probe.gainFudge = 1  # empirical fudge factor to make average probe amplitude match desired value.
 
@@ -79,6 +78,8 @@ mp.logGmin = -6  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobian
 mp.jac = falco.config.Object()
 mp.jac.zerns = np.array([1])  # Which Zernike modes to include in Jacobian. Given as the max Noll index. Always include the value "1" for the on-axis piston mode.
 mp.jac.Zcoef = 1e-9*np.ones(np.size(mp.jac.zerns))  # meters RMS of Zernike aberrations. (piston value is reset to 1 later)
+
+mp.jac.minimizeNI = True  # Have EFC minimize normalized intensity instead of intensity
 
 # Zernikes to compute sensitivities for
 mp.eval = falco.config.Object()
@@ -97,11 +98,6 @@ mp.WspatialDef = []  # [3, 4.5, 3]; # spatial control Jacobian weighting by annu
 mp.dm1.weight = 1
 mp.dm2.weight = 1
 
-# Voltage range restrictions
-mp.dm1.maxAbsV = 1000;  # Max absolute voltage (+/-) for each actuator [volts] # NOT ENFORCED YET
-mp.dm2.maxAbsV = 1000;  # Max absolute voltage (+/-) for each actuator [volts] # NOT ENFORCED YET
-mp.maxAbsdV = 1000;     # Max +/- delta voltage step for each actuator for DMs 1 and 2 [volts] # NOT ENFORCED YET
-
 # %% Wavefront Control: Controller Specific
 # Controller options: 
 #  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
@@ -111,7 +107,7 @@ mp.controller = 'gridsearchEFC'
 # # GRID SEARCH EFC DEFAULTS
 # WFSC Iterations and Control Matrix Relinearization
 mp.Nitr = 5  # Number of estimation+control iterations to perform
-mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  # Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
+mp.relinItrVec = np.arange(0, mp.Nitr)  # Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1, 2]) # Which DMs to use [1-D ndarray]
 
 # # PLANNED SEARCH EFC DEFAULTS     
@@ -314,11 +310,11 @@ mp.F3.pinhole_diam_m = 0.5*32.22*575e-9
 
 # Load the HLC FPM
 if mp.Nsbp == 1:
-    lambdaFacs = np.array([1,])
+    lambdaFacs = np.array([1, ])
 elif mp.Nwpsbp == 1:
     lambdaFacs = np.linspace(1-mp.fracBW/2, 1+mp.fracBW/2, mp.Nsbp)
 else:
-    DeltaBW = mp.fracBW/(mp.Nsbp)*(mp.Nsbp-1)/2;
+    DeltaBW = mp.fracBW/(mp.Nsbp)*(mp.Nsbp-1)/2
     lambdaFacs = np.linspace(1-DeltaBW, 1+DeltaBW, mp.Nsbp)
 
 lamUmVec = 1e6*lambdaFacs*mp.lambda0
@@ -336,4 +332,10 @@ mp.F3.compact.res = 2048/309  # sampling of FPM for compact model [pixels per la
 
 if mp.flagPlot:
     for si in range(mp.Nsbp):
-       plt.figure(200); plt.imshow(np.angle(mp.compact.fpmCube[:,:,si])); plt.colorbar(); plt.gca().invert_yaxis(); plt.pause(0.5)
+        plt.figure(200)
+        plt.imshow(np.angle(mp.compact.fpmCube[:, :, si]))
+        plt.title('HLC FPM Phase Shift in Subband %d' % si)
+        plt.colorbar()
+        plt.gca().invert_yaxis()
+        plt.set_cmap('hsv')
+        plt.pause(0.5)
