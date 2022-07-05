@@ -86,7 +86,7 @@ def full(mp, modvar, isNorm=True):
     # Apply a Zernike (in amplitude) at input pupil if specified
     # if not (hasattr(modvar, 'zernIndex')):
     #     modvar.zernIndex = 1
-    if not modvar.zernIndex == 1:
+    if modvar.zernIndex != 1:
         indsZnoll = modvar.zernIndex  # Just send in 1 Zernike mode
         zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(mp.P1.full.Nbeam,
                                                            mp.centering,
@@ -96,7 +96,7 @@ def full(mp, modvar, isNorm=True):
                                                      modvar.zernIndex]
 
     # %% Pre-compute the FPM first for HLC
-    if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
+    if mp.layout.lower() in ['fourier', 'proper']:
         # ilam = (modvar.sbpIndex-1)*mp.Nwpsbp + modvar.wpsbpIndex
         if mp.coro.upper() == 'HLC':
             mp.F3.full.mask = falco.hlc.gen_fpm_from_LUT(mp,
@@ -142,13 +142,11 @@ def full(mp, modvar, isNorm=True):
                 optval['use_fpm'] = False
                 optval['xoffset'] = 0
                 optval['yoffset'] = 0
-                pass
-
         # wavelength needs to be in microns instead of meters for PROPER
         [Eout, sampling_m] = proper.prop_run(mp.full.prescription, wvl*1e6,
                                              mp.P1.full.Narr, QUIET=True,
                                              PASSVALUE=optval)
-        if not normFac == 0:
+        if normFac != 0:
             Eout = Eout/np.sqrt(normFac)
 
         del optval
@@ -174,7 +172,7 @@ def full(mp, modvar, isNorm=True):
             QUIET=True, PASSVALUE=optval)
         Eout = pad_crop(Eout, (mp.Fend.Nxi, mp.Fend.Nxi))
 
-        if not normFac == 0:
+        if normFac != 0:
             Eout = Eout/np.sqrt(normFac)
 
     return Eout

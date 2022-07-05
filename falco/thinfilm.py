@@ -246,21 +246,18 @@ def calc_complex_trans_matrix(substrate, metal, dielectric, lam, aoi, t_Ti,
     nti = np.interp(lam_nm, lam_ti, n_ti)
     kti = np.interp(lam_nm, lam_ti, k_ti)
 
-    # (Main) Metal layer properties
-    if metal.lower() in ('nickel', 'ni'):
-
-        fnNickel = os.path.join(
-            localpath, 'data', 'nickel_data_from_Palik_via_Bala_wvlNM_n_k.txt')
-        vnickel = np.loadtxt(fnNickel, delimiter="\t", unpack=False,
-                             comments="#")
-        lam_nickel = vnickel[:, 0]  # nm
-        n_nickel_0 = vnickel[:, 1]
-        k_nickel_0 = vnickel[:, 2]
-        nnickel = np.interp(lam_nm, lam_nickel, n_nickel_0)
-        knickel = np.interp(lam_nm, lam_nickel, k_nickel_0)
-
-    else:
+    if metal.lower() not in ('nickel', 'ni'):
         raise ValueError('Invalid value of metal for complex mask.')
+
+    fnNickel = os.path.join(
+        localpath, 'data', 'nickel_data_from_Palik_via_Bala_wvlNM_n_k.txt')
+    vnickel = np.loadtxt(fnNickel, delimiter="\t", unpack=False,
+                         comments="#")
+    lam_nickel = vnickel[:, 0]  # nm
+    n_nickel_0 = vnickel[:, 1]
+    k_nickel_0 = vnickel[:, 2]
+    nnickel = np.interp(lam_nm, lam_nickel, n_nickel_0)
+    knickel = np.interp(lam_nm, lam_nickel, k_nickel_0)
 
     # Compute the complex transmission
     # tCoef = np.zeros((lenMetal, ), dtype=complex)  # initialize
@@ -312,14 +309,14 @@ def calc_complex_trans_matrix(substrate, metal, dielectric, lam, aoi, t_Ti,
             dvec = np.array([d0-dpm-dni-dti, dpm, dni, dti])
 
             # Choose polarization
-            if(pol == 2):  # Mean of the two
+            if (pol == 2):  # Mean of the two
                 [dummy1, dummy2, rr0, tt0] = solver(nvec, dvec, theta,
                                                     lam, False)
                 [dummy1, dummy2, rr1, tt1] = solver(nvec, dvec, theta,
                                                     lam, True)
                 rr = (rr0+rr1)/2.
                 tt = (tt0+tt1)/2.
-            elif(pol == 0 or pol == 1):
+            elif pol in [0, 1]:
                 [dumm1, dummy2, rr, tt] = solver(nvec, dvec, theta, lam,
                                                   bool(pol))
             else:
@@ -372,12 +369,11 @@ def solver(n, d0, theta, lam, tetm=False):
     oneD_array(n, 'n', ValueError)
     oneD_array(d0, 'd0', ValueError)
     N = len(n)
-    if not (len(d0) == N-2):
+    if len(d0) != N - 2:
         raise ValueError('n and d size mismatch')
-        pass
     real_nonnegative_scalar(theta, 'theta', TypeError)
     real_positive_scalar(lam, 'lam', TypeError)
-    if not type(tetm) == bool:
+    if type(tetm) != bool:
         raise TypeError('tetm must be a boolean.')
 
     d = np.hstack((0, d0.reshape(len(d0, )), 0))
@@ -386,11 +382,7 @@ def solver(n, d0, theta, lam, tetm=False):
     # sign agrees with measurement convention:
     kz = -np.sqrt((2*np.pi*n/lam)**2 - kx*kx)
 
-    if tetm:
-        kzz = kz/(n*n)
-    else:
-        kzz = kz
-
+    kzz = kz/(n*n) if tetm else kz
     eep = np.exp(-1j*kz*d)
     eem = np.exp(1j*kz*d)
 
@@ -414,8 +406,6 @@ def solver(n, d0, theta, lam, tetm=False):
         Pn = np.real((kz[-1]/(n[-1]**2)) / (kz[0]/(n[0]**2)))
     else:
         Pn = np.real((kz[-1]/kz[0]))
-        pass
-
     T = Pn*np.abs(tt)**2
     tt = np.sqrt(Pn)*tt
 
