@@ -315,7 +315,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
         t_Ni_vec = [0]
         t_PMGI_vec = [1e-9 * mp.t_diel_bias_nm]  # [meters]
         pol = 2
-        transOuterFPM, rCoef = falco.thinfilm.calc_complex_occulter(wvl,
+        transOuterFPM, rCoef = falco.thinfilm.calc_complex_trans_matrix(wvl,
                 mp.aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
 
         # MFT from apodizer plane to FPM (i.e., P3 to F3)

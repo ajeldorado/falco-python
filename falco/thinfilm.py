@@ -10,13 +10,102 @@ from falco.check import real_scalar, real_positive_scalar,\
 
 
 def calc_complex_occulter(substrate, metal, dielectric, lam, aoi, t_Ti,
-                          t_metal_vec, t_diel_vec, d0, pol, flagOPD=False):
+                          t_metal_map, t_diel_map, d0, pol, flagOPD=False):
+    """
+    Calculate the complex-valued transmission of a 2-D mask.
+
+    Calculates the thin-film complex transmission for the provided 2-D maps
+    of metal and dielectric thicknesses for a single wavelength.
+
+    This function is a wrapper around calc_complex_trans_matrix().
+
+    Parameters
+    ----------
+    substrate : str
+        Name of the substrate material.
+    metal : str
+        Name of the metal used in the mask.
+    dielectric : str
+        Name of the dielectric used in the mask.
+    lam : float
+        Wavelength in meters.
+    aoi : flaot
+        Angle of incidence in degrees.
+    t_Ti : float
+        Titanium layer thickness in meters. Titanium is used in a uniform
+        thickness only between the substrate and the main metal to help
+        adhesion.
+    t_metal_map : array_like
+        2-D array of metal thicknesses in meters. This metal goes between the
+        titanium and dielectric layers.
+    t_diel_map : array_like
+        1-D array of PMGI thicknesses in meters.
+    d0 : float
+        Reference height for all phase offsets. Must be larger than the stack
+        of materials, not including the substrate. Units of meters.
+    pol : {0, 1, 2}
+        Polarization state to compute values for.
+        0 for TE(s) polarization,
+        1 for TM(p) polarization,
+        2 for mean of s and p polarizations
+    flagOPD : bool, optional
+        Flag to use the OPD convention. The default is False.
+
+    Returns
+    -------
+    out_map : numpy ndarray
+        2-D complex transmission map for the provided layer thicknesses.
+    """
+    real_nonnegative_scalar(t_Ti, 't_Ti', TypeError)
+    twoD_array(t_metal_map, 't_metal_map', TypeError)
+    twoD_array(t_diel_map, 't_diel_map', TypeError)
+
+    out_map = np.zeros_like(t_metal_map, dtype=complex)
+
+    t_Ti_map = np.zeros_like(t_metal_map)
+    t_Ti_map[t_metal_map > 10*np.finfo(float).eps] = t_Ti
+    # Put each vector as a column in a matrix
+    t_unique_mat = np.unique(np.stack((t_diel_map.flatten(),
+                                      t_metal_map.flatten(),
+                                      t_Ti_map.flatten()),
+                                      ),
+                             axis=1)
+
+    t_diel_vec_short = t_unique_mat[0, :]
+    t_metal_vec_short = t_unique_mat[1, :]
+    t_Ti_vec_short = t_unique_mat[2, :]
+
+    Nshort = t_unique_mat.shape[1]
+    # tCoefShort = np.zeros(Nshort)
+    # rCoefShort = np.zeros(Nshort)
+
+    for ii in range(Nshort):
+
+        t_diel = t_diel_vec_short[ii]
+        t_metal = t_metal_vec_short[ii]
+        t_Ti_here = t_Ti_vec_short[ii]
+
+        tCoef, rCoef = calc_complex_trans_matrix(
+            substrate, metal, dielectric, lam, aoi, t_Ti_here,
+            [t_metal, ], [t_diel, ], d0, pol, flagOPD)
+
+        thisRegion = np.logical_and(
+            np.logical_and(t_metal_map == t_metal, t_diel_map == t_diel),
+            t_Ti_map == t_Ti_here)
+
+        out_map[thisRegion] = tCoef[0]
+
+    return out_map
+
+
+def calc_complex_trans_matrix(substrate, metal, dielectric, lam, aoi, t_Ti,
+                              t_metal_vec, t_diel_vec, d0, pol, flagOPD=False):
     """
     Calculate the thin-film complex transmission and reflectance.
 
     Calculates the thin-film complex transmission and reflectance for the
-    provided combinations of metal and dielectric thicknesses and list of
-    wavelengths.
+    provided combinations of metal and dielectric thicknesses at the given
+    wavelength.
 
     Parameters
     ----------
@@ -219,7 +308,7 @@ def calc_complex_occulter(substrate, metal, dielectric, lam, aoi, t_Ti,
             dti = t_Ti_vec[ii]
 
             nvec = np.array([1, 1, n_diel-1j*k_diel, nnickel-1j*knickel, nti-1j*kti,
-                             n_substrate], dtype=complex)
+                              n_substrate], dtype=complex)
             dvec = np.array([d0-dpm-dni-dti, dpm, dni, dti])
 
             # Choose polarization
@@ -232,7 +321,7 @@ def calc_complex_occulter(substrate, metal, dielectric, lam, aoi, t_Ti,
                 tt = (tt0+tt1)/2.
             elif(pol == 0 or pol == 1):
                 [dumm1, dummy2, rr, tt] = solver(nvec, dvec, theta, lam,
-                                                 bool(pol))
+                                                  bool(pol))
             else:
                 raise ValueError('Wrong input value for polarization.')
 
@@ -404,7 +493,7 @@ def gen_complex_trans_table(mp, flagRefl=False):
         for si in range(Nsbp):
             lam = sbp_centers[si]
             d0 = lam * mp.F3.d0fac  # Max thickness of PMGI + Ni
-            [tCoef, rCoef] = calc_complex_occulter(
+            [tCoef, rCoef] = calc_complex_trans_matrix(
                 mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, lam, aoi,
                 t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
             if flagRefl:
@@ -440,7 +529,7 @@ def gen_complex_trans_table(mp, flagRefl=False):
             for li in range(len(lambdas)):
                 lam = lambdas[li]
                 d0 = lam * mp.F3.d0fac  # Max thickness of PMGI + Ni
-                [tCoef, rCoef] = calc_complex_occulter(
+                [tCoef, rCoef] = calc_complex_trans_matrix(
                     mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, lam, aoi,
                     t_Ti_m, t_metal_m_vec, t_diel_m_vec, d0, 2)
                 if flagRefl:
