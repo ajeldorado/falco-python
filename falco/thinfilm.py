@@ -12,10 +12,10 @@ from falco.check import real_scalar, real_positive_scalar,\
 
 
 def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
-                                 d0, pol, flagOPD=False, SUBSTRATE='FS'):
+                          d0, pol, flagOPD=False, SUBSTRATE='FS'):
     """
     Calculate the thin-film complex transmission and reflectance.
-    
+
     Calculates the thin-film complex transmission and reflectance for the
     provided combinations of metal and dielectric thicknesses and list of
     wavelengths.
@@ -63,12 +63,12 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
     #     raise ValueError('Ti, Ni, and PMGI thickness vectors must all ' +
     #                      'have same length.')
     scalar_integer(pol, 'pol', TypeError)
-    
+
     lam_nm = lam * 1.0e9  # m --> nm
     lam_um = lam * 1.0e6  # m --> microns
     lam_um2 = lam_um * lam_um
     theta = aoi * (np.pi/180.)  # deg --> rad
-    
+
     # Define Material Properties
     # ---------------------------------------------
     # Substrate properties
@@ -80,8 +80,8 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
         B2 = 0.01339688560
         B3 = 64.49327320000
         n_substrate = np.sqrt(1 + A1*lam_um2/(lam_um2 - B1) +
-                           A2*lam_um2/(lam_um2 - B2) +
-                           A3*lam_um2/(lam_um2 - B3))
+                              A2*lam_um2/(lam_um2 - B2) +
+                              A3*lam_um2/(lam_um2 - B3))
 
     elif SUBSTRATE.upper() in ('N-BK7', 'NBK7', 'BK7'):
         B1 = 1.03961212
@@ -93,11 +93,11 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
         n_substrate = np.sqrt(1 + (B1*lam_um2/(lam_um2 - C1)) +
                               (B2*lam_um2/(lam_um2 - C2)) +
                               (B3*lam_um2/(lam_um2 - C3)))
-    
+
     # Dielectric properties
     npmgi = 1.524 + 5.176e-03/lam_um**2 + 2.105e-4/lam_um**4
     Ndiel = len(t_PMGI_vec)
-    
+
     # Metal layer properties
     # Titanium base layer under the nickel
     Nmetal = len(t_Ni_vec)
@@ -129,7 +129,7 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
     k_ti = titanium[:, 2]
     nti = np.interp(lam_nm, lam_ti, n_ti)
     kti = np.interp(lam_nm, lam_ti, k_ti)
-    
+
     # Nickel
     localpath = os.path.dirname(os.path.abspath(__file__))
     fnNickel = os.path.join(localpath, 'data',
@@ -140,7 +140,7 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
     k_nickel = vnickel[:, 2]
     nnickel = np.interp(lam_nm, lam_nickel, n_nickel)
     knickel = np.interp(lam_nm, lam_nickel, k_nickel)
-    
+
     # Compute the complex transmission
     # tCoef = np.zeros((Nmetal, ), dtype=complex)  # initialize
     # rCoef = np.zeros((Nmetal, ), dtype=complex)  # initialize
@@ -149,11 +149,11 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
     #     dni = t_Ni_vec[ii]
     #     dti = t_Ti_vec[ii]
     #     dpm = t_PMGI_vec[ii]
-        
+
     #     nvec = np.array([1, 1, npmgi, nnickel-1j*knickel, nti-1j*kti,
     #                      n_substrate], dtype=complex)
     #     dvec = np.array([d0-dpm-dni-dti, dpm, dni, dti])
-        
+
     #     # Choose polarization
     #     if(pol == 2):  # Mean of the two
     #         [dummy1, dummy2, rr0, tt0] = solver(nvec, dvec, theta,
@@ -175,21 +175,21 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
     #     else:  # OPD phase convention
     #         tCoef[ii] = tt  # Complex field transmission coeffient
     #         rCoef[ii] = rr  # Complex field reflection coeffient
-                
+
     # Compute the complex transmission
     tCoef = np.zeros((Ndiel, Nmetal), dtype=complex)  # initialize
     rCoef = np.zeros((Ndiel, Nmetal), dtype=complex)  # initialize
     for jj in range(Ndiel):
         dpm = t_PMGI_vec[jj]
-        
+
         for ii in range(Nmetal):
             dni = t_Ni_vec[ii]
             dti = t_Ti_vec[ii]
-            
+
             nvec = np.array([1, 1, npmgi, nnickel-1j*knickel, nti-1j*kti,
-                              n_substrate], dtype=complex)
+                             n_substrate], dtype=complex)
             dvec = np.array([d0-dpm-dni-dti, dpm, dni, dti])
-            
+
             # Choose polarization
             if(pol == 2):  # Mean of the two
                 [dummy1, dummy2, rr0, tt0] = solver(nvec, dvec, theta,
@@ -200,7 +200,7 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
                 tt = (tt0+tt1)/2.
             elif(pol == 0 or pol == 1):
                 [dumm1, dummy2, rr, tt] = solver(nvec, dvec, theta, lam,
-                                                  bool(pol))
+                                                 bool(pol))
             else:
                 raise ValueError('Wrong input value for polarization.')
 
@@ -211,7 +211,7 @@ def calc_complex_occulter(lam, aoi, t_Ti, t_Ni_vec, t_PMGI_vec,
             else:  # OPD phase convention
                 tCoef[jj, ii] = tt  # Complex field transmission coeffient
                 rCoef[jj, ii] = rr  # Complex field reflection coeffient
-    
+
     return tCoef, rCoef
 
 
@@ -258,35 +258,34 @@ def solver(n, d0, theta, lam, tetm=False):
     real_positive_scalar(lam, 'lam', TypeError)
     if not type(tetm) == bool:
         raise TypeError('tetm must be a boolean.')
-    
-    # np.hstac
+
     d = np.hstack((0, d0.reshape(len(d0, )), 0))
-        
+
     kx = 2*np.pi*n[0]*np.sin(theta)/lam
     # sign agrees with measurement convention:
     kz = -np.sqrt((2*np.pi*n/lam)**2 - kx*kx)
-    
+
     if tetm:
         kzz = kz/(n*n)
     else:
         kzz = kz
-    
+
     eep = np.exp(-1j*kz*d)
     eem = np.exp(1j*kz*d)
-    
+
     i1 = np.arange(N-1)
     i2 = np.arange(1, N)
     tin = 0.5*(kzz[i1] + kzz[i2])/kzz[i1]
     ri = (kzz[i1] - kzz[i2])/(kzz[i1] + kzz[i2])
-    
+
     A = np.eye(2, dtype=complex)
     for i in range(N-1):
         A = A @ np.array(tin[i]*np.array([[eep[i], ri[i]*eep[i]],
                                           [ri[i]*eem[i], eem[i]]]))
-    
+
     rr = A[1, 0] / A[0, 0]
     tt = 1 / A[0, 0]
-    
+
     # transmitted power flux (Poynting vector . surface) depends on index of
     # the substrate and angle
     R = np.abs(rr)**2
@@ -295,7 +294,7 @@ def solver(n, d0, theta, lam, tetm=False):
     else:
         Pn = np.real((kz[-1]/kz[0]))
         pass
-    
+
     T = Pn*np.abs(tt)**2
     tt = np.sqrt(Pn)*tt
 
@@ -340,8 +339,9 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
 
     fn_full = ('ct_cube_%s_Ti%.1fnm_%s_%.1fto%.1fby%.2f_%s_%.1fto%.1fby%.2f_wvl%dnm_BW%.1f_%dN%d_%.1fdeg_full.npy' %
         (SUBSTRATE, mp.t_Ti_nm, mp.F3.metal, np.min(mp.t_metal_nm_vec), np.max(mp.t_metal_nm_vec), mp.dt_metal_nm,
-        mp.F3.diel, np.min(mp.t_diel_nm_vec), np.max(mp.t_diel_nm_vec), mp.dt_diel_nm,
-        (1e9*mp.lambda0), 100*mp.fracBW, mp.Nsbp, mp.Nwpsbp, mp.aoi))
+         mp.F3.diel, np.min(mp.t_diel_nm_vec), np.max(mp.t_diel_nm_vec),
+         mp.dt_diel_nm, (1e9*mp.lambda0), 100*mp.fracBW, mp.Nsbp, mp.Nwpsbp,
+         mp.aoi))
     fn_cube_full = os.path.join(localpath, 'data', 'material', fn_full)
 
     if(flagRefl):
@@ -357,10 +357,11 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
     Nmetal = len(mp.t_metal_nm_vec)
     Ndiel = len(mp.t_diel_nm_vec)
 
-    # Compact Model: Load the data if it has been generated before; otherwise generate it.
+    # Compact Model: Load pre-generated data, or else generate it.
     if(isfile(fn_cube_compact)):
         complexTransCompact = np.load(fn_cube_compact)
-        print('Loaded complex transmission datacube for compact model: %s' % fn_cube_compact)
+        print('Loaded complex transmission datacube for compact model: %s' %
+              fn_cube_compact)
     else:
 
         print('Computing thin film equations for compact model:')
@@ -388,10 +389,11 @@ def gen_complex_trans_table(mp, flagRefl=False, SUBSTRATE='FS'):
         print('Saved complex transmission datacube: %s' % fn_cube_compact)
         pass
 
-    # Full Model: Load the data if it has been generated before; otherwise generate it.
+    # Full Model: Load pre-generated data or else generate it.
     if isfile(fn_cube_full):
         complexTransFull = np.load(fn_cube_full)
-        print('Loaded complex transmission datacube for full model: %s' % fn_cube_full)
+        print('Loaded complex transmission datacube for full model: %s' %
+              fn_cube_full)
     else:
         print('Computing thin film equations for full model:')
         if mp.Nwpsbp == 1:
