@@ -1,5 +1,6 @@
 """Add new header values to the influence function FITS files to function
 after prop_dm.py in PROPER changed how the header values are used."""
+
 from astropy.io import fits
 import os
 
@@ -13,8 +14,7 @@ fnList = [
     'influence_dm_FEA_10milsV2_20160330.fits',
 ]
 
-for index, fn in enumerate(fnList):
-    
+for fn in fnList:
     print(fn)
     fnFull = os.path.join(HERE, fn)
     inf_func = fits.getdata(fnFull)
