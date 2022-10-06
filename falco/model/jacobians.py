@@ -41,7 +41,16 @@ def lyot(mp, iMode, idm):
     wvl = mp.sbp_centers[modvar.sbpIndex]
     NdmPad = int(mp.compact.NdmPad)
     surfIntoPhase = 2.  # Phase change is twice the DM surface height.
-    scaleFac = 1  # Default is that FPM sampling does not vary with wavelength
+    
+    # Default is that FPM sampling does not vary with wavelength
+    if mp.layout.lower() == 'fpm_scale':
+        scaleFac = wvl/mp.lambda0
+    else:
+        scaleFac = 1
+    xisF3 = scaleFac * mp.F3.compact.xis
+    etasF3 = scaleFac * mp.F3.compact.etas
+    dxiF3 = scaleFac * mp.F3.compact.dxi
+    detaF3 = scaleFac * mp.F3.compact.deta
 
     if mp.flagRotation:
         NrelayFactor = 1
@@ -56,6 +65,8 @@ def lyot(mp, iMode, idm):
         # Complex transmission of the points outside the FPM (just fused silica
         # with optional dielectric and no metal).
         transOuterFPM = fpm[0, 0]
+
+
 
     """Input E-fields"""
 
@@ -203,8 +214,8 @@ def lyot(mp, iMode, idm):
                     y_box = -1*y_box[::-1]
 
                 # Matrices for the MFT from the pupil P3 to the focal plane mask
-                rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas,y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
-                rect_mat_post = (np.exp(-2*np.pi*1j*np.outer(x_box, mp.F3.compact.xis)/(wvl*mp.fl)))
+                rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(etasF3, y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
+                rect_mat_post = (np.exp(-2*np.pi*1j*np.outer(x_box, xisF3)/(wvl*mp.fl)))
 
                 EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post  # MFT to FPM
 
@@ -213,7 +224,7 @@ def lyot(mp, iMode, idm):
                     EF3 = (transOuterFPM-fpm) * EF3inc
 
                     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                    EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+                    EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
                     EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
                     # Full Lyot plane pupil (for Babinet)
@@ -227,7 +238,7 @@ def lyot(mp, iMode, idm):
                     EF3 = fpm * EF3inc  # Apply FPM
 
                     # MFT to Lyot plane
-                    EP4 = fp.mft_f2p(EF3, mp.fl,wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+                    EP4 = fp.mft_f2p(EF3, mp.fl,wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
                     EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
 
                 EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
@@ -291,8 +302,8 @@ def lyot(mp, iMode, idm):
                     y_box = -1*y_box[::-1]
 
                 # Matrices for the MFT from the pupil P3 to the focal plane mask
-                rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(mp.F3.compact.etas, y_box)/(wvl*mp.fl))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
-                rect_mat_post = np.exp(-2*np.pi*1j*np.outer(x_box, mp.F3.compact.xis)/(wvl*mp.fl))
+                rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(etasF3, y_box)/(wvl*mp.fl))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
+                rect_mat_post = np.exp(-2*np.pi*1j*np.outer(x_box, xisF3)/(wvl*mp.fl))
 
                 EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post  # MFT to FPM
 
@@ -301,7 +312,7 @@ def lyot(mp, iMode, idm):
                     EF3 = (transOuterFPM-fpm) * EF3inc
 
                     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                    EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering) # Subtrahend term for the Lyot plane E-field    
+                    EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering) # Subtrahend term for the Lyot plane E-field    
                     EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
 
                     EP4noFPM = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=complex)
@@ -315,7 +326,7 @@ def lyot(mp, iMode, idm):
                     EF3 = fpm * EF3inc  # Apply FPM
 
                     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                    EP4 = fp.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+                    EP4 = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
                     EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
                 EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
@@ -365,7 +376,7 @@ def lyot(mp, iMode, idm):
             EP3 = mp.P3.compact.mask * pad_crop(EP3, mp.P1.compact.Narr)
 
         # MFT from pupil P3 to FPM (at focus F3)
-        EF3inc = fp.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)
+        EF3inc = fp.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx, dxiF3, mp.F3.compact.Nxi, detaF3, mp.F3.compact.Neta, mp.centering)
         EF3inc = pad_crop(EF3inc, mp.dm9.compact.NdmPad)
         # Coordinates for metal thickness and dielectric thickness
         DM8transIndAll = falco.hlc.discretize_fpm_surf(mp.dm8.surf, mp.t_metal_nm_vec, mp.dt_metal_nm)  # All of the mask
@@ -403,7 +414,7 @@ def lyot(mp, iMode, idm):
 
                 # Matrices for the MFT from the FPM stamp to the Lyot stop
                 rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(mp.P4.compact.ys, eta_box)/(wvl*mp.fl)) *\
-                    np.sqrt(mp.P4.compact.dx*mp.P4.compact.dx)*np.sqrt(mp.F3.compact.dxi*mp.F3.compact.deta)/(wvl*mp.fl)
+                    np.sqrt(mp.P4.compact.dx*mp.P4.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
                 rect_mat_post = np.exp(-2*np.pi*1j*np.outer(xi_box, mp.P4.compact.xs)/(wvl*mp.fl))
 
                 # MFT from FPM to Lyot stop (Nominal term transOuterFPM*EP4noFPM subtracts out to 0 since it ignores the FPM change).
@@ -866,12 +877,6 @@ def no_fpm(mp, iMode, idm):
     else:
         apodReimaged = np.ones((NdmPad, NdmPad))
 
-    # Default is that F3 focal plane sampling does not vary with wavelength
-    scaleFac = 1
-    # if mp.coro == 'HLC':
-    #     if mp.layout in ('fpm_scale', 'proper', 'roman_phasec_proper', 'wfirst_phaseb_proper'):
-    #         scaleFac = wvl/mp.lambda0 # Focal plane sampling varies with wavelength
-
     # This block is for BMC surface error testing
     if(mp.flagDMwfe):
         if any(mp.dm_ind == 1):
@@ -962,7 +967,7 @@ def no_fpm(mp, iMode, idm):
 
                 dEFendPeak = (np.sum(dEP2box) * transOuterFPM *
                               np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx) *
-                              scaleFac * np.sqrt(mp.Fend.dxi*mp.Fend.deta) /
+                              np.sqrt(mp.Fend.dxi*mp.Fend.deta) /
                               (wvl*mp.fl))
 
                 Gmode[:, Gindex] = dEFendPeak / \

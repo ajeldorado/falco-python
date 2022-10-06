@@ -96,24 +96,25 @@ def full(mp, modvar, isNorm=True):
                                                      modvar.zernIndex]
 
     # %% Pre-compute the FPM first for HLC
-    if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
-        # ilam = (modvar.sbpIndex-1)*mp.Nwpsbp + modvar.wpsbpIndex
-        if mp.coro.upper() == 'HLC':
-            mp.F3.full.mask = falco.hlc.gen_fpm_from_LUT(mp,
-                                    modvar.sbpIndex, modvar.wpsbpIndex, 'full')
-    elif mp.layout.lower() == 'fpm_scale':
-        if mp.coro.upper() == 'HLC':
-            if mp.Nsbp > 1 and mp.Nwpsbp > 1:
-                # Weird indexing is because interior wavelengths at
-                # edges of sub-bands are the same, and the fpmCube
-                # contains only the minimal set of masks.
-                ilam = (modvar.sbpIndex-2)*mp.Nwpsbp + modvar.wpsbpIndex + \
-                    (mp.Nsbp-modvar.sbpIndex+1)
-            elif mp.Nsbp == 1 and mp.Nwpsbp > 1:
-                ilam = modvar.wpsbpIndex
-            elif mp.Nwpsbp == 1:
-                ilam = modvar.sbpIndex
+    if mp.Nsbp > 1 and mp.Nwpsbp > 1:
+        # Weird indexing is because interior wavelengths at
+        # edges of sub-bands are the same, and the fpmCube
+        # contains only the minimal set of masks.
+        ilam = (modvar.sbpIndex-2)*mp.Nwpsbp + modvar.wpsbpIndex + \
+            (mp.Nsbp-modvar.sbpIndex+1)
+    elif mp.Nsbp == 1 and mp.Nwpsbp > 1:
+        ilam = modvar.wpsbpIndex
+    elif mp.Nwpsbp == 1:
+        ilam = modvar.sbpIndex
 
+    if mp.coro.upper() == 'HLC':
+        if mp.layout.lower() == 'fourier' or mp.layout.lower() == 'proper':
+            if hasattr(mp.full, 'fpmCube'):
+                mp.F3.full.mask = mp.full.fpmCube[:, :, ilam]
+            else:
+                mp.F3.full.mask = falco.hlc.gen_fpm_from_LUT(
+                    mp, modvar.sbpIndex, modvar.wpsbpIndex, 'full')
+        elif mp.layout.lower() == 'fpm_scale':
             mp.F3.full.mask = mp.full.fpmCube[:, :, ilam]
 
     # %% Select which optical layout's full model to use.
@@ -311,16 +312,21 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     elif mp.coro.upper() == 'HLC':
         # Complex transmission of the points outside the FPM (just fused silica
         # with optional dielectric and no metal).
-        t_Ti_base = 0
-        t_Ni_vec = [0]
-        t_PMGI_vec = [1e-9 * mp.t_diel_bias_nm]  # [meters]
-        pol = 2
-        transOuterFPM, rCoef = falco.thinfilm.calc_complex_trans_matrix(wvl,
-                mp.aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
+
+        if hasattr(mp.full, 'fpmCube'):
+            transOuterFPM = mp.F3.full.mask[0, 0]
+        else:
+            t_Ti_base = 0
+            t_Ni_vec = [0]
+            t_PMGI_vec = [1e-9 * mp.t_diel_bias_nm]  # [meters]
+            pol = 2
+            transOuterFPM, rCoef = falco.thinfilm.calc_complex_trans_matrix(
+                mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, wvl, mp.aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
 
         # MFT from apodizer plane to FPM (i.e., P3 to F3)
         EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
-                            mp.F3.full.dxi, mp.F3.full.Nxi, mp.F3.full.deta,
+                            fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi, 
+                            fpmScaleFac*mp.F3.full.deta,
                             mp.F3.full.Neta, mp.centering)
         # Apply (transOuterFPM-FPM) for Babinet's principle later
         EF3 = (transOuterFPM - mp.F3.full.mask) * EF3inc
@@ -331,8 +337,8 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
         EP4noFPM = transOuterFPM * pad_crop(EP4noFPM, mp.P4.full.Narr)
         # MFT from FPM to Lyot Plane (i.e., F3 to P4)
         # Subtrahend term for Babinet's principle
-        EP4subtra = falco.prop.mft_f2p(EF3, mp.fl, wvl, mp.F3.full.dxi,
-                mp.F3.full.deta, mp.P4.full.dx, mp.P4.full.Narr, mp.centering)
+        EP4subtra = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.full.dxi,
+                fpmScaleFac*mp.F3.full.deta, mp.P4.full.dx, mp.P4.full.Narr, mp.centering)
         # Babinet's principle at P4
         EP4 = EP4noFPM - EP4subtra
 
@@ -504,8 +510,11 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True):
     # Define what the complex-valued FPM is if the coro is some type of HLC.
     if mp.coro.upper() in ('HLC',):
         if mp.layout.lower() == 'fourier':
-            mp.F3.compact.mask = falco.hlc.gen_fpm_from_LUT(
-                mp, modvar.sbpIndex, -1, 'compact')
+            if hasattr(mp.compact, 'fpmCube'):
+                mp.F3.compact.mask = mp.compact.fpmCube[:, :, modvar.sbpIndex]
+            else:
+                mp.F3.compact.mask = falco.hlc.gen_fpm_from_LUT(
+                    mp, modvar.sbpIndex, -1, 'compact')
         elif mp.layout.lower() in ('roman_phasec_proper',
                                    'wfirst_phaseb_proper',
                                    'fpm_scale', 'proper'):
@@ -568,7 +577,12 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
 
     mirrorFac = 2.  # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
-    transOuterFPM = 1
+    
+    # Complex trans of points outside FPM
+    if mp.coro.upper() == 'HLC':
+        transOuterFPM = mp.F3.compact.mask[0, 0]  
+    else:
+        transOuterFPM = 1.
 
     if mp.flagRotation:
         NrelayFactor = 1
@@ -708,17 +722,17 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
         elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
             # MFT from SP to FPM (i.e., P3 to F3)
             # E-field incident upon the FPM
-            EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
-                                        mp.F3.compact.dxi, mp.F3.compact.Nxi,
-                                        mp.F3.compact.deta, mp.F3.compact.Neta,
-                                        mp.centering)
+            EF3inc = falco.prop.mft_p2f(
+                EP3, mp.fl, wvl, mp.P2.compact.dx, fpmScaleFac*mp.F3.compact.dxi,
+                mp.F3.compact.Nxi, fpmScaleFac*mp.F3.compact.deta,
+                mp.F3.compact.Neta, mp.centering)
 
             # Apply FPM
             EF3 = mp.F3.compact.mask * EF3inc
 
             # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-            EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, mp.F3.compact.dxi,
-                                     mp.F3.compact.deta, mp.P4.compact.dx,
+            EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.compact.dxi,
+                                     fpmScaleFac*mp.F3.compact.deta, mp.P4.compact.dx,
                                      mp.P4.compact.Narr, mp.centering)
             EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
@@ -730,15 +744,9 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
                                         mp.F3.compact.Nxi,
                                         fpmScaleFac*mp.F3.compact.deta,
                                         mp.F3.compact.Neta, mp.centering)
-            # Apply (1-FPM) for Babinet's principle later
-            if mp.coro.upper() == 'HLC':
-                FPM = mp.F3.compact.mask  # Complex transmission of the FPM
-                transOuterFPM = FPM[0, 0]  # Complex trans of points outside FPM
-                EF3 = (transOuterFPM - FPM)*EF3inc
-                # transOuterFPM instead of 1 because of the complex transmission of
-                # the glass as well as the arbitrary phase shift.
-            else:
-                EF3 = (1. - mp.F3.compact.mask)*EF3inc
+
+            EF3 = (transOuterFPM - mp.F3.compact.mask)*EF3inc
+
             # Use Babinet's principle at the Lyot plane.
             EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
             EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)
@@ -832,8 +840,9 @@ def jacobian(mp):
     # Pre-compute the HLC FPM at each wavelength to save time
     if mp.layout.lower() == 'fourier':
         if mp.coro.upper() == 'HLC':
-            mp.compact.fpmCube, mp.dm8.surf, mp.dm9.surf = \
-                falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
+            if not hasattr(mp.compact, 'fpmCube'):
+                mp.compact.fpmCube, mp.dm8.surf, mp.dm9.surf = \
+                    falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
 
     # Initialize the Jacobians for each DM
     jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
@@ -977,17 +986,19 @@ def _jac_middle_layer(mp, im, idm):
         Complex-valued, 2-D array containing the Jacobian for the specified DM.
 
     """
-    if mp.layout.lower() in ('fourier', 'proper'):
+    if mp.layout.lower() in ('fourier', 'proper', 'fpm_scale'):
         if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'FLC', 'SPLC'):
             jacMode = jacobians.lyot(mp, im, idm)
         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
             jacMode = jacobians.vortex(mp, im, idm)
+            
     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
             jacMode = jacobians.lyot(mp, im, idm)
         else:
             raise ValueError('%s not recognized as value for mp.coro' %
                              mp.coro)
+            
     else:
         raise ValueError('mp.layout.lower not recognized')
 
