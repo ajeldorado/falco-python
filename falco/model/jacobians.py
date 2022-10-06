@@ -1026,7 +1026,7 @@ def no_fpm(mp, iMode, idm):
 
                 dEFendPeak = (np.sum(dEP2box) * transOuterFPM *
                               np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx) *
-                              scaleFac * np.sqrt(mp.Fend.dxi*mp.Fend.deta) /
+                              np.sqrt(mp.Fend.dxi*mp.Fend.deta) /
                               (wvl*mp.fl))
 
                 Gmode[:, Gindex] = dEFendPeak / \
