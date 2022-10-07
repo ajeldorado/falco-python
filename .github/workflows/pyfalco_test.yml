@@ -20,14 +20,14 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7'
+        python-version: '3.10'
     - name: Install dependencies
       run: |
-        pip install astropy==4.0
+        pip install astropy
         pip install extension-helpers
         mkdir PYPROPER
         cd PYPROPER
-        curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.5_python_3.x_21apr2021.zip -o myfile.zip -L
+        curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.7_python_15jun2022.zip -o myfile.zip -L
         unzip -o myfile.zip
         cd proper*
         python setup.py install
