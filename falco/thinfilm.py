@@ -39,7 +39,7 @@ def calc_complex_occulter(substrate, metal, dielectric, lam, aoi, t_Ti,
         2-D array of metal thicknesses in meters. This metal goes between the
         titanium and dielectric layers.
     t_diel_map : array_like
-        1-D array of PMGI thicknesses in meters.
+        2-D array of dielectric thicknesses in meters.
     d0 : float
         Reference height for all phase offsets. Must be larger than the stack
         of materials, not including the substrate. Units of meters.
