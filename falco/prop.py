@@ -2,7 +2,7 @@ import numpy as np
 import logging
 from falco import util, check
 from falco.mask import falco_gen_vortex_mask
-from scipy.signal import tukey
+from scipy.signal.windows import tukey
 
 log = logging.getLogger(__name__)
 
