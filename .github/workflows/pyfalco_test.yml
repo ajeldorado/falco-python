@@ -7,7 +7,8 @@ on:
   push:
     branches: [ dev-aj]
   pull_request:
-    branches: [ dev-aj]
+    branches:
+      - master
 
 jobs:
   build:
