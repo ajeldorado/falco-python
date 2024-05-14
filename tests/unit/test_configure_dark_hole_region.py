@@ -31,10 +31,11 @@ def test_single_region():
 
     falco.setup.falco_configure_dark_hole_region(mp)
 
-    area = np.sum(mp.Fend.corr.maskBool.astype(int))
+    area = np.sum(mp.Fend.corr.maskBool.astype(float))
 
     areaExpected = (np.pi * (mp.Fend.corr.Rout**2 - mp.Fend.corr.Rin**2) *
                     (2*mp.Fend.corr.ang/360) * mp.Fend.res**2)
+    areaExpected = areaExpected.item()
 
     assert isclose(area, areaExpected, rel_tol=1e-3)
 

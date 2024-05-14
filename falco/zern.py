@@ -6,7 +6,7 @@ import numpy as np
 
 import falco
 
-import proper
+import falco.proper as proper
 
 _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)

@@ -487,7 +487,7 @@ def falco_set_spectral_properties(mp):
     mp.wi_ref = np.floor(mp.Nwpsbp/2).astype(int)
 
     # Wavelength factors/weights within sub-bandpasses in the full model
-    mp.full.lambda_weights = np.ones((mp.Nwpsbp,1))  # Initialize as all ones. Weights within a single sub-bandpass
+    mp.full.lambda_weights = np.ones((mp.Nwpsbp, 1))  # Initialize as all ones. Weights within a single sub-bandpass
     if mp.Nwpsbp == 1:
         mp.full.dlam = 0  # Delta lambda between every wavelength in the sub-band in the full model
     else:
@@ -516,7 +516,7 @@ def falco_set_spectral_properties(mp):
         np.arange(-(mp.Nwpsbp-1)/2, (mp.Nwpsbp-1)/2)*mp.full.dlam
         for wi in range(mp.Nwpsbp):
             lambdas[counter] = mp.full.lambdasMat[si, wi];
-            lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi]
+            lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi].item()
             mp.full.indsLambdaMat[counter, :] = [si, wi]
             counter = counter+1;
 

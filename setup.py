@@ -98,7 +98,7 @@ setup(
       'matplotlib',
       'numpy',
       'scipy',
-      'proper',
+#       'proper',
     ],
     tests_require=['pytest'],
     packages=find_packages(),

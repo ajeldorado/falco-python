@@ -32,7 +32,7 @@ import os
 os.environ['MKL_NUM_THREADS'] = '1'
 import numpy as np
 
-import proper
+import falco.proper as proper
 from scipy.interpolate import interp1d
 import astropy.io.fits as pyfits
 from roman_phasec_proper import trim, mft2, ffts, polmap

@@ -4,7 +4,7 @@ from numpy import cos, sin
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import rotate
 
-import proper
+import falco.proper as proper
 import falco
 from . import check
 from falco.util import ceil_even, cosd, sind
@@ -88,7 +88,7 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
     """
     check.real_positive_scalar(Nbeam, 'Nbeam', TypeError)
     check.centering(centering)
-    check.is_dict(changes, 'changes')
+    check.dictionary(changes, 'changes', TypeError)
 
     # Define the best-fit values for ellipses and rectangles (DO NOT CHANGE)
     primaryRadiusYpixels = 4027.25
@@ -224,8 +224,8 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
         xc = magFac*(xcStrutVec[iStrut])
         yc = magFac*(ycStrutVec[iStrut])
         cxy = rotMat @ np.array([xc, yc]).reshape((2, 1))
-        xc = cxy[0] + xShear
-        yc = cxy[1] + yShear
+        xc = cxy[0].item() + xShear
+        yc = cxy[1].item() + yShear
         proper.prop_rectangular_obscuration(bm, lStrutIn, wStrut, xc+cshift,
                                             yc+cshift, ROTATION=angDeg)
 
@@ -237,8 +237,8 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
         cx_OD = magFac*primaryCenterX
         cy_OD = magFac*primaryCenterY
         cxy = rotMat @ np.array([cx_OD, cy_OD]).reshape((2, 1))
-        cx_OD = cxy[0] + xShear + cshift
-        cy_OD = cxy[1] + yShear + cshift
+        cx_OD = cxy[0].item() + xShear + cshift
+        cy_OD = cxy[1].item() + yShear + cshift
         proper.prop_elliptical_aperture(bm, ra_OD_x, ra_OD_y, cx_OD, cy_OD,
                                         ROTATION=-clock_deg)
 
@@ -248,8 +248,8 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
         cx_ID = magFac*secondaryCenterX
         cy_ID = magFac*secondaryCenterY
         cxy = rotMat @ np.array([cx_ID, cy_ID]).reshape((2, 1))
-        cx_ID = cxy[0] + xShear + cshift
-        cy_ID = cxy[1] + yShear + cshift
+        cx_ID = cxy[0].item() + xShear + cshift
+        cy_ID = cxy[1].item() + yShear + cshift
         proper.prop_elliptical_obscuration(bm, ra_ID_x, ra_ID_y, cx_ID, cy_ID,
                                            ROTATION=-clock_deg)
 
@@ -291,8 +291,8 @@ def falco_gen_pupil_Roman_CGI_20200513(Nbeam, centering, changes={}):
             cx_tab = magFac*tabCenterVecX[iTab]
             cy_tab = magFac*tabCenterVecY[iTab]
             cxy = rotMat @ np.array([cx_tab, cy_tab]).reshape((2, 1))
-            cx_tab = cxy[0] + xShear
-            cy_tab = cxy[1] + yShear
+            cx_tab = cxy[0].item() + xShear
+            cy_tab = cxy[1].item() + yShear
             tabRadiusX = magFac*(tabRadiusVecX[iTab] + pad_COBStabs)
             tabRadiusY = magFac*(tabRadiusVecY[iTab] + pad_COBStabs)
             bm2 = proper.prop_begin(Dbeam, wl, Narray, bdf)
@@ -351,7 +351,7 @@ def falco_gen_pupil_WFIRST_CGI_180718(Nbeam, centering, changes={}):
     """
     check.real_positive_scalar(Nbeam, 'Nbeam', TypeError)
     check.centering(centering)
-    check.is_dict(changes, 'changes')
+    check.dictionary(changes, 'changes', TypeError)
 
     OD = 1.000130208333333
     xcOD = 8.680555555555557e-06
@@ -590,7 +590,7 @@ def falco_gen_SW_mask(inputs):
     xis: vector of coordinates along the horizontal axis (in lambda_c/D)
     etas: : vector of coordinates along the vertical axis (in lambda_c/D)
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     # Required inputs
     pixresFP = inputs["pixresFP"]  # pixels per lambda_c/D
@@ -726,7 +726,7 @@ def gen_bowtie_fpm(inputs):
     mask : array_like
         2-D FPM representation
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     # Required keys
     ang = inputs["ang"]  # Opening angle on each side of the bowtie
@@ -789,8 +789,8 @@ def gen_bowtie_fpm(inputs):
                          Lside*sind(ang/2)])
         for ii in range(len(xTop)):
             xy = rotMat @ np.array([xTop[ii], yTop[ii]]).reshape((2, 1))
-            xTop[ii] = xy[0]
-            yTop[ii] = xy[1]
+            xTop[ii] = xy[0].item()
+            yTop[ii] = xy[1].item()
         xvert = cshift + xOffset + xTop
         yvert = cshift + yOffset + yTop
         bowtieTop = proper.prop_irregular_polygon(wf, xvert, yvert, DARK=True)
@@ -802,8 +802,8 @@ def gen_bowtie_fpm(inputs):
                                Lside*sind(ang/2)])
         for ii in range(len(xBottom)):
             xy = rotMat @ np.array([xBottom[ii], yBottom[ii]]).reshape((2, 1))
-            xBottom[ii] = xy[0]
-            yBottom[ii] = xy[1]
+            xBottom[ii] = xy[0].item()
+            yBottom[ii] = xy[1].item()
         xvert = cshift + xOffset + xBottom
         yvert = cshift + yOffset + yBottom
         bowtieBottom = proper.prop_irregular_polygon(wf, xvert, yvert,
@@ -840,7 +840,7 @@ def gen_annular_fpm(inputs):
     mask : array_like
         2-D FPM representation
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     # Required keys
     pixresFPM = inputs["pixresFPM"]
@@ -925,7 +925,7 @@ def gen_bowtie_lyot_stop(inputs):
         2-D output mask.
 
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     Nbeam = inputs["Nbeam"]  # number of points across the incoming beam
     ID = inputs["ID"]  # inner diameter of mask (in pupil diameters)
@@ -1034,7 +1034,7 @@ def falco_gen_pupil_LUVOIR_A_final(inputs):
         2-D output mask.
 
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     # Optional inputs and their defaults
     centering = inputs.get("centering", "pixel")
@@ -1174,7 +1174,7 @@ def falco_gen_pupil_LUVOIR_B(inputs, **kwargs):
     1 13 114 115 126 127
     1 12 113 114 125 126
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     # Optional inputs and their defaults
     centering = inputs.get("centering", "pixel")
@@ -1393,7 +1393,7 @@ def falco_gen_pupil_Simple(inputs):
         2-D pupil mask
 
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     # Required dictionary keys
     Nbeam = inputs["Nbeam"]  # Aperture diameter in pixel widths
@@ -1535,7 +1535,7 @@ def falco_gen_pupil_customHex(inputs):
         2-D pupil mask
 
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     hg_expon = 1000  # hyper-gaussian exponent for anti-aliasing
     hg_expon_spider = 100  # hyper-gaussian exponent for anti-aliasing
@@ -1667,7 +1667,7 @@ def falco_gen_ellipse(inputs):
         2-D output mask.
 
     """
-    check.is_dict(inputs, 'inputs')
+    check.dictionary(inputs, 'inputs', TypeError)
 
     Nbeam = inputs['Nbeam']
     Narray = inputs['Narray']

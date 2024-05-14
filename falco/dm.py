@@ -7,12 +7,14 @@ from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline
 from astropy.io import fits
 
-import proper
 import falco
-from falco import check
+from falco import check, proper
 
 if not proper.use_cubic_conv:
-    from scipy.ndimage.interpolation import map_coordinates
+    try:
+        from scipy.ndimage import map_coordinates
+    except:
+        from scipy.ndimage.interpolation import map_coordinates
 
 
 def gen_surf_from_act(dm, dx, Nout):

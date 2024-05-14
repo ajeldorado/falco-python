@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import proper
 import math
 # from . import util
 import falco

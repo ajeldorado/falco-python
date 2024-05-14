@@ -27,6 +27,9 @@ def wrapper(mp, cvar, jacStruct):
     None
         Changes are made by reference to mp.
     """
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
 #    if type(mp) is not falco.config.ModelParameters:
 #        raise TypeError('Input "mp" must be of type ModelParameters')
 #    pass
