@@ -18,7 +18,7 @@ import multiprocessing as mp
 lib_dir = _osp.abspath(_osp.dirname(__file__))
 
 # PyPROPER version number
-__version__ = '3.2.7'
+__version__ = '3.2.7.1'
 
 
 # If cubic convolution interpolation shared library exist,

@@ -15,7 +15,7 @@ import os
 import falco.proper as proper
 import numpy as np
 import ctypes as _ctypes
-from proper.prop_dftidefs import *
+from falco.proper.prop_dftidefs import *
 
 
 def mkl_fft2(a, norm = None, direction = 'forward', mkl_dir = None):
