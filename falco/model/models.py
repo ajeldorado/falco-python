@@ -1,13 +1,15 @@
 """Compact and full diffractive optical models."""
 import copy
-import numpy as np
+
 import multiprocessing
+import numpy as np
+import scipy.ndimage as ndimage
 
 from . import jacobians
 import falco
 from falco import check
 from falco.util import pad_crop
-import proper
+import falco.proper as proper
 import logging
 log = logging.getLogger(__name__)
 
@@ -321,7 +323,8 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
             t_PMGI_vec = [1e-9 * mp.t_diel_bias_nm]  # [meters]
             pol = 2
             transOuterFPM, rCoef = falco.thinfilm.calc_complex_trans_matrix(
-                mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, wvl, mp.aoi, t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
+                mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, wvl, mp.aoi,
+                t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
 
         # MFT from apodizer plane to FPM (i.e., P3 to F3)
         EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
@@ -413,8 +416,279 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     return Eout
 
+def compact_reverse_gradient(command_vec, mp, modvar):
+    """
+    Simplified (aka compact) model used by estimator and controller.
 
-def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True):
+    Simplified (aka compact) model used by estimator and controller. Does not
+    include unknown aberrations of the full, "truth" model. This function is
+    the wrapper for compact models of any coronagraph type.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    modvar : ModelVariables
+        Structure containing temporary optical model variables
+
+    Returns
+    -------
+    total_cost : 
+        Summed total intensity in the dark hole acting as the cost function.
+    gradient : array_like
+        The output command vector, consisting of the vectorized and
+        concatenated commands to both DMs.
+
+    """
+    if type(mp) is not falco.config.ModelParameters:
+        raise TypeError('Input "mp" must be of type ModelParameters')
+
+    mirrorFac = 2.  # Phase change is twice the DM surface height.
+    NdmPad = int(mp.compact.NdmPad)
+
+    isNorm = False  # Leave unnormalized
+    isEvalMode = False
+    useFPM = True
+
+    # use a different res at final focal plane for eval
+    flagEval = isEvalMode
+
+    # Is image already normalized?
+    if not isNorm:
+        normFac = 0.
+    elif isNorm and isEvalMode:
+        normFac = mp.Fend.eval.I00[modvar.sbpIndex]
+    else:
+        normFac = mp.Fend.compact.I00[modvar.sbpIndex]
+
+    total_cost = 0
+    dmSurf1_bar_tot = 0
+    dmSurf2_bar_tot = 0
+    
+    smooth = 0  # TODO hard-coded at 0 for now
+    flag_debug = False  # TODO hard-coded for now
+
+    for iMode in range(mp.jac.Nmode):
+
+        modvar = falco.config.ModelVariables()
+        modvar.whichSource = 'star'
+        modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+        modvar.zernIndex = mp.jac.zern_inds[iMode]
+        modvar.starIndex = mp.jac.star_inds[iMode]
+
+        wvl = mp.sbp_centers[modvar.sbpIndex]
+
+        # %% Input E-fields
+    
+        # Include the star position and weight in the starting wavefront
+        iStar = modvar.starIndex
+        xiOffset = mp.compact.star.xiOffsetVec[iStar]
+        etaOffset = mp.compact.star.etaOffsetVec[iStar]
+        starWeight = mp.compact.star.weights[iStar]
+        TTphase = (-1)*(2*np.pi*(xiOffset*mp.P2.compact.XsDL +
+                                 etaOffset*mp.P2.compact.YsDL))
+        Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
+        Ein = np.sqrt(starWeight) * Ett * mp.P1.compact.E[:, :, modvar.sbpIndex]
+    
+        # if modvar.whichSource.lower() == 'offaxis':  # Use for throughput calc
+        #     TTphase = (-1)*(2*np.pi*(modvar.x_offset*mp.P2.compact.XsDL +
+        #                              modvar.y_offset*mp.P2.compact.YsDL))
+        #     Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
+        #     Ein *= Ett
+    
+        # # Shift the source off-axis to compute the intensity normalization value.
+        # # This replaces the previous way of taking the FPM out in optical model.
+        # if normFac == 0:
+        #     TTphase = (-1)*(2*np.pi*(mp.source_x_offset_norm*mp.P2.compact.XsDL +
+        #                              mp.source_y_offset_norm*mp.P2.compact.YsDL))
+        #     Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
+        #     Ein *= Ett
+            # Ein = Ett*mp.P1.compact.E[:, :, modvar.sbpIndex]
+    
+        # # Apply a Zernike (in amplitude) at input pupil if specified
+        # if not hasattr(modvar, 'zernIndex'):
+        #     modvar.zernIndex = 1
+    
+        # Only used for Zernike sensitivity control, which requires the perfect
+        # E-field of the differential Zernike term.
+        if not (modvar.zernIndex == 1):
+            indsZnoll = modvar.zernIndex  # Just send in 1 Zernike mode
+            zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(mp.P1.compact.Nbeam,
+                                                               mp.centering,
+                                                               indsZnoll))
+            zernMat = pad_crop(zernMat, mp.P1.compact.Narr)
+            Ein *= zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
+                                                         modvar.zernIndex]
+    
+        # Define what the complex-valued FPM is if the coro is some type of HLC.
+        if mp.coro.upper() in ('HLC',):
+            if mp.layout.lower() == 'fourier':
+                if hasattr(mp.compact, 'fpmCube'):
+                    mp.F3.compact.mask = mp.compact.fpmCube[:, :, modvar.sbpIndex]
+                else:
+                    mp.F3.compact.mask = falco.hlc.gen_fpm_from_LUT(
+                        mp, modvar.sbpIndex, -1, 'compact')
+            elif mp.layout.lower() in ('roman_phasec_proper',
+                                       'wfirst_phaseb_proper',
+                                       'fpm_scale', 'proper'):
+                mp.F3.compact.mask = mp.compact.fpmCube[:, :, modvar.sbpIndex]
+            else:
+                raise ValueError('Incompatible values of mp.layout and mp.coro.')
+    
+    
+        # Regular forward model
+        # Select which optical layout's compact model to use and get E-field
+        if mp.layout.lower() == 'fourier':
+            EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
+                                   forRevGradModel=True)
+    
+        elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
+                                   'proper', 'fpm_scale'):
+            if mp.coro.upper() == 'HLC':
+                EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(mp, wvl, Ein, normFac, flagEval,
+                                       flagScaleFPM=True, useFPM=useFPM,
+                                       forRevGradModel=True)
+            else:
+              EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(mp, wvl, Ein, normFac, flagEval,
+                                       useFPM=useFPM, forRevGradModel=True)
+
+        DH = EFend[mp.Fend.corr.maskBool]
+        int_in_dh = np.sum(np.absolute(DH)**2) * mp.ctrl.cost_func_scale_fac_algo_diff
+        total_cost = total_cost + int_in_dh/mp.Nsbp
+
+        g1 = np.exp(1j*mirrorFac*2*np.pi*DM1surf/wvl)
+        g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surf/wvl)
+                
+        # Gradient
+        Fend_masked = 2*EFend*np.real(mp.Fend.corr.mask*mp.ctrl.cost_func_scale_fac_algo_diff)
+        
+#        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
+
+        EP4_grad = falco.propcustom.propcustom_mft_FtoP(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P1.compact.Narr, mp.centering)    
+        EP4_grad = falco.propcustom.propcustom_relay(EP4_grad, mp.NrelayFend, mp.centering)
+        EP4LS_grad = EP4_grad*pad_crop(mp.P4.compact.croppedMask, mp.P1.compact.Narr)
+      
+#        plt.figure(); plt.imshow(np.abs(EP4_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP4_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4.png', format='png')
+
+#        plt.figure(); plt.imshow(np.abs(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4LS.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP4LS_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4LS.png', format='png')
+
+#        plt.figure(); plt.imshow(np.real(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('real(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_EP4LS.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('imag(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_EP4LS.png', format='png')
+
+        # MFT Method
+        EP4noFPM_grad = EP4LS_grad
+        EP3noFPM_grad = pad_crop(falco.propcustom.propcustom_relay(EP4noFPM_grad, mp.Nrelay3to4, mp.centering), NdmPad)
+        EP4subtr_grad = -EP4LS_grad
+        EP4subtr_grad = falco.propcustom.propcustom_relay(EP4subtr_grad, mp.Nrelay3to4 - 1, mp.centering)
+        auxEP4subtr_grad = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
+#        auxEP4subtr_grad_plot = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi*10,mp.F3.compact.deta,mp.F3.compact.Neta*10,mp.centering) #--E-field incident upon the FPM
+        EF3_grad = (1-mp.F3.compact.ampMask)*auxEP4subtr_grad #pad_crop(auxEP4subtr_grad,mp.F3.compact.Neta) 
+        EP3subtr_grad = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
+        #EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
+        
+#        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
+
+        
+        EP3_grad = EP3noFPM_grad + EP3subtr_grad
+        
+#        plt.figure(); plt.imshow(np.abs(EP3subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3bab.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP3subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3bab.png', format='png')
+#                
+#        plt.figure(); plt.imshow(np.abs(EP3_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP3_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3.png', format='png')
+        
+        if(mp.flagApod):
+            EP3_grad = pad_crop(mp.P3.compact.mask, NdmPad)*EP3_grad   
+        
+        EP2eff_grad = falco.propcustom.propcustom_relay(EP3_grad, mp.Nrelay2to3, mp.centering)
+     
+#        plt.figure(); plt.imshow(np.abs(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP2eff.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP2eff.png', format='png')  
+#        plt.figure(); plt.imshow(np.real(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('real(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_EP2eff.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_EP2eff.png', format='png')
+#        
+        
+        if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
+            Edm2_grad = EP2eff_grad
+        else:
+            Edm2_grad = falco.propcustom.propcustom_PTP(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, (mp.d_dm1_dm2 + mp.d_P2_dm1))
+#            Edm2_grad = falco.propcustom.propcustom_PTP_grad(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, -mp.d_dm1_dm2)
+    
+#        plt.figure(); plt.imshow(np.abs(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm2.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm2.png', format='png')
+#        plt.figure(); plt.imshow(np.real(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm2.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_Edm2.png', format='png')
+#        
+        #--To DM2
+        g2_bar = np.conj(Edm2inc) * Edm2_grad
+#        phase_DM2_bar = pad_crop(np.imag(g2_bar), mp.dm2.NdmPad)    
+        phase_DM2_bar = pad_crop(np.imag(g2_bar*np.conj(g2)), mp.P1.compact.Nbeam)
+#        phase_DM2_bar = pad_crop(np.imag(g2_bar*np.conj(g2)), NdmPad)
+#        phase_DM2_bar_tot = phase_DM2_bar_tot+phase_DM2_bar
+        
+        if smooth != 0:
+            phase_DM2_bar = ndimage.gaussian_filter(phase_DM2_bar, sigma=(smooth, smooth), order=0)
+
+#        plt.figure(); plt.imshow(phase_DM2_bar); plt.colorbar(); plt.magma(); plt.title('DM2 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM2_phase.png', format='png')
+
+    #    Vout2 = -falco.dms.falco_fit_dm_surf(mp.dm2, dmSurf2_bar)
+         
+        #--To DM1
+        Edm2_bar = np.conj(g2) * Edm2_grad
+        Edm1_grad = falco.propcustom.propcustom_PTP(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, -(mp.d_dm1_dm2 + mp.d_P2_dm1))        
+#        Edm1_grad = falco.propcustom.propcustom_PTP_grad(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
+        # Edm1_grad = EP2eff_grad # ALTERNATE WAY
+        
+#        plt.figure(); plt.imshow(np.abs(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm1.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm1.png', format='png')
+#        plt.figure(); plt.imshow(np.real(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm1.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_Edm1.png', format='png')
+#        
+               
+        g1_bar = np.conj(Edm1inc) * Edm1_grad
+        phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), mp.P1.compact.Nbeam)
+#        phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), NdmPad)
+        
+#        plt.figure(); plt.imshow(phase_DM1_bar); plt.colorbar(); plt.magma(); plt.title('DM1 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM1_phase.png', format='png')
+
+        
+        if smooth != 0:
+            phase_DM1_bar = ndimage.gaussian_filter(phase_DM1_bar, sigma=(smooth, smooth), order=0)
+        
+        
+#        phase_DM1_bar_tot = phase_DM1_bar_tot+phase_DM1_bar
+#        phase_DM1_bar_tot = phase_DM1_bar_tot/mp.Nsbp
+#        phase_DM2_bar_tot = phase_DM2_bar_tot/mp.Nsbp
+#        dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar_tot
+#        dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar_tot
+        dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar
+        dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar
+        
+        dmSurf1_bar_tot = dmSurf1_bar_tot + dmSurf1_bar/mp.Nsbp
+        dmSurf2_bar_tot = dmSurf2_bar_tot + dmSurf2_bar/mp.Nsbp
+        
+    # Vout1 = -quick_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
+    # Vout2 = -quick_fit_dm_surf(mp.dm2.compact, dmSurf2_bar_tot)
+    Vout1 = -falco.dms.falco_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
+    Vout2 = -falco.dms.falco_fit_dm_surf(mp.dm2.compact ,dmSurf2_bar_tot)
+
+    gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
+    
+    if flag_debug:
+#        return total_cost, gradient, np.abs(EP2eff_grad), np.abs(EP3subtr_grad), np.abs(auxEP4subtr_grad_plot) #dmSurf2_bar
+        return total_cost, gradient, np.abs(EP2eff_grad), dmSurf1_bar, dmSurf2_bar #g1, g1_bar, dmSurf1_bar_tot
+    else:
+        return total_cost, gradient
+
+    return total_cost, gradient
+
+
+def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True,
+            forRevGradModel=False):
     """
     Simplified (aka compact) model used by estimator and controller.
 
@@ -436,6 +710,9 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True):
         measuring performance metrics such as throughput.
     useFPM : bool
         Whether to include the FPM in the model
+    forRevGradModel : bool
+        Whether to compute the reverse gradient model for algorithmic
+        differentiation instead of the regular forward model.
 
     Returns
     -------
@@ -537,7 +814,8 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True):
     return Eout
 
 
-def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=True):
+def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
+                    useFPM=True, forRevGradModel=False):
     """
     Compact model with a general-purpose optical layout.
 
@@ -563,6 +841,9 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
         Whether to scale the diameter of the FPM inversely with wavelength.
     useFPM : bool
         Whether to include the FPM in the model.
+    forRevGradModel : bool
+        Whether different outputs should be given for a controller that uses
+        algorithmic differentiation.
 
     Returns
     -------
@@ -659,15 +940,17 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False, useFPM=
 
     # Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not (abs(mp.d_P2_dm1) == 0):  # E-field arriving at DM1
-        Edm1 = falco.prop.ptp(EP2, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
+        Edm1inc = falco.prop.ptp(EP2, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
     else:
-        Edm1 = EP2
+        Edm1inc = EP2
+
     # E-field leaving DM1
-    Edm1b = Edm1*Edm1WFE*DM1stop*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl)
+    Edm1inc *= DM1stop
+    Edm1 = Edm1inc*Edm1WFE*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl)
 
     # Propagate from DM1 to DM2, and apply DM2 surface and aperture stop
-    Edm2 = falco.prop.ptp(Edm1b, mp.P2.compact.dx*NdmPad, wvl, mp.d_dm1_dm2)
-    Edm2 *= Edm2WFE*DM2stop*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
+    Edm2inc = DM2stop * falco.prop.ptp(Edm1, mp.P2.compact.dx*NdmPad, wvl, mp.d_dm1_dm2)
+    Edm2 = Edm2WFE * Edm2inc*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
 
     # Back-propagate to pupil P2
     if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
