@@ -816,7 +816,7 @@ def roman_phasec( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
         m = dx_pinhole_lamD * n_in * float(n_out) / pupil_diam_pix
         wavefront0 = mft2( wavefront0, dx_pinhole_lamD, pupil_diam_pix, n_out, 1)        # MFT to highly-sampled focal plane
         p = (radius(n_out)*dx_pinhole_diam_m) <= (pinhole_diam_m/2.0)
-        p = p.astype(np.int)
+        p = p.astype(int)
         wavefront0 *= p
         p = 0
         wavefront0 = mft2( wavefront0, dx_pinhole_lamD, pupil_diam_pix, n, -1)            # MFT back to virtual pupil
@@ -952,7 +952,7 @@ def roman_phasec( lambda_m, output_dim0, PASSVALUE={'dummy':0} ):
     # remove phase term due to pupil not at front focus of lens (only in direct imaging mode) 
 
     if use_defocus_lens == 0 and use_pupil_lens == 0 and end_at_exit_pupil == 0:
-        wavefront *= np.exp((np.complex(0,1) * 16 * np.pi / lambda_m * 0.0735) * rsqr)
+        wavefront *= np.exp((complex(0,1) * 16 * np.pi / lambda_m * 0.0735) * rsqr)
 
     # resample as needed
 

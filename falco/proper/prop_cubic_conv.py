@@ -101,7 +101,7 @@ def prop_cubic_conv(image_in, xval, yval, THREADED = True, GRID = True):
             ydim = xval.shape[0]
 
     if is_complex:
-        image_out = np.empty((ydim, xdim), dtype = np.complex128)
+        image_out = np.empty((ydim, xdim), dtype=np.complex128)
 
         # real and imaginary part of the complex array are contiguous in memory.
         # need to copy real and imaginary parts to double arrays to process
@@ -135,8 +135,8 @@ def prop_cubic_conv(image_in, xval, yval, THREADED = True, GRID = True):
         ct.c_int(image_in.shape[1]), image_out.ctypes.data_as(ct.c_void_p), ct.c_int(image_out.shape[0]),
         ct.c_int(image_out.shape[1]), x.ctypes.data_as(ct.c_void_p), y.ctypes.data_as(ct.c_void_p), ct.c_int(nthreads))
 
-    if image_in_dtype == np.int:
-        image_out = image_out.astype(np.int)
+    if image_in_dtype == int:
+        image_out = image_out.astype(int)
 
     if ydim == 1:
         image_out = np.reshape(image_out, xdim)

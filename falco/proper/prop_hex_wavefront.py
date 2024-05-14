@@ -113,7 +113,7 @@ def prop_hex_wavefront(wf, nrings, hexrad, hexsep, zernike_val = 0, **kwargs):
     include_phase_errors = np.sum(np.abs(zernike_val)) != 0.
 
     if include_phase_errors:
-        zernike_index = np.arange(22, dtype = np.int) + 1
+        zernike_index = np.arange(22, dtype=int) + 1
         phase = np.zeros([n,n], dtype = np.float64)
     else:
         phase = 0

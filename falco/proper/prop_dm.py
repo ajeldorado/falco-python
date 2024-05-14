@@ -215,8 +215,8 @@ def prop_dm(wf, dm_z0, dm_xc, dm_yc, spacing = 0., **kwargs):
 
     if ydim > n: ydim = n
 
-    x = np.ones((ydim,1), dtype = np.int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
-    y = (np.ones((xdim,1), dtype = np.int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
+    x = np.ones((ydim,1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
+    y = (np.ones((xdim,1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
 
     a = xtilt * np.pi / 180
     b = ytilt * np.pi / 180

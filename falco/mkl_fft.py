@@ -87,7 +87,7 @@ def mkl_rfft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scram
         m = n if direction == 'forward' else (n // 2 + 1)
         if a.shape[axis] < m:
             # pad axis with zeros
-            pad_width = np.zeros((a.ndim, 2), dtype=np.int)
+            pad_width = np.zeros((a.ndim, 2), dtype=int)
             pad_width[axis,1] = m - a.shape[axis]
             a = np.pad(a, pad_width, mode='constant')
         elif a.shape[axis] > m:
@@ -216,7 +216,7 @@ def mkl_fft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scramb
     # Add zero padding if needed (incurs memory copy)
     '''
     if n is not None and n != a.shape[axis]:
-        pad_width = np.zeros((a.ndim, 2), dtype=np.int)
+        pad_width = np.zeros((a.ndim, 2), dtype=int)
         pad_width[axis,1] = n - a.shape[axis]
         a = np.pad(a, pad_width, mode='constant')
     '''
@@ -224,7 +224,7 @@ def mkl_fft(a, n=None, axis=-1, norm=None, direction='forward', out=None, scramb
     if n is not None:
         if a.shape[axis] < n:
             # pad axis with zeros
-            pad_width = np.zeros((a.ndim, 2), dtype=np.int)
+            pad_width = np.zeros((a.ndim, 2), dtype=int)
             pad_width[axis,1] = n - a.shape[axis]
             a = np.pad(a, pad_width, mode='constant')
         elif a.shape[axis] > n:
