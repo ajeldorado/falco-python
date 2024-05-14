@@ -6,11 +6,10 @@
 #   Original IDL version by John Krist
 #   Python translation by Navtej Saini, with Luis Marchen and Nikta Amiri
 
-import proper
+import falco.proper as proper
 
 def switch_set( name, **kwargs ):
     if name in kwargs and kwargs[name]:
         return True
     else:
         return False
-
