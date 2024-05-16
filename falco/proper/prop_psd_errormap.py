@@ -16,7 +16,8 @@ from numpy.fft import fft2
 
 
 def prop_psd_errormap(wf, amp, b, c, **kwargs):
-    """Create a realization of a two-dimensional surface, wavefront, or amplitude
+    """
+    Create a realization of a two-dimensional surface, wavefront, or amplitude
     error map for a specified power spectral density (PSD) profile. This map is
     applied to the current wavefront.
 

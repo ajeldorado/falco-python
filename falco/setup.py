@@ -516,7 +516,7 @@ def falco_set_spectral_properties(mp):
         np.arange(-(mp.Nwpsbp-1)/2, (mp.Nwpsbp-1)/2)*mp.full.dlam
         for wi in range(mp.Nwpsbp):
             lambdas[counter] = mp.full.lambdasMat[si, wi];
-            lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi].item()
+            lambda_weights_all[counter] = mp.sbp_weights[si].item() * mp.full.lambda_weights[wi].item()
             mp.full.indsLambdaMat[counter, :] = [si, wi]
             counter = counter+1;
 
