@@ -416,7 +416,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     return Eout
 
-def compact_reverse_gradient(command_vec, mp, modvar):
+def compact_reverse_gradient(command_vec, mp):
     """
     Simplified (aka compact) model used by estimator and controller.
 
@@ -426,10 +426,11 @@ def compact_reverse_gradient(command_vec, mp, modvar):
 
     Parameters
     ----------
+    command_vec : array_like
+        Vector of vectorized and concatenated DM commands. They are vectorized
+        for use in an optimizer.
     mp : ModelParameters
         Structure containing optical model parameters
-    modvar : ModelVariables
-        Structure containing temporary optical model variables
 
     Returns
     -------
@@ -446,27 +447,32 @@ def compact_reverse_gradient(command_vec, mp, modvar):
     mirrorFac = 2.  # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
 
-    isNorm = False  # Leave unnormalized
+    # isNorm = True  # Leave unnormalized
     isEvalMode = False
     useFPM = True
 
     # use a different res at final focal plane for eval
     flagEval = isEvalMode
 
-    # Is image already normalized?
-    if not isNorm:
-        normFac = 0.
-    elif isNorm and isEvalMode:
-        normFac = mp.Fend.eval.I00[modvar.sbpIndex]
+    if mp.flagRotation:
+        NrelayFactor = 1
     else:
-        normFac = mp.Fend.compact.I00[modvar.sbpIndex]
+        NrelayFactor = 0  # zero out the number of relays
+
+    # # Is image already normalized?
+    # if not isNorm:
+    #     normFac = 0.
+    # elif isNorm and isEvalMode:
+    #     normFac = mp.Fend.eval.I00[modvar.sbpIndex]
+    # else:
+    #     normFac = mp.Fend.compact.I00[modvar.sbpIndex]
 
     total_cost = 0
     dmSurf1_bar_tot = 0
     dmSurf2_bar_tot = 0
     
     smooth = 0  # TODO hard-coded at 0 for now
-    flag_debug = False  # TODO hard-coded for now
+    # flag_debug = False  #  hard-coded for now
 
     for iMode in range(mp.jac.Nmode):
 
@@ -477,6 +483,7 @@ def compact_reverse_gradient(command_vec, mp, modvar):
         modvar.starIndex = mp.jac.star_inds[iMode]
 
         wvl = mp.sbp_centers[modvar.sbpIndex]
+        normFac = mp.Fend.compact.I00[modvar.sbpIndex]
 
         # %% Input E-fields
     
@@ -489,13 +496,13 @@ def compact_reverse_gradient(command_vec, mp, modvar):
                                  etaOffset*mp.P2.compact.YsDL))
         Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
         Ein = np.sqrt(starWeight) * Ett * mp.P1.compact.E[:, :, modvar.sbpIndex]
-    
+
         # if modvar.whichSource.lower() == 'offaxis':  # Use for throughput calc
         #     TTphase = (-1)*(2*np.pi*(modvar.x_offset*mp.P2.compact.XsDL +
         #                              modvar.y_offset*mp.P2.compact.YsDL))
         #     Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
         #     Ein *= Ett
-    
+
         # # Shift the source off-axis to compute the intensity normalization value.
         # # This replaces the previous way of taking the FPM out in optical model.
         # if normFac == 0:
@@ -504,7 +511,7 @@ def compact_reverse_gradient(command_vec, mp, modvar):
         #     Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
         #     Ein *= Ett
             # Ein = Ett*mp.P1.compact.E[:, :, modvar.sbpIndex]
-    
+
         # # Apply a Zernike (in amplitude) at input pupil if specified
         # if not hasattr(modvar, 'zernIndex'):
         #     modvar.zernIndex = 1
@@ -513,12 +520,10 @@ def compact_reverse_gradient(command_vec, mp, modvar):
         # E-field of the differential Zernike term.
         if not (modvar.zernIndex == 1):
             indsZnoll = modvar.zernIndex  # Just send in 1 Zernike mode
-            zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(mp.P1.compact.Nbeam,
-                                                               mp.centering,
-                                                               indsZnoll))
+            zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(
+                mp.P1.compact.Nbeam, mp.centering, indsZnoll))
             zernMat = pad_crop(zernMat, mp.P1.compact.Narr)
-            Ein *= zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns ==
-                                                         modvar.zernIndex]
+            Ein *= zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns == modvar.zernIndex]
     
         # Define what the complex-valued FPM is if the coro is some type of HLC.
         if mp.coro.upper() in ('HLC',):
@@ -535,26 +540,32 @@ def compact_reverse_gradient(command_vec, mp, modvar):
             else:
                 raise ValueError('Incompatible values of mp.layout and mp.coro.')
     
-    
+        # Complex trans of points outside FPM
+        if mp.coro.upper() == 'HLC':
+            transOuterFPM = mp.F3.compact.mask[0, 0]  
+        else:
+            transOuterFPM = 1.0
+
         # Regular forward model
         # Select which optical layout's compact model to use and get E-field
         if mp.layout.lower() == 'fourier':
-            EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
-                                   forRevGradModel=True)
-    
+            EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(
+                mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
+                forRevGradModel=True)
+     
         elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
                                    'proper', 'fpm_scale'):
             if mp.coro.upper() == 'HLC':
-                EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(mp, wvl, Ein, normFac, flagEval,
-                                       flagScaleFPM=True, useFPM=useFPM,
-                                       forRevGradModel=True)
+                EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(
+                    mp, wvl, Ein, normFac, flagEval, flagScaleFPM=True,
+                    useFPM=useFPM, forRevGradModel=True)
             else:
-              EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(mp, wvl, Ein, normFac, flagEval,
-                                       useFPM=useFPM, forRevGradModel=True)
+              EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(
+                  mp, wvl, Ein, normFac, flagEval, useFPM=useFPM, forRevGradModel=True)
 
         DH = EFend[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.absolute(DH)**2) * mp.ctrl.cost_func_scale_fac_algo_diff
-        total_cost = total_cost + int_in_dh/mp.Nsbp
+        total_cost += normFac*int_in_dh/mp.Nsbp
 
         g1 = np.exp(1j*mirrorFac*2*np.pi*DM1surf/wvl)
         g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surf/wvl)
@@ -564,10 +575,10 @@ def compact_reverse_gradient(command_vec, mp, modvar):
         
 #        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
-
-        EP4_grad = falco.propcustom.propcustom_mft_FtoP(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P1.compact.Narr, mp.centering)    
-        EP4_grad = falco.propcustom.propcustom_relay(EP4_grad, mp.NrelayFend, mp.centering)
-        EP4LS_grad = EP4_grad*pad_crop(mp.P4.compact.croppedMask, mp.P1.compact.Narr)
+        
+        EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)                                 
+        EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
+        EP4LS_grad = EP4_grad * pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr)
       
 #        plt.figure(); plt.imshow(np.abs(EP4_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP4_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4.png', format='png')
@@ -578,22 +589,63 @@ def compact_reverse_gradient(command_vec, mp, modvar):
 #        plt.figure(); plt.imshow(np.real(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('real(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_EP4LS.png', format='png')
 #        plt.figure(); plt.imshow(np.imag(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('imag(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_EP4LS.png', format='png')
 
-        # MFT Method
-        EP4noFPM_grad = EP4LS_grad
-        EP3noFPM_grad = pad_crop(falco.propcustom.propcustom_relay(EP4noFPM_grad, mp.Nrelay3to4, mp.centering), NdmPad)
-        EP4subtr_grad = -EP4LS_grad
-        EP4subtr_grad = falco.propcustom.propcustom_relay(EP4subtr_grad, mp.Nrelay3to4 - 1, mp.centering)
-        auxEP4subtr_grad = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi,mp.F3.compact.deta,mp.F3.compact.Neta,mp.centering) #--E-field incident upon the FPM
-#        auxEP4subtr_grad_plot = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi*10,mp.F3.compact.deta,mp.F3.compact.Neta*10,mp.centering) #--E-field incident upon the FPM
-        EF3_grad = (1-mp.F3.compact.ampMask)*auxEP4subtr_grad #pad_crop(auxEP4subtr_grad,mp.F3.compact.Neta) 
-        EP3subtr_grad = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
-        #EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
-        
-#        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
-#        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
 
-        
-        EP3_grad = EP3noFPM_grad + EP3subtr_grad
+            # Undo the rotation inherent to falco.prop.mft_p2v2p.m
+            if not mp.flagRotation:
+                EP4LS_grad = falco.prop.relay(EP4LS_grad, -1, mp.centering)
+
+            # Get FPM charge
+            if isinstance(mp.F3.VortexCharge, np.ndarray):
+                # Passing an array for mp.F3.VortexCharge with
+                # corresponding wavelengths mp.F3.VortexCharge_lambdas
+                # represents a chromatic vortex FPM
+                if mp.F3.VortexCharge.size == 1:
+                    charge = mp.F3.VortexCharge
+                else:
+                    np.interp(wvl, mp.F3.VortexCharge_lambdas,
+                              mp.F3.VortexCharge, 'linear', 'extrap')
+
+            elif isinstance(mp.F3.VortexCharge, (int, float)):
+                # single value indicates fully achromatic mask
+                charge = mp.F3.VortexCharge
+            else:
+                raise TypeError("mp.F3.VortexCharge must be int, float or numpy ndarray.")
+            
+            EP4LS_grad = pad_crop(EP4LS_grad, mp.P1.compact.Narr)
+            EP3_grad = falco.prop.mft_p2v2p(EP4LS_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
+
+        elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
+
+            EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            EF3_grad = falco.prop.mft_p2f(EP4LS_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
+            EF3_grad = np.conj(mp.F3.compact.mask) * EF3_grad
+            EP3_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
+            # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
+            
+    #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
+    #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
+    
+        elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+            # MFT Method
+            EP4noFPM_grad = EP4LS_grad
+            EP3noFPM_grad = pad_crop(falco.prop.relay(EP4noFPM_grad, NrelayFactor*mp.Nrelay3to4, mp.centering), NdmPad)
+            EP4subtr_grad = -EP4LS_grad
+            EP4subtr_grad = falco.prop.relay(EP4subtr_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # EP4subtr_grad = falco.propcustom.propcustom_relay(EP4subtr_grad, mp.Nrelay3to4 - 1, mp.centering)
+            auxEP4subtr_grad = falco.prop.mft_p2f(EP4subtr_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
+    #        auxEP4subtr_grad_plot = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi*10,mp.F3.compact.deta,mp.F3.compact.Neta*10,mp.centering) #--E-field incident upon the FPM
+            EF3_grad = np.conj(transOuterFPM - mp.F3.compact.mask) * auxEP4subtr_grad  # TODO check if np.conj() usage is correct here
+            EP3subtr_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
+            #EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
+            
+    #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
+    #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
+            
+            EP3_grad = EP3noFPM_grad + EP3subtr_grad
+
+        else:
+            raise ValueError('%s value of mp.coro not supported yet' % mp.coro)
         
 #        plt.figure(); plt.imshow(np.abs(EP3subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3bab.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP3subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3bab.png', format='png')
@@ -601,10 +653,11 @@ def compact_reverse_gradient(command_vec, mp, modvar):
 #        plt.figure(); plt.imshow(np.abs(EP3_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP3_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3.png', format='png')
         
-        if(mp.flagApod):
-            EP3_grad = pad_crop(mp.P3.compact.mask, NdmPad)*EP3_grad   
+        if mp.flagApod:
+            EP3_grad = pad_crop(mp.P3.compact.mask, EP3_grad.shape) * EP3_grad
         
-        EP2eff_grad = falco.propcustom.propcustom_relay(EP3_grad, mp.Nrelay2to3, mp.centering)
+        EP2eff_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay2to3, mp.centering)
+        EP2eff_grad = pad_crop(EP2eff_grad, NdmPad)
      
 #        plt.figure(); plt.imshow(np.abs(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP2eff.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP2eff.png', format='png')  
@@ -615,8 +668,7 @@ def compact_reverse_gradient(command_vec, mp, modvar):
         if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
             Edm2_grad = EP2eff_grad
         else:
-            Edm2_grad = falco.propcustom.propcustom_PTP(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, (mp.d_dm1_dm2 + mp.d_P2_dm1))
-#            Edm2_grad = falco.propcustom.propcustom_PTP_grad(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, -mp.d_dm1_dm2)
+            Edm2_grad = falco.prop.ptp(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, (mp.d_dm1_dm2 + mp.d_P2_dm1))
     
 #        plt.figure(); plt.imshow(np.abs(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm2.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm2.png', format='png')
@@ -625,21 +677,17 @@ def compact_reverse_gradient(command_vec, mp, modvar):
 #        
         #--To DM2
         g2_bar = np.conj(Edm2inc) * Edm2_grad
-#        phase_DM2_bar = pad_crop(np.imag(g2_bar), mp.dm2.NdmPad)    
         phase_DM2_bar = pad_crop(np.imag(g2_bar*np.conj(g2)), mp.P1.compact.Nbeam)
-#        phase_DM2_bar = pad_crop(np.imag(g2_bar*np.conj(g2)), NdmPad)
-#        phase_DM2_bar_tot = phase_DM2_bar_tot+phase_DM2_bar
         
         if smooth != 0:
             phase_DM2_bar = ndimage.gaussian_filter(phase_DM2_bar, sigma=(smooth, smooth), order=0)
 
-#        plt.figure(); plt.imshow(phase_DM2_bar); plt.colorbar(); plt.magma(); plt.title('DM2 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM2_phase.png', format='png')
-
-    #    Vout2 = -falco.dms.falco_fit_dm_surf(mp.dm2, dmSurf2_bar)
+        # plt.figure(); plt.imshow(phase_DM2_bar); plt.colorbar(); plt.magma(); plt.title('DM2 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM2_phase.png', format='png')
+        # Vout2 = -falco.dms.falco_fit_dm_surf(mp.dm2, dmSurf2_bar)
          
         #--To DM1
         Edm2_bar = np.conj(g2) * Edm2_grad
-        Edm1_grad = falco.propcustom.propcustom_PTP(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, -(mp.d_dm1_dm2 + mp.d_P2_dm1))        
+        Edm1_grad = falco.prop.ptp(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, -mp.d_dm1_dm2)        
 #        Edm1_grad = falco.propcustom.propcustom_PTP_grad(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
         # Edm1_grad = EP2eff_grad # ALTERNATE WAY
         
@@ -647,19 +695,16 @@ def compact_reverse_gradient(command_vec, mp, modvar):
 #        plt.figure(); plt.imshow(np.angle(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm1.png', format='png')
 #        plt.figure(); plt.imshow(np.real(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm1.png', format='png')
 #        plt.figure(); plt.imshow(np.imag(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_Edm1.png', format='png')
-#        
-               
+
         g1_bar = np.conj(Edm1inc) * Edm1_grad
         phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), mp.P1.compact.Nbeam)
 #        phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), NdmPad)
         
 #        plt.figure(); plt.imshow(phase_DM1_bar); plt.colorbar(); plt.magma(); plt.title('DM1 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM1_phase.png', format='png')
-
         
         if smooth != 0:
             phase_DM1_bar = ndimage.gaussian_filter(phase_DM1_bar, sigma=(smooth, smooth), order=0)
-        
-        
+
 #        phase_DM1_bar_tot = phase_DM1_bar_tot+phase_DM1_bar
 #        phase_DM1_bar_tot = phase_DM1_bar_tot/mp.Nsbp
 #        phase_DM2_bar_tot = phase_DM2_bar_tot/mp.Nsbp
@@ -678,11 +723,11 @@ def compact_reverse_gradient(command_vec, mp, modvar):
 
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
     
-    if flag_debug:
-#        return total_cost, gradient, np.abs(EP2eff_grad), np.abs(EP3subtr_grad), np.abs(auxEP4subtr_grad_plot) #dmSurf2_bar
-        return total_cost, gradient, np.abs(EP2eff_grad), dmSurf1_bar, dmSurf2_bar #g1, g1_bar, dmSurf1_bar_tot
-    else:
-        return total_cost, gradient
+#     if flag_debug:
+# #        return total_cost, gradient, np.abs(EP2eff_grad), np.abs(EP3subtr_grad), np.abs(auxEP4subtr_grad_plot) #dmSurf2_bar
+#         return total_cost, gradient, np.abs(EP2eff_grad), dmSurf1_bar, dmSurf2_bar #g1, g1_bar, dmSurf1_bar_tot
+#     else:
+#         return total_cost, gradient
 
     return total_cost, gradient
 
