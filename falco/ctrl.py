@@ -1,12 +1,13 @@
 """Control functions for WFSC."""
+import time
 
 import numpy as np
 import multiprocessing
+import scipy.optimize
 # from astropy.io import fits
 # import matplotlib.pyplot as plt
-import falco
 
-from scipy.io import savemat
+import falco
 
 
 def wrapper(mp, cvar, jacStruct):
@@ -30,68 +31,72 @@ def wrapper(mp, cvar, jacStruct):
     if type(mp) is not falco.config.ModelParameters:
         raise TypeError('Input "mp" must be of type ModelParameters')
 
-#    if type(mp) is not falco.config.ModelParameters:
-#        raise TypeError('Input "mp" must be of type ModelParameters')
-#    pass
+    if mp.controller.lower() == 'ad-efc':
 
-    apply_spatial_weighting_to_Jacobian(mp, jacStruct)
+        # Call the Controller Function
+        print('Control beginning ...')
+        dDM = _planned_ad_efc(mp, cvar)
 
-    # with falco.util.TicToc('Using the Jacobian to make other matrices'):
-    print('Using the Jacobian to make other matrices...', end='')
+    else:
 
-    # Compute matrices for linear control with regular EFC
-    cvar.GstarG_wsum = np.zeros((cvar.NeleAll, cvar.NeleAll))
-    cvar.RealGstarEab_wsum = np.zeros((cvar.NeleAll, 1))
-    Eest = cvar.Eest.copy()
-
-    for iMode in range(mp.jac.Nmode):
-
-        Gstack = np.zeros((mp.Fend.corr.Npix, 1), dtype=complex)  # Initialize a row to concatenate onto
-        if any(mp.dm_ind == 1):
-            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G1[:, :, iMode])))
-        if any(mp.dm_ind == 2):
-            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G2[:, :, iMode])))
-        if any(mp.dm_ind == 8):
-            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G8[:, :, iMode])))
-        if any(mp.dm_ind == 9):
-            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G9[:, :, iMode])))
-        Gstack = Gstack[:, 1:]  # Remove the column used for initialization
-
-        # Square matrix part stays the same if no re-linearization has occurrred.
-        cvar.GstarG_wsum += mp.jac.weights[iMode]*np.real(np.conj(Gstack).T @ Gstack)
-
-        if mp.jac.minimizeNI:
-            modvar = falco.config.ModelVariables()
-            modvar.whichSource = 'star'
-            modvar.sbpIndex = mp.jac.sbp_inds[iMode]
-            modvar.zernIndex = mp.jac.zern_inds[iMode]
-            modvar.starIndex = mp.jac.star_inds[iMode]
-            Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
-            indPeak = np.unravel_index(
-                np.argmax(np.abs(Eunocculted), axis=None), Eunocculted.shape)
-            Epeak = Eunocculted[indPeak]
-            Eest[:, iMode] = cvar.Eest[:, iMode] / Epeak
-
-        # The G^*E part changes each iteration because the E-field changes.
-        # Apply 2-D spatial weighting to E-field in dark hole pixels.
-        iStar = mp.jac.star_inds[iMode]
-        Eweighted = mp.WspatialVec[:, iStar] * Eest[:, iMode]
-        # Apply the Jacobian weights and add to the total.
-        cvar.RealGstarEab_wsum += mp.jac.weights[iMode]*np.real(
-            np.conj(Gstack).T @ Eweighted.reshape(mp.Fend.corr.Npix, 1))
-
-    # Make the regularization matrix. (Define only diagonal here to save RAM.)
-    cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
-    cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
-    print('done.')
-
-    # Call the Controller Function
-    print('Control beginning ...')
-    # Established, conventional controllers
-    if mp.controller.lower() == 'plannedefc':
-        dDM = _planned_efc(mp, cvar)
-    elif mp.controller.lower() == 'gridsearchefc':
-        dDM = _grid_search_efc(mp, cvar)
+        apply_spatial_weighting_to_Jacobian(mp, jacStruct)
+    
+        # with falco.util.TicToc('Using the Jacobian to make other matrices'):
+        print('Using the Jacobian to make other matrices...', end='')
+    
+        # Compute matrices for linear control with regular EFC
+        cvar.GstarG_wsum = np.zeros((cvar.NeleAll, cvar.NeleAll))
+        cvar.RealGstarEab_wsum = np.zeros((cvar.NeleAll, 1))
+        Eest = cvar.Eest.copy()
+    
+        for iMode in range(mp.jac.Nmode):
+    
+            Gstack = np.zeros((mp.Fend.corr.Npix, 1), dtype=complex)  # Initialize a row to concatenate onto
+            if any(mp.dm_ind == 1):
+                Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G1[:, :, iMode])))
+            if any(mp.dm_ind == 2):
+                Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G2[:, :, iMode])))
+            if any(mp.dm_ind == 8):
+                Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G8[:, :, iMode])))
+            if any(mp.dm_ind == 9):
+                Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G9[:, :, iMode])))
+            Gstack = Gstack[:, 1:]  # Remove the column used for initialization
+    
+            # Square matrix part stays the same if no re-linearization has occurrred.
+            cvar.GstarG_wsum += mp.jac.weights[iMode]*np.real(np.conj(Gstack).T @ Gstack)
+    
+            if mp.jac.minimizeNI:
+                modvar = falco.config.ModelVariables()
+                modvar.whichSource = 'star'
+                modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+                modvar.zernIndex = mp.jac.zern_inds[iMode]
+                modvar.starIndex = mp.jac.star_inds[iMode]
+                Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
+                indPeak = np.unravel_index(
+                    np.argmax(np.abs(Eunocculted), axis=None), Eunocculted.shape)
+                Epeak = Eunocculted[indPeak]
+                Eest[:, iMode] = cvar.Eest[:, iMode] / Epeak
+    
+            # The G^*E part changes each iteration because the E-field changes.
+            # Apply 2-D spatial weighting to E-field in dark hole pixels.
+            iStar = mp.jac.star_inds[iMode]
+            Eweighted = mp.WspatialVec[:, iStar] * Eest[:, iMode]
+            # Apply the Jacobian weights and add to the total.
+            cvar.RealGstarEab_wsum += mp.jac.weights[iMode]*np.real(
+                np.conj(Gstack).T @ Eweighted.reshape(mp.Fend.corr.Npix, 1))
+    
+        # Make the regularization matrix. (Define only diagonal here to save RAM.)
+        cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
+        cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
+        print('done.')
+    
+        # Call the Controller Function
+        print('Control beginning ...')
+        # Established, conventional controllers
+        if mp.controller.lower() == 'plannedefc':
+            dDM = _planned_efc(mp, cvar)
+        elif mp.controller.lower() == 'gridsearchefc':
+            dDM = _grid_search_efc(mp, cvar)
 
     # Update the DM commands by adding the delta control signal
     if any(mp.dm_ind == 1):
@@ -401,6 +406,112 @@ def _grid_search_efc(mp, cvar):
     return dDM
 
 
+def _planned_ad_efc(mp, cvar):
+    """
+    Perform a scheduled/planned set of AD EFC iterations.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+
+    Returns
+    -------
+    dDM : ModelParameters
+        Structure containing the delta DM commands for each DM
+    """
+    # Make all combinations of the values
+    vals_list = [(x, y) for y in mp.ctrl.dmfacVec for x in mp.ctrl.log10regVec]
+    Nvals = len(mp.ctrl.log10regVec) * len(mp.ctrl.dmfacVec)
+    InormVec = np.zeros(Nvals)
+
+    # # Make more obvious names for conditions:
+    # runNewGridSearch = any(np.array(mp.gridSearchItrVec) == cvar.Itr)
+    # useBestLog10Reg = np.imag(mp.ctrl.log10regSchedIn[cvar.Itr]) != 0
+    # realLog10RegIsZero = np.real(mp.ctrl.log10regSchedIn[cvar.Itr]) == 0
+
+    # Step 1: Empirically find the "optimal" regularization value
+
+    # Temporarily store computed DM commands so that the best one does
+    # not have to be re-computed
+    if any(mp.dm_ind == 1):
+        dDM1V_store = np.zeros((mp.dm1.Nact, mp.dm1.Nact, Nvals))
+    if any(mp.dm_ind == 2):
+        dDM2V_store = np.zeros((mp.dm2.Nact, mp.dm2.Nact, Nvals))
+    if any(mp.dm_ind == 8):
+        dDM8V_store = np.zeros((mp.dm8.NactTotal, Nvals))
+    if any(mp.dm_ind == 9):
+        dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
+
+    ImCube = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
+
+    for ni in range(Nvals):
+
+        [InormVec[ni], dDM_temp] = _ad_efc(ni, vals_list, mp, cvar)
+        ImCube[ni, :, :] = dDM_temp.Itotal
+
+        # delta voltage commands
+        if any(mp.dm_ind == 1):
+            dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+        if any(mp.dm_ind == 2):
+            dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+        if any(mp.dm_ind == 8):
+            dDM8V_store[:, ni] = dDM_temp.dDM8V
+        if any(mp.dm_ind == 9):
+            dDM9V_store[:, ni] = dDM_temp.dDM9V
+
+    # Print out results to the command line
+    print('Scaling factor:\t\t', end='')
+    for ni in range(Nvals):
+        print('%.2f\t\t' % (vals_list[ni][1]), end='')
+
+    print('\nlog10reg:    \t\t', end='')
+    for ni in range(Nvals):
+        print('%.1f\t\t' % (vals_list[ni][0]), end='')
+
+    print('\nInorm:       \t\t', end='')
+    for ni in range(Nvals):
+        print('%.2e\t' % (InormVec[ni]), end='')
+    print('\n', end='')
+
+    # Find the best scaling factor and Lagrange multiplier pair based on
+    # the best contrast.
+    # [cvar.cMin,indBest] = np.min(InormVec)
+    indBest = np.argmin(InormVec)
+    cvar.cMin = np.min(InormVec)
+    cvar.Im = np.squeeze(ImCube[indBest, :, :])
+    cvar.latestBestlog10reg = vals_list[indBest][0]
+    cvar.latestBestDMfac = vals_list[indBest][1]
+
+    if mp.ctrl.flagUseModel:
+        print(('Model-based grid search expects log10reg, = %.1f,\t ' +
+              'dmfac = %.2f,\t %4.2e normalized intensity.') %
+              (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
+    else:
+        print(('Empirical grid search finds log10reg, = %.1f,\t dmfac' +
+              ' = %.2f,\t %4.2e normalized intensity.') %
+              (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
+
+    # delta voltage commands
+    dDM = falco.config.Object()  # Initialize
+    if any(mp.dm_ind == 1):
+        dDM.dDM1V = np.squeeze(dDM1V_store[:, :, indBest])
+    if any(mp.dm_ind == 2):
+        dDM.dDM2V = np.squeeze(dDM2V_store[:, :, indBest])
+    if any(mp.dm_ind == 8):
+        dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
+    if any(mp.dm_ind == 9):
+        dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
+
+    log10regSchedOut = cvar.latestBestlog10reg
+
+    cvar.log10regUsed = log10regSchedOut
+
+    return dDM
+
+
 def _planned_efc(mp, cvar):
     """
     Perform a scheduled/planned set of EFC iterations.
@@ -692,6 +803,120 @@ def _efc(ni, vals_list, mp, cvar):
                                 cvar.GstarG_wsum), cvar.RealGstarEab_wsum)
     # Convert to true 1-D array from a 2-D, Nx1 array
     duVec = duVecNby1.reshape((-1,))
+
+    # Parse the command vector by DM and assign the output commands
+    mp, dDM = wrapup(mp, cvar, duVec)
+
+    # Take images and compute average intensity in dark hole
+    if mp.ctrl.flagUseModel:  # Get simulated image from compact model
+        Itotal = falco.imaging.get_expected_summed_image(mp, cvar, dDM)
+        InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
+    else:  # Get actual image from full model or testbed
+        Itotal = falco.imaging.get_summed_image(mp)
+        InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
+    dDM.Itotal = Itotal
+
+    # Reset voltage commands in mp
+    if any(mp.dm_ind == 1):
+        mp.dm1.V = DM1V0
+    if any(mp.dm_ind == 2):
+        mp.dm2.V = DM2V0
+    if any(mp.dm_ind == 8):
+        mp.dm8.V = DM8V0
+    if any(mp.dm_ind == 9):
+        mp.dm9.V = DM9V0
+
+    return InormAvg, dDM
+
+
+def _ad_efc(ni, vals_list, mp, cvar):
+    """
+    Use algorithmic differentiation to suppress the E-field. 
+    
+    Called by a wrapper controller function.
+
+    Parameters
+    ----------
+    ni : int
+        index for the set of possible combinations of variables to do a grid
+        search over
+    vals_list : list
+        the set of possible combinations of values to do a grid search over
+    mp : ModelParameters
+        Structure containing optical model parameters
+    cvar : ModelParameters
+        Structure containing controller variables
+
+    Returns
+    -------
+    InormAvg : float
+        Normalized intensity averaged spectrally and spatially.
+    dDM : ModelParameters
+        Structure containing the delta DM commands for each DM
+    """
+    if any(mp.dm_ind == 1):
+        DM1V0 = mp.dm1.V.copy()
+    if any(mp.dm_ind == 2):
+        DM2V0 = mp.dm2.V.copy()
+    if any(mp.dm_ind == 8):
+        DM8V0 = mp.dm8.V.copy()
+    if any(mp.dm_ind == 9):
+        DM9V0 = mp.dm9.V.copy()
+
+    # Initializations
+    log10reg = vals_list[ni][0]  # log 10 of regularization value
+    dmfac = vals_list[ni][1]  # Scaling factor for entire DM command
+
+    # Save starting point for each delta command to be added to.
+    # Get the indices of each DM's command vector within the single
+    # concatenated command vector
+    init(mp, cvar)  # Modifies cvar
+
+    # # Least-squares solution with regularization:
+    # duVecNby1 = \
+    #     -dmfac*np.linalg.solve((10.0**log10reg*np.diag(cvar.EyeGstarGdiag) +
+    #                             cvar.GstarG_wsum), cvar.RealGstarEab_wsum)
+    # # Convert to true 1-D array from a 2-D, Nx1 array
+    # duVec = duVecNby1.reshape((-1,))
+
+    # DM0 = falco.config.Object()
+
+    # Parse the command vector by DM and apply weighting
+    dm0 = np.zeros(cvar.NeleAll)
+    bounds = np.zeros((cvar.NeleAll, 2))
+    if any(mp.dm_ind == 1):
+        # print('HERE')
+        # print(dm0.shape)
+        # print(dm0[cvar.uLegend==1].shape)
+        # print(len(mp.dm1.act_ele))
+        # print(mp.dm1.V[mp.dm1.act_ele].shape)
+        
+        dm1vec = mp.dm1.V.flatten()
+        dm0[cvar.uLegend==1] = dm1vec
+        bounds[cvar.uLegend==1, 0] = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
+        bounds[cvar.uLegend==1, 1] = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
+
+    if any(mp.dm_ind==2):
+        dm2vec = mp.dm2.V.flatten()
+        dm0[cvar.uLegend==2] = dm2vec
+        bounds[cvar.uLegend==2, 0] = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
+        bounds[cvar.uLegend==2, 1] = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
+
+    t0 = time.time()
+    u_sol = scipy.optimize.minimize(
+        falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, log10reg),
+        method='L-BFGS-B', jac=True, bounds=bounds, 
+        tol=None, callback=None,
+        options={'disp': None, 'ftol': 1e-12, 'gtol': 1e-10, 
+                 'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun ,
+                 'maxls': 20, 'iprint': mp.ctrl.ad.iprint},
+        )
+    t1 = time.time()
+    print('Optimization time = %.3f'%(t1-t0))
+
+    duVec = u_sol.x
+    print(u_sol.success)
+    print(u_sol.nit)
 
     # Parse the command vector by DM and assign the output commands
     mp, dDM = wrapup(mp, cvar, duVec)

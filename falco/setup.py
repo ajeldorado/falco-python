@@ -85,7 +85,7 @@ def verify_key_values(mp):
     mp.allowedEstimators = frozenset((
         'perfect', 'pairwise', 'pairwise-square', 'pwp-bp-square',
         'pairwise-rect', 'pwp-bp', 'pwp-kf'))
-    mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc'))
+    mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc', 'ad-efc'))
 
     # Check centering
     mp.centering = mp.centering.lower()
@@ -197,6 +197,14 @@ def set_optional_variables(mp):
         mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
     if not hasattr(mp.ctrl, 'flagUseModel'):
         mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
+    
+    # Algorithmic Differentiation EFC options
+    if not hasattr(mp.ctrl, 'ad'):
+        mp.ctrl.ad = falco.config.Object()
+    if not hasattr(mp.ctrl.ad, 'maxiter'):
+        mp.ctrl.ad.maxiter = 30
+    if not hasattr(mp.ctrl.ad, 'maxfun'):
+        mp.ctrl.ad.maxfun = 1000000
 
     # Model options (Very specialized cases--not for the average user)
     if not hasattr(mp, 'flagFiber'):
