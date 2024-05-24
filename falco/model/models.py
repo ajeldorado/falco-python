@@ -477,10 +477,18 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
     
     smooth = 0  # TODO hard-coded at 0 for now
     # flag_debug = False  #  hard-coded for now
-    
-    # TODO: Change to be more generic, e.g. for one DM at a time.
-    mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+
+    # Store initial cumulative DM commands
+    mp.dm1.V0 = mp.dm1.V.copy()
+    mp.dm2.V0 = mp.dm2.V.copy()
+
+    # # TODO: Change to be more generic, e.g. for one DM at a time.
+    # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    # mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+
+    # # TODO: Change to be more generic, e.g. for one DM at a time.
+    # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    # mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
     for iMode in range(mp.jac.Nmode):
 
@@ -559,24 +567,53 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         else:
             transOuterFPM = 1.0
 
-        # Regular forward model
-        # Select which optical layout's compact model to use and get E-field
+        # With only prior DM commands applied
         if mp.layout.lower() == 'fourier':
-            EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(
+            EFendA, Edm1inc, Edm2inc, DM1surfA, DM2surfA = compact_general(
                 mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
                 forRevGradModel=True)
      
         elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
                                    'proper', 'fpm_scale'):
             if mp.coro.upper() == 'HLC':
-                EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(
+                EFendA, Edm1inc, Edm2inc, DM1surfA, DM2surfA = compact_general(
                     mp, wvl, Ein, normFac, flagEval, flagScaleFPM=True,
                     useFPM=useFPM, forRevGradModel=True)
             else:
-              EFend, Edm1inc, Edm2inc, DM1surf, DM2surf = compact_general(
+              EFendA, Edm1inc, Edm2inc, DM1surfA, DM2surfA = compact_general(
                   mp, wvl, Ein, normFac, flagEval, useFPM=useFPM, forRevGradModel=True)
 
-        DH = EFend[mp.Fend.corr.maskBool]
+        
+        mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+        mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+        
+        # With delta DM commands applied
+        if mp.layout.lower() == 'fourier':
+            EFendB, _, _, DM1surfB, DM2surfB = compact_general(
+                mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
+                forRevGradModel=True)
+     
+        elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
+                                   'proper', 'fpm_scale'):
+            if mp.coro.upper() == 'HLC':
+                EFendB, _, _, DM1surfB, DM2surfB = compact_general(
+                    mp, wvl, Ein, normFac, flagEval, flagScaleFPM=True,
+                    useFPM=useFPM, forRevGradModel=True)
+            else:
+              EFendB, _, _, DM1surfB, DM2surfB = compact_general(
+                  mp, wvl, Ein, normFac, flagEval, useFPM=useFPM, forRevGradModel=True)        
+        
+        # Reset
+        mp.dm1.V = mp.dm1.V0.copy()
+        mp.dm2.V = mp.dm2.V0.copy()
+        
+        dEend = EFendB - EFendA
+        DM1surf = DM1surfB - DM1surfA
+        DM2surf = DM2surfB - DM2surfA
+
+        # DH = EFend[mp.Fend.corr.maskBool]
+        EdhNew = Eest2D + dEend
+        DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.absolute(DH)**2) #* mp.ctrl.ad.cost_func_scale_fac
         # total_cost += normFac*int_in_dh/mp.Nsbp
         total_cost += mp.jac.weights[iMode] * int_in_dh / normFacAD
@@ -585,7 +622,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surf/wvl)
                 
         # Gradient
-        Fend_masked = 2/normFacAD*EFend*np.real(mp.Fend.corr.maskBool.astype(float)*mp.ctrl.ad.cost_func_scale_fac)
+        Fend_masked = 2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float)*mp.ctrl.ad.cost_func_scale_fac)
+        # Fend_masked = 2/normFacAD*EFend*np.real(mp.Fend.corr.maskBool.astype(float)*mp.ctrl.ad.cost_func_scale_fac)
         
 #        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
@@ -734,8 +772,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         
     # Vout1 = -quick_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
     # Vout2 = -quick_fit_dm_surf(mp.dm2.compact, dmSurf2_bar_tot)
-    Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot)
-    Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot)
+    Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot) #+ 2*(10.0**log10reg)*mp.dm1.V
+    Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot) #+ 2*(10.0**log10reg)*mp.dm2.V
 
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
     
