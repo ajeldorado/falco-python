@@ -892,13 +892,13 @@ def _ad_efc(ni, vals_list, mp, cvar):
         # print(mp.dm1.V[mp.dm1.act_ele].shape)
         
         dm1vec = mp.dm1.V.flatten()
-        dm0[cvar.uLegend==1] = dm1vec
+        dm0[cvar.uLegend==1] = np.zeros(mp.dm1.Nele)  # dm1vec
         bounds[cvar.uLegend==1, 0] = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
         bounds[cvar.uLegend==1, 1] = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
 
     if any(mp.dm_ind==2):
         dm2vec = mp.dm2.V.flatten()
-        dm0[cvar.uLegend==2] = dm2vec
+        dm0[cvar.uLegend==2] = np.zeros(mp.dm2.Nele)  #dm2vec
         bounds[cvar.uLegend==2, 0] = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
         bounds[cvar.uLegend==2, 1] = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
 
