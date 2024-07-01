@@ -348,7 +348,7 @@ def setup_fpm_cosine(mp):
             # Choose power for number of lobes
             powmin = 2 * np.pi * rMin / min_azimSize * 18
             aux = pow_arr - powmin
-            aux[aux < 0] = np.Inf
+            aux[aux < 0] = np.inf
             ind_mi = np.argmin(aux)
             power = pow_arr[ind_mi]
             #
@@ -395,7 +395,7 @@ def setup_fpm_cosine(mp):
             # Choose power for number of lobes
             powmin = 2*np.pi*rMin/min_azimSize*18
             aux = pow_arr - powmin
-            aux[aux < 0] = np.Inf
+            aux[aux < 0] = np.inf
             ind_mi = np.argmin(aux)
             power = pow_arr[ind_mi]
             # disp(['Number of lobes',num2str(pow)])
@@ -521,7 +521,7 @@ def setup_fpm_cosine(mp):
     FPMgenInputs = {}
     FPMgenInputs['pixresFPM'] = mp.F3.full.res  # pixels per lambda_c/D
     FPMgenInputs['rhoInner'] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs['rhoOuter'] = np.Inf  # radius of outer opaque FPM ring (in lambda_c/D)
+    FPMgenInputs['rhoOuter'] = np.inf  # radius of outer opaque FPM ring (in lambda_c/D)
     FPMgenInputs['FPMampFac'] = 0  # amplitude transmission of inner FPM spot
     FPMgenInputs['centering'] = mp.centering
     diskFull = np.round(pad_crop(1-falco.mask.gen_annular_FPM(FPMgenInputs),
@@ -675,7 +675,7 @@ def setup_fpm(mp):
     FPMgenInputs = {}
     FPMgenInputs['pixresFPM'] = mp.F3.full.res  # pixels per lambda_c/D
     FPMgenInputs['rhoInner'] = mp.F3.Rin  # radius of inner FPM amplitude spot (in lambda_c/D)
-    FPMgenInputs['rhoOuter'] = np.Inf  # radius of outer opaque FPM ring (in lambda_c/D)
+    FPMgenInputs['rhoOuter'] = np.inf  # radius of outer opaque FPM ring (in lambda_c/D)
     FPMgenInputs['FPMampFac'] = 0  # amplitude transmission of inner FPM spot
     FPMgenInputs['centering'] = mp.centering
     diskFull = np.round(pad_crop(1-falco.mask.gen_annular_FPM(FPMgenInputs),

@@ -295,7 +295,7 @@ mp.P4.compact.mask = falco.mask.falco_gen_pupil_Simple(inputs)
 
 # FPM size
 mp.F3.Rin = 2.8  # maximum radius of inner part of the focal plane mask [lambda0/D]
-mp.F3.Rout = np.Inf  # radius of outer opaque edge of FPM [lambda0/D]
+mp.F3.Rout = np.inf  # radius of outer opaque edge of FPM [lambda0/D]
 mp.F3.ang = 180  # on each side, opening angle [degrees]
 mp.F3.FPMampFac = 10**(-3.7/2.0)  # amplitude transmission of the FPM
 
