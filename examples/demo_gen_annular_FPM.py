@@ -26,7 +26,7 @@ if("centering" in inputs.keys()): # Check symmetry
 
 # %% Without Outer Ring
         
-inputs["rhoOuter"] = np.Infinity
+inputs["rhoOuter"] = np.inf
 fpm = falco.mask.falco_gen_annular_FPM(inputs)
 
 plt.imshow(fpm); plt.colorbar(); plt.pause(0.1)

@@ -141,7 +141,7 @@ def real_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var, copy=False)  # cast to array
+    var = np.asarray(var)  # cast to array
     if len(var.shape) == 0:
         raise vexc(vname + ' must have length > 0')
     if not np.isrealobj(var):
@@ -168,7 +168,7 @@ def oneD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var, copy=False) # cast to array
+    var = np.asarray(var) # cast to array
     if len(var.shape) != 1:
         raise vexc(vname + ' must be a 1D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -192,7 +192,7 @@ def twoD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var, copy=False) # cast to array
+    var = np.asarray(var) # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a 2D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
@@ -216,7 +216,7 @@ def twoD_square_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var, copy=False) # cast to array
+    var = np.asarray(var) # cast to array
     if len(var.shape) != 2:
         raise vexc(vname + ' must be a 2D array')
     else: # is 2-D
@@ -243,7 +243,7 @@ def threeD_array(var, vname, vexc):
     _checkname(vname)
     _checkexc(vexc)
 
-    var = np.array(var, copy=False) # cast to array
+    var = np.asarray(var) # cast to array
     if len(var.shape) != 3:
         raise vexc(vname + ' must be a 3D array')
     if (not np.isrealobj(var)) and (not np.iscomplexobj(var)):
