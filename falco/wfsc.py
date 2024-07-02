@@ -71,16 +71,19 @@ def loop(mp, out):
         mp.thput_vec[Itr] = np.max(thput)
 
         # %% Control Jacobian
+        if mp.controller.lower() != 'ad-efc':
+            # Re-compute the Jacobian weights
+            falco.setup.falco_set_jacobian_modal_weights(mp)
+    
+            # Compute the control Jacobians for each DM
+            cvar.flagRelin = np.any(mp.relinItrVec == Itr) or Itr == 0
+            if cvar.flagRelin:
+                jacStruct = falco.model.jacobian(mp)
 
-        # Re-compute the Jacobian weights
-        falco.setup.falco_set_jacobian_modal_weights(mp)
-
-        # Compute the control Jacobians for each DM
-        cvar.flagRelin = np.any(mp.relinItrVec == Itr) or Itr == 0
-        if cvar.flagRelin:
-            jacStruct = falco.model.jacobian(mp)
-
-        falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
+            falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
+        
+        else:
+            jacStruct = None
 
         # %% Wavefront Estimation
 

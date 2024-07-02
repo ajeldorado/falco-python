@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-import proper
+import falco.proper as proper
 import falco
 # import config_wfsc_lc as CONFIG
 

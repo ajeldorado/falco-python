@@ -14,25 +14,23 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.12']
 
     steps:
     # This step checks out a copy of your repository.
     - uses: actions/checkout@v2
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: '3.10'
+        python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
+      # NO PROPER
       run: |
         pip install astropy
         pip install extension-helpers
-        mkdir PYPROPER
-        cd PYPROPER
-        curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.7_python_15jun2022.zip -o myfile.zip -L
-        unzip -o myfile.zip
-        cd proper*
-        python setup.py install
-        cd ../../
         python -m pip install --upgrade pip
         pip install pytest
         pip install pytest-cov
@@ -42,9 +40,29 @@ jobs:
         pip install psutil
         pip install matplotlib
         pip install coveralls
+      # WITH PROPER
+#       run: |
+#         pip install astropy
+#         pip install extension-helpers
+#         mkdir PYPROPER
+#         cd PYPROPER
+#         curl https://sourceforge.net/projects/proper-library/files/proper_v3.2.7_python_15jun2022.zip -o myfile.zip -L
+#         unzip -o myfile.zip
+#         cd proper*
+#         python setup.py install
+#         cd ../../
+#         python -m pip install --upgrade pip
+#         pip install pytest
+#         pip install pytest-cov
+#         pip install pytest-html
+#         pip install numpy
+#         pip install scipy
+#         pip install psutil
+#         pip install matplotlib
+#         pip install coveralls
     - name: Test with pytest
       run: |
-        #python -m pytest tests/ -v --html=./TestReport/TestReport.html
+        # python -m pytest tests/ -v --html=./TestReport/TestReport.html
         python3 -m pytest --cov-report=html  --cov=./falco tests/ -v --html=./TestReport/TestReport.html
 #    - name: Upload coverage data to coveralls.io
 #      run: coveralls

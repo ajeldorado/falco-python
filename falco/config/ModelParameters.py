@@ -24,7 +24,7 @@ class ModelParameters:
         def __init__(self, **kwargs):
             self.dummy = _spec_arg("dummy", kwargs, 1)
             self.Dstop = _spec_arg("Dstop", kwargs, 0.048)
-            self.dx= _spec_arg("dx", kwargs, 0)
+            self.dx = _spec_arg("dx", kwargs, 0)
             self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
 
     class _base_dm2:

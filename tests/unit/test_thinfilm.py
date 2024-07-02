@@ -18,7 +18,7 @@ def test_transmission_pmgi():
     [tCoef, _] = calc_complex_trans_matrix(substrate, metal, dielectric,
                                            lam, aoi, t_Ti_base, t_Ni_vec,
                                            t_diel_vec, d0, pol)
-    T_FALCO = np.abs(tCoef)**2  # Value from FALCO: 0.94313153
+    T_FALCO = np.abs(np.squeeze(tCoef))**2  # Value from FALCO: 0.94313153
     T_Macleod = 0.9431006949  # Value from Essential Macleod
     assert isclose(T_FALCO, T_Macleod, rel_tol=0.0001)
 
@@ -37,7 +37,7 @@ def test_transmission_nickel():
     [tCoef, _] = calc_complex_trans_matrix(substrate, metal, dielectric,
                                            lam, aoi, t_Ti_base, t_Ni_vec,
                                            t_diel_vec, d0, pol)
-    T_FALCO = np.abs(tCoef)**2  # Value from FALCO: 0.00087847
+    T_FALCO = np.abs(np.squeeze(tCoef))**2  # Value from FALCO: 0.00087847
     T_Macleod = 0.00087848574  # Value from Essential Macleod
     assert isclose(T_FALCO, T_Macleod, rel_tol=0.0001)
 
@@ -56,7 +56,7 @@ def test_transmission_pmgi_on_nickel_a():
     [tCoef, _] = calc_complex_trans_matrix(substrate, metal, dielectric,
                                            lam, aoi, t_Ti_base, t_Ni_vec,
                                            t_diel_vec, d0, pol)
-    T_FALCO = np.abs(tCoef)**2  # Value from FALCO: 0.00118379
+    T_FALCO = np.abs(np.squeeze(tCoef))**2  # Value from FALCO: 0.00118379
     T_Macleod = 0.00118382732  # Value from Essential Macleod
     assert isclose(T_FALCO, T_Macleod, rel_tol=0.0001)
 
@@ -75,7 +75,7 @@ def test_transmission_pmgi_on_nickel_b():
     [tCoef, _] = calc_complex_trans_matrix(substrate, metal, dielectric,
                                            lam, aoi, t_Ti_base, t_Ni_vec,
                                            t_diel_vec, d0, pol)
-    T_FALCO = np.abs(tCoef)**2  # Value from FALCO: 0.001216750339
+    T_FALCO = np.abs(np.squeeze(tCoef))**2  # Value from FALCO: 0.001216750339
     T_Macleod = 0.00121675706  # Value from Essential Macleod
     assert isclose(T_FALCO, T_Macleod, rel_tol=0.0001)
 

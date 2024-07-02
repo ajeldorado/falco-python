@@ -2,7 +2,6 @@ import numpy as np
 import sys
 sys.path.append('../')
 import falco
-#import proper
 
 
 mp = falco.config.ModelParameters()
@@ -292,7 +291,7 @@ mp.F3.compact.res = 4  # sampling of FPM for full model [pixels per lambda0/D]
 
 mp.F3.Rin = 2.7  # maximum radius of inner part of the focal plane mask [lambda0/D]
 mp.F3.RinA = 2.7  # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
-mp.F3.Rout = np.Inf  # radius of outer opaque edge of FPM [lambda0/D]
+mp.F3.Rout = np.inf  # radius of outer opaque edge of FPM [lambda0/D]
 mp.F3.ang = 180  # on each side, opening angle [degrees]
 mp.FPMampFac = 0  # amplitude transmission of the FPM
 

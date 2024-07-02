@@ -1,11 +1,43 @@
 """Unit tests for check.py."""
 import unittest
+
 import numpy as np
 
 from falco import check
 
 
+# Invalid values
+
+# string
+strlist = [1j, None, (1.,), [5, 5], -1, 0, 1.0]
+# real scalar
+rslist = [1j, None, (1.,), [5, 5], 'txt']
+# real nonnegative scalar
+rnslist = [1j, None, (1.,), [5, 5], 'txt', -1]
+# real positive scalar
+rpslist = [1j, None, (1.,), [5, 5], 'txt', -1, 0]
+# real scalar integer
+rsilist = [1j, None, (1.,), [5, 5], 'txt', 1.0]
+# nonnegative scalar integer
+nsilist = [1j, None, (1.,), [5, 5], 'txt', -1, 1.0]
+# positive scalar integer
+psilist = [1j, None, (1.,), [5, 5], 'txt', -1, 0, 1.0]
+# real array
+rarraylist = [1j*np.ones((5, 4)), (1+1j)*np.ones((5, 5, 5)), 'foo',
+              np.array([[1, 2], [3, 4], [5, 'a']])]
+# 1D array
+oneDlist = [np.ones((5, 4)), np.ones((5, 5, 5)), 'foo']
+# 2D array
+twoDlist = [np.ones((5,)), np.ones((5, 5, 5)), [], 'foo']
+# 2D square array
+twoDsquarelist = [np.ones((5,)), np.ones((5, 5, 5)), np.ones((5, 4)),
+                  [], 'foo']
+# 3D array
+threeDlist = [np.ones((5,)), np.ones((5, 5)), np.ones((2, 2, 2, 2)), [], 'foo']
+
+
 class TestCheckException(Exception):
+    __test__ = False
     pass
 
 
@@ -17,6 +49,7 @@ class TestCheck(unittest.TestCase):
     error checking
     """
 
+    # real_positive_scalar
     def test_real_positive_scalar_good(self):
         """
         Verify checker works correctly for valid input.
@@ -35,7 +68,7 @@ class TestCheck(unittest.TestCase):
 
         Type: real positive scalar
         """
-        for v0 in [-1, 1j, (1.,), [5, 5], 'v0']:
+        for v0 in rpslist:
             with self.assertRaises(TestCheckException):
                 check.real_positive_scalar(v0, 'rps', TestCheckException)
                 pass
@@ -75,7 +108,7 @@ class TestCheck(unittest.TestCase):
 
         Type: real nonnegative scalar
         """
-        for v0 in [-1, 1j, (1.,), [5, 5], 'v0']:
+        for v0 in rnslist:
             with self.assertRaises(TestCheckException):
                 check.real_nonnegative_scalar(v0, 'rps', TestCheckException)
                 pass
@@ -115,7 +148,7 @@ class TestCheck(unittest.TestCase):
 
         Type: real array
         """
-        for v0 in [1j*np.ones((5, 4)), (1+1j)*np.ones((5, 5, 5)), 'foo']:
+        for v0 in rarraylist:
             with self.assertRaises(TestCheckException):
                 check.real_array(v0, '1D', TestCheckException)
                 pass
@@ -155,7 +188,7 @@ class TestCheck(unittest.TestCase):
 
         Type: 1D array
         """
-        for v0 in [np.ones((5, 4)), np.ones((5, 5, 5)), 'foo']:
+        for v0 in oneDlist:
             with self.assertRaises(TestCheckException):
                 check.oneD_array(v0, '1D', TestCheckException)
                 pass
@@ -195,7 +228,7 @@ class TestCheck(unittest.TestCase):
 
         Type: 2D array
         """
-        for v0 in [np.ones((5,)), np.ones((5, 5, 5)), [], 'foo']:
+        for v0 in twoDlist:
             with self.assertRaises(TestCheckException):
                 check.twoD_array(v0, '2d', TestCheckException)
                 pass
@@ -235,7 +268,7 @@ class TestCheck(unittest.TestCase):
 
         Type: 2D array
         """
-        for v0 in [np.ones((5,)), np.ones((5, 5, 5)), [], 'foo']:
+        for v0 in twoDsquarelist:
             with self.assertRaises(TestCheckException):
                 check.twoD_square_array(v0, '2d', TestCheckException)
                 pass
@@ -289,8 +322,7 @@ class TestCheck(unittest.TestCase):
 
         Type: 3D array
         """
-        for v0 in [np.ones((5,)), np.ones((5, 5)), np.ones((2, 2, 2, 2)),
-                   [], 'foo']:
+        for v0 in threeDlist:
             with self.assertRaises(TestCheckException):
                 check.threeD_array(v0, '3d', TestCheckException)
                 pass
@@ -330,7 +362,7 @@ class TestCheck(unittest.TestCase):
 
         Type: real scalar
         """
-        for v0 in [1j, (1.,), [5, 5], 'rs']:
+        for v0 in rslist:
             with self.assertRaises(TestCheckException):
                 check.real_scalar(v0, 'rs', TestCheckException)
                 pass
@@ -370,7 +402,7 @@ class TestCheck(unittest.TestCase):
 
         Type: positive scalar integer
         """
-        for v0 in [1.0, -1, 0, 1j, (1.,), [5, 5], 'psi']:
+        for v0 in psilist:
             with self.assertRaises(TestCheckException):
                 check.positive_scalar_integer(v0, 'psi', TestCheckException)
                 pass
@@ -412,7 +444,7 @@ class TestCheck(unittest.TestCase):
 
         Type: nonnegative scalar integer
         """
-        for v0 in [1.0, -1, 1j, (1.,), [5, 5], 'nsi']:
+        for v0 in nsilist:
             with self.assertRaises(TestCheckException):
                 check.nonnegative_scalar_integer(v0, 'nsi', TestCheckException)
                 pass
@@ -454,7 +486,7 @@ class TestCheck(unittest.TestCase):
 
         Type: scalar integer
         """
-        for v0 in [1.0, 1j, (1.,), [5, 5], 'si']:
+        for v0 in rsilist:
             with self.assertRaises(TestCheckException):
                 check.scalar_integer(v0, 'si', TestCheckException)
                 pass
@@ -472,6 +504,47 @@ class TestCheck(unittest.TestCase):
         """Fail on input vexc not an Exception."""
         with self.assertRaises(check.CheckException):
             check.scalar_integer(1, 'si', 'TestCheckException')
+            pass
+        pass
+
+    def test_string_good(self):
+        """
+        Verify checker works correctly for valid input.
+
+        Type: string
+        """
+        for j in ['a', '1', '.']:
+            try:
+                check.string(j, 'string', TestCheckException)
+            except check.CheckException:
+                self.fail('string failed on valid input')
+            pass
+        pass
+
+    def test_string_bad_var(self):
+        """
+        Fail on invalid variable type.
+
+        Type: string
+        """
+        for v0 in strlist:
+            with self.assertRaises(TestCheckException):
+                check.string(v0, 'string', TestCheckException)
+                pass
+            pass
+        pass
+
+    def test_string_bad_vname(self):
+        """Fail on invalid input name for user output."""
+        with self.assertRaises(check.CheckException):
+            check.string('a', ('a',), TestCheckException)
+            pass
+        pass
+
+    def test_string_bad_vexc(self):
+        """Fail on input vexc not an Exception."""
+        with self.assertRaises(check.CheckException):
+            check.scalar_integer('a', 'string', 'TestCheckException')
             pass
         pass
 

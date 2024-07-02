@@ -236,11 +236,11 @@ def delta_efield(mp, out, Eest, EestPrev, Esim, EsimPrev, Itr):
         dEsimNonzero = dEsim[indsNonzero].reshape([-1, 1])
 
         out.complexProjection[Itr-1, iSubband] = \
-            np.abs(dEsimNonzero.T @ dEmeasNonzero) / np.abs(dEsimNonzero.T @ dEsimNonzero)
+            (np.abs(dEsimNonzero.T @ dEmeasNonzero) / np.abs(dEsimNonzero.T @ dEsimNonzero)).item()
         print('Complex projection of deltaE is %3.2f    for subband %d/%d' %
               (out.complexProjection[Itr-1, iSubband], iSubband, mp.Nsbp-1))
         out.complexCorrelation[Itr-1, iSubband] = \
-            np.abs(dEsimNonzero.T @ dEmeasNonzero/(np.sqrt(np.abs(dEmeasNonzero.T @ dEmeasNonzero))*np.sqrt(np.abs(dEsimNonzero.T @ dEsimNonzero))))
+            (np.abs(dEsimNonzero.T @ dEmeasNonzero/(np.sqrt(np.abs(dEmeasNonzero.T @ dEmeasNonzero))*np.sqrt(np.abs(dEsimNonzero.T @ dEsimNonzero))))).item()
         print('Complex correlation of deltaE is %3.2f    for subband %d/%d' %
               (out.complexCorrelation[Itr-1, iSubband], iSubband, mp.Nsbp-1))
 

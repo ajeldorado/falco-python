@@ -277,7 +277,7 @@ mp.P4.compact.maskAtP1res = falco.mask.falco_gen_pupil_Roman_CGI_20200513(mp.P1.
 
 mp.F3.Rin = 2.7  # maximum radius of inner part of the focal plane mask [lambda0/D]
 mp.F3.RinA = 2.7  # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
-mp.F3.Rout = np.Inf  # radius of outer opaque edge of FPM [lambda0/D]
+mp.F3.Rout = np.inf  # radius of outer opaque edge of FPM [lambda0/D]
 mp.F3.ang = 180  # on each side, opening angle [degrees]
 mp.FPMampFac = 0  # amplitude transmission of the FPM
 

@@ -10,7 +10,7 @@ import copy
 import matplotlib.pyplot as plt
 
 import falco
-import proper
+import falco.proper as proper
 
 # %% Uncomment the config file for the mask configuration that you want
 

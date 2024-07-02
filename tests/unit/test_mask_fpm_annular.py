@@ -9,7 +9,7 @@ from falco.util import pad_crop
 def test_area_spot():
     inputs = {"pixresFPM": 6,
               "rhoInner": 3,
-              "rhoOuter": np.Inf,
+              "rhoOuter": np.inf,
               }
     fpm = gen_annular_fpm(inputs)
 
@@ -21,7 +21,7 @@ def test_area_spot():
 def test_area_partially_transmissive_spot():
     inputs = {"pixresFPM": 6,
               "rhoInner": 3,
-              "rhoOuter": np.Inf,
+              "rhoOuter": np.inf,
               "FPMampFac": 0.2,
               }
     fpm = gen_annular_fpm(inputs)
@@ -49,7 +49,7 @@ def test_translation_spot():
     res = 6
     inputs = {"pixresFPM": res,
               "rhoInner": 3,
-              "rhoOuter": np.Inf,
+              "rhoOuter": np.inf,
               }
     fpm = gen_annular_fpm(inputs)
 

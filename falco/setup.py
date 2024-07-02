@@ -85,7 +85,7 @@ def verify_key_values(mp):
     mp.allowedEstimators = frozenset((
         'perfect', 'pairwise', 'pairwise-square', 'pwp-bp-square',
         'pairwise-rect', 'pwp-bp', 'pwp-kf'))
-    mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc'))
+    mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc', 'ad-efc'))
 
     # Check centering
     mp.centering = mp.centering.lower()
@@ -197,6 +197,14 @@ def set_optional_variables(mp):
         mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
     if not hasattr(mp.ctrl, 'flagUseModel'):
         mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
+    
+    # Algorithmic Differentiation EFC options
+    if not hasattr(mp.ctrl, 'ad'):
+        mp.ctrl.ad = falco.config.Object()
+    if not hasattr(mp.ctrl.ad, 'maxiter'):
+        mp.ctrl.ad.maxiter = 30
+    if not hasattr(mp.ctrl.ad, 'maxfun'):
+        mp.ctrl.ad.maxfun = 1000000
 
     # Model options (Very specialized cases--not for the average user)
     if not hasattr(mp, 'flagFiber'):
@@ -487,7 +495,7 @@ def falco_set_spectral_properties(mp):
     mp.wi_ref = np.floor(mp.Nwpsbp/2).astype(int)
 
     # Wavelength factors/weights within sub-bandpasses in the full model
-    mp.full.lambda_weights = np.ones((mp.Nwpsbp,1))  # Initialize as all ones. Weights within a single sub-bandpass
+    mp.full.lambda_weights = np.ones((mp.Nwpsbp, 1))  # Initialize as all ones. Weights within a single sub-bandpass
     if mp.Nwpsbp == 1:
         mp.full.dlam = 0  # Delta lambda between every wavelength in the sub-band in the full model
     else:
@@ -516,7 +524,7 @@ def falco_set_spectral_properties(mp):
         np.arange(-(mp.Nwpsbp-1)/2, (mp.Nwpsbp-1)/2)*mp.full.dlam
         for wi in range(mp.Nwpsbp):
             lambdas[counter] = mp.full.lambdasMat[si, wi];
-            lambda_weights_all[counter] = mp.sbp_weights[si]*mp.full.lambda_weights[wi]
+            lambda_weights_all[counter] = mp.sbp_weights[si].item() * mp.full.lambda_weights[wi].item()
             mp.full.indsLambdaMat[counter, :] = [si, wi]
             counter = counter+1;
 

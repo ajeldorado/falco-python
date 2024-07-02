@@ -2,7 +2,6 @@ import sys
 sys.path.insert(0,"../")
 sys.path.insert(0,"../tests/")
 import falco
-import proper
 import numpy as np
 import testing_defaults_WFIRST_LC as DEFAULTS
 import matplotlib.pyplot as plt
