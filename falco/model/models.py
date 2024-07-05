@@ -608,8 +608,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         mp.dm2.V = mp.dm2.V0.copy()
         
         dEend = EFendB - EFendA
-        DM1surf = DM1surfB - DM1surfA
-        DM2surf = DM2surfB - DM2surfA
+        DM1surf = DM1surfB
+        DM2surf = DM2surfB
 
         # DH = EFend[mp.Fend.corr.maskBool]
         EdhNew = Eest2D + dEend
