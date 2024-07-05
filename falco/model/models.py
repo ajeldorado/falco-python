@@ -455,21 +455,16 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
     isEvalMode = False
     useFPM = True
 
-    # use a different res at final focal plane for eval
-    flagEval = isEvalMode
+    # Complex trans of points outside FPM
+    if mp.coro.upper() == 'HLC':
+        transOuterFPM = mp.F3.compact.mask[0, 0]  
+    else:
+        transOuterFPM = 1.
 
     if mp.flagRotation:
         NrelayFactor = 1
     else:
         NrelayFactor = 0  # zero out the number of relays
-
-    # # Is image already normalized?
-    # if not isNorm:
-    #     normFac = 0.
-    # elif isNorm and isEvalMode:
-    #     normFac = mp.Fend.eval.I00[modvar.sbpIndex]
-    # else:
-    #     normFac = mp.Fend.compact.I00[modvar.sbpIndex]
 
     total_cost = 0
     dmSurf1_bar_tot = 0
@@ -505,103 +500,18 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = EestVec #* np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
-
-        # %% Input E-fields
-    
-        # Include the star position and weight in the starting wavefront
-        iStar = modvar.starIndex
-        xiOffset = mp.compact.star.xiOffsetVec[iStar]
-        etaOffset = mp.compact.star.etaOffsetVec[iStar]
-        starWeight = mp.compact.star.weights[iStar]
-        TTphase = (-1)*(2*np.pi*(xiOffset*mp.P2.compact.XsDL +
-                                 etaOffset*mp.P2.compact.YsDL))
-        Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        Ein = np.sqrt(starWeight) * Ett * mp.P1.compact.E[:, :, modvar.sbpIndex]
-
-        # if modvar.whichSource.lower() == 'offaxis':  # Use for throughput calc
-        #     TTphase = (-1)*(2*np.pi*(modvar.x_offset*mp.P2.compact.XsDL +
-        #                              modvar.y_offset*mp.P2.compact.YsDL))
-        #     Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        #     Ein *= Ett
-
-        # # Shift the source off-axis to compute the intensity normalization value.
-        # # This replaces the previous way of taking the FPM out in optical model.
-        # if normFac == 0:
-        #     TTphase = (-1)*(2*np.pi*(mp.source_x_offset_norm*mp.P2.compact.XsDL +
-        #                              mp.source_y_offset_norm*mp.P2.compact.YsDL))
-        #     Ett = np.exp(1j*TTphase*mp.lambda0/wvl)
-        #     Ein *= Ett
-            # Ein = Ett*mp.P1.compact.E[:, :, modvar.sbpIndex]
-
-        # # Apply a Zernike (in amplitude) at input pupil if specified
-        # if not hasattr(modvar, 'zernIndex'):
-        #     modvar.zernIndex = 1
-    
-        # Only used for Zernike sensitivity control, which requires the perfect
-        # E-field of the differential Zernike term.
-        if not (modvar.zernIndex == 1):
-            indsZnoll = modvar.zernIndex  # Just send in 1 Zernike mode
-            zernMat = np.squeeze(falco.zern.gen_norm_zern_maps(
-                mp.P1.compact.Nbeam, mp.centering, indsZnoll))
-            zernMat = pad_crop(zernMat, mp.P1.compact.Narr)
-            Ein *= zernMat*(2*np.pi*1j/wvl)*mp.jac.Zcoef[mp.jac.zerns == modvar.zernIndex]
-    
-        # Define what the complex-valued FPM is if the coro is some type of HLC.
-        if mp.coro.upper() in ('HLC',):
-            if mp.layout.lower() == 'fourier':
-                if hasattr(mp.compact, 'fpmCube'):
-                    mp.F3.compact.mask = mp.compact.fpmCube[:, :, modvar.sbpIndex]
-                else:
-                    mp.F3.compact.mask = falco.hlc.gen_fpm_from_LUT(
-                        mp, modvar.sbpIndex, -1, 'compact')
-            elif mp.layout.lower() in ('roman_phasec_proper',
-                                       'wfirst_phaseb_proper',
-                                       'fpm_scale', 'proper'):
-                mp.F3.compact.mask = mp.compact.fpmCube[:, :, modvar.sbpIndex]
-            else:
-                raise ValueError('Incompatible values of mp.layout and mp.coro.')
-    
-        # Complex trans of points outside FPM
-        if mp.coro.upper() == 'HLC':
-            transOuterFPM = mp.F3.compact.mask[0, 0]  
-        else:
-            transOuterFPM = 1.0
-
-        # With only prior DM commands applied
-        if mp.layout.lower() == 'fourier':
-            EFendA, Edm1inc, Edm2inc, DM1surfA, DM2surfA = compact_general(
-                mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
-                forRevGradModel=True)
-     
-        elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
-                                   'proper', 'fpm_scale'):
-            if mp.coro.upper() == 'HLC':
-                EFendA, Edm1inc, Edm2inc, DM1surfA, DM2surfA = compact_general(
-                    mp, wvl, Ein, normFac, flagEval, flagScaleFPM=True,
-                    useFPM=useFPM, forRevGradModel=True)
-            else:
-              EFendA, Edm1inc, Edm2inc, DM1surfA, DM2surfA = compact_general(
-                  mp, wvl, Ein, normFac, flagEval, useFPM=useFPM, forRevGradModel=True)
-
         
+        #Calculate E-Field for previous EFC iteration
+        EFendA = compact(mp, modvar, isNorm=True, isEvalMode=isEvalMode, 
+                         useFPM=useFPM, forRevGradModel=False)      
+
         mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
         mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
-        
+                    
         # With delta DM commands applied
-        if mp.layout.lower() == 'fourier':
-            EFendB, _, _, DM1surfB, DM2surfB = compact_general(
-                mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
-                forRevGradModel=True)
-     
-        elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
-                                   'proper', 'fpm_scale'):
-            if mp.coro.upper() == 'HLC':
-                EFendB, _, _, DM1surfB, DM2surfB = compact_general(
-                    mp, wvl, Ein, normFac, flagEval, flagScaleFPM=True,
-                    useFPM=useFPM, forRevGradModel=True)
-            else:
-              EFendB, _, _, DM1surfB, DM2surfB = compact_general(
-                  mp, wvl, Ein, normFac, flagEval, useFPM=useFPM, forRevGradModel=True)        
+        EFendB, Edm1inc, Edm2inc, DM1surfB, DM2surfB = compact(
+           mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM, 
+           forRevGradModel=True)        
         
         # Reset
         mp.dm1.V = mp.dm1.V0.copy()
@@ -900,16 +810,19 @@ def compact(mp, modvar, isNorm=True, isEvalMode=False, useFPM=True,
 
     # Select which optical layout's compact model to use and get E-field
     if mp.layout.lower() == 'fourier':
-        Eout = compact_general(mp, wvl, Ein, normFac, flagEval, useFPM=useFPM)
+        Eout = compact_general(mp, wvl, Ein, normFac, flagEval, useFPM=useFPM,
+                               forRevGradModel=forRevGradModel)
 
     elif mp.layout.lower() in ('roman_phasec_proper', 'wfirst_phaseb_proper',
                                'proper', 'fpm_scale'):
         if mp.coro.upper() == 'HLC':
             Eout = compact_general(mp, wvl, Ein, normFac, flagEval,
-                                   flagScaleFPM=True, useFPM=useFPM)
+                                   flagScaleFPM=True, useFPM=useFPM,
+                                   forRevGradModel=forRevGradModel)
         else:
             Eout = compact_general(mp, wvl, Ein, normFac, flagEval,
-                                   useFPM=useFPM)
+                                   useFPM=useFPM,
+                                   forRevGradModel=forRevGradModel)
     return Eout
 
 
