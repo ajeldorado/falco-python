@@ -418,7 +418,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     return Eout
 
-def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
+def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     """
     Simplified (aka compact) model used by estimator and controller.
 
@@ -500,10 +500,6 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = EestVec #* np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
-        
-        #Calculate E-Field for previous EFC iteration
-        EFendA = compact(mp, modvar, isNorm=True, isEvalMode=isEvalMode, 
-                         useFPM=useFPM, forRevGradModel=False)      
 
         mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
         mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
@@ -517,6 +513,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, log10reg):
         mp.dm1.V = mp.dm1.V0.copy()
         mp.dm2.V = mp.dm2.V0.copy()
         
+        EFendA = EFendPrev[iMode]
         dEend = EFendB - EFendA
         DM1surf = DM1surfB
         DM2surf = DM2surfB
