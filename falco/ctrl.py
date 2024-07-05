@@ -902,9 +902,24 @@ def _ad_efc(ni, vals_list, mp, cvar):
         bounds[cvar.uLegend==2, 0] = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
         bounds[cvar.uLegend==2, 1] = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
 
+    EFendPrev = []
+    for iMode in range(mp.jac.Nmode):
+
+        modvar = falco.config.ModelVariables()
+        modvar.whichSource = 'star'
+        modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+        modvar.zernIndex = mp.jac.zern_inds[iMode]
+        modvar.starIndex = mp.jac.star_inds[iMode]
+    
+        #Calculate E-Field for previous EFC iteration
+        EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False, 
+                         useFPM=True, forRevGradModel=False)
+        EFendPrev.append(EFend)
+
+
     t0 = time.time()
     u_sol = scipy.optimize.minimize(
-        falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, log10reg),
+        falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
         method='L-BFGS-B', jac=True, bounds=bounds, 
         tol=None, callback=None,
         options={'disp': None, 'ftol': 1e-12, 'gtol': 1e-10, 
