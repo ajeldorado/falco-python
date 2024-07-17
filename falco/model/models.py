@@ -466,7 +466,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     else:
         NrelayFactor = 0  # zero out the number of relays
 
-    total_cost = 0
+
     dmSurf1_bar_tot = 0
     dmSurf2_bar_tot = 0
     
@@ -476,6 +476,13 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # Store initial cumulative DM commands
     mp.dm1.V0 = mp.dm1.V.copy()
     mp.dm2.V0 = mp.dm2.V.copy()
+    
+    #Calculate new cumulative DM commands 
+    mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+    
+    #Calculate DM penalty term component of cost function
+    total_cost = 10.0**(2*log10reg) * np.sum(command_vec**2)
 
     # # TODO: Change to be more generic, e.g. for one DM at a time.
     # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
@@ -484,9 +491,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # # TODO: Change to be more generic, e.g. for one DM at a time.
     # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
     # mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
-
+   
     for iMode in range(mp.jac.Nmode):
-
         modvar = falco.config.ModelVariables()
         modvar.whichSource = 'star'
         modvar.sbpIndex = mp.jac.sbp_inds[iMode]
@@ -500,9 +506,6 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = EestVec #* np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
-
-        mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-        mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
                     
         # With delta DM commands applied
         EFendB, Edm1inc, Edm2inc, DM1surfB, DM2surfB = compact(
@@ -676,11 +679,12 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         dmSurf2_bar_tot += mp.jac.weights[iMode] * dmSurf2_bar     
         # dmSurf1_bar_tot = dmSurf1_bar_tot + dmSurf1_bar/mp.Nsbp
         # dmSurf2_bar_tot = dmSurf2_bar_tot + dmSurf2_bar/mp.Nsbp
-        
+       
     # Vout1 = -quick_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
     # Vout2 = -quick_fit_dm_surf(mp.dm2.compact, dmSurf2_bar_tot)
-    Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot) #+ 2*(10.0**log10reg)*mp.dm1.V
-    Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot) #+ 2*(10.0**log10reg)*mp.dm2.V
+
+    Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot) + 2*(10.0**(2*log10reg))*command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot) + 2*(10.0**(2*log10reg))*command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
     
