@@ -8,7 +8,7 @@ from scipy.interpolate import RectBivariateSpline
 from astropy.io import fits
 
 import falco
-from falco import check, proper
+from falco import check, proper, diff_dm
 
 if not proper.use_cubic_conv:
     try:
@@ -97,15 +97,32 @@ def gen_surf_from_act(dm, dx, Nout):
         else:
             raise ValueError('invalid value of dm.orientation')
 
-    # Generate the DM surface
-    if flagXYZ:
-        DMsurf = falco.dm.propcustom_dm(
+    if dm.useDifferentiableModel:
+        if not hasattr(dm,"differentiableModel"):
+            #Initialize the model object if this is the first time
+            print("Initializing differentiable DM model.")
+            dm.differentiableModel = falco.diff_dm.dm_init_falco_wrapper(dm,
+                dx,Narray,heightMap,dm.xc-cshift, dm.yc-cshift, 
+                spacing=dm.dm_spacing,XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
+                XYZ=flagXYZ,inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+			)
+		else:
+            dm.differentiableModel.update(heightMap)
+            
+        	DMsurf = dm.differentiableModel.render(wfe=False) #returns surface rather than wfe
+        
+        	proper.prop_add_phase(bm, 2 * DMsurf)   # convert surface to WFE like 
+                                                # at the end of propcustom_dm??
+
+    else:
+    	if flagXYZ:
+        	DMsurf = falco.dm.propcustom_dm(
             bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
             XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=True,
             inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
             )
-    else:
-        DMsurf = falco.dm.propcustom_dm(
+    	else:
+        	DMsurf = falco.dm.propcustom_dm(
             bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
             XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, ZYX=True,
             inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
