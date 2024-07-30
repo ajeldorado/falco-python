@@ -2,9 +2,12 @@ import copy
 
 import numpy as np
 
+import os
+
 from scipy import ndimage
 
-from falco import fftutils, util
+from falco import fftutils, util, proper
+from astropy.io import fits
 
 # the functions:
 #   make_rotation_matrix
@@ -48,7 +51,127 @@ from falco import fftutils, util
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs):
+    
+    
+    if "ZYX" in kwargs and "XYZ" in kwargs:
+        raise ValueError('PROP_DM: Error: Cannot specify both XYZ and ZYX ' +
+                         'rotation orders. Stopping')
+    elif "ZYX" not in kwargs and 'XYZ' not in kwargs:
+        XYZ = 1  # default is rotation around X, then Y, then Z
+        # ZYX = 0
+    elif "ZYX" in kwargs:
+        # ZYX = 1
+        XYZ = 0
+    elif "XYZ" in kwargs:
+        XYZ = 1
+        # ZYX = 0
 
+    if "XTILT" in kwargs:
+        xtilt = kwargs["XTILT"]
+    else:
+        xtilt = 0.
+
+    if "YTILT" in kwargs:
+        ytilt = kwargs["YTILT"]
+    else:
+        ytilt = 0.
+
+    if "ZTILT" in kwargs:
+        ztilt = kwargs["ZTILT"]
+    else:
+        ztilt = 0.
+
+    if type(dm_z0) == str:
+        dm_z = proper.prop_fits_read(dm_z0)  # Read DM setting from FITS file
+    else:
+        dm_z = dm_z0
+
+    if "inf_fn" in kwargs:
+        inf_fn = kwargs["inf_fn"]
+    else:
+        inf_fn = "influence_dm5v2.fits"
+
+    if "inf_sign" in kwargs:
+        if(kwargs["inf_sign"] == '+'):
+            sign_factor = 1.
+        elif(kwargs["inf_sign"] == '-'):
+            sign_factor = -1.
+    else:
+        sign_factor = 1.
+
+    n = Narray
+    dx_surf = dx  # sampling of surface in meters
+    beamradius = Narray*dx_surf/2.0
+
+    # Default influence function sampling is 0.1 mm, peak at (x,y)=(45,45)
+    # Default influence function has shape = 1x91x91. Saving it as a 2D array
+    # before continuing with processing
+    dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            "data")
+    inf = proper.prop_fits_read(os.path.join(dir_path, inf_fn))
+    inf = sign_factor*np.squeeze(inf)
+
+    s = inf.shape
+    nx_inf = s[1]
+    ny_inf = s[0]
+    xc_inf = nx_inf // 2
+    yc_inf = ny_inf // 2
+
+    header = fits.getheader(inf_fn)
+    dx_inf = header["P2PDX_M"]  # pixel width in meters
+    dx_dm_inf = header["C2CDX_M"]  # center2cen dist of actuators in meters
+    inf_mag = round(dx_dm_inf/dx_inf)
+    if np.abs(inf_mag - dx_dm_inf/dx_inf) > 1e-8:
+        raise ValueError('%s must have an integer number of pixels per actuator' % (inf_fn))
+
+    if spacing != 0 and "N_ACT_ACROSS_PUPIL" in kwargs:
+        raise ValueError("PROP_DM: User cannot specify both actuator spacing" +
+                         "and N_ACT_ACROSS_PUPIL. Stopping.")
+
+    if spacing == 0 and "N_ACT_ACROSS_PUPIL" not in kwargs:
+        raise ValueError("PROP_DM: User must specify either actuator spacing" +
+                         " or N_ACT_ACROSS_PUPIL. Stopping.")
+
+    if "N_ACT_ACROSS_PUPIL" in kwargs:
+        dx_dm = 2. * beamradius / int(kwargs["N_ACT_ACROSS_PUPIL"])
+    else:
+        dx_dm = spacing
+
+    dx_inf = dx_inf * dx_dm / dx_dm_inf  # Influence function sampling scaled
+                                         # to specified DM actuator spacing
+    
+    
+    #else:
+    dm_z_commanded = dm_z
+    s = dm_z.shape
+    nx_dm = s[1]
+    ny_dm = s[0]
+
+    # Create subsampled DM grid
+    margin = 9 * inf_mag
+    nx_grid = nx_dm * inf_mag + 2 * margin
+    ny_grid = ny_dm * inf_mag + 2 * margin
+    
+    surf_mag =  dx_inf / dx_surf
+ 
+    #scale and recenter to calculate the new coordinates
+    #xnew = (np.arange(xdim) - xdim//2) * dx_inf/dx_surf + nx_inf//2
+    #ynew = (np.arange(ydim) - ydim//2) * dx_inf/dx_surf + ny_inf//2
+    #[Xnew,Ynew] = np.meshgrid(xnew,ynew)
+    #intrpolate tine infuence function to the new coordinates
+    #inf_scaled = ndimage.map_coordinates(inf, (Ynew[:], Xnew[:]))
+    
+    shiftx = dm.xc - dm.Nact//2 #+ inf_mag//2
+    shifty = dm.yc - dm.Nact//2 #+ inf_mag//2
+    
+    inf_pad = util.pad_crop(inf, int(nx_grid))
+    
+    dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,shift=(shiftx,shifty));
+    dmModel.update(dm_z_commanded)
+    
+    return dmModel
+    
 def make_rotation_matrix(zyx, radians=False):
     """Build a rotation matrix.
 
@@ -381,8 +504,8 @@ class DM:
         Parameters
         ----------
         ifn : numpy.ndarray
-            influence function; assumes the same for all actuators and must
-            be the same shape as (x,y).  Assumed centered on N//2th sample of x, y.
+            influence function; assumes the same for all actuators.
+            Assumed centered on N//2th sample of x, y.
             Assumed to be well-conditioned for use in convolution, i.e.
             compact compared to the array holding it
         Nout : int or tuple of int, length 2
