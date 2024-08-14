@@ -98,11 +98,18 @@ def gen_surf_from_act(dm, dx, Nout):
             raise ValueError('invalid value of dm.orientation')
 
     # Generate the DM surface
-    DMsurf = falco.dm.propcustom_dm(
-        bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
-        XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ,
-        inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
-    )
+    if flagXYZ:
+        DMsurf = falco.dm.propcustom_dm(
+            bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
+            XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=True,
+            inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+            )
+    else:
+        DMsurf = falco.dm.propcustom_dm(
+            bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
+            XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, ZYX=True,
+            inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+            )
 
     # DMsurf = falco.util.pad_crop(DMsurf, Nout)
 
