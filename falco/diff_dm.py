@@ -169,8 +169,9 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     
     inf_pad = util.pad_crop(inf, int(nx_grid))
     
-    if XYZ==1:
-        dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,shift=(shiftx,shifty),rot=(ztilt,ytilt,xtilt),xyz=True);
+
+    dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,\
+                 shift=(shiftx,shifty),rot=(-1*ztilt,ytilt,xtilt));
     dmModel.update(dm_z_commanded)
     
     return dmModel
@@ -315,7 +316,7 @@ def warp(img, xnew, ynew):
 
     """
     # user provides us (x, y), we provide scipy (row, col) = (y, x)
-    return ndimage.map_coordinates(img, (ynew, xnew))
+    return ndimage.map_coordinates(img, (ynew.T, xnew.T))
 
 
 def apply_homography(M, x, y):
