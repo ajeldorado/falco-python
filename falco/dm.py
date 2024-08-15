@@ -98,7 +98,7 @@ def gen_surf_from_act(dm, dx, Nout):
             raise ValueError('invalid value of dm.orientation')
 
     if dm.useDifferentiableModel:
-        if not hasattr(dm,"differentiableModel"):
+        if not hasattr(dm,"differentiableModel"): #or dm.differentiableModel.Nout!=Narray:
             #Initialize the model object if this is the first time
             print("Initializing differentiable DM model.")
             dm.differentiableModel = falco.diff_dm.dm_init_falco_wrapper(dm,

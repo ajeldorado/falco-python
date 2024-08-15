@@ -53,7 +53,6 @@ from astropy.io import fits
 
 def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs):
     
-    
     if "ZYX" in kwargs and "XYZ" in kwargs:
         raise ValueError('PROP_DM: Error: Cannot specify both XYZ and ZYX ' +
                          'rotation orders. Stopping')
@@ -65,7 +64,10 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
         XYZ = 0
     elif "XYZ" in kwargs:
         XYZ = 1
-        # ZYX = 0
+        
+    if XYZ==1:
+        raise ValueError('Error: Cannot specify XYZ rotation order in '
+                         'differentiable DM model. Stopping')
 
     if "XTILT" in kwargs:
         xtilt = kwargs["XTILT"]
@@ -162,12 +164,13 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     #intrpolate tine infuence function to the new coordinates
     #inf_scaled = ndimage.map_coordinates(inf, (Ynew[:], Xnew[:]))
     
-    shiftx = dm.xc - dm.Nact//2 #+ inf_mag//2
-    shifty = dm.yc - dm.Nact//2 #+ inf_mag//2
+    shiftx = int((dm.xc - dm.Nact//2 + 0.5) * inf_mag)
+    shifty = int((dm.yc - dm.Nact//2 + 0.5) * inf_mag)
     
     inf_pad = util.pad_crop(inf, int(nx_grid))
     
-    dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,shift=(shiftx,shifty));
+    if XYZ==1:
+        dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,shift=(shiftx,shifty),rot=(ztilt,ytilt,xtilt),xyz=True);
     dmModel.update(dm_z_commanded)
     
     return dmModel

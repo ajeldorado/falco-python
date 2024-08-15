@@ -682,9 +682,20 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
        
     # Vout1 = -quick_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
     # Vout2 = -quick_fit_dm_surf(mp.dm2.compact, dmSurf2_bar_tot)
+    
+    if mp.dm1.useDifferentiableModel:
+        Vout1 = -mp.dm1.differentiableModel.render_backprop(dmSurf1_bar_tot,wfe=False)
+    else:
+        Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot)
+        
+    if mp.dm2.useDifferentiableModel:
+        Vout2 = -mp.dm2.differentiableModel.render_backprop(dmSurf2_bar_tot,wfe=False)
+    else:
+        Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot) 
 
-    Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot) + 2*(10.0**(2*log10reg))*command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot) + 2*(10.0**(2*log10reg))*command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+    #apply regularization
+    Vout1 += 2*(10.0**(2*log10reg))*command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    Vout2 += 2*(10.0**(2*log10reg))*command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
     
