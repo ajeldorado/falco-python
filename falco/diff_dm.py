@@ -64,10 +64,6 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
         XYZ = 0
     elif "XYZ" in kwargs:
         XYZ = 1
-        
-    if XYZ==1:
-        raise ValueError('Error: Cannot specify XYZ rotation order in '
-                         'differentiable DM model. Stopping')
 
     if "XTILT" in kwargs:
         xtilt = kwargs["XTILT"]
@@ -169,20 +165,27 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     
     inf_pad = util.pad_crop(inf, int(nx_grid))
     
-
+    if XYZ:
+        rot_order = 'xyz'
+    else:
+        rot_order = 'zyx'
+        
     dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,\
-                 shift=(shiftx,shifty),rot=(-1*ztilt,ytilt,xtilt));
+                 shift=(shiftx,shifty),rot=(-1*ztilt,ytilt,xtilt),rot_order=rot_order);
     dmModel.update(dm_z_commanded)
     
     return dmModel
     
-def make_rotation_matrix(zyx, radians=False):
+def make_rotation_matrix(angles_zyx, use_zyx_order=True,radians=False):
     """Build a rotation matrix.
 
     Parameters
     ----------
-    zyx : tuple of float
+    angles_zyx : tuple of float
         Z, Y, X rotation angles in that order
+    use_zyx_order: bool, optional
+        if True, apply the rotations in the order Z, Y, X. If False, apply the
+        rotations in the order X, Y, Z.
     radians : bool, optional
         if True, abg are assumed to be radians.  If False, abg are
         assumed to be degrees.
@@ -194,13 +197,13 @@ def make_rotation_matrix(zyx, radians=False):
 
     """
     ZYX = np.zeros(3)
-    ZYX[:len(zyx)] = zyx
-    zyx = ZYX
+    ZYX[:len(angles_zyx)] = angles_zyx
+    angles_zyx = ZYX
     if not radians:
-        zyx = np.radians(zyx)
+        angles_zyx = np.radians(angles_zyx)
 
     # alpha, beta, gamma = abg
-    gamma, beta, alpha = zyx
+    gamma, beta, alpha = angles_zyx
     cos1 = np.cos(alpha)
     cos2 = np.cos(beta)
     cos3 = np.cos(gamma)
@@ -223,7 +226,12 @@ def make_rotation_matrix(zyx, radians=False):
         [sin3,  cos3, 0],
         [0,        0, 1],
     ])
-    m = Rz@Ry@Rx
+    
+    if use_zyx_order:
+        m = Rx@Ry@Rz
+    else:
+        m = Rz@Ry@Rx
+        
     return m
 
 
@@ -316,7 +324,7 @@ def warp(img, xnew, ynew):
 
     """
     # user provides us (x, y), we provide scipy (row, col) = (y, x)
-    return ndimage.map_coordinates(img, (ynew.T, xnew.T))
+    return ndimage.map_coordinates(img, (ynew, xnew))
 
 
 def apply_homography(M, x, y):
@@ -330,15 +338,15 @@ def apply_homography(M, x, y):
     return xp, yp
 
 
-def prepare_fwd_reverse_projection_coordinates(shape, rot):
+def prepare_fwd_reverse_projection_coordinates(shape, rot, use_zyx_order=True):
     # 1. make the matrix that describes the rigid body transformation
     # 2. make the coordinate grid (in "pixels") for the data
     # 3. project the coordinates "forward" (for forward_model())
     # 4. project the coordinates "backwards" (for backprop)
-    R = make_rotation_matrix(rot)
-    oy, ox = [(s-1)/2 for s in shape]
+    R = make_rotation_matrix(rot,use_zyx_order)
+    oy, ox = [(s)/2 for s in shape]
     y, x = [np.arange(s, dtype=np.float64) for s in shape]
-    y, x = np.meshgrid(y, x)
+    x, y = np.meshgrid(x, y)
     Tin = make_homomorphic_translation_matrix(-ox, -oy)
     Tout = make_homomorphic_translation_matrix(ox, oy)
     R = promote_3d_transformation_to_homography(R)
@@ -492,7 +500,7 @@ def setup_mft_matricies_scalars(shape_space, shape_frequency, zoomx, zoomy):
 
 class DM:
     """A DM whose actuators fill a rectangular region on a perfect grid, and have the same influence function."""
-    def __init__(self, ifn, Nout, Nact=50, sep=10, shift=(0, 0), rot=(0, 0, 0), upsample=1):
+    def __init__(self, ifn, Nout, Nact=50, sep=10, shift=(0, 0), rot=(0, 0, 0), upsample=1, rot_order='zyx'):
         """Create a new DM model.
 
         This model is based on convolution of a 'poke lattice' with the influence
@@ -532,6 +540,10 @@ class DM:
             how to deal with centering when projecting the surface into the beam normal
             fft = the N/2 th sample, rounded to the right, defines the origin.
             interpixel = the N/2 th sample, without rounding, defines the origin
+        rot_order : string
+            if 'zyx', rotations will be applied around axis Z, then Y, then X,
+            in that order. If 'xyz', rotations will be appied in that order.
+            This convention agrees with FALCO/PROPER.
 
         Notes
         -----
@@ -564,6 +576,7 @@ class DM:
         self.obliquity = np.cos(np.radians(np.linalg.norm(rot)))
         self.rot = rot
         self.upsample = upsample
+        self.rot_order = rot_order
 
         # prepare the poke array and supplimentary integer arrays needed to
         # copy it into the working array
@@ -582,7 +595,14 @@ class DM:
             self.invprojx = None
             self.invprojy = None
         else:
-            fwd, rev = prepare_fwd_reverse_projection_coordinates(s, rot)
+            if self.rot_order == 'zyx':
+                use_zyx_order = True
+            elif self.rot_order == 'xyz':
+                use_zyx_order = False
+            else:
+                raise ValueError("rot_order must be \'zyx\' or \'xyz\'")
+            
+            fwd, rev = prepare_fwd_reverse_projection_coordinates(s, rot, use_zyx_order)
             self.projx, self.projy = fwd
             self.invprojx, self.invprojy = rev
 

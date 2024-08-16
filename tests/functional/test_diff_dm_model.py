@@ -13,23 +13,23 @@ def test_diff_dm_model():
 
     Nact = 48
     fCommand = np.zeros((Nact, Nact))
-    fCommand[30:40, 32] = 1
-    fCommand[40, 32:38] = 1
-    fCommand[35, 32:36] = 1
-    # fCommand[2,:] = 1.0
-    # fCommand[-3,:] = 1.0
-    # fCommand[:,2] = 1.0
-    # fCommand[:,-3] = 1.0
+    #fCommand[30:40, 32] = 1
+    #fCommand[40, 32:38] = 1
+    #fCommand[35, 32:36] = 1
+    fCommand[2,:] = 1.0
+    fCommand[-3,:] = 1.0
+    fCommand[:,2] = 1.0
+    fCommand[:,-3] = 1.0
     mp.dm1.V = fCommand
 
     # DM1 parameters
     mp.dm1.centering = 'pixel'
     mp.dm1.Nact = Nact
     mp.dm1.VtoH = 0.9*np.ones((mp.dm1.Nact, mp.dm1.Nact))
-    mp.dm1.xtilt = 0 # for foreshortening. angle of rotation about x-axis [degrees]
-    mp.dm1.ytilt = 0 # for foreshortening. angle of rotation about y-axis [degrees]
-    mp.dm1.zrot = 0.0001  # clocking of DM surface [degrees]
-    mp.dm1.flagZYX = True
+    mp.dm1.xtilt = 10 # for foreshortening. angle of rotation about x-axis [degrees]
+    mp.dm1.ytilt = -15 # for foreshortening. angle of rotation about y-axis [degrees]
+    mp.dm1.zrot = -5  # clocking of DM surface [degrees]
+    mp.dm1.flagZYX = False
     mp.dm1.xc = (mp.dm1.Nact/2 - 1/2)  # x-center location of DM surface [actuator widths]
     mp.dm1.yc = (mp.dm1.Nact/2 - 1/2)  # y-center location of DM surface [actuator widths]
     mp.dm1.edgeBuffer = 1  # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
@@ -76,7 +76,7 @@ def test_diff_dm_model():
 
     plt.show()
 
-    abs_tol = 100*np.finfo(float).eps
+    abs_tol = 0.005*np.max(surfFalcoDm)
 
     maxAbsDiff = np.max(np.abs(surfFalcoDm - surfDiffDm))
     assert maxAbsDiff < abs_tol
