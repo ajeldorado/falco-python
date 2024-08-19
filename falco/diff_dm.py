@@ -160,8 +160,8 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     #intrpolate tine infuence function to the new coordinates
     #inf_scaled = ndimage.map_coordinates(inf, (Ynew[:], Xnew[:]))
     
-    shiftx = int((dm.xc - dm.Nact//2 + 0.5) * inf_mag)
-    shifty = int((dm.yc - dm.Nact//2 + 0.5) * inf_mag)
+    shiftx = -1*int((dm.xc - dm.Nact//2 + 0.5) * inf_mag)
+    shifty = -1*int((dm.yc - dm.Nact//2 + 0.5) * inf_mag)
     
     inf_pad = util.pad_crop(inf, int(nx_grid))
     

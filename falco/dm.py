@@ -118,7 +118,7 @@ def gen_surf_from_act(dm, dx, Nout):
             
         DMsurf = dm.differentiableModel.render(wfe=False) #returns surface rather than wfe
         
-        proper.prop_add_phase(bm, 2 * DMsurf)   # convert surface to WFE like 
+        #proper.prop_add_phase(bm, 2 * DMsurf)   # convert surface to WFE like 
                                                 # at the end of propcustom_dm??
 
     else:

@@ -27,11 +27,11 @@ def test_diff_dm_model():
     mp.dm1.Nact = Nact
     mp.dm1.VtoH = 0.9*np.ones((mp.dm1.Nact, mp.dm1.Nact))
     mp.dm1.xtilt = 10 # for foreshortening. angle of rotation about x-axis [degrees]
-    mp.dm1.ytilt = -15 # for foreshortening. angle of rotation about y-axis [degrees]
-    mp.dm1.zrot = -5  # clocking of DM surface [degrees]
+    mp.dm1.ytilt = 15 # for foreshortening. angle of rotation about y-axis [degrees]
+    mp.dm1.zrot = -6  # clocking of DM surface [degrees]
     mp.dm1.flagZYX = False
-    mp.dm1.xc = (mp.dm1.Nact/2 - 1/2)  # x-center location of DM surface [actuator widths]
-    mp.dm1.yc = (mp.dm1.Nact/2 - 1/2)  # y-center location of DM surface [actuator widths]
+    mp.dm1.xc = (mp.dm1.Nact/2 - 1/2) + 1  # x-center location of DM surface [actuator widths]
+    mp.dm1.yc = (mp.dm1.Nact/2 - 1/2) + 0.5 # y-center location of DM surface [actuator widths]
     mp.dm1.edgeBuffer = 1  # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
 
     mp.dm1.fitType = 'linear'
