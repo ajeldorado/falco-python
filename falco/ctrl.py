@@ -1,4 +1,5 @@
 """Control functions for WFSC."""
+import copy
 import time
 
 import numpy as np
@@ -890,7 +891,7 @@ def _ad_efc(ni, vals_list, mp, cvar):
         # print(dm0[cvar.uLegend==1].shape)
         # print(len(mp.dm1.act_ele))
         # print(mp.dm1.V[mp.dm1.act_ele].shape)
-        
+
         dm1vec = mp.dm1.V.flatten()
         dm0[cvar.uLegend==1] = np.zeros(mp.dm1.Nele)  # dm1vec
         bounds[cvar.uLegend==1, 0] = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
@@ -898,7 +899,7 @@ def _ad_efc(ni, vals_list, mp, cvar):
 
     if any(mp.dm_ind==2):
         dm2vec = mp.dm2.V.flatten()
-        dm0[cvar.uLegend==2] = np.zeros(mp.dm2.Nele)  #dm2vec
+        dm0[cvar.uLegend==2] = np.zeros(mp.dm2.Nele)  # dm2vec
         bounds[cvar.uLegend==2, 0] = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
         bounds[cvar.uLegend==2, 1] = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
 
@@ -910,24 +911,23 @@ def _ad_efc(ni, vals_list, mp, cvar):
         modvar.sbpIndex = mp.jac.sbp_inds[iMode]
         modvar.zernIndex = mp.jac.zern_inds[iMode]
         modvar.starIndex = mp.jac.star_inds[iMode]
-    
-        #Calculate E-Field for previous EFC iteration
-        EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False, 
-                         useFPM=True, forRevGradModel=False)
-        EFendPrev.append(EFend)
 
+        # Calculate E-Field for previous EFC iteration
+        EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False,
+                                    useFPM=True, forRevGradModel=False)
+        EFendPrev.append(EFend)
 
     t0 = time.time()
     u_sol = scipy.optimize.minimize(
         falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
-        method='L-BFGS-B', jac=True, bounds=bounds, 
+        method='L-BFGS-B', jac=True, bounds=bounds,
         tol=None, callback=None,
         options={'disp': None, 'ftol': 1e-12, 'gtol': 1e-10, 
-                 'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun ,
+                 'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun,
                  'maxls': 20, 'iprint': mp.ctrl.ad.iprint},
         )
     t1 = time.time()
-    print('Optimization time = %.3f'%(t1-t0))
+    print('Optimization time = %.3f' % (t1-t0))
 
     duVec = u_sol.x
     print(u_sol.success)
@@ -1103,3 +1103,66 @@ def wrapup(mp, cvar, duVec):
         mp.dm9.V = cvar.DM9Vnom + dDM.dDM9V
 
     return mp, dDM
+
+
+def set_utu_scale_fac(mp):
+    falco.imaging.calc_psf_norm_factor(mp)
+
+    # Save the original values and then use only the specified subset of actuators
+    if np.any(mp.dm_ind == 1):
+        dm1_act_ele = copy.copy(mp.dm1.act_ele)
+        dm1_Nele = copy.copy(mp.dm1.Nele)
+        mp.dm1.act_ele = np.arange(mp.dm1.NactTotal, dtype=int)[mp.ctrl.ad.dm1_act_mask_for_jac_norm]
+        mp.dm1.Nele = len(mp.dm1.act_ele)
+
+    if np.any(mp.dm_ind == 2):
+        dm2_act_ele = copy.copy(mp.dm2.act_ele)
+        dm2_Nele = copy.copy(mp.dm2.Nele)
+        mp.dm2.act_ele = np.arange(mp.dm2.NactTotal, dtype=int)[mp.ctrl.ad.dm2_act_mask_for_jac_norm]
+        mp.dm2.Nele = len(mp.dm2.act_ele)
+
+    # Compute the Jacobian for some actuators
+    jacStruct = falco.model.jacobian(mp)
+
+    print('Using the Jacobian to make other matrices...', end='')
+
+    # Compute matrices for linear control with regular EFC
+    cvar = falco.config.Object()
+    # Make the vector of total DM commands from before
+    u1 = mp.dm1.V.reshape(mp.dm1.NactTotal)[mp.dm1.act_ele] if any(mp.dm_ind == 1) else np.array([])
+    u2 = mp.dm2.V.reshape(mp.dm2.NactTotal)[mp.dm2.act_ele] if any(mp.dm_ind == 2) else np.array([])
+    cvar.uVec = np.concatenate((u1, u2))
+    cvar.NeleAll = cvar.uVec.size
+
+    cvar.GstarG_wsum = np.zeros((cvar.NeleAll, cvar.NeleAll))
+    cvar.RealGstarEab_wsum = np.zeros((cvar.NeleAll, 1))
+
+    for iMode in range(mp.jac.Nmode):
+
+        Gstack = np.zeros((mp.Fend.corr.Npix, 1), dtype=complex)  # Initialize a row to concatenate onto
+        if any(mp.dm_ind == 1):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G1[:, :, iMode])))
+        if any(mp.dm_ind == 2):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G2[:, :, iMode])))
+        Gstack = Gstack[:, 1:]  # Remove the column used for initialization
+
+        # Square matrix part stays the same if no re-linearization has occurrred.
+        cvar.GstarG_wsum += mp.jac.weights[iMode]*np.real(np.conj(Gstack).T @ Gstack)
+
+    # Make the regularization matrix. (Define only diagonal here to save RAM.)
+    cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
+    cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
+    print('done.')
+
+    # Reset back to all actuators
+    if np.any(mp.dm_ind == 1):
+        mp.dm1.act_ele = dm1_act_ele  # list(range(mp.dm1.NactTotal))
+        mp.dm1.Nele = dm1_Nele  # len(mp.dm1.act_ele)
+    if np.any(mp.dm_ind == 2):
+        mp.dm2.act_ele = dm2_act_ele  # list(range(mp.dm2.NactTotal))
+        mp.dm2.Nele = dm2_Nele  # len(mp.dm2.act_ele)
+
+    # Set the scaling factor in the cost function for the squared actuator voltage term
+    mp.ctrl.ad.utu_scale_fac = cvar.EyeNorm
+
+    print('mp.ctrl.ad.utu_scale_fac = %.4g' % mp.ctrl.ad.utu_scale_fac)

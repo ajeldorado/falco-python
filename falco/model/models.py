@@ -5,7 +5,7 @@ import multiprocessing
 import numpy as np
 import scipy.ndimage as ndimage
 import pdb
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from . import jacobians
 import falco
@@ -418,6 +418,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     return Eout
 
+
 def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     """
     Simplified (aka compact) model used by estimator and controller.
@@ -438,8 +439,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 
     Returns
     -------
-    total_cost : 
-        Summed total intensity in the dark hole acting as the cost function.
+    total_cost :
+        AD-EFC cost function value including terms for intensity and DM usage.
     gradient : array_like
         The output command vector, consisting of the vectorized and
         concatenated commands to both DMs.
@@ -457,7 +458,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 
     # Complex trans of points outside FPM
     if mp.coro.upper() == 'HLC':
-        transOuterFPM = mp.F3.compact.mask[0, 0]  
+        transOuterFPM = mp.F3.compact.mask[0, 0]
     else:
         transOuterFPM = 1.
 
@@ -466,23 +467,19 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     else:
         NrelayFactor = 0  # zero out the number of relays
 
-
     dmSurf1_bar_tot = 0
     dmSurf2_bar_tot = 0
-    
+
     smooth = 0  # TODO hard-coded at 0 for now
     # flag_debug = False  #  hard-coded for now
 
     # Store initial cumulative DM commands
     mp.dm1.V0 = mp.dm1.V.copy()
     mp.dm2.V0 = mp.dm2.V.copy()
-    
-    #Calculate new cumulative DM commands 
+
+    # Calculate new cumulative DM commands
     mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
     mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
-    
-    #Calculate DM penalty term component of cost function
-    total_cost = 10.0**(2*log10reg) * np.sum(command_vec**2)
 
     # # TODO: Change to be more generic, e.g. for one DM at a time.
     # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
@@ -491,7 +488,10 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # # TODO: Change to be more generic, e.g. for one DM at a time.
     # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
     # mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
-   
+
+    total_cost = 0  # initialize
+    normFacADweightedSum = 0
+
     for iMode in range(mp.jac.Nmode):
         modvar = falco.config.ModelVariables()
         modvar.whichSource = 'star'
@@ -500,22 +500,22 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         modvar.starIndex = mp.jac.star_inds[iMode]
 
         wvl = mp.sbp_centers[modvar.sbpIndex]
-        normFac = mp.Fend.compact.I00[modvar.sbpIndex]
+        # normFac = mp.Fend.compact.I00[modvar.sbpIndex]
         # normFacFull = np.mean(mp.Fend.full.I00[modvar.sbpIndex, :])
         EestVec = EestAll[:, iMode]
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
-        Eest2D[mp.Fend.corr.maskBool] = EestVec #* np.sqrt(normFacFull)  # Remove normalization
+        Eest2D[mp.Fend.corr.maskBool] = EestVec  # * np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
-                    
+
         # With delta DM commands applied
         EFendB, Edm1inc, Edm2inc, DM1surfB, DM2surfB = compact(
-           mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM, 
-           forRevGradModel=True)        
-        
+           mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM,
+           forRevGradModel=True)
+
         # Reset
         mp.dm1.V = mp.dm1.V0.copy()
         mp.dm2.V = mp.dm2.V0.copy()
-        
+
         EFendA = EFendPrev[iMode]
         dEend = EFendB - EFendA
         DM1surf = DM1surfB
@@ -524,24 +524,23 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         # DH = EFend[mp.Fend.corr.maskBool]
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
-        int_in_dh = np.sum(np.absolute(DH)**2) #* mp.ctrl.ad.cost_func_scale_fac
-        # total_cost += normFac*int_in_dh/mp.Nsbp
+        int_in_dh = np.sum(np.absolute(DH)**2)  # * mp.ctrl.ad.cost_func_scale_fac
         total_cost += mp.jac.weights[iMode] * int_in_dh / normFacAD
+        normFacADweightedSum += mp.jac.weights[iMode] / normFacAD
 
         g1 = np.exp(1j*mirrorFac*2*np.pi*DM1surf/wvl)
         g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surf/wvl)
-                
+
         # Gradient
-        Fend_masked = 2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float)*mp.ctrl.ad.cost_func_scale_fac)
-        # Fend_masked = 2/normFacAD*EFend*np.real(mp.Fend.corr.maskBool.astype(float)*mp.ctrl.ad.cost_func_scale_fac)
-        
+        Fend_masked = 2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float))
+
 #        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
-        
+
         EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)                                 
         EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
         EP4LS_grad = EP4_grad * pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr)
-      
+
 #        plt.figure(); plt.imshow(np.abs(EP4_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP4_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4.png', format='png')
 
@@ -573,7 +572,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
                 charge = mp.F3.VortexCharge
             else:
                 raise TypeError("mp.F3.VortexCharge must be int, float or numpy ndarray.")
-            
+
             EP4LS_grad = pad_crop(EP4LS_grad, mp.P1.compact.Narr)
             EP3_grad = falco.prop.mft_p2v2p(EP4LS_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
 
@@ -584,10 +583,10 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
             EF3_grad = np.conj(mp.F3.compact.mask) * EF3_grad
             EP3_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
             # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
-            
+
     #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
     #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
-    
+
         elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
             # MFT Method
             EP4noFPM_grad = EP4LS_grad
@@ -599,60 +598,60 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     #        auxEP4subtr_grad_plot = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi*10,mp.F3.compact.deta,mp.F3.compact.Neta*10,mp.centering) #--E-field incident upon the FPM
             EF3_grad = np.conj(transOuterFPM - mp.F3.compact.mask) * auxEP4subtr_grad  # TODO check if np.conj() usage is correct here
             EP3subtr_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
-            #EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
-            
+            # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
+
     #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
     #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
-            
+
             EP3_grad = EP3noFPM_grad + EP3subtr_grad
 
         else:
             raise ValueError('%s value of mp.coro not supported yet' % mp.coro)
-        
+
 #        plt.figure(); plt.imshow(np.abs(EP3subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3bab.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP3subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3bab.png', format='png')
-#                
+#
 #        plt.figure(); plt.imshow(np.abs(EP3_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP3_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3.png', format='png')
-        
+
         if mp.flagApod:
             EP3_grad = pad_crop(mp.P3.compact.mask, EP3_grad.shape) * EP3_grad
-        
+
         EP2eff_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay2to3, mp.centering)
         EP2eff_grad = pad_crop(EP2eff_grad, NdmPad)
-     
+
 #        plt.figure(); plt.imshow(np.abs(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP2eff.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP2eff.png', format='png')  
 #        plt.figure(); plt.imshow(np.real(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('real(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_EP2eff.png', format='png')
 #        plt.figure(); plt.imshow(np.imag(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_EP2eff.png', format='png')
-#        
-        
-        if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
+#
+
+        if (mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
             Edm2_grad = EP2eff_grad
         else:
             Edm2_grad = falco.prop.ptp(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, (mp.d_dm1_dm2 + mp.d_P2_dm1))
-    
+
 #        plt.figure(); plt.imshow(np.abs(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm2.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm2.png', format='png')
 #        plt.figure(); plt.imshow(np.real(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm2.png', format='png')
 #        plt.figure(); plt.imshow(np.imag(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_Edm2.png', format='png')
-#        
-        #--To DM2
+
+        # To DM2
         g2_bar = np.conj(Edm2inc) * Edm2_grad
         phase_DM2_bar = pad_crop(np.imag(g2_bar*np.conj(g2)), mp.P1.compact.Nbeam)
-        
+
         if smooth != 0:
             phase_DM2_bar = ndimage.gaussian_filter(phase_DM2_bar, sigma=(smooth, smooth), order=0)
 
         # plt.figure(); plt.imshow(phase_DM2_bar); plt.colorbar(); plt.magma(); plt.title('DM2 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM2_phase.png', format='png')
         # Vout2 = -falco.dms.falco_fit_dm_surf(mp.dm2, dmSurf2_bar)
-         
-        #--To DM1
+
+        # To DM1
         Edm2_bar = np.conj(g2) * Edm2_grad
         Edm1_grad = falco.prop.ptp(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, -mp.d_dm1_dm2)        
 #        Edm1_grad = falco.propcustom.propcustom_PTP_grad(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
         # Edm1_grad = EP2eff_grad # ALTERNATE WAY
-        
+
 #        plt.figure(); plt.imshow(np.abs(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm1.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm1.png', format='png')
 #        plt.figure(); plt.imshow(np.real(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm1.png', format='png')
@@ -661,9 +660,9 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         g1_bar = np.conj(Edm1inc) * Edm1_grad
         phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), mp.P1.compact.Nbeam)
 #        phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), NdmPad)
-        
+
 #        plt.figure(); plt.imshow(phase_DM1_bar); plt.colorbar(); plt.magma(); plt.title('DM1 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM1_phase.png', format='png')
-        
+
         if smooth != 0:
             phase_DM1_bar = ndimage.gaussian_filter(phase_DM1_bar, sigma=(smooth, smooth), order=0)
 
@@ -679,31 +678,31 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         dmSurf2_bar_tot += mp.jac.weights[iMode] * dmSurf2_bar     
         # dmSurf1_bar_tot = dmSurf1_bar_tot + dmSurf1_bar/mp.Nsbp
         # dmSurf2_bar_tot = dmSurf2_bar_tot + dmSurf2_bar/mp.Nsbp
-       
+
     # Vout1 = -quick_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
     # Vout2 = -quick_fit_dm_surf(mp.dm2.compact, dmSurf2_bar_tot)
-    
+
+    # Calculate DM penalty term component of cost function
+    utu_coefs = normFacADweightedSum * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
+    total_cost += utu_coefs * np.sum(command_vec**2)
+    # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
+    # print('utu_coefs = %.4g' % utu_coefs)
+
     if mp.dm1.useDifferentiableModel:
-        Vout1 = -mp.dm1.differentiableModel.render_backprop(dmSurf1_bar_tot,wfe=False)
+        Vout1 = -mp.dm1.differentiableModel.render_backprop(dmSurf1_bar_tot, wfe=False)
     else:
         Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot)
-        
-    if mp.dm2.useDifferentiableModel:
-        Vout2 = -mp.dm2.differentiableModel.render_backprop(dmSurf2_bar_tot,wfe=False)
-    else:
-        Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact ,dmSurf2_bar_tot) 
 
-    #apply regularization
-    Vout1 += 2*(10.0**(2*log10reg))*command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    Vout2 += 2*(10.0**(2*log10reg))*command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+    if mp.dm2.useDifferentiableModel:
+        Vout2 = -mp.dm2.differentiableModel.render_backprop(dmSurf2_bar_tot, wfe=False)
+    else:
+        Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact, dmSurf2_bar_tot) 
+
+    # apply regularization
+    Vout1 += 2 * utu_coefs * command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    Vout2 += 2 * utu_coefs * command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
-    
-#     if flag_debug:
-# #        return total_cost, gradient, np.abs(EP2eff_grad), np.abs(EP3subtr_grad), np.abs(auxEP4subtr_grad_plot) #dmSurf2_bar
-#         return total_cost, gradient, np.abs(EP2eff_grad), dmSurf1_bar, dmSurf2_bar #g1, g1_bar, dmSurf1_bar_tot
-#     else:
-#         return total_cost, gradient
 
     return total_cost, gradient
 

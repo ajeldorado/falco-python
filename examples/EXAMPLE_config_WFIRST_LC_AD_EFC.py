@@ -96,7 +96,7 @@ mp.ctrl.log10regVec = np.array([-3, ])
 # mp.ctrl.log10regVec = np.arange(-6, -1.5, 0.5) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
-   
+
 ###--Spatial pixel weighting
 mp.WspatialDef = [];# [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)] [ndarray]
 
@@ -112,7 +112,7 @@ mp.dm2.weight = 1.;
 mp.controller = 'AD-EFC'
 
 mp.ctrl.ad = falco.config.Object()
-mp.ctrl.ad.cost_func_scale_fac = 100
+# mp.ctrl.ad.utu_scale_fac = 4e-6
 mp.ctrl.ad.maxiter = 30
 mp.ctrl.ad.iprint = 10
 mp.ctrl.ad.maxfun = 1000000
