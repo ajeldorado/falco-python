@@ -4,6 +4,7 @@ from .util import *
 # from .configs  import *
 from .imaging import *
 from .dm import *
+from .diff_dm import *
 from .est import *
 from .ctrl import *
 from .hlc import *
