@@ -893,15 +893,23 @@ def _ad_efc(ni, vals_list, mp, cvar):
         # print(mp.dm1.V[mp.dm1.act_ele].shape)
 
         dm1vec = mp.dm1.V.flatten()
-        dm0[cvar.uLegend==1] = np.zeros(mp.dm1.Nele)  # dm1vec
-        bounds[cvar.uLegend==1, 0] = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
-        bounds[cvar.uLegend==1, 1] = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
+        dm1lb = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
+        # dm1lb[dm1lb < -mp.ctrl.ad.dv_max] = -mp.ctrl.ad.dv_max
+        dm1ub = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
+        # dm1ub[dm1ub > mp.ctrl.ad.dv_max] = mp.ctrl.ad.dv_max
+        dm0[cvar.uLegend == 1] = np.zeros(mp.dm1.Nele)  # dm1vec
+        bounds[cvar.uLegend == 1, 0] = dm1lb
+        bounds[cvar.uLegend == 1, 1] = dm1ub
 
-    if any(mp.dm_ind==2):
+    if any(mp.dm_ind == 2):
         dm2vec = mp.dm2.V.flatten()
-        dm0[cvar.uLegend==2] = np.zeros(mp.dm2.Nele)  # dm2vec
-        bounds[cvar.uLegend==2, 0] = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
-        bounds[cvar.uLegend==2, 1] = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
+        dm2lb = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
+        # dm2lb[dm2lb < -mp.ctrl.ad.dv_max] = -mp.ctrl.ad.dv_max
+        dm2ub = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
+        # dm2ub[dm2ub > mp.ctrl.ad.dv_max] = mp.ctrl.ad.dv_max
+        dm0[cvar.uLegend == 2] = np.zeros(mp.dm2.Nele)  # dm2vec
+        bounds[cvar.uLegend == 2, 0] = dm2lb
+        bounds[cvar.uLegend == 2, 1] = dm2ub
 
     EFendPrev = []
     for iMode in range(mp.jac.Nmode):

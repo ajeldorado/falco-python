@@ -524,7 +524,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         # DH = EFend[mp.Fend.corr.maskBool]
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
-        int_in_dh = np.sum(np.absolute(DH)**2)  # * mp.ctrl.ad.cost_func_scale_fac
+        int_in_dh = np.sum(np.abs(DH)**2)
         total_cost += mp.jac.weights[iMode] * int_in_dh / normFacAD
         normFacADweightedSum += mp.jac.weights[iMode] / normFacAD
 
@@ -532,7 +532,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surf/wvl)
 
         # Gradient
-        Fend_masked = 2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float))
+        Fend_masked = mp.jac.weights[iMode]*2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float))
 
 #        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')

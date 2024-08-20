@@ -112,10 +112,12 @@ mp.dm2.weight = 1.;
 mp.controller = 'AD-EFC'
 
 mp.ctrl.ad = falco.config.Object()
-# mp.ctrl.ad.utu_scale_fac = 4e-6
+# mp.ctrl.ad.dv_max = 20  # max delta voltage step per iteration. must be positive
 mp.ctrl.ad.maxiter = 30
 mp.ctrl.ad.iprint = 10
 mp.ctrl.ad.maxfun = 1000000
+# mp.ctrl.ad.utu_scale_fac = 4e-6  # find the value empirically with falco.ctrl.set_utu_scale_fac(mp)
+
 
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
