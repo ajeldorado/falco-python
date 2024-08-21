@@ -477,9 +477,19 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     mp.dm1.V0 = mp.dm1.V.copy()
     mp.dm2.V0 = mp.dm2.V.copy()
 
-    # Calculate new cumulative DM commands
-    mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+    # dDM1Vvec = np.zeros(mp.dm1.NactTotal)
+    # dDM1Vvec[mp.dm1.act_ele] = mp.dm1.weight*duVec[cvar.uLegend == 1]
+    # dDM.dDM1V = dDM1Vvec.reshape((mp.dm1.Nact, mp.dm1.Nact))
+
+    # Calculate new cumulative DM commands and put into 2-D arrays
+    dDM1Vvec = np.zeros(mp.dm1.NactTotal)
+    dDM2Vvec = np.zeros(mp.dm2.NactTotal)
+    dDM1Vvec[mp.dm1.act_ele] = command_vec[mp.ctrl.uLegend == 1]
+    dDM2Vvec[mp.dm2.act_ele] = command_vec[mp.ctrl.uLegend == 2]
+    dv_dm1 = dDM1Vvec.reshape((mp.dm1.Nact, mp.dm1.Nact))
+    dv_dm2 = dDM2Vvec.reshape((mp.dm2.Nact, mp.dm2.Nact))
+    # mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    # mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
     # # TODO: Change to be more generic, e.g. for one DM at a time.
     # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
@@ -507,15 +517,17 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         Eest2D[mp.Fend.corr.maskBool] = EestVec  # * np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
 
-        # With delta DM commands applied
+        # Get model-based E-field With delta DM commands applied.
+        mp.dm1.V = mp.dm1.V0 + dv_dm1
+        mp.dm2.V = mp.dm2.V0 + dv_dm2
         EFendB, Edm1inc, Edm2inc, DM1surfB, DM2surfB = compact(
            mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM,
            forRevGradModel=True)
-
-        # Reset
+        # Reset DM commands
         mp.dm1.V = mp.dm1.V0.copy()
         mp.dm2.V = mp.dm2.V0.copy()
 
+        # Compute the delta E-field from the latest commands (model new - model old).
         EFendA = EFendPrev[iMode]
         dEend = EFendB - EFendA
         DM1surf = DM1surfB
@@ -699,10 +711,12 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact, dmSurf2_bar_tot) 
 
     # apply regularization
-    Vout1 += 2 * utu_coefs * command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    Vout2 += 2 * utu_coefs * command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+    Vout1 += 2 * utu_coefs * dv_dm1  # command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    Vout2 += 2 * utu_coefs * dv_dm2  # command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
-    gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal]), Vout2.reshape([mp.dm2.NactTotal])), axis=None)
+    gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
+                               Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),
+                              axis=None)
 
     return total_cost, gradient
 

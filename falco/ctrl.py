@@ -898,8 +898,8 @@ def _ad_efc(ni, vals_list, mp, cvar):
         dm1ub = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
         # dm1ub[dm1ub > mp.ctrl.ad.dv_max] = mp.ctrl.ad.dv_max
         dm0[cvar.uLegend == 1] = np.zeros(mp.dm1.Nele)  # dm1vec
-        bounds[cvar.uLegend == 1, 0] = dm1lb
-        bounds[cvar.uLegend == 1, 1] = dm1ub
+        bounds[cvar.uLegend == 1, 0] = dm1lb[mp.dm1.act_ele]
+        bounds[cvar.uLegend == 1, 1] = dm1ub[mp.dm1.act_ele]
 
     if any(mp.dm_ind == 2):
         dm2vec = mp.dm2.V.flatten()
@@ -908,8 +908,8 @@ def _ad_efc(ni, vals_list, mp, cvar):
         dm2ub = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
         # dm2ub[dm2ub > mp.ctrl.ad.dv_max] = mp.ctrl.ad.dv_max
         dm0[cvar.uLegend == 2] = np.zeros(mp.dm2.Nele)  # dm2vec
-        bounds[cvar.uLegend == 2, 0] = dm2lb
-        bounds[cvar.uLegend == 2, 1] = dm2ub
+        bounds[cvar.uLegend == 2, 0] = dm2lb[mp.dm2.act_ele]
+        bounds[cvar.uLegend == 2, 1] = dm2ub[mp.dm2.act_ele]
 
     EFendPrev = []
     for iMode in range(mp.jac.Nmode):
@@ -1048,6 +1048,7 @@ def init(mp, cvar):
     u8dummy = 8*np.ones(mp.dm8.Nele, dtype=int) if(any(mp.dm_ind == 8)) else np.array([])
     u9dummy = 9*np.ones(mp.dm9.Nele, dtype=int) if(any(mp.dm_ind == 9)) else np.array([])
     cvar.uLegend = np.concatenate((u1dummy, u2dummy, u8dummy, u9dummy))
+    mp.ctrl.uLegend = cvar.uLegend
 
     return None
 

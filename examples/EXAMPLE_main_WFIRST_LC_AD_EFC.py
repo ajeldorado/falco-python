@@ -53,6 +53,21 @@ if np.any(mp.dm_ind == 2):
 falco.ctrl.set_utu_scale_fac(mp)
 
 
+# %% Calculate and use the Jacobian just upfront to weed out weak actuators
+
+cvar = falco.config.Object()
+cvar.Itr = 0
+cvar.flagRelin = True
+
+falco.setup.falco_set_jacobian_modal_weights(mp)
+
+# Compute the control Jacobians for each DM
+jacStruct = falco.model.jacobian(mp)
+
+falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
+falco.ctrl.init(mp, cvar)
+
+
 # %% Perform the Wavefront Sensing and Control
 
 falco.wfsc.loop(mp, out)
