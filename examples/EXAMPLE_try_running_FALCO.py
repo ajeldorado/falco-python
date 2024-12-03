@@ -54,5 +54,5 @@ falco.wfsc.loop(mp, out)
 
 falco.plot.plot_trial_output(out)
 
-fnPickle = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+fnPickle = os.path.join(mp.path.brief, f'{mp.runLabel}_snippet.pkl')
 falco.plot.plot_trial_output_from_pickle(fnPickle)
