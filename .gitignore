@@ -1,5 +1,9 @@
+# Intellij configuration
+.idea/
 
-falco/.idea/**
+# Environment configuration
+.envrc
+
 falco/data/brief/**
 falco/data/ws/**
 examples/**
