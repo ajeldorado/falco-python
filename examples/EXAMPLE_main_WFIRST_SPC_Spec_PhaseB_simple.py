@@ -1,6 +1,7 @@
 # import sys
 # sys.path.insert(0, "../")
 from copy import deepcopy
+import os
 # import numpy as np
 
 import falco
@@ -49,5 +50,5 @@ falco.wfsc.loop(mp, out)
 
 falco.plot.plot_trial_output(out)
 
-fnPickle = mp.runLabel + '_snippet.pkl'
+fnPickle = os.path.join(mp.path.brief, f'{mp.runLabel}_snippet.pkl')
 falco.plot.plot_trial_output_from_pickle(fnPickle)
