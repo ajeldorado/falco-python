@@ -62,15 +62,6 @@ def add_ident(s):
     return "    " + s
 
 
-def _spec_arg(k, kwargs, v):
-    if k in kwargs:
-        return kwargs[k]
-    elif "mat_struct" in kwargs:
-        return eval(kwargs["mat_struct"] + "." + k)
-    else:
-        return v
-
-
 def reconstruct_classes(d, keys=None, outter_scope=False):
     """
     Recursively generate code nested classes (similar to MATLAB's nested structs) from a nested dictionary.
