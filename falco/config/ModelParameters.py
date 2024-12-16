@@ -8,154 +8,111 @@ from falco.util import _spec_arg
 # import collections
 # from falco import model
 
-class Object(object):
+
+class Object:
     pass
 
-class ModelParameters:
-#     class _base_compact:
-#         def __init__(self, **kwargs):
-#             self.dummy = _spec_arg("dummy", kwargs, 1)
-# 
-#     class _base_full:
-#         def __init__(self, **kwargs):
-#             self.dummy = _spec_arg("dummy", kwargs, 1)
 
-    class _base_dm1:
+class ModelParameters:
+
+    class _BaseDm1:
         def __init__(self, **kwargs):
-            self.dummy = _spec_arg("dummy", kwargs, 1)
             self.Dstop = _spec_arg("Dstop", kwargs, 0.048)
             self.dx = _spec_arg("dx", kwargs, 0)
             self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
 
-    class _base_dm2:
+    class _BaseDm2:
         def __init__(self, **kwargs):
-            self.dummy = _spec_arg("dummy", kwargs, 1)
             self.Dstop = _spec_arg("Dstop", kwargs, 0)
             self.dx= _spec_arg("dx", kwargs, 0.048)
             self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
     
-    class _base_dm8:
-        def __init__(self, **kwargs):
-            self.dummy = _spec_arg("dummy", kwargs, 1)
-            
-    class _base_dm9:
-        def __init__(self, **kwargs):
-            self.dummy = _spec_arg("dummy", kwargs, 1)
+    class _BaseDm8:
+        pass
 
-    class _base_P2:
-        def __init__(self, **kwargs):
-            self.dummy = _spec_arg("dummy", kwargs, 1)
-            self.D = _spec_arg("D", kwargs, 0.0463)
+    class _BaseDm9:
+        pass
 
-#     class _base_P3:
-#         def __init__(self, **kwargs):
-#             self.dummy = _spec_arg("dummy", kwargs, 1)
-#             self.D = _spec_arg("D", kwargs, 0.0463)
-                
-    class _base_P1:
-        class _base_compact:
+    class _BaseP1:
+        class _BaseCompact:
             def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
 
-        class _base_full:
+        class _BaseFull:
             def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
 
         def __init__(self, **kwargs):
-            self.compact = _spec_arg("compact", kwargs, self._base_compact())
-            self.full = _spec_arg("full", kwargs, self._base_full())
+            self.compact = _spec_arg("compact", kwargs, self._BaseCompact())
+            self.full = _spec_arg("full", kwargs, self._BaseFull())
 #             self.D = _spec_arg("D", kwargs, 2.3631)
 
-    class _base_P3:
-        class _base_compact:
-            def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
-
-        class _base_full:
-            def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-        
+    class _BaseP2:
         def __init__(self, **kwargs):
-            self.compact = _spec_arg("compact", kwargs, self._base_compact())
-            self.full = _spec_arg("full", kwargs, self._base_full())
-
-    class _base_P4:
-        class _base_compact:
-            def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
-
-        class _base_full:
-            def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.Nbeam = _spec_arg("Nbeam", kwargs, 324)
-
-        def __init__(self, **kwargs):
-            self.compact = _spec_arg("compact", kwargs, self._base_compact())
-            self.IDnorm = _spec_arg("IDnorm", kwargs, 0.5)
-            self.ODnorm = _spec_arg("ODnorm", kwargs, 0.8)
-            self.full = _spec_arg("full", kwargs, self._base_full())
             self.D = _spec_arg("D", kwargs, 0.0463)
 
-    class _base_F3:
-        class _base_compact:
+    class _BaseP3:
+        class _BaseCompact:
+            pass
+
+        class _BaseFull:
+            pass
+
+        def __init__(self, **kwargs):
+            self.compact = _spec_arg("compact", kwargs, self._BaseCompact())
+            self.full = _spec_arg("full", kwargs, self._BaseFull())
+
+    class _BaseP4:
+        class _BaseCompact:
+            pass
+
+        class _BaseFull:
+            pass
+
+        def __init__(self, **kwargs):
+            self.compact = _spec_arg("compact", kwargs, self._BaseCompact())
+            self.IDnorm = _spec_arg("IDnorm", kwargs, 0.5)
+            self.ODnorm = _spec_arg("ODnorm", kwargs, 0.8)
+            self.full = _spec_arg("full", kwargs, self._BaseFull())
+            self.D = _spec_arg("D", kwargs, 0.0463)
+
+    class _BaseF3:
+        class _BaseCompact:
             def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
                 self.res = _spec_arg("res", kwargs, 30.0)
 
-        class _base_full:
+        class _BaseFull:
             def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
                 self.res = _spec_arg("res", kwargs, 50.0)
 
         def __init__(self, **kwargs):
-            self.compact = _spec_arg("compact", kwargs, self._base_compact())
-            self.full = _spec_arg("full", kwargs, self._base_full())
+            self.compact = _spec_arg("compact", kwargs, self._BaseCompact())
+            self.full = _spec_arg("full", kwargs, self._BaseFull())
             self.Rin = _spec_arg("Rin", kwargs, 2.8)
             self.Rout = _spec_arg("Rout", kwargs, inf)
             self.ang = _spec_arg("ang", kwargs, 180)
 
-    class _base_Fend:
-        class _base_compact:
-            def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.res = _spec_arg("res", kwargs, 3)
+    class _BaseFend:
+        class _BaseCompact:
+            pass
 
-        class _base_full:
-            def __init__(self, **kwargs):
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.res = _spec_arg("res", kwargs, 6)
+        class _BaseFull:
+            pass
 
-        class _base_score:
-            def __init__(self, **kwargs):
-#                 self.Rin = _spec_arg("Rin", kwargs, 2.8)
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.Rout = _spec_arg("Rout", kwargs, 10)
-#                 self.ang = _spec_arg("ang", kwargs, 180)
+        class _BaseScore:
+            pass
 
-        class _base_corr:
-            def __init__(self, **kwargs):
-#                 self.Rin = _spec_arg("Rin", kwargs, 2.8)
-                self.dummy = _spec_arg("dummy", kwargs, 1)
-#                 self.Rout = _spec_arg("Rout", kwargs, 10)
-#                 self.ang = _spec_arg("ang", kwargs, 180)
+        class _BaseCorr:
+            pass
 
         def __init__(self, **kwargs):
-            self.compact = _spec_arg("compact", kwargs, self._base_compact())
+            self.compact = _spec_arg("compact", kwargs, self._BaseCompact())
             self.FOV = _spec_arg("FOV", kwargs, 11)
-            self.full = _spec_arg("full", kwargs, self._base_full())
-            self.score = _spec_arg("score", kwargs, self._base_score())
-            self.corr = _spec_arg("corr", kwargs, self._base_corr())
+            self.full = _spec_arg("full", kwargs, self._BaseFull())
+            self.score = _spec_arg("score", kwargs, self._BaseScore())
+            self.corr = _spec_arg("corr", kwargs, self._BaseCorr())
             self.sides = _spec_arg("sides", kwargs, "both")
 
-
-    def __repr__(self):
-        for k, v in self.__dict__:
-            print('%s: '%(k), v)
-        pass
 
     def printInfo(self, level=1):
         print('--------------------------\n')
@@ -183,14 +140,13 @@ class ModelParameters:
         return retstr
 
     def __init__(self, **kwargs):
-        
 
         import os 
         dir_path = os.path.dirname(os.path.realpath(__file__))
         print(dir_path)
 
-#         self.compact = _spec_arg("compact", kwargs, self._base_compact())
-#         self.full = _spec_arg("full", kwargs, self._base_full())
+#         self.compact = _spec_arg("compact", kwargs, self._BaseCompact())
+#         self.full = _spec_arg("full", kwargs, self._BaseFull())
 
 #         self.Nitr = _spec_arg("Nitr", kwargs, 10)
 #         self.SPname = _spec_arg("SPname", kwargs, 0)
@@ -207,17 +163,17 @@ class ModelParameters:
 #         self.NlamForTT = _spec_arg("NlamForTT", kwargs, 1)
 #         self.flagNewPSD = _spec_arg("flagNewPSD", kwargs, 0)
 #         self.pup_strut_width = _spec_arg("pup_strut_width", kwargs, 0.0322)
-        self.dm1 = _spec_arg("dm1", kwargs, self._base_dm1())
-        self.dm2 = _spec_arg("dm2", kwargs, self._base_dm2())
-        self.dm8 = _spec_arg("dm1", kwargs, self._base_dm8())
-        self.dm9 = _spec_arg("dm1", kwargs, self._base_dm9())
+        self.dm1 = _spec_arg("dm1", kwargs, self._BaseDm1())
+        self.dm2 = _spec_arg("dm2", kwargs, self._BaseDm2())
+        self.dm8 = _spec_arg("dm1", kwargs, self._BaseDm8())
+        self.dm9 = _spec_arg("dm1", kwargs, self._BaseDm9())
 #         self.whichPupil = _spec_arg("whichPupil", kwargs, "WFIRST20180103")
 #         self.flagDM2stop = _spec_arg("flagDM2stop", kwargs, 0)
 #         self.d_dm1_dm2 = _spec_arg("d_dm1_dm2", kwargs, 1)
-        self.P2 = _spec_arg("P2", kwargs, self._base_P2())
-        self.P3 = _spec_arg("P3", kwargs, self._base_P3())
-        self.P1 = _spec_arg("P1", kwargs, self._base_P1())
-        self.P4 = _spec_arg("P4", kwargs, self._base_P4())
+        self.P2 = _spec_arg("P2", kwargs, self._BaseP2())
+        self.P3 = _spec_arg("P3", kwargs, self._BaseP3())
+        self.P1 = _spec_arg("P1", kwargs, self._BaseP1())
+        self.P4 = _spec_arg("P4", kwargs, self._BaseP4())
 #         self.relinItrVec = _spec_arg("relinItrVec", kwargs, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 #         self.flagParfor = _spec_arg("flagParfor", kwargs, 0)
 #         self.coro = _spec_arg("coro", kwargs, "LC")
@@ -227,8 +183,8 @@ class ModelParameters:
 #         self.fracBW = _spec_arg("fracBW", kwargs, 0.01)
 #         self.LS_strut_width = _spec_arg("LS_strut_width", kwargs, 0.038)
 #         self.fl = _spec_arg("fl", kwargs, 1)
-        self.F3 = _spec_arg("F3", kwargs, self._base_F3())
-        self.Fend = _spec_arg("Fend", kwargs, self._base_Fend())
+        self.F3 = _spec_arg("F3", kwargs, self._BaseF3())
+        self.Fend = _spec_arg("Fend", kwargs, self._BaseFend())
 #         self.d_P2_dm1 = _spec_arg("d_P2_dm1", kwargs, 0)
 #         self.FPMampFac = _spec_arg("FPMampFac", kwargs, 0)
 #         self.flagDM1stop = _spec_arg("flagDM1stop", kwargs, 0)
