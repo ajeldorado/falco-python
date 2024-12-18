@@ -199,3 +199,62 @@ class ModelParameters(Object):
 #         self.thput_eval_x = _spec_arg("thput_eval_x", kwargs, 6)
 #         self.WspatialDef = _spec_arg("WspatialDef", kwargs, [])
 
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def from_yaml(text):
+        """
+        Construct a ModelParameters object from a yaml string.
+
+        All basic dictionaries are instead deserialized as `Object` instances.
+        Includes special constructors for `Probe`, and `ProbeSchedule`, using yaml tags. E.g.:
+
+        ```
+        myProbe: !Probe
+            a: 5
+            b: a string
+        ```
+
+        The above will create a `Probe` instance with the `a` and `b` fields set accordingly, rather than
+        creating the usual `Object` instance.
+
+        You can also create a default `Probe` with `!Probe {}`.
+
+        You can also write python expressions and evaluate them with `!eval`. This is useful for a few things:
+        - Numpy expressions. Numpy is available as `np`. Ex: `my_array: !eval np.array([1, 2])`
+        - Referring to falco objects. Ex: `inf_fn: !eval falco.INFLUENCE_BMC_2K`
+        - Self-referential expressions. These expressions are evaluated lazily, and can refer to other fields in
+          the model parameters object under the name `mp`. Ex: `Zcoef: !eval 1e-9*np.ones(np.size(mp.jac.zerns))`
+
+          Circular dependencies between expressions will be detected and an error will be raised.
+
+        :param text: a yaml string to deserialize
+        :return: a `ModelParameters` instance
+        """
+
+        result = ModelParameters()
+
+        def _eval_constructor(loader: yaml.SafeLoader, node: yaml.nodes.ScalarNode):
+            s = loader.construct_scalar(node)
+            if not isinstance(s, str):
+                raise f"Cannot eval anything other than a string. Found type {type(s)}: {s}"
+            return Eval(result, loader.construct_yaml_str(node))
+
+        def _object_constructor(noarg_constructor):
+            def _result(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode):
+                obj = noarg_constructor(**loader.construct_mapping(node))
+                return obj
+            return _result
+
+        def _get_loader():
+            """Add constructors to PyYAML loader."""
+            loader = yaml.SafeLoader
+            loader.add_constructor(u'tag:yaml.org,2002:map', _object_constructor(Object))
+            loader.add_constructor("!Probe", _object_constructor(Probe))
+            loader.add_constructor("!ProbeSchedule", _object_constructor(ProbeSchedule))
+            loader.add_constructor("!eval", _eval_constructor)
+            return loader
+
+        result_obj = yaml.load(text, Loader=_get_loader())
+        result.__init__(**result_obj.data)
+        return result
