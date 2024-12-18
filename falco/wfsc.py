@@ -275,10 +275,10 @@ def store_dm_command_history(mp, out, Itr):
             out.dm5.Vall[:, :, Itr] = mp.dm5.V
     if hasattr(mp, 'dm8'):
         if hasattr(mp.dm8, 'V'):
-            out.dm8.Vall[:, Itr] = mp.dm8.V[:]
+            out.dm8.Vall[:, Itr] = mp.dm8.V
     if hasattr(mp, 'dm9'):
         if hasattr(mp.dm9, 'V'):
-            out.dm9.Vall[:, Itr] = mp.dm9.V[:]
+            out.dm9.Vall[:, Itr] = mp.dm9.V
 
     return None
 
