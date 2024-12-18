@@ -264,21 +264,16 @@ def store_dm_command_history(mp, out, Itr):
 
     """
     # Fill in History of DM commands to Store
-    if hasattr(mp, 'dm1'):
-        if hasattr(mp.dm1, 'V'):
-            out.dm1.Vall[:, :, Itr] = mp.dm1.V
-    if hasattr(mp, 'dm2'):
-        if hasattr(mp.dm2, 'V'):
-            out.dm2.Vall[:, :, Itr] = mp.dm2.V
-    if hasattr(mp, 'dm5'):
-        if hasattr(mp.dm5, 'V'):
-            out.dm5.Vall[:, :, Itr] = mp.dm5.V
-    if hasattr(mp, 'dm8'):
-        if hasattr(mp.dm8, 'V'):
-            out.dm8.Vall[:, Itr] = mp.dm8.V[:]
-    if hasattr(mp, 'dm9'):
-        if hasattr(mp.dm9, 'V'):
-            out.dm9.Vall[:, Itr] = mp.dm9.V[:]
+    if hasattr(mp, 'dm1') and hasattr(mp.dm1, 'V'):
+        out.dm1.Vall[:, :, Itr] = mp.dm1.V
+    if hasattr(mp, 'dm2') and hasattr(mp.dm2, 'V'):
+        out.dm2.Vall[:, :, Itr] = mp.dm2.V
+    if hasattr(mp, 'dm5') and hasattr(mp.dm5, 'V'):
+        out.dm5.Vall[:, :, Itr] = mp.dm5.V
+    if hasattr(mp, 'dm8') and hasattr(mp.dm8, 'V'):
+        out.dm8.Vall[:, Itr] = mp.dm8.V
+    if hasattr(mp, 'dm9') and hasattr(mp.dm9, 'V'):
+        out.dm9.Vall[:, Itr] = mp.dm9.V
 
     return None
 
