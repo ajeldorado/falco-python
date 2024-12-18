@@ -28,7 +28,7 @@ class Object:
         # and any `__getattr__` call for any attribute will recurse later in the function.
         # So we just create the dictionary now because it needs to exist anyway.
         if item == 'data':
-            self.data = dict()
+            self.data = {}
             return self.data
 
         if item not in self.data:
