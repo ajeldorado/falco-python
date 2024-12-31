@@ -26,9 +26,12 @@ def test_diff_dm_model():
     mp.dm1.centering = 'pixel'
     mp.dm1.Nact = Nact
     mp.dm1.VtoH = 0.9*np.ones((mp.dm1.Nact, mp.dm1.Nact))
-    mp.dm1.xtilt = 10 # for foreshortening. angle of rotation about x-axis [degrees]
-    mp.dm1.ytilt = 15 # for foreshortening. angle of rotation about y-axis [degrees]
-    mp.dm1.zrot = -6  # clocking of DM surface [degrees]
+    #mp.dm1.xtilt = 10 # for foreshortening. angle of rotation about x-axis [degrees]
+    mp.dm1.xtilt = 0
+    #mp.dm1.ytilt = 15 # for foreshortening. angle of rotation about y-axis [degrees]
+    mp.dm1.ytilt = 0
+    #mp.dm1.zrot = -6  # clocking of DM surface [degrees]
+    mp.dm1.zrot = 0
     mp.dm1.flagZYX = False
     mp.dm1.xc = (mp.dm1.Nact/2 - 1/2) + 1  # x-center location of DM surface [actuator widths]
     mp.dm1.yc = (mp.dm1.Nact/2 - 1/2) + 0.5 # y-center location of DM surface [actuator widths]
@@ -49,36 +52,83 @@ def test_diff_dm_model():
     mp.dm1.dm_spacing = 400e-6  # User defined actuator pitch [meters]
     mp.dm1.inf_sign = '+'
 
+    dx1 = None
+    pitch1 = None
+    mp.dm1.inf0 = None
+    mp.dm1.dx_inf0 = None
+    with fits.open(mp.dm1.inf_fn) as hdul:
+        PrimaryData = hdul[0].header
+        dx1 = PrimaryData['P2PDX_M']  # pixel width of influence function IN THE FILE [meters]
+        pitch1 = PrimaryData['C2CDX_M']  # actuator spacing x (m)
+
+        mp.dm1.inf0 = np.squeeze(hdul[0].data)
+    mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1)
+
+    if mp.dm1.inf_sign[0] in ['-', 'n', 'm']:
+        mp.dm1.inf0 = -1*mp.dm1.inf0
+    elif mp.dm1.inf_sign[0] in ['+', 'p']:
+        pass
+    else:
+        raise ValueError('Sign of influence function not recognized')
+
+
     ppact = 3
-    dx = mp.dm1.dm_spacing/ppact
-    Narray = int(np.ceil(ppact*Nact*1.5/2)*2 + 1)  # Must be odd for this test
+    mp.dm1.dx = mp.dm1.dm_spacing/ppact
+    Narray = int(np.ceil(ppact*Nact*1.5/2)*2 + 2)  # Must be odd for this test
 
 
     mp.dm1.orientation = 'rot0'
     # Generate surfaces for all orientations
     
-    surfFalcoDm = falco.dm.gen_surf_from_act(mp.dm1, dx, Narray)
+    surfFalcoDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
+    backprojFalcoDm = falco.dm.fit_surf_to_act(mp.dm1, surfFalcoDm)
     
     mp.dm1.useDifferentiableModel = True
-    surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, dx, Narray)
+    surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
+    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, wfe=False)
     
     plt.figure()
     plt.imshow(surfFalcoDm)
     plt.colorbar()
+    plt.title('DM Surface FALCO')
 
     plt.figure()
     plt.imshow(surfDiffDm)
     plt.colorbar()
+    plt.title('DM Surface Diff Model')
     
     plt.figure()
     plt.imshow(surfFalcoDm-surfDiffDm)
     plt.colorbar()
+    plt.title('DM Surface Difference')
+    
+    
+    plt.figure()
+    plt.imshow(mp.dm1.V)
+    plt.colorbar()
+    plt.title('DM Voltages Truth')
+    
+    plt.figure()
+    plt.imshow(backprojFalcoDm)
+    plt.colorbar()
+    plt.title('DM Backproj Voltages FALCO')
+
+    plt.figure()
+    plt.imshow(backprojDiffDm)
+    plt.colorbar()
+    plt.title('DM Backproj Voltages Model')
+    
+    plt.figure()
+    plt.imshow(backprojFalcoDm-backprojDiffDm)
+    plt.colorbar()
+    plt.title('Backproj Voltage Difference')
 
     plt.show()
 
     abs_tol = 0.005*np.max(surfFalcoDm)
 
     maxAbsDiff = np.max(np.abs(surfFalcoDm - surfDiffDm))
+    #maxAbsDiff = np.rmsnp.abs(surfFalcoDm - surfDiffDm))
     assert maxAbsDiff < abs_tol
 
 

@@ -103,20 +103,22 @@ def gen_surf_from_act(dm, dx, Nout):
             print("Initializing differentiable DM model.")
             if flagXYZ:
                 dm.differentiableModel = diff_dm.dm_init_falco_wrapper(dm,
-                    dx,Narray,heightMap,dm.xc-cshift, dm.yc-cshift, 
+                    dx,Nout,heightMap,dm.xc-cshift, dm.yc-cshift, 
                     spacing=dm.dm_spacing,XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
                     XYZ=True,inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
                 )
             else:
                 dm.differentiableModel = diff_dm.dm_init_falco_wrapper(dm,
-                    dx,Narray,heightMap,dm.xc-cshift, dm.yc-cshift, 
+                    dx,Nout,heightMap,dm.xc-cshift, dm.yc-cshift, 
                     spacing=dm.dm_spacing,XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
                     ZYX=True,inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
                 )
         else:
             dm.differentiableModel.update(heightMap)
             
-        DMsurf = dm.differentiableModel.render(wfe=False) #returns surface rather than wfe
+        DMsurf = dm.differentiableModel.render(Nout=Nout,wfe=False) #returns surface rather than wfe
+        if (DMsurf.shape[0] != Nout) or (DMsurf.shape[1] != Nout):
+            raise RuntimeError("Differentiable DM Model output size does not match the requested array size!")
         
         #proper.prop_add_phase(bm, 2 * DMsurf)   # convert surface to WFE like 
                                                 # at the end of propcustom_dm??
