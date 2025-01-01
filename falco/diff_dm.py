@@ -430,31 +430,15 @@ def fourier_resample(f, zoom):
     M = int(np.round(m*zoom[0]))
     N = int(np.round(n*zoom[1]))
     
-    #Shift signal to match centering scheme for util.create_axis
-    if m%2 !=0:
-        f = np.roll(f, -1, axis=0)
-    if n%2 !=0:
-        f = np.roll(f, -1, axis=1)
     # commented out below, an alternative that does not use the fft2 norm keyword argument
     # doing it this way is mildly preferrable;
     F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f), norm='ortho'))
     # F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f)))
     
-    #Shift spectrum to match centering scheme for util.create_axis
-    if m%2 !=0:
-        F = np.roll(F, 1, axis=0)
-    if n%2 !=0:
-        F = np.roll(F, 1, axis=1)
-    
     Mx, My = setup_mft_matricies_scalars((M, N), F.shape, 1, 1)
     fprime = imft2_core(F, Mx, My).real
     fprime *= np.sqrt((zoom[0]*zoom[1]))
     # fprime *= np.sqrt((zoom[0]*zoom[1]))/(np.sqrt(f.size))
-    '''
-    if M%2 !=0:
-        fprime = np.roll(fprime, -1, axis=0)
-    if N%2 !=0:
-        fprime = np.roll(fprime, -1, axis=1)'''
     
     return fprime
 

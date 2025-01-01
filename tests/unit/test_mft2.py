@@ -65,9 +65,9 @@ def test_fourier_resample(test_input):
     indMaxfp = np.unravel_index(np.argmax(fprime),fprime.shape)
     indMaxfpp = np.unravel_index(np.argmax(fprimeprime),fprimeprime.shape)
     
-    assert( np.all( indMaxf==np.ceil(np.array(test_input.shape)/2) ) )
-    assert( np.all( indMaxfp==np.ceil(np.array(fprime.shape)/2) ) )
-    assert( np.all( indMaxfpp==np.ceil(np.array(fprimeprime.shape)/2) ) )
+    assert( np.all( indMaxf==np.floor(np.array(test_input.shape)/2) ) )
+    assert( np.all( indMaxfp==np.floor(np.array(fprime.shape)/2) ) )
+    assert( np.all( indMaxfpp==np.floor(np.array(fprimeprime.shape)/2) ) )
     
     maxAbsDiff = np.max(np.abs(fprimeprime - test_input))
     assert maxAbsDiff < abs_tol
