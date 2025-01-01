@@ -1,15 +1,20 @@
-"""Object containing scheduled probe properties for each WFSC iteration."""
+from falco.config import Object
 
 
-class ProbeSchedule:
-    """Define the probe schedule."""
+class ProbeSchedule(Object):
+    """Object containing scheduled probe properties for each WFSC iteration."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.xOffsetVec = None
+        "Vector of x-offsets (one value per WFSC iteration) of the probe center from the DM grid center [actuators]"
 
-        self.xOffsetVec = None  # Vector of x-offsets (one value per WFSC iteration) of the probe center from the DM grid center [actuators]
-        self.yOffsetVec = None  # Vector of x-offsets (one value per WFSC iteration) of the probe center from the DM grid center [actuators]
-        self.rotationVec = None  # Vector of the rotation angle to add to the probes at each WFSC iteration [degrees]
-        self.InormProbeVec = None  # Vector of the desired normalized intensity of the probes at each WFSC iteration 
+        self.yOffsetVec = None
+        "Vector of x-offsets (one value per WFSC iteration) of the probe center from the DM grid center [actuators]"
 
-    def show(self):
-        print(self.__dict__)
+        self.rotationVec = None
+        "Vector of the rotation angle to add to the probes at each WFSC iteration [degrees]"
+
+        self.InormProbeVec = None
+        "Vector of the desired normalized intensity of the probes at each WFSC iteration"
+
+        super().__init__(**kwargs)

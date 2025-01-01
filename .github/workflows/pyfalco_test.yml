@@ -40,6 +40,7 @@ jobs:
         pip install psutil
         pip install matplotlib
         pip install coveralls
+        pip install deepmerge
       # WITH PROPER
 #       run: |
 #         pip install astropy
