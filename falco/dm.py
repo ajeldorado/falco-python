@@ -998,8 +998,11 @@ def fit_surf_to_act(dm, surfaceToFit):
 
     elif(nSurface < dm.Nact):
         raise ValueError('surfaceToFit cannot be smaller than [Nact x Nact].')
-
+    
     [Vout, surfaceOut] = proper.prop_fit_dm(gridDerotAtActRes, infFuncAtActRes)
+    
+    Vout /= dm.VtoH
+    Vout[np.isinf(Vout)] = 0
 
     return Vout
 
@@ -1242,19 +1245,21 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
 
     # Compute xdm0 and ydm0 for use in de-rotating the DM surface
     edge = np.array([[-1.0,-1.0,0.0,0.0], [1.0,-1.0,0.0,0.0], [1.0,1.0,0.0,0.0], [-1.0,1.0,0.0,0.0]])
-    new_xyz = edge #np.dot(edge, m)
+    new_xyz0 = edge #np.dot(edge, m)
 
     # determine backward projection for screen-raster-to-DM-surce computation
-    dx_dxs = (new_xyz[0, 0] - new_xyz[1, 0]) / (edge[0, 0] - edge[1, 0])
-    dx_dys = (new_xyz[1, 0] - new_xyz[2, 0]) / (edge[1, 1] - edge[2, 1])
-    dy_dxs = (new_xyz[0, 1] - new_xyz[1, 1]) / (edge[0, 0] - edge[1, 0])
-    dy_dys = (new_xyz[1, 1] - new_xyz[2, 1]) / (edge[1, 1] - edge[2, 1])
+    dx_dxs0 = (new_xyz0[0, 0] - new_xyz0[1, 0]) / (edge[0, 0] - edge[1, 0])
+    dx_dys0 = (new_xyz0[1, 0] - new_xyz0[2, 0]) / (edge[1, 1] - edge[2, 1])
+    dy_dxs0 = (new_xyz0[0, 1] - new_xyz0[1, 1]) / (edge[0, 0] - edge[1, 0])
+    dy_dys0 = (new_xyz0[1, 1] - new_xyz0[2, 1]) / (edge[1, 1] - edge[2, 1])
 
-    xs = (x/dx_dxs - y*dx_dys/(dx_dxs*dy_dys) ) / ( 1 - dy_dxs*dx_dys/(dx_dxs*dy_dys))
-    ys = (y/dy_dys - x*dy_dxs/(dx_dxs*dy_dys) ) / ( 1 - dx_dys*dy_dxs/(dx_dxs*dy_dys))
+    xs0 = (x/dx_dxs0 - y*dx_dys0/(dx_dxs0*dy_dys0) ) / ( 1 - dy_dxs0*dx_dys0/(dx_dxs0*dy_dys0))
+    ys0 = (y/dy_dys0 - x*dy_dxs0/(dx_dxs0*dy_dys0) ) / ( 1 - dx_dys0*dy_dxs0/(dx_dxs0*dy_dys0))
 
-    xdm0 = (xs + dm_xc * dx_dm) / dx_inf + xoff_grid
-    ydm0 = (ys + dm_yc * dx_dm) / dx_inf + yoff_grid
+#     xdm0 = (xs0 + dm_xc * dx_dm) / dx_inf + xoff_grid  # WRONG
+#     ydm0 = (ys0 + dm_yc * dx_dm) / dx_inf + yoff_grid  # WRONG
+    xdm0 = (xs0 + (Nact-1)/2 * dx_dm) / dx_inf + xoff_grid
+    ydm0 = (ys0 + (Nact-1)/2 * dx_dm) / dx_inf + yoff_grid
     ######
 
     # Forward project a square
@@ -1307,18 +1312,15 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
         xs2 = np.linspace(-(N2-1)/2, (N2-1)/2, N2)/N2*(N2*dx/(Nact*spacing))
 
     interp_spline = RectBivariateSpline(xs2, xs2, gridDerot)
-    gridDerotResize = interp_spline(xs1-xOffsetInAct/Nact,
-                                    xs1-yOffsetInAct/Nact)
+#     gridDerotResize = interp_spline(xs1-xOffsetInAct/Nact,
+#                                     xs1-yOffsetInAct/Nact)  # WRONG!!!
+    gridDerotResize = interp_spline(xs1, xs1)
+
 
     xyOffset = int(np.floor(multipleOfCommandGrid/2.))
     gridDerotAtActRes = gridDerotResize[xyOffset::multipleOfCommandGrid,
-                                        xyOffset::multipleOfCommandGrid]
-#
-#    plt.figure(11); plt.imshow(dm_grid); plt.colorbar(); plt.pause(0.1)
-#    plt.figure(12); plt.imshow(gridDerot); plt.colorbar(); plt.pause(0.1)
-#    plt.figure(13); plt.imshow(gridDerotResize); plt.colorbar(); plt.pause(0.1)
-#    plt.figure(14); plt.imshow(gridDerotAtActRes); plt.colorbar(); plt.pause(0.1)
-#    plt.figure(15); plt.imshow(gridDerot-gridDerot[::-1,::-1]); plt.colorbar(); plt.pause(0.1)
-#    plt.figure(16); plt.imshow(gridDerotResize-gridDerotResize[::-1,::-1]); plt.colorbar(); plt.pause(0.1)
+                                        xyOffset::multipleOfCommandGrid]                                        		
+                                   
+
 
     return gridDerotAtActRes
