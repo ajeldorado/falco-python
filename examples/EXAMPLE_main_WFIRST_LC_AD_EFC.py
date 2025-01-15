@@ -4,6 +4,7 @@ from copy import deepcopy
 import numpy as np
 
 import falco
+import time
 
 import EXAMPLE_config_WFIRST_LC_AD_EFC as CONFIG
 
@@ -15,7 +16,6 @@ mp = deepcopy(CONFIG.mp)
 mp.path = falco.config.Object()
 # mp.path.config = './'  # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 # mp.path.ws = './'  # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
-
 
 # %% Overwrite default values as desired
 
@@ -69,9 +69,12 @@ falco.ctrl.init(mp, cvar)
 
 
 # %% Perform the Wavefront Sensing and Control
-
+tStart = time.time()
 falco.wfsc.loop(mp, out)
+tStop = time.time()
 
+tDiff = tStop-tStart
+print(tDiff)
 
 # %% Plot the output
 

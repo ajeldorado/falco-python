@@ -426,7 +426,7 @@ def create_axis(N, step, centering='pixel'):
     check.real_positive_scalar(step, 'step', TypeError)
     check.centering(centering)
 
-    axis = np.arange(-N // 2, N // 2, dtype=np.float64) * step
+    axis = np.arange(np.ceil(-N/2), np.ceil(N/2), dtype=np.float64) * step
     even = not N % 2  # Even number of samples?
 
     if even and (centering == 'interpixel'):

@@ -170,7 +170,7 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     else:
         rot_order = 'zyx'
         
-    dmModel = DM(inf_pad,Nout=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,\
+    dmModel = DM(inf_pad,NoutDefault=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,\
                  shift=(shiftx,shifty),rot=(-1*ztilt,ytilt,xtilt),rot_order=rot_order);
     dmModel.update(dm_z_commanded)
     
@@ -427,17 +427,19 @@ def fourier_resample(f, zoom):
         zoom = tuple(float(zoom) for zoom in zoom)
 
     m, n = f.shape
-    M = int(m*zoom[0])
-    N = int(n*zoom[1])
-
+    M = int(np.round(m*zoom[0]))
+    N = int(np.round(n*zoom[1]))
+    
     # commented out below, an alternative that does not use the fft2 norm keyword argument
     # doing it this way is mildly preferrable;
     F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f), norm='ortho'))
     # F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f)))
+    
     Mx, My = setup_mft_matricies_scalars((M, N), F.shape, 1, 1)
     fprime = imft2_core(F, Mx, My).real
     fprime *= np.sqrt((zoom[0]*zoom[1]))
     # fprime *= np.sqrt((zoom[0]*zoom[1]))/(np.sqrt(f.size))
+    
     return fprime
 
 
@@ -500,7 +502,7 @@ def setup_mft_matricies_scalars(shape_space, shape_frequency, zoomx, zoomy):
 
 class DM:
     """A DM whose actuators fill a rectangular region on a perfect grid, and have the same influence function."""
-    def __init__(self, ifn, Nout, Nact=50, sep=10, shift=(0, 0), rot=(0, 0, 0), upsample=1, rot_order='zyx'):
+    def __init__(self, ifn, NoutDefault, Nact=50, sep=10, shift=(0, 0), rot=(0, 0, 0), upsample=1, rot_order='zyx'):
         """Create a new DM model.
 
         This model is based on convolution of a 'poke lattice' with the influence
@@ -557,8 +559,8 @@ class DM:
         achieve the desired array size.
 
         """
-        if isinstance(Nout, int):
-            Nout = (Nout, Nout)
+        if isinstance(NoutDefault, int):
+            NoutDefault = (NoutDefault, NoutDefault)
         if isinstance(Nact, int):
             Nact = (Nact, Nact)
         if isinstance(sep, int):
@@ -569,7 +571,7 @@ class DM:
         # stash inputs and some computed values on self
         self.ifn = ifn
         self.Ifn = fftutils.fft2(ifn)
-        self.Nout = Nout
+        self.NoutDefault = NoutDefault
         self.Nact = Nact
         self.sep = sep
         self.shift = shift
@@ -639,7 +641,7 @@ class DM:
         self.poke_arr[self.iyy, self.ixx] = self.actuators
         return
 
-    def render(self, wfe=True):
+    def render(self, Nout=None, wfe=True):
         """Render the DM's surface figure or wavefront error.
 
         Parameters
@@ -656,6 +658,12 @@ class DM:
             by self.rot
 
         """
+        if Nout is None:
+            Nout = self.NoutDefault
+        
+        if isinstance(Nout, int):
+            Nout = (Nout, Nout)
+        
         # self.dx is unused inside apply tf, but :shrug:
         sfe = apply_precomputed_transfer_function(self.poke_arr, self.tf)
         if self.needs_rot:
@@ -670,7 +678,7 @@ class DM:
             warped = fourier_resample(warped, self.upsample)
 
         self.Nintermediate = warped.shape
-        warped = util.pad_crop(warped, self.Nout)
+        warped = util.pad_crop(warped, Nout)
         return warped
 
     def render_backprop(self, protograd, wfe=True):

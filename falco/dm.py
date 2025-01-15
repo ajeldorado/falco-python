@@ -105,21 +105,23 @@ def gen_surf_from_act(dm, dx, Nout):
             print("Initializing differentiable DM model.")
             if flagXYZ:
                 dm.differentiableModel = diff_dm.dm_init_falco_wrapper(
-                    dm, dx, Narray, heightMap, dm.xc-cshift, dm.yc-cshift,
+                    dm, dx, Nout, heightMap, dm.xc-cshift, dm.yc-cshift, 
                     spacing=dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
                     XYZ=True, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn,
                 )
             else:
                 dm.differentiableModel = diff_dm.dm_init_falco_wrapper(
-                    dm, dx, Narray, heightMap, dm.xc-cshift, dm.yc-cshift,
+                    dm, dx, Nout, heightMap, dm.xc-cshift, dm.yc-cshift, 
                     spacing=dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
                     ZYX=True, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn,
                 )
         else:
             dm.differentiableModel.update(heightMap)
-
-        DMsurf = dm.differentiableModel.render(wfe=False)  # returns surface rather than wfe
-
+            
+        DMsurf = dm.differentiableModel.render(Nout=Nout,wfe=False)  # returns surface rather than wfe
+        if (DMsurf.shape[0] != Nout) or (DMsurf.shape[1] != Nout):
+            raise RuntimeError("Differentiable DM Model output size does not match the requested array size!")
+        
         # # Convert surface to WFE like at the end of propcustom_dm??
         # proper.prop_add_phase(bm, 2 * DMsurf)
 
@@ -988,11 +990,16 @@ def fit_surf_to_act(dm, surfaceToFit):
         # Adjust the centering of the output DM surface. The shift needs to be
         # in units of actuators, not meters
         wArray = nSurface*dm.dx
-        cshift = -wArray/2./nSurface/dm.dm_spacing if dm.centering == 'interpixel' else 0.
-
-        gridDerotAtActRes = derotate_resize_surface(
-            surfaceToFit, dm.dx, dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
-            XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign,
+        cshift = -wArray/2./nSurface/dm.dm_spacing if(dm.centering == 'interpixel') else 0.
+        if flagXYZ:
+            gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
+            dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt,
+            YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=True, inf_sign=dm.inf_sign,
+            inf_fn=dm.inf_fn)
+        else:
+            gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
+            dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt,
+            YTILT=dm.ytilt, ZTILT=dm.zrot, ZYX=True, inf_sign=dm.inf_sign,
             inf_fn=dm.inf_fn)
 
     elif nSurface < dm.Nact:
