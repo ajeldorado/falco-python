@@ -1,11 +1,14 @@
 """Module for DM-related functions."""
 import os
-import numpy as np
 from math import sin, cos, radians
-import scipy.signal as ss
-from scipy.interpolate import griddata
-from scipy.interpolate import RectBivariateSpline
+
 from astropy.io import fits
+import numpy as np
+
+import scipy.signal as ss
+from scipy.interpolate import griddata, RectBivariateSpline
+from scipy.ndimage import convolve
+import scipy.sparse
 
 import falco
 from falco import check, proper, diff_dm
@@ -41,7 +44,6 @@ def gen_surf_from_act(dm, dx, Nout):
     # if dm.NdmPad % 2 != 0:
     #     raise ValueError('dm.NdmPad must be even')
 
-
     # Set the order of operations
     flagXYZ = True
     if hasattr(dm, 'flagZYX'):
@@ -50,8 +52,8 @@ def gen_surf_from_act(dm, dx, Nout):
 
     # Adjust the centering of the output DM surface. The shift needs to be in
     # units of actuators, not meters, for prop_dm.m.
-    Darray = Nout*dx #dm.NdmPad*dx
-    Narray = Nout #dm.NdmPad
+    Darray = Nout*dx  # dm.NdmPad*dx
+    Narray = Nout  # dm.NdmPad
     if dm.centering == 'interpixel':
         cshift = -Darray/2./Narray/dm.dm_spacing
     elif dm.centering == 'pixel':
@@ -98,41 +100,41 @@ def gen_surf_from_act(dm, dx, Nout):
             raise ValueError('invalid value of dm.orientation')
 
     if dm.useDifferentiableModel:
-        if not hasattr(dm,"differentiableModel"): #or dm.differentiableModel.Nout!=Narray:
-            #Initialize the model object if this is the first time
+        if not hasattr(dm, "differentiableModel"):  # or dm.differentiableModel.Nout!=Narray:
+            # Initialize the model object if this is the first time
             print("Initializing differentiable DM model.")
             if flagXYZ:
-                dm.differentiableModel = diff_dm.dm_init_falco_wrapper(dm,
-                    dx,Narray,heightMap,dm.xc-cshift, dm.yc-cshift, 
-                    spacing=dm.dm_spacing,XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
-                    XYZ=True,inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+                dm.differentiableModel = diff_dm.dm_init_falco_wrapper(
+                    dm, dx, Narray, heightMap, dm.xc-cshift, dm.yc-cshift,
+                    spacing=dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
+                    XYZ=True, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn,
                 )
             else:
-                dm.differentiableModel = diff_dm.dm_init_falco_wrapper(dm,
-                    dx,Narray,heightMap,dm.xc-cshift, dm.yc-cshift, 
-                    spacing=dm.dm_spacing,XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
-                    ZYX=True,inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+                dm.differentiableModel = diff_dm.dm_init_falco_wrapper(
+                    dm, dx, Narray, heightMap, dm.xc-cshift, dm.yc-cshift,
+                    spacing=dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
+                    ZYX=True, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn,
                 )
         else:
             dm.differentiableModel.update(heightMap)
-            
-        DMsurf = dm.differentiableModel.render(wfe=False) #returns surface rather than wfe
-        
-        #proper.prop_add_phase(bm, 2 * DMsurf)   # convert surface to WFE like 
-                                                # at the end of propcustom_dm??
+
+        DMsurf = dm.differentiableModel.render(wfe=False)  # returns surface rather than wfe
+
+        # # Convert surface to WFE like at the end of propcustom_dm??
+        # proper.prop_add_phase(bm, 2 * DMsurf)
 
     else:
         if flagXYZ:
             DMsurf = falco.dm.propcustom_dm(
-            bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
-            XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=True,
-            inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+                bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
+                XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=True,
+                inf_sign=dm.inf_sign, inf_fn=dm.inf_fn,
             )
         else:
             DMsurf = falco.dm.propcustom_dm(
-            bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
-            XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, ZYX=True,
-            inf_sign=dm.inf_sign, inf_fn=dm.inf_fn
+                bm, heightMap, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
+                XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, ZYX=True,
+                inf_sign=dm.inf_sign, inf_fn=dm.inf_fn,
             )
 
     # DMsurf = falco.util.pad_crop(DMsurf, Nout)
@@ -299,7 +301,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     else:
         ztilt = 0.
 
-    if type(dm_z0) == str:
+    if isinstance(dm_z0, str):
         dm_z = proper.prop_fits_read(dm_z0)  # Read DM setting from FITS file
     else:
         dm_z = dm_z0
@@ -310,9 +312,9 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
         inf_fn = "influence_dm5v2.fits"
 
     if "inf_sign" in kwargs:
-        if(kwargs["inf_sign"] == '+'):
+        if kwargs["inf_sign"] == '+':
             sign_factor = 1.
-        elif(kwargs["inf_sign"] == '-'):
+        elif kwargs["inf_sign"] == '-':
             sign_factor = -1.
     else:
         sign_factor = 1.
@@ -357,8 +359,8 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     else:
         dx_dm = spacing
 
-    dx_inf = dx_inf * dx_dm / dx_dm_inf  # Influence function sampling scaled
-                                         # to specified DM actuator spacing
+    # Influence function sampling scaled to specified DM actuator spacing
+    dx_inf = dx_inf * dx_dm / dx_dm_inf  
 
     if "FIT" in kwargs:
         x = (np.arange(5, dtype=np.float64) - 2) * dx_dm
@@ -417,15 +419,19 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     g = ztilt * np.pi / 180
 
     if XYZ:
-        m = np.array([[cos(b)*cos(g), -cos(b)*sin(g), sin(b), 0],
-            [cos(a)*sin(g) + sin(a)*sin(b)*cos(g), cos(a)*cos(g)-sin(a)*sin(b)*sin(g), -sin(a)*cos(b), 0],
-            [sin(a)*sin(g)-cos(a)*sin(b)*cos(g), sin(a)*cos(g)+cos(a)*sin(b)*sin(g), cos(a)*cos(b), 0],
-            [0, 0, 0, 1] ])
+        m = np.array(
+            [[cos(b)*cos(g), -cos(b)*sin(g), sin(b), 0],
+             [cos(a)*sin(g) + sin(a)*sin(b)*cos(g), cos(a)*cos(g)-sin(a)*sin(b)*sin(g), -sin(a)*cos(b), 0],
+             [sin(a)*sin(g)-cos(a)*sin(b)*cos(g), sin(a)*cos(g)+cos(a)*sin(b)*sin(g), cos(a)*cos(b), 0],
+             [0, 0, 0, 1],
+             ])
     else:
-        m = np.array([	[cos(b)*cos(g), cos(g)*sin(a)*sin(b)-cos(a)*sin(g), cos(a)*cos(g)*sin(b)+sin(a)*sin(g), 0],
-            [cos(b)*sin(g), cos(a)*cos(g)+sin(a)*sin(b)*sin(g), -cos(g)*sin(a)+cos(a)*sin(b)*sin(g), 0],
-            [-sin(b), cos(b)*sin(a), cos(a)*cos(b), 0],
-            [0, 0, 0, 1] ])
+        m = np.array(
+            [[cos(b)*cos(g), cos(g)*sin(a)*sin(b)-cos(a)*sin(g), cos(a)*cos(g)*sin(b)+sin(a)*sin(g), 0],
+             [cos(b)*sin(g), cos(a)*cos(g)+sin(a)*sin(b)*sin(g), -cos(g)*sin(a)+cos(a)*sin(b)*sin(g), 0],
+             [-sin(b), cos(b)*sin(a), cos(a)*cos(b), 0],
+             [0, 0, 0, 1]
+             ])
 
     # Forward project a square
     edge = np.array([[-1.0, -1.0, 0.0, 0.0],
@@ -510,8 +516,8 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
 
     # Set the order of operations
     XYZ = True
-    if(hasattr(dm, 'flagZYX')):
-        if(dm.flagZYX):
+    if hasattr(dm, 'flagZYX'):
+        if dm.flagZYX:
             XYZ = False
 
     # Compute sampling of the pupil. Assume that it is square.
@@ -519,7 +525,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     dm.dx = dx_dm
 
     # Default to being centered on a pixel if not specified
-    if not(hasattr(dm, 'centering')):
+    if not hasattr(dm, 'centering'):
         dm.centering = 'pixel'
 
     # Compute coordinates of original influence function
@@ -535,11 +541,12 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     dm.NdmMin = falco.util.ceil_even(Ndm0*(dm.dx_inf0/dm.dx))+2.
     # Number of points across the array to fully contain the DM surface at new
     # desired resolution and z-rotation angle.
-    dm.Ndm = int(falco.util.ceil_even((abs(np.array([np.sqrt(2.)*cos(radians(45.-dm.zrot)),
-            np.sqrt(2.)*sin(radians(45.-dm.zrot))])).max())*Ndm0*(dm.dx_inf0/dm.dx))+2)
+    dm.Ndm = int(falco.util.ceil_even(
+        (abs(np.array([np.sqrt(2.)*cos(radians(45.-dm.zrot)),
+                       np.sqrt(2.)*sin(radians(45.-dm.zrot))])).max())*Ndm0*(dm.dx_inf0/dm.dx))+2)
 
     # Compute list of initial actuator center coordinates (in actutor widths).
-    if(dm.flag_hex_array):  # Hexagonal, hex-packed grid
+    if dm.flag_hex_array:  # Hexagonal, hex-packed grid
         raise ValueError('flag_hex_array option not implemented yet.')
 #     Nrings = dm.Nrings;
 #     x_vec = [];
@@ -672,7 +679,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     infSum = np.sum(dm.infMaster)
     infDiff = 0.
     counter = 0
-    while(abs(infDiff) <= 1e-7):
+    while abs(infDiff) <= 1e-7:
         counter = counter + 2
         infDiff = infSum - np.sum(abs(dm.infMaster[int(counter/2):int(-counter/2),
                                                    int(counter/2):int(-counter/2)]))
@@ -720,20 +727,20 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     dm.r_cent_act = np.sqrt(dm.xy_cent_act[0, :]**2 + dm.xy_cent_act[1, :]**2)
     dm.rmax = np.max(np.abs(dm.r_cent_act))
     NpixPerAct = dm.dm_spacing/dx_dm
-    if(dm.flag_hex_array):
+    if dm.flag_hex_array:
         # padded 2 actuators past the last actuator center to avoid trying to
         # index outside the array
         dm.NdmPad = falco.util.ceil_even((2.*(dm.rmax+2))*NpixPerAct + 1)
     else:
         # DM surface array padded by the width of the padded influence function
-        # to prevent indexing outside the array. 
+        # to prevent indexing outside the array.
         # The 1/2 term is because the farthest actuator center is still half an
-        # actuator away from the nominal array edge. 
-        dm.NdmPad = falco.util.ceil_even((dm.NboxAS + 2.0*(1 + (np.max(
-        np.abs(dm.xy_cent_act.reshape(2*dm.NactTotal)))+0.5)*NpixPerAct)))
+        # actuator away from the nominal array edge.
+        dm.NdmPad = falco.util.ceil_even(
+            (dm.NboxAS + 2.0*(1 + (np.max(np.abs(dm.xy_cent_act.reshape(2*dm.NactTotal)))+0.5)*NpixPerAct)))
 
     # Compute coordinates (in meters) of the full DM array
-    if(dm.centering == 'pixel'):
+    if dm.centering == 'pixel':
         # meters, coords for the full DM arrays. Origin is centered on a pixel
         dm.x_pupPad = np.linspace(-dm.NdmPad/2., (dm.NdmPad/2. - 1),
                                   dm.NdmPad)*dx_dm
@@ -747,7 +754,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
     dm.act_ele = np.arange(dm.NactTotal)  # Include all actuators
 
     # Make NboxPad-sized postage stamps for each actuator's influence function
-    if(flagGenCube):
+    if flagGenCube:
         if not dm.flag_hex_array:
             print("  Influence function padded from %d to %d points for A.S. propagation." % (Nbox, dm.NboxAS))
 
@@ -755,7 +762,7 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
 
         # Find the locations of the postage stamps arrays in the larger pupilPad array
         dm.xy_cent_act_inPix = dm.xy_cent_act*(dm.dm_spacing/dx_dm)  # Convert units to pupil-plane pixels
-        dm.xy_cent_act_inPix = dm.xy_cent_act_inPix + 0.5  # For the half-pixel offset if pixel centered. 
+        dm.xy_cent_act_inPix = dm.xy_cent_act_inPix + 0.5  # For the half-pixel offset if pixel centered.
         dm.xy_cent_act_box = np.round(dm.xy_cent_act_inPix)  # Center locations of the postage stamps (in between pixels), in actuator widths
         dm.xy_cent_act_box_inM = dm.xy_cent_act_box*dx_dm  # now in meters
         dm.xy_box_lowerLeft = dm.xy_cent_act_box + (dm.NdmPad-Nbox)/2 - 0  # index of pixel in lower left of the postage stamp within the whole pupilPad array. +0 for Python, +1 for Matlab
@@ -775,8 +782,8 @@ def gen_poke_cube(dm, mp, dx_dm, **kwargs):
         # Refer to https://scipython.com/book/chapter-8-scipy/examples/two-dimensional-interpolation-with-scipyinterpolaterectbivariatespline/
 
         for iact in range(dm.NactTotal):
-            xbox = dm.x_box0 - (dm.xy_cent_act_inPix[0, iact]-dm.xy_cent_act_box[0, iact])*dx_dm # X = X0 -(x_true_center-x_box_center)
-            ybox = dm.x_box0 - (dm.xy_cent_act_inPix[1, iact]-dm.xy_cent_act_box[1, iact])*dx_dm # Y = Y0 -(y_true_center-y_box_center)
+            xbox = dm.x_box0 - (dm.xy_cent_act_inPix[0, iact]-dm.xy_cent_act_box[0, iact])*dx_dm  # X = X0 -(x_true_center-x_box_center)
+            ybox = dm.x_box0 - (dm.xy_cent_act_inPix[1, iact]-dm.xy_cent_act_box[1, iact])*dx_dm  # Y = Y0 -(y_true_center-y_box_center)
             dm.inf_datacube[:, :, iact] = interp_spline(ybox, xbox)
             inf_datacube[iact, :, :] = interp_spline(ybox, xbox)
 
@@ -815,16 +822,16 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
     check.positive_scalar_integer(Nact, 'Nact', TypeError)
 
     Vout = Vin  # Initialize output voltage map
-    indPair = np.zeros((0,2))  # Initialize the paired indices list. [nPairs x 2]
+    indPair = np.zeros((0, 2))  # Initialize the paired indices list. [nPairs x 2]
 
     kx1 = np.array([[0, 1], [1, 1], [1, 0]])              # R1-C1
-    kx2 = np.array([[0,1], [1,1], [1,0], [1,-1]])         # R1, C2 - C47
-    kx3 = np.array([[1,0], [1,-1]])                       # R1, C48
-    kx4 = np.array([[-1,1], [0,1], [1,1], [1,0]])         # R2-R47, C1
-    kx5 = np.array([[-1,1], [0,1], [1,1], [1,0], [1,-1]]) # R2-47, C2-47
-    kx6 = np.array([[1,0], [1,-1]])                       # R2-47, C8
-    kx7 = np.array([[-1,1], [0,1]])                       # R48, C1 - C47
-    kx8 = np.array([[-1,-1]])                             # R48, C48
+    kx2 = np.array([[0, 1], [1, 1], [1, 0], [1, -1]])         # R1, C2 - C47
+    kx3 = np.array([[1, 0], [1, -1]])                       # R1, C48
+    kx4 = np.array([[-1, 1], [0, 1], [1, 1], [1, 0]])         # R2-R47, C1
+    kx5 = np.array([[-1, 1], [0, 1], [1, 1], [1, 0], [1, -1]])  # R2-47, C2-47
+    kx6 = np.array([[1, 0], [1, -1]])                       # R2-47, C8
+    kx7 = np.array([[-1, 1], [0, 1]])                       # R48, C1 - C47
+    kx8 = np.array([[-1, -1]])                             # R48, C48
 
     for jj in range(Nact):            # Row
         for ii in range(Nact):        # Col
@@ -849,14 +856,14 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
                 else:
                     kx = kx8
 
-            kr = jj + kx[:,0]
-            kc = ii + kx[:,1]
+            kr = jj + kx[:, 0]
+            kc = ii + kx[:, 1]
             nNbr = kr.size  # length(kr); # Number of neighbors
 
             if nNbr >= 1:
                 for iNbr in range(nNbr):
 
-                    a1 = Vout[jj, ii] - Vout[kr[iNbr],kc[iNbr]] # Compute the delta voltage
+                    a1 = Vout[jj, ii] - Vout[kr[iNbr], kc[iNbr]]  # Compute the delta voltage
 
                     if (np.abs(a1) > Vlim):  # If neighbor rule is violated
 
@@ -867,8 +874,7 @@ def apply_neighbor_rule(Vin, Vlim, Nact):
 
                         fx = (np.abs(a1) - Vlim) / 2.
                         Vout[jj, ii] = Vout[jj, ii] - np.sign(a1)*fx
-                        Vout[kr[iNbr], kc[iNbr]] = Vout[kr[iNbr], kc[iNbr]] +\
-                                                    np.sign(a1)*fx
+                        Vout[kr[iNbr], kc[iNbr]] = Vout[kr[iNbr], kc[iNbr]] + np.sign(a1)*fx
 
     return Vout, indPair
 
@@ -898,19 +904,19 @@ def enforce_constraints(dm):
 
     # Min voltage limit
     Vtotal = dm.V + dm.biasMap
-    new_inds = np.nonzero(Vtotal.flatten()<dm.Vmin)[0]  # linear indices of new actuators breaking their bounds
+    new_inds = np.nonzero(Vtotal.flatten() < dm.Vmin)[0]  # linear indices of new actuators breaking their bounds
     new_vals = dm.Vmin*np.ones(new_inds.size)
     dm.pinned = np.hstack([dm.pinned, new_inds])  # Augment the vector of pinned actuator linear indices
     dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  # Augment the vector of pinned actuator values
 
     # Max voltage limit
-    new_inds = np.nonzero(Vtotal.flatten() > dm.Vmax)[0] # linear indices of new actuators breaking their bounds
+    new_inds = np.nonzero(Vtotal.flatten() > dm.Vmax)[0]  # linear indices of new actuators breaking their bounds
     new_vals = dm.Vmax*np.ones(new_inds.size)
     dm.pinned = np.hstack([dm.pinned, new_inds])     # Augment the vector of pinned actuator linear indices
     dm.Vpinned = np.hstack([dm.Vpinned, new_vals])  # Augment the vector of pinned actuator values
 
     # 2) Enforce pinned (or railed or dead) actuator values
-    if(dm.pinned.size > 0):
+    if dm.pinned.size > 0:
         Vflat = dm.V.flatten()
         Vflat[dm.pinned.astype(int)] = dm.Vpinned
         dm.V = Vflat.reshape(dm.V.shape)
@@ -938,10 +944,10 @@ def fit_surf_to_act(dm, surfaceToFit):
 
     Parameters
     ----------
-    surfaceToFit : numpy ndarray
-        2-D array of the surface heights for the DM to fit
     dm : ModelParameters
         Structure containing parameter values for the DM
+    surfaceToFit : numpy ndarray
+        2-D array of the surface heights for the DM to fit
 
     Returns
     -------
@@ -970,31 +976,37 @@ def fit_surf_to_act(dm, surfaceToFit):
 
     # Set the order of operations
     flagXYZ = True
-    if(hasattr(dm, 'flagZYX')):
-        if(dm.flagZYX):
+    if hasattr(dm, 'flagZYX'):
+        if dm.flagZYX:
             flagXYZ = False
 
     # Perform the fit
-    if(nSurface == dm.Nact):
+    if nSurface == dm.Nact:
         gridDerotAtActRes = surfaceToFit
 
-    elif(nSurface > dm.Nact):
+    elif nSurface > dm.Nact:
         # Adjust the centering of the output DM surface. The shift needs to be
         # in units of actuators, not meters
         wArray = nSurface*dm.dx
-        cshift = -wArray/2./nSurface/dm.dm_spacing if(dm.centering == 'interpixel') else 0.
+        cshift = -wArray/2./nSurface/dm.dm_spacing if dm.centering == 'interpixel' else 0.
 
-        gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
-        dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt,
-        YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign,
-        inf_fn=dm.inf_fn)
+        gridDerotAtActRes = derotate_resize_surface(
+            surfaceToFit, dm.dx, dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing,
+            XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=flagXYZ, inf_sign=dm.inf_sign,
+            inf_fn=dm.inf_fn)
 
-    elif(nSurface < dm.Nact):
+    elif nSurface < dm.Nact:
         raise ValueError('surfaceToFit cannot be smaller than [Nact x Nact].')
-    
-    [Vout, surfaceOut] = proper.prop_fit_dm(gridDerotAtActRes, infFuncAtActRes)
-    
-    Vout /= dm.VtoH
+
+    if dm.surfFitMethod.lower() == 'lsq':
+        heightAtActRes = fit_surf_with_dm_lsq_wrapper(dm, gridDerotAtActRes)  # Creates the prefilter if it doesn't exist
+        # heightAtActRes = fit_surf_with_dm_lsq(gridDerotAtActRes, dm.act_prefilter)  # Assumes prefilter exists already
+    elif dm.surfFitMethod.lower() == 'proper':
+        [heightAtActRes, surfaceOut] = proper.prop_fit_dm(gridDerotAtActRes, infFuncAtActRes)
+    else:
+        raise ValueError('Invalid or missing value of dm.surfFitMethod')
+
+    Vout = heightAtActRes/dm.VtoH
     Vout[np.isinf(Vout)] = 0
 
     return Vout
@@ -1152,9 +1164,9 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
         inf_fn = "influence_dm5v2.fits"
 
     if "inf_sign" in kwargs:
-        if(kwargs["inf_sign"] == '+'):
+        if kwargs["inf_sign"] == '+':
             sign_factor = 1.
-        elif(kwargs["inf_sign"] == '-'):
+        elif kwargs["inf_sign"] == '-':
             sign_factor = -1.
     else:
         sign_factor = 1.
@@ -1188,8 +1200,8 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
 
     dx_dm = spacing
 
-    dx_inf = dx_inf * dx_dm / dx_dm_inf   # Influence function sampling scaled
-                                          # to specified DM actuator spacing
+    # Influence function sampling scaled to specified DM actuator spacing
+    dx_inf = dx_inf * dx_dm / dx_dm_inf
 
     dm_z_commanded = dm_z
 
@@ -1214,31 +1226,37 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     xdim = int(np.round(np.sqrt(2) * nx_grid * dx_inf / dx_surf))  # grid dimensions (pix) projected onto wavefront
     ydim = int(np.round(np.sqrt(2) * ny_grid * dx_inf / dx_surf))
 
-    if xdim > n: xdim = n
+    if xdim > n:
+        xdim = n
 
-    if ydim > n: ydim = n
+    if ydim > n:
+        ydim = n
 
-    x = np.ones((ydim,1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
-    y = (np.ones((xdim,1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
+    x = np.ones((ydim, 1), dtype=int) * ((np.arange(xdim) - xdim // 2) * dx_surf)
+    y = (np.ones((xdim ,1), dtype=int) * ((np.arange(ydim) - ydim // 2) * dx_surf)).T
 
     a = xtilt * np.pi / 180
     b = ytilt * np.pi / 180
     g = ztilt * np.pi / 180
 
     if XYZ:
-        m = np.array([ 	[cos(b)*cos(g), -cos(b)*sin(g), sin(b), 0],
-            [cos(a)*sin(g) + sin(a)*sin(b)*cos(g), cos(a)*cos(g)-sin(a)*sin(b)*sin(g), -sin(a)*cos(b), 0],
-            [sin(a)*sin(g)-cos(a)*sin(b)*cos(g), sin(a)*cos(g)+cos(a)*sin(b)*sin(g), cos(a)*cos(b), 0],
-            [0, 0, 0, 1] ])
+        m = np.array(
+            [[cos(b)*cos(g), -cos(b)*sin(g), sin(b), 0],
+             [cos(a)*sin(g) + sin(a)*sin(b)*cos(g), cos(a)*cos(g)-sin(a)*sin(b)*sin(g), -sin(a)*cos(b), 0],
+             [sin(a)*sin(g)-cos(a)*sin(b)*cos(g), sin(a)*cos(g)+cos(a)*sin(b)*sin(g), cos(a)*cos(b), 0],
+             [0, 0, 0, 1],
+             ])
     else:
-        m = np.array([	[cos(b)*cos(g), cos(g)*sin(a)*sin(b)-cos(a)*sin(g), cos(a)*cos(g)*sin(b)+sin(a)*sin(g), 0],
-        [cos(b)*sin(g), cos(a)*cos(g)+sin(a)*sin(b)*sin(g), -cos(g)*sin(a)+cos(a)*sin(b)*sin(g), 0],
-        [-sin(b), cos(b)*sin(a), cos(a)*cos(b), 0],
-        [0, 0, 0, 1] ])
+        m = np.array(
+            [[cos(b)*cos(g), cos(g)*sin(a)*sin(b)-cos(a)*sin(g), cos(a)*cos(g)*sin(b)+sin(a)*sin(g), 0],
+             [cos(b)*sin(g), cos(a)*cos(g)+sin(a)*sin(b)*sin(g), -cos(g)*sin(a)+cos(a)*sin(b)*sin(g), 0],
+             [-sin(b), cos(b)*sin(a), cos(a)*cos(b), 0],
+             [0, 0, 0, 1],
+             ])
 
     # Compute xdm0 and ydm0 for use in de-rotating the DM surface
-    edge = np.array([[-1.0,-1.0,0.0,0.0], [1.0,-1.0,0.0,0.0], [1.0,1.0,0.0,0.0], [-1.0,1.0,0.0,0.0]])
-    new_xyz0 = edge #np.dot(edge, m)
+    edge = np.array([[-1.0, -1.0, 0.0, 0.0], [1.0, -1.0, 0.0, 0.0], [1.0, 1.0, 0.0, 0.0], [-1.0, 1.0, 0.0, 0.0]])
+    new_xyz0 = edge  # np.dot(edge, m)
 
     # determine backward projection for screen-raster-to-DM-surce computation
     dx_dxs0 = (new_xyz0[0, 0] - new_xyz0[1, 0]) / (edge[0, 0] - edge[1, 0])
@@ -1246,8 +1264,8 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     dy_dxs0 = (new_xyz0[0, 1] - new_xyz0[1, 1]) / (edge[0, 0] - edge[1, 0])
     dy_dys0 = (new_xyz0[1, 1] - new_xyz0[2, 1]) / (edge[1, 1] - edge[2, 1])
 
-    xs0 = (x/dx_dxs0 - y*dx_dys0/(dx_dxs0*dy_dys0) ) / ( 1 - dy_dxs0*dx_dys0/(dx_dxs0*dy_dys0))
-    ys0 = (y/dy_dys0 - x*dy_dxs0/(dx_dxs0*dy_dys0) ) / ( 1 - dx_dys0*dy_dxs0/(dx_dxs0*dy_dys0))
+    xs0 = (x/dx_dxs0 - y*dx_dys0/(dx_dxs0*dy_dys0)) / (1 - dy_dxs0*dx_dys0/(dx_dxs0*dy_dys0))
+    ys0 = (y/dy_dys0 - x*dy_dxs0/(dx_dxs0*dy_dys0)) / (1 - dx_dys0*dy_dxs0/(dx_dxs0*dy_dys0))
 
 #     xdm0 = (xs0 + dm_xc * dx_dm) / dx_inf + xoff_grid  # WRONG
 #     ydm0 = (ys0 + dm_yc * dx_dm) / dx_inf + yoff_grid  # WRONG
@@ -1299,7 +1317,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     N1 = Nact*multipleOfCommandGrid
     N2 = dm_grid.shape[0]
     xs1 = np.linspace(-(N1-1)/2, (N1-1)/2, N1)/N1  # interpixel centered
-    if(N2 % 2 == 0):
+    if N2 % 2 == 0:
         xs2 = np.linspace(-N2/2, (N2/2)-1, N2)/N2*(N2*dx/(Nact*spacing))
     else:
         xs2 = np.linspace(-(N2-1)/2, (N2-1)/2, N2)/N2*(N2*dx/(Nact*spacing))
@@ -1309,11 +1327,213 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
 #                                     xs1-yOffsetInAct/Nact)  # WRONG!!!
     gridDerotResize = interp_spline(xs1, xs1)
 
-
     xyOffset = int(np.floor(multipleOfCommandGrid/2.))
     gridDerotAtActRes = gridDerotResize[xyOffset::multipleOfCommandGrid,
-                                        xyOffset::multipleOfCommandGrid]                                        		
-                                   
-
+                                        xyOffset::multipleOfCommandGrid]                         		                            
 
     return gridDerotAtActRes
+
+
+def make_dm_prefilter_attribute(dm):
+    """
+    Make the prefilter for least-squares surface fitting if it doesn't exit yet.
+
+    Assumes the surface being fitted is dm.Nact x dm.Nact/
+
+    Parameters
+    ----------
+    dm : ModelParameters
+        Object containing parameter values for the DM
+
+    Returns
+    -------
+    None
+        The dm object is modified by reference.
+
+    """
+    if not hasattr(dm, 'act_prefilter'):
+        print('Building prefilter for surface fitting with the DM...', end='')
+        inf_func = dm.inf0
+        ppa_in = dm.ppact
+        nrow = dm.Nact
+        ncol = dm.Nact
+        dm.act_prefilter = build_prefilter(nrow, ncol, inf_func, ppa_in)
+        print('done.')
+
+    return None
+
+
+def fit_surf_with_dm_lsq_wrapper(dm, surfaceToFit):
+    """
+    Perform a least-squares fit of the surface with the DM.
+
+    This wrapper computes the stored prefilter if it doesn't exist yet,
+    or it uses the existing one if it does.
+
+    The prefilter must be Nact by Nact in this implementation.
+
+    Parameters
+    ----------
+    dm : ModelParameters
+        Structure containing parameter values for the DM
+
+    surfaceToFit : numpy ndarray
+        2-D array of the surface heights for the DM to fit
+
+    Returns
+    -------
+    nrow x ncol ndarray of DM poke heights, same units as input surface
+
+    """
+    check.twoD_array(surfaceToFit, 'surfaceToFit', TypeError)
+    [nrow, ncol] = surfaceToFit.shape
+    if nrow != dm.Nact or ncol != dm.Nact:
+        raise ValueError('The shape of surfaceToFit must by dm.Nact x dm.Nact.')
+
+    make_dm_prefilter_attribute(dm)
+
+    return fit_surf_with_dm_lsq(surfaceToFit, dm.act_prefilter)
+
+
+def fit_surf_with_dm_lsq(surf, act_effect):
+    """
+    Determine DM commands that best match a surface at actuator resolution.
+
+    Given a pre-computed mapping of the effect of each actuator at the location
+    of each other A, and a target surf shape b, solve Ax=b to find the DM
+    setting x which best reproduces the shape.
+
+    Parameters
+    ----------
+    surf : numpy ndarray
+        should be a nrow x ncol array of surface heights in meters
+
+    act_effect : CSR-type sparse matrix
+        should be of size nrow*ncol x nrow*ncol; the output of
+        build_prefilter() is a suitable input here
+
+    Returns
+    -------
+    nrow x ncol ndarray of DM poke heights, same units as input surface
+
+    """
+    # Check inputs
+    check.twoD_array(surf, 'surf', TypeError)
+    if not scipy.sparse.issparse(act_effect):
+        raise TypeError('act_effect must be a sparse matrix')
+    sr, sc = surf.shape
+    ar, ac = act_effect.shape
+    if not (ar, ac) == (sr*sc, sr*sc):
+        raise TypeError('surf and act_effect must be sized to the same DM')
+
+    # solve and re-square
+    x = scipy.sparse.linalg.spsolve(act_effect, surf.ravel())
+    return np.reshape(x, surf.shape)
+
+
+def build_prefilter(nrow, ncol, inf_func, ppa_in):
+    """
+    Build a prefilter.
+
+    The influence function of a DM actuator has a finite extent, and so we can
+    map the effect of each actuator on the others by brute force.  For an NxN
+    matrix, we can assemble an N^2xN^2 sparse matrix which has the effect of
+    poking each actuator on all others in the row.  (Same principle for
+    rectangular arrays.)
+
+    This approach is identical to the prefiltering step used when fitting to
+    higher-order B-splines for interpolation, although the exact shape of the
+    B-spline can be used to make that much faster than the step here.
+
+    Parameters
+    ----------
+    nrow : int
+        Number of rows along one edge of the DM
+
+    ncol : int
+        Number of columns along one edge of the DM
+
+    inf_func : numpy ndarray
+        2D array with nominal influence function
+
+    ppa_in : float
+        Pixels per actuator for inf_func, must be > 0
+
+
+    Returns
+    -------
+    CSR-type sparse matrix of size nrow*ncol x nrow*ncol
+
+    """
+    check.positive_scalar_integer(nrow, 'nrow', TypeError)
+    check.positive_scalar_integer(ncol, 'ncol', TypeError)
+    check.twoD_array(inf_func, 'inf_func', TypeError)
+    check.real_positive_scalar(ppa_in, 'ppa_in', TypeError)
+
+    # lil_matrix is a good sparse format for incremental build; switch to
+    # CSR for operations
+    act_effect = scipy.sparse.lil_matrix((nrow*ncol, nrow*ncol))
+
+    # Influence function resampled to actuator map resolution
+    ppa_out = 1.  # pixels per actuator; by def'n DM map is 1 pixel/actuator
+    inf_func_actres = resample_inf_func(inf_func, ppa_in, ppa_out)
+
+    single_poke = np.zeros((nrow, ncol))
+
+    for j in range(nrow*ncol):
+        single_poke.ravel()[j] = 1
+        dm_surface = convolve(single_poke, inf_func_actres, mode='constant',
+                              cval=0.0)
+        single_poke.ravel()[j] = 0  # prep for next
+        act_effect[j, :] = dm_surface.ravel()
+        pass
+
+    return act_effect.tocsr()  # Want CSR for fast matrix solve later
+
+
+def resample_inf_func(inf_func, ppa_in, ppa_out):
+    """
+    Resample an influence function at a new pixels-per-actuator sampling.
+
+    Uses spline interpolation to do the job.
+
+    Parameters
+    ----------
+    inf_func : numpy ndarray
+        2D array with nominal influence function
+
+    ppa_in : float
+        Pixels per actuator for inf_func, must be > 0
+
+    ppa_out : float
+        Target pixels per actuator in resampled influence function, must be > 0
+
+
+    Returns
+    -------
+    2D array with resampled influence function
+
+    """
+    check.twoD_array(inf_func, 'inf_func', TypeError)
+    check.real_positive_scalar(ppa_in, 'ppa_in', TypeError)
+    check.real_positive_scalar(ppa_out, 'ppa_out', TypeError)
+
+    if not ppa_in == ppa_out:
+        # Get coords for pixels centers along rows/cols
+        nr0, nc0 = inf_func.shape
+        r0 = np.linspace(-(nr0-1.)/2., (nr0-1.)/2., nr0)/ppa_in
+        c0 = np.linspace(-(nc0-1.)/2., (nc0-1.)/2., nc0)/ppa_in
+
+        # Make output coords, possibly undersized
+        # Make odd to have peak of 1
+        nr1 = int(2*np.floor(0.5*nr0*ppa_out/ppa_in)+1)
+        nc1 = int(2*np.floor(0.5*nc0*ppa_out/ppa_in)+1)
+
+        r1 = np.linspace(-(nr1-1)/2., (nr1-1)/2., nr1)/ppa_out
+        c1 = np.linspace(-(nc1-1)/2., (nc1-1)/2., nc1)/ppa_out
+        interp_spline = RectBivariateSpline(r0, c0, inf_func)
+        inf_func_actres = interp_spline(r1, c1)
+    else:
+        inf_func_actres = inf_func
+
+    return inf_func_actres

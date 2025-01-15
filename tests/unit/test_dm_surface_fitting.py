@@ -58,6 +58,14 @@ class TestSurface(unittest.TestCase):
         mp.dm1.dm_spacing = 400e-6  # User defined actuator pitch [meters]
         mp.dm1.inf_sign = '+'
 
+        # mp.dm1.surfFitMethod = 'lsq'  # 'proper' or 'lsq'
+        with fits.open(mp.dm1.inf_fn) as hdul:
+            PrimaryData = hdul[0].header
+            dx1 = PrimaryData['P2PDX_M']  # pixel width of influence function IN THE FILE [meters]
+            pitch1 = PrimaryData['C2CDX_M']  # actuator spacing x (m)
+            mp.dm1.ppact = pitch1/dx1  # pixel per actuator
+            mp.dm1.inf0 = np.squeeze(hdul[0].data)
+
         dx1 = None
         pitch1 = None
         mp.dm1.inf0 = None
@@ -69,7 +77,6 @@ class TestSurface(unittest.TestCase):
 
             mp.dm1.inf0 = np.squeeze(hdul[0].data)
         mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1)
-        print(mp.dm1.dx_inf0)
 
         if mp.dm1.inf_sign[0] in ['-', 'n', 'm']:
             mp.dm1.inf0 = -1*mp.dm1.inf0
@@ -84,10 +91,15 @@ class TestSurface(unittest.TestCase):
 
         mp.dm1.orientation = 'rot0'
         # Generate surfaces for all orientations
-        
+    
         self.surfFalcoDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
-        self.backprojFalcoDm = falco.dm.fit_surf_to_act(mp.dm1, self.surfFalcoDm)
-        
+
+        mp.dm1.surfFitMethod = 'proper'  # 'proper' or 'lsq'
+        self.backProjPROPER = falco.dm.fit_surf_to_act(mp.dm1, self.surfFalcoDm)
+
+        mp.dm1.surfFitMethod = 'lsq'  # 'proper' or 'lsq'
+        self.backProjLSQ = falco.dm.fit_surf_to_act(mp.dm1, self.surfFalcoDm)
+
         mp.dm1.useDifferentiableModel = True
         self.surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
         self.backprojDiffDm = mp.dm1.differentiableModel.render_backprop(self.surfDiffDm, wfe=False) / mp.dm1.VtoH
@@ -96,10 +108,30 @@ class TestSurface(unittest.TestCase):
 
     def testSameSurf(self):
         """Test that the surfaces generated two different ways are the same."""
-        self.assertTrue(np.all(np.isclose(self.surfFalcoDm, self.surfDiffDm, rtol=1e-2)))
+        self.assertTrue(np.allclose(self.surfFalcoDm, self.surfDiffDm, rtol=1e-2))
 
-    def testFittingFALCO(self):
-        """Test that the surface fitting with the original FALCO way is correct."""
+        if DEBUG:
+            plt.figure(1)
+            plt.imshow(self.surfFalcoDm)
+            plt.title('self.surfFalcoDm')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.figure(32)
+            plt.imshow(self.surfDiffDm)
+            plt.title('self.backprojDiffDm')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.figure(33)
+            plt.imshow(self.surfFalcoDm - self.surfDiffDm)
+            plt.title('self.surfFalcoDm - self.backprojDiffDm')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+
+    def testFittingWithPROPER(self):
+        """Test iterated surface fitting with FALCO+PROPER."""
         if DEBUG:
 
             plt.figure(11)
@@ -109,22 +141,22 @@ class TestSurface(unittest.TestCase):
             plt.gca().invert_yaxis()
 
             plt.figure(12)
-            plt.imshow(self.backprojFalcoDm)
-            plt.title('self.backprojFalcoDm')
+            plt.imshow(self.backProjPROPER)
+            plt.title('self.backProjPROPER')
             plt.colorbar()
             plt.gca().invert_yaxis()
 
             plt.figure(13)
-            plt.imshow(self.V0 - self.backprojFalcoDm)
-            plt.title('self.V0 - self.backprojFalcoDm')
+            plt.imshow(self.V0 - self.backProjPROPER)
+            plt.title('self.V0 - self.backProjPROPER')
             plt.colorbar()
             plt.gca().invert_yaxis()
 
             plt.show()
-        self.assertTrue(np.all(np.isclose(self.V0, self.backprojFalcoDm, atol=3e-2)))
+        self.assertTrue(np.allclose(self.V0, self.backProjPROPER, atol=3e-2))
 
-    def testFittingDifferentiableModel(self):
-        """Test that the surface fitting with the differentiable model is correct."""
+    def testFittingWithLeastSquares(self):
+        """Test the surface fitting with FALCO + a least-squares direct fit."""
         if DEBUG:
 
             plt.figure(21)
@@ -134,19 +166,44 @@ class TestSurface(unittest.TestCase):
             plt.gca().invert_yaxis()
 
             plt.figure(22)
+            plt.imshow(self.backProjLSQ)
+            plt.title('self.backProjLSQ')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.figure(23)
+            plt.imshow(self.V0 - self.backProjLSQ)
+            plt.title('self.V0 - self.backProjLSQ')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.show()
+        self.assertTrue(np.allclose(self.V0, self.backProjPROPER, atol=3e-2))
+
+    def testFittingDifferentiableModel(self):
+        """Test surface fitting with the differentiable model."""
+        if DEBUG:
+
+            plt.figure(31)
+            plt.imshow(self.V0)
+            plt.title('self.V0')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.figure(32)
             plt.imshow(self.backprojDiffDm)
             plt.title('self.backprojDiffDm')
             plt.colorbar()
             plt.gca().invert_yaxis()
 
-            plt.figure(23)
+            plt.figure(33)
             plt.imshow(self.V0 - self.backprojDiffDm)
             plt.title('self.V0 - self.backprojDiffDm')
             plt.colorbar()
             plt.gca().invert_yaxis()
 
             plt.show()
-        self.assertTrue(np.all(np.isclose(self.V0, self.backprojDiffDm, atol=1e-1)))
+        self.assertTrue(np.allclose(self.V0, self.backprojDiffDm, atol=1e-1))
 
 
 if __name__ == '__main__':
