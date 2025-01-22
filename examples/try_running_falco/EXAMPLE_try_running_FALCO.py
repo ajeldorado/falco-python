@@ -5,7 +5,7 @@ import falco
 
 # %% Load the config file (a script)
 
-mp = falco.config.ModelParameters.from_yaml(Path("config.yaml").read_text())
+mp = falco.config.ModelParameters.from_yaml_file("config.yaml")
 
 
 # %% Define directories for data output

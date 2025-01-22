@@ -1,4 +1,5 @@
 # import copy
+from pathlib import Path
 
 from numpy import inf
 
@@ -258,3 +259,12 @@ class ModelParameters(Object):
         result_obj = yaml.load(text, Loader=_get_loader())
         result.__init__(**result_obj.data)
         return result
+
+    @staticmethod
+    def from_yaml_file(path_string):
+        """
+        Reads the yaml file at the given path and passes it to `ModelParameters.from_yaml`.
+
+        See `ModelParameters.from_yaml` for info.
+        """
+        return ModelParameters.from_yaml(Path(path_string).read_text())
