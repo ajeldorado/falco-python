@@ -6,7 +6,7 @@ class Eval:
     """
     A lazily evaluated expression.
 
-    When evaluating, it exposes numpy and falco to the injected code under `np` and `falco`,
+    When evaluating, it exposes numpy, falco, and math to the injected code under `np`, `falco`, and `math`,
     and the model parameters object under `mp`.
     """
     mp: any
@@ -29,11 +29,12 @@ class Eval:
     def evaluate(self):
         """Runs the code."""
         if self.in_progress:
-            raise Exception("Circular parameter evaluation dependency detected.")
+            raise ValueError("Circular parameter evaluation dependency detected.")
 
         self.in_progress = True
 
         import falco
         import numpy
+        import math
 
-        return eval(self.code, {'np': numpy, 'falco': falco}, {'mp': self.mp})
+        return eval(self.code, {'np': numpy, 'falco': falco, 'math': math}, {'mp': self.mp})

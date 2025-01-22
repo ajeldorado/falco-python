@@ -237,7 +237,7 @@ class ModelParameters(Object):
         def _eval_constructor(loader: yaml.SafeLoader, node: yaml.nodes.ScalarNode):
             s = loader.construct_scalar(node)
             if not isinstance(s, str):
-                raise Exception(f"Cannot eval anything other than a string. Found type {type(s)}: {s}")
+                raise ValueError(f"Cannot eval anything other than a string. Found type {type(s)}: {s}")
             return Eval(result, loader.construct_yaml_str(node))
 
         def _object_constructor(noarg_constructor):

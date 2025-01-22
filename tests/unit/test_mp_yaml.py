@@ -42,7 +42,7 @@ def test_basic_eval():
     """)
 
     assert isinstance(result.data['expr'], falco.config.Eval)
-    assert result.data['expr'] is not 4
+    assert result.data['expr'] != 4
     assert result.expr == 4
 
     assert isinstance(result.data['not_expr'], str)
@@ -63,6 +63,15 @@ def test_falco_eval():
     """)
 
     assert result.val == falco.INFLUENCE_BMC_2K
+
+
+def test_math_module_eval():
+    result = parse("""
+        val: !eval math.sin(math.pi)
+    """)
+
+    import math
+    assert result.val == math.sin(math.pi)
 
 
 def test_dependency():
