@@ -29,7 +29,7 @@ class Eval:
     def evaluate(self):
         """Runs the code."""
         if self.in_progress:
-            raise "Circular parameter evaluation dependency detected."
+            raise Exception("Circular parameter evaluation dependency detected.")
 
         self.in_progress = True
 

@@ -10,12 +10,12 @@ flagPlot: false
 
 
 # %% General
-centering: 'pixel'
+centering: pixel
 
 # Method of computing core throughput:
 # - 'HMI' for energy within half-max isophote divided by energy at telescope pupil
 # - 'EE' for encircled energy within a radius (thput_radius) divided by energy at telescope pupil
-thput_metric: 'EE'
+thput_metric: EE
 thput_radius: 0.7  # photometric aperture radius [lambda_c/D]. Used ONLY for 'EE' method.
 thput_eval_x: 7  # x location [lambda_c/D] in dark hole at which to evaluate throughput
 thput_eval_y: 0  # y location [lambda_c/D] in dark hole at which to evaluate throughput
@@ -35,7 +35,7 @@ Nwpsbp: 1  # Number of wavelengths to used to approximate an image in each sub-b
 # Estimator Options:
 # - 'perfect' for exact numerical answer from full model
 # - 'pairwise' for pairwise probing with batch process estimation
-estimator: 'perfect'
+estimator: perfect
   
   # Pairwise probing:
 est:
@@ -45,7 +45,7 @@ est:
     radius: 12  # Max x/y extent of probed region [lambda/D].
     xOffset: 0  # offset of probe center in x [actuators]. Use to avoid central obscurations.
     yOffset: 0  # offset of probe center in y [actuators]. Use to avoid central obscurations.
-    axis: 'alternate'  # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
+    axis: alternate  # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
     gainFudge: 1  # empirical fudge factor to make average probe amplitude match desired value.
 
 # %% Wavefront Control: General
@@ -110,7 +110,7 @@ dm2:
   # - INFLUENCE_BMC_KILO uses the file 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
   inf_fn: !eval falco.INFLUENCE_BMC_2K
 
-  inf_sign: '+'
+  inf_sign: +
   dm_spacing: 400.e-6 #--User defined actuator pitch
 
   Nact: 32               # # of actuators across DM array
@@ -128,7 +128,7 @@ dm2:
 # Controller options: 
 #  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
 #  - 'plannedEFC' for EFC with an automated regularization schedule
-controller: 'gridsearchEFC'
+controller: gridsearchEFC
   
   # # GRID SEARCH EFC DEFAULTS
   # WFSC Iterations and Control Matrix Relinearization
@@ -173,8 +173,8 @@ d_dm1_dm2: 0.20  # distance between DM1 and DM2 [meters]
 
 # Key Optical Layout Choices
 flagSim: true  # Simulation or not
-layout: 'Fourier'  # Which optical layout to use
-coro: 'vortex'
+layout: Fourier  # Which optical layout to use
+coro: vortex
   
 Fend:
   # Final Focal Plane Properties
@@ -192,7 +192,7 @@ Fend:
     Rout: 10  # outer radius of dark hole scoring region [lambda0/D]
     ang: 180  # angular opening of dark hole scoring region [degrees]
 
-  sides: 'leftright'  # Which side(s) for correction: 'left', 'right', 'top', 'up', 'bottom', 'down', 'lr', 'rl', 'leftright', 'rightleft', 'tb', 'bt', 'ud', 'du', 'topbottom', 'bottomtop', 'updown', 'downup'
+  sides: leftright  # Which side(s) for correction: 'left', 'right', 'top', 'up', 'bottom', 'down', 'lr', 'rl', 'leftright', 'rightleft', 'tb', 'bt', 'ud', 'du', 'topbottom', 'bottomtop', 'updown', 'downup'
   
 # %% Optical Layout: Compact Model (and Jacobian Model)
   
@@ -286,7 +286,7 @@ compact: {}
 
 # %% Entrance Pupil (P1) Definition and Generation
 
-whichPupil: 'LUVOIR_B'  # Used only for run label
+whichPupil: LUVOIR_B  # Used only for run label
 
 
   # %% "Apodizer" (P3) Definition and Generation
