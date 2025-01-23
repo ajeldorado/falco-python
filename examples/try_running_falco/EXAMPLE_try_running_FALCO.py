@@ -1,15 +1,11 @@
 """Simple functional example used to verify that FALCO runs correctly."""
-from copy import deepcopy
 import os
-# import numpy as np
-
+from pathlib import Path
 import falco
-
-import EXAMPLE_config_try_running_FALCO as CONFIG
 
 # %% Load the config file (a script)
 
-mp = deepcopy(CONFIG.mp)
+mp = falco.config.ModelParameters.from_yaml_file("config.yaml")
 
 
 # %% Define directories for data output
