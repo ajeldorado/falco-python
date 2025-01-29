@@ -1,8 +1,10 @@
 """Estimation functions for WFSC."""
-
-import numpy as np
-import multiprocessing
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import matplotlib.pyplot as plt
+import multiprocessing
+import numpy as np
+
 import falco
 from . import check
 
@@ -89,13 +91,25 @@ def perfect(mp, ev):
                      for y in range(mp.Nwpsbp)]
         Nvals = mp.jac.Nmode*mp.Nwpsbp
 
-        pool = multiprocessing.Pool(processes=mp.Nthreads)
-        results = pool.starmap(
-            _est_perfect_Efield_with_Zernikes_in_parallel,
-            [(mp, ilist, inds_list) for ilist in range(Nvals)]
-        )
-        pool.close()
-        pool.join()
+        # def _est_perfect_wrapper(ii):
+        #     return _est_perfect_Efield_with_Zernikes_in_parallel(mp, ii, inds_list)
+
+        with PoolExecutor(max_workers=mp.Nthreads) as executor:
+            resultsRaw = executor.map(
+                # _est_perfect_wrapper,
+                # [ilist for ilist in range(Nvals)]
+                lambda p: _est_perfect_Efield_with_Zernikes_in_parallel(*p),
+                [(mp, ilist, inds_list) for ilist in range(Nvals)]
+            )
+        results = tuple(resultsRaw)
+
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # results = pool.starmap(
+        #     _est_perfect_Efield_with_Zernikes_in_parallel,
+        #     [(mp, ilist, inds_list) for ilist in range(Nvals)]
+        # )
+        # pool.close()
+        # pool.join()
 
         # # Convert from a list to arrays:
         # for ni in range(Nvals):

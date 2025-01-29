@@ -1,6 +1,8 @@
 """Compact and full diffractive optical models."""
 import copy
 
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import multiprocessing
 import numpy as np
 import scipy.ndimage as ndimage
@@ -1217,16 +1219,25 @@ def jacobian(mp):
         #             jacStruct.G2[:, :, im] = results_Jac[ii]
 
         print('Computing control Jacobian matrices in parallel...', end='')
-        pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
 
         with falco.util.TicToc():
             results_order = [(im, idm) for idm in mp.dm_ind for im in range(mp.jac.Nmode)]
-            results = pool.starmap(
-                _jac_middle_layer,
-                [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))])
-            results_Jac = results
-            pool.close()
-            pool.join()
+
+            # # OLD WAY: with multiprocessing.Pool.starmap()
+            # results = pool.starmap(
+            #     _jac_middle_layer,
+            #     [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))])
+            # results_Jac = results
+            # pool.close()
+            # pool.join()
+
+            with PoolExecutor(max_workers=mp.Nthreads) as executor:
+                result = executor.map(
+                    lambda p: _jac_middle_layer(*p),
+                    [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))]
+                )
+            results_Jac = tuple(result)
 
             # Reorder Jacobian by mode and DM from the list
             for ii in range(mp.jac.Nmode*mp.dm_ind.size):
@@ -1314,14 +1325,14 @@ def _jac_middle_layer(mp, im, idm):
             jacMode = jacobians.lyot(mp, im, idm)
         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
             jacMode = jacobians.vortex(mp, im, idm)
-            
+
     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
             jacMode = jacobians.lyot(mp, im, idm)
         else:
             raise ValueError('%s not recognized as value for mp.coro' %
                              mp.coro)
-            
+
     else:
         raise ValueError('mp.layout.lower not recognized')
 

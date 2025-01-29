@@ -1,7 +1,8 @@
 """Functions for generating images in FALCO."""
 import numpy as np
 import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import matplotlib.pyplot as plt
 
 import falco
@@ -167,13 +168,22 @@ def calc_psf_norm_factor(mp):
                          for y in range(mp.Nwpsbp)]
             Nvals = mp.Nsbp*mp.Nwpsbp
 
-            pool = multiprocessing.Pool(processes=mp.Nthreads)
-            resultsRaw = pool.starmap(_model_full_norm_wrapper,
-                                      [(mp, ilist, inds_list)
-                                       for ilist in range(Nvals)])
+            # pool = multiprocessing.Pool(processes=mp.Nthreads)
+            # resultsRaw = pool.starmap(
+            #     _model_full_norm_wrapper,
+            #     [(mp, ilist, inds_list) for ilist in range(Nvals)]
+            # )
+            # pool.close()
+            # pool.join()
+
+            with PoolExecutor(max_workers=mp.Nthreads) as executor:
+                result = executor.map(
+                    lambda p: _model_full_norm_wrapper(*p),
+                    [(mp, ilist, inds_list) for ilist in range(Nvals)]
+                )
+            resultsRaw = tuple(result)
+
             I00list = resultsRaw
-            pool.close()
-            pool.join()
 
             for ilist in range(Nvals):
                 si = inds_list[ilist][0]
@@ -275,20 +285,20 @@ def get_summed_image(mp):
 #         )
 #         result_image = tuple(result)
 
-#         with ProcessPoolExecutor(max_workers=mp.Nthreads) as executor:
-#             result = executor.map(
-#                 lambda p: _get_single_sim_full_image(*p),
-#                 # _get_single_sim_full_image,
-#                 [(mp, ilist, vals_list) for ilist in range(Nvals)]
-#             )
-#         result_image = tuple(result)
+        with PoolExecutor(max_workers=mp.Nthreads) as executor:
+            result = executor.map(
+                lambda p: _get_single_sim_full_image(*p),
+                # _get_single_sim_full_image,
+                [(mp, ilist, vals_list) for ilist in range(Nvals)]
+            )
+        result_image = tuple(result)
 
-#         pool = multiprocessing.get_context("spawn").Pool(processes=mp.Nthreads)
-        pool = multiprocessing.Pool(processes=mp.Nthreads)
-        result_image = pool.starmap(_get_single_sim_full_image,
-                                [(mp, ilist, vals_list) for ilist in range(Nvals)])
-        pool.close()
-        pool.join()
+        # # pool = multiprocessing.get_context("spawn").Pool(processes=mp.Nthreads)
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # result_image = pool.starmap(_get_single_sim_full_image,
+        #                         [(mp, ilist, vals_list) for ilist in range(Nvals)])
+        # pool.close()
+        # pool.join()
 
         # Apply the spectral weights and sum
         summedImage = 0
@@ -380,14 +390,20 @@ def get_sim_sbp_image(mp, si):
     Iall = np.zeros((Ncombos, mp.Fend.Neta, mp.Fend.Nxi))
     if mp.flagParallel:
 
-        pool = multiprocessing.Pool(processes=mp.Nthreads)
-        resultsRaw = pool.starmap(_get_subband_image_component,
-                                  [(mp, si, ilist, inds_list)
-                                   for ilist in range(Ncombos)])
-        results = resultsRaw
+        # pool = multiprocessing.Pool(processes=mp.Nthreads)
+        # resultsRaw = pool.starmap(_get_subband_image_component,
+        #                           [(mp, si, ilist, inds_list)
+        #                            for ilist in range(Ncombos)])
+        # results = resultsRaw
+        # pool.close()
+        # pool.join()
 
-        pool.close()
-        pool.join()
+        with PoolExecutor(max_workers=mp.Nthreads) as executor:
+            result = executor.map(
+                lambda p: _get_subband_image_component(*p),
+                [(mp, si, ilist, inds_list) for ilist in range(Ncombos)]
+            )
+        results = tuple(result)
 
         for ilist in range(Ncombos):
             Iall[ilist, :, :] = results[ilist]
