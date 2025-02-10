@@ -1,8 +1,8 @@
 """Functions for generating images in FALCO."""
 import numpy as np
 import multiprocessing
-from concurrent.futures import ThreadPoolExecutor as PoolExecutor
-# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
+# from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import matplotlib.pyplot as plt
 
 import falco
@@ -285,13 +285,26 @@ def get_summed_image(mp):
 #         )
 #         result_image = tuple(result)
 
+        # mp.vals_list = vals_list
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     result = executor.map(_get_single_sim_full_image_one_arg, range(Nvals))
+        # result_image = tuple(result)
+
+        # # Failing numerical test
+        mp.vals_list = vals_list
         with PoolExecutor(max_workers=mp.Nthreads) as executor:
             result = executor.map(
-                lambda p: _get_single_sim_full_image(*p),
-                # _get_single_sim_full_image,
-                [(mp, ilist, vals_list) for ilist in range(Nvals)]
+                _get_single_sim_full_image_one_arg,
+                [mp for mp.ilist in range(Nvals)]
             )
         result_image = tuple(result)
+
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     result = executor.map(
+        #         lambda p: _get_single_sim_full_image(*p),
+        #         [(mp, ilist, vals_list) for ilist in range(Nvals)]
+        #     )
+        # result_image = tuple(result)
 
         # # pool = multiprocessing.get_context("spawn").Pool(processes=mp.Nthreads)
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
@@ -309,6 +322,25 @@ def get_summed_image(mp):
                 len(mp.full.pol_conds) * result_image[ilist]
 
     return summedImage
+
+
+def _get_single_sim_full_image_one_arg(mp):
+    """Use only with get_summed_image."""
+    ilist = mp.ilist
+    vals_list = mp.vals_list
+    ilam = vals_list[ilist][0]
+    pol = vals_list[ilist][1]
+
+    modvar = falco.config.ModelVariables()  # Initialize the new structure
+    modvar.sbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam], 0]
+    modvar.wpsbpIndex = mp.full.indsLambdaMat[mp.full.indsLambdaUnique[ilam],
+                                              1]
+    mp.full.polaxis = pol  # mp.full.pol_conds[ipol]
+    modvar.whichSource = 'star'
+    modvar.starIndex = 0
+    Estar = falco.model.full(mp, modvar)
+
+    return np.abs(Estar)**2  # Apply spectral weighting outside this function
 
 
 def _get_single_sim_full_image(mp, ilist, vals_list):
@@ -397,6 +429,13 @@ def get_sim_sbp_image(mp, si):
         # results = resultsRaw
         # pool.close()
         # pool.join()
+
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     result = executor.map(
+        #         _get_single_sim_full_image_one_arg,
+        #         [mp for mp.ilist in range(Ncombos)],
+        #     )
+        # results = tuple(result)
 
         with PoolExecutor(max_workers=mp.Nthreads) as executor:
             result = executor.map(
