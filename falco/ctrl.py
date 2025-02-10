@@ -2,11 +2,11 @@
 import copy
 import time
 
-import numpy as np
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import multiprocessing
+import numpy as np
 import scipy.optimize
-# from astropy.io import fits
-# import matplotlib.pyplot as plt
 
 import falco
 
@@ -319,8 +319,11 @@ def _grid_search_efc(mp, cvar):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
     # Empirically find the regularization value giving the best contrast
+
+    # Run the controller in parallel only when mp.ctrl.flagUseModel is True because that makes
+    # single calls to the compact model. When it is False and in simulation, it calls
+    # falco.imaging.get_summed_image(), which has its own internal parallelization.
     if mp.flagParallel and mp.ctrl.flagUseModel:
-        # # Run the controller in parallel
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
         # results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
         # results_ctrl = [p.get() for p in results] # All the Jacobians in a list
@@ -335,7 +338,12 @@ def _grid_search_efc(mp, cvar):
         pool.close()
         pool.join()
 
-        # [(mp, ilist, vals_list) for ilist in range(Nvals)]
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     resultsRaw = executor.map(
+        #         lambda p: _efc(*p),
+        #         [(ni, vals_list, mp, cvar) for ni in range(Nvals)],
+        #     )
+        # results_ctrl = tuple(resultsRaw)
 
         # Convert from a list to arrays:
         for ni in range(Nvals):
@@ -378,6 +386,7 @@ def _grid_search_efc(mp, cvar):
 
     # Find the best scaling factor and regularization pair based on the
     # best contrast.
+    cvar.InormVec = InormVec
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
     cvar.Im = np.squeeze(ImCube[indBest, :, :])
