@@ -1,8 +1,12 @@
 """FALCO utilities."""
-import time
-import numpy as np
 import itertools
 import math
+import time
+
+import numpy as np
+from scipy import fft
+
+
 from . import check
 
 
@@ -22,6 +26,19 @@ class TicToc(object):
         if self.name:
             print('[%s]\t' % self.name, end='')
         print('Elapsed: %s' % (time.time() - self.tstart))
+
+
+def angular_spectrum_transfer_function(samples, wvl, dx, z):
+    "Compute the transfer function efficiently for angular spectrum propagation."
+
+    ky, kx = (fft.fftfreq(s, dx).astype(float) for s in samples)
+    kxx = kx * kx
+    kyy = ky * ky
+
+    prefix = -1j*np.pi*wvl*z
+    tfx = np.exp(prefix*kxx)
+    tfy = np.exp(prefix*kyy)
+    return np.outer(tfy, tfx)
 
 
 def cart2pol(x, y):
