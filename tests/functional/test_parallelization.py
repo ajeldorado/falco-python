@@ -51,27 +51,60 @@ def test_parallel_grid_search_efc_controller():
     cvar.NeleAll = mp.dm1.Nele + mp.dm2.Nele + mp.dm3.Nele + mp.dm4.Nele +\
         mp.dm5.Nele + mp.dm6.Nele + mp.dm7.Nele + mp.dm8.Nele + mp.dm9.Nele
 
+    # First with mp.ctrl.flagUseModel = False
+    mp.ctrl.flagUseModel = False
+    # cvar0 = copy(cvar)
+
     falco.ctrl.wrapper(mp, cvar, jacStruct)
     V1serial = copy(mp.dm1.V)
     V2serial = copy(mp.dm2.V)
+    InormVecSerial = copy(cvar.InormVec)
 
     mp.flagParallel = True
     mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
     mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
+    # cvar = copy(cvar0)
     falco.ctrl.wrapper(mp, cvar, jacStruct)
     V1parallel = copy(mp.dm1.V)
     V2parallel = copy(mp.dm2.V)
+    InormVecParallel = copy(cvar.InormVec)
 
     diff1 = V1serial - V1parallel
     diff2 = V2serial - V2parallel
 
-    assert np.max(np.abs(diff1)) < 10*np.finfo(float).eps
-    assert np.max(np.abs(diff2)) < 10*np.finfo(float).eps
+    atol = 10*np.finfo(float).eps
+    assert np.allclose(InormVecSerial, InormVecParallel, atol=atol)
+    assert np.allclose(V1serial, V1parallel, atol=atol)
+    assert np.allclose(V2serial, V2parallel, atol=atol)
 
 
-def test_parallel_planned_efc_controller():
-    pass
+    # Now with mp.ctrl.flagUseModel = True to test a different
+    # branching of the logic.
+    mp.ctrl.flagUseModel = True
+
+    mp.flagParallel = False
+    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+    falco.ctrl.wrapper(mp, cvar, jacStruct)
+    V1serial = copy(mp.dm1.V)
+    V2serial = copy(mp.dm2.V)
+    InormVecSerial = copy(cvar.InormVec)
+
+    mp.flagParallel = True
+    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+    falco.ctrl.wrapper(mp, cvar, jacStruct)
+    V1parallel = copy(mp.dm1.V)
+    V2parallel = copy(mp.dm2.V)
+    InormVecParallel = copy(cvar.InormVec)
+
+    diff1 = V1serial - V1parallel
+    diff2 = V2serial - V2parallel
+
+    assert np.allclose(InormVecSerial, InormVecParallel, atol=atol)
+    assert np.allclose(V1serial, V1parallel, atol=atol)
+    assert np.allclose(V2serial, V2parallel, atol=atol)
 
 
 def test_parallel_zern_sens():
@@ -129,7 +162,7 @@ def test_parallel_images():
     mp.flagParallel = False
     with falco.util.TicToc('Taking image in serial'):
         imageSerial = falco.imaging.get_summed_image(mp)
-
+    
     diff = imageSerial - imageParallel
 
     assert np.max(np.abs(diff)) < 10*np.finfo(float).eps

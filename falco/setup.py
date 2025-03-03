@@ -330,6 +330,8 @@ def set_optional_variables(mp):
         mp.dm1.biasMap = mp.dm1.Vmax/2*np.ones((mp.dm1.Nact, mp.dm1.Nact))  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm1.biasMap + mp.dm1.V
     if not hasattr(mp.dm1, 'facesheetFlatmap'):
         mp.dm1.facesheetFlatmap = mp.dm1.biasMap  # Voltage map that produces a flat DM1 surface. Used when enforcing the neighbor rule.
+    if not hasattr(mp.dm1, 'surfFitMethod'):
+        mp.dm1.surfFitMethod = 'lsq'  # Method of fitting the DM surface. Either least-squares in one shot with 'lsq' or an iterative fit with 'proper'.
 
     # DM2
     if not hasattr(mp.dm2, 'orientation'):
@@ -360,6 +362,8 @@ def set_optional_variables(mp):
         mp.dm2.biasMap = mp.dm2.Vmax/2*np.ones((mp.dm2.Nact, mp.dm2.Nact))  # Bias voltage. Needed prior to WFSC to allow + and - voltages. Total voltage is mp.dm2.biasMap + mp.dm2.V
     if not hasattr(mp.dm2, 'facesheetFlatmap'):
         mp.dm2.facesheetFlatmap = mp.dm2.biasMap  # Voltage map that produces a flat dm2 surface. Used when enforcing the neighbor rule.
+    if not hasattr(mp.dm2, 'surfFitMethod'):
+        mp.dm2.surfFitMethod = 'lsq'  # Method of fitting the DM surface. Either least-squares in one shot with 'lsq' or an iterative fit with 'proper'.
 
     # Loading previous DM commands as the starting point
     # Stash DM8 and DM9 starting commands if they are given in the main script
@@ -1179,7 +1183,7 @@ def falco_configure_dm1_and_dm2(mp):
             PrimaryData = hdul[0].header
             dx1 = PrimaryData['P2PDX_M']  # pixel width of influence function IN THE FILE [meters]
             pitch1 = PrimaryData['C2CDX_M']  # actuator spacing x (m)
-
+            mp.dm1.ppact = pitch1/dx1  # pixel per actuator
             mp.dm1.inf0 = np.squeeze(hdul[0].data)
         mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1)
 
@@ -1200,7 +1204,7 @@ def falco_configure_dm1_and_dm2(mp):
             PrimaryData = hdul[0].header
             dx2 = PrimaryData['P2PDX_M']  # pixel width of influence function IN THE FILE [meters]
             pitch2 = PrimaryData['C2CDX_M']  # actuator spacing x (m)
-
+            mp.dm2.ppact = pitch2/dx2  # pixel per actuator
             mp.dm2.inf0 = np.squeeze(hdul[0].data)
         mp.dm2.dx_inf0 = mp.dm2.dm_spacing*(dx2/pitch2)
 
@@ -1223,6 +1227,9 @@ def falco_configure_dm1_and_dm2(mp):
     else:
         falco.dm.gen_poke_cube(mp.dm1.compact, mp, mp.P2.compact.dx, NOCUBE=True)
 
+    if mp.dm1.surfFitMethod.lower() == 'lsq':
+        falco.dm.make_dm_prefilter_attribute(mp.dm1)
+
     # DM2
     mp.dm2.centering = mp.centering
     mp.dm2.compact = falco.config.Object()
@@ -1234,6 +1241,9 @@ def falco_configure_dm1_and_dm2(mp):
         falco.dm.gen_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx)
     else:
         falco.dm.gen_poke_cube(mp.dm2.compact, mp, mp.P2.compact.dx, NOCUBE=True)
+
+    if mp.dm2.surfFitMethod.lower() == 'lsq':
+        falco.dm.make_dm_prefilter_attribute(mp.dm2)
 
     # Initial DM voltages
     if not hasattr(mp.dm1, 'V'):

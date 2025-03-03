@@ -95,10 +95,11 @@ def ptp(E_in, full_width, wavelength, dz):
                                   Actual:  {}
              '''.format(N_critical, N))
 
-    fx = np.arange(-N // 2, N // 2) / full_width
-    rho = util.radial_grid(fx)  # Spatial frequency coordinate grid
+    # fx = np.arange(-N // 2, N // 2) / full_width
+    # rho = util.radial_grid(fx)  # Spatial frequency coordinate grid
+    # kernel = np.fft.fftshift(np.exp(-1j * np.pi * wavelength * dz * (rho ** 2)))
+    kernel = (util.angular_spectrum_transfer_function((M, N), wavelength, dx, dz))
 
-    kernel = np.fft.fftshift(np.exp(-1j * np.pi * wavelength * dz * (rho ** 2)))
     intermediate = np.fft.fftn(np.fft.fftshift(E_in))
 
     return np.fft.ifftshift(np.fft.ifftn(kernel * intermediate))
@@ -157,8 +158,11 @@ def mft_f2p(E_foc, fl, wavelength, dxi, deta, dx, N, centering='pixel'):
     y = x.T  # Column vector
 
     # Fourier transform matrices
-    pre = np.exp(-2 * np.pi * 1j * (y * eta) / (wavelength * fl))
-    post = np.exp(-2 * np.pi * 1j * (xi * x) / (wavelength * fl))
+    # pre = np.exp(-2 * np.pi * 1j * (y * eta) / (wavelength * fl))
+    # post = np.exp(-2 * np.pi * 1j * (xi * x) / (wavelength * fl))
+    coef = -2 * np.pi * 1j / (wavelength * fl)
+    pre = np.exp(coef * (y * eta))
+    post = np.exp(coef * (xi * x))
 
     # Constant scaling factor in front of Fourier transform
     scaling = np.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
@@ -224,8 +228,11 @@ def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
     eta = util.create_axis(Neta, deta, centering=centering)[:, None]  # Broadcast to column vector
 
     # Fourier transform matrices
-    pre = np.exp(-2 * np.pi * 1j * (eta * y) / (wavelength * fl))
-    post = np.exp(-2 * np.pi * 1j * (x * xi) / (wavelength * fl))
+    # pre = np.exp(-2 * np.pi * 1j * (eta * y) / (wavelength * fl))
+    # post = np.exp(-2 * np.pi * 1j * (x * xi) / (wavelength * fl))
+    coef = -2 * np.pi * 1j / (wavelength * fl)
+    pre = np.exp(coef * (eta * y))
+    post = np.exp(coef * (x * xi))
 
     # Constant scaling factor in front of Fourier transform
     scaling = np.sqrt(dx * dy * dxi * deta) / (1 * wavelength * fl)
