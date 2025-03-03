@@ -1,8 +1,8 @@
 """Functions for generating images in FALCO."""
 import numpy as np
 import multiprocessing
-# from concurrent.futures import ThreadPoolExecutor as PoolExecutor
-from concurrent.futures import ProcessPoolExecutor as PoolExecutor
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import matplotlib.pyplot as plt
 
 import falco
@@ -290,21 +290,21 @@ def get_summed_image(mp):
         #     result = executor.map(_get_single_sim_full_image_one_arg, range(Nvals))
         # result_image = tuple(result)
 
-        # # Failing numerical test
-        mp.vals_list = vals_list
-        with PoolExecutor(max_workers=mp.Nthreads) as executor:
-            result = executor.map(
-                _get_single_sim_full_image_one_arg,
-                [mp for mp.ilist in range(Nvals)]
-            )
-        result_image = tuple(result)
-
+        # # # Failing numerical test
+        # mp.vals_list = vals_list
         # with PoolExecutor(max_workers=mp.Nthreads) as executor:
         #     result = executor.map(
-        #         lambda p: _get_single_sim_full_image(*p),
-        #         [(mp, ilist, vals_list) for ilist in range(Nvals)]
+        #         _get_single_sim_full_image_one_arg,
+        #         [mp for mp.ilist in range(Nvals)]
         #     )
         # result_image = tuple(result)
+
+        with PoolExecutor(max_workers=mp.Nthreads) as executor:
+            result = executor.map(
+                lambda p: _get_single_sim_full_image(*p),
+                [(mp, ilist, vals_list) for ilist in range(Nvals)]
+            )
+        result_image = tuple(result)
 
         # # pool = multiprocessing.get_context("spawn").Pool(processes=mp.Nthreads)
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
