@@ -12,7 +12,7 @@ fonttools==4.55.0
 idna==3.10
 imagesize==1.4.1
 iniconfig==2.0.0
-Jinja2==3.1.5
+Jinja2==3.1.6
 kiwisolver==1.4.7
 MarkupSafe==3.0.2
 matplotlib==3.9.3
