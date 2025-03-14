@@ -1,12 +1,14 @@
 # import copy
+import math
 from pathlib import Path
 
+import numpy
 from numpy import inf
 
-from falco.config.Eval import Eval
+import falco
+from falco.config.yaml_loader import object_constructor, load_from_str
 from falco.util import _spec_arg
 from falco.config import Probe, ProbeSchedule, Object
-import yaml
 
 
 class ModelParameters(Object):
@@ -235,29 +237,17 @@ class ModelParameters(Object):
 
         result = ModelParameters()
 
-        def _eval_constructor(loader: yaml.SafeLoader, node: yaml.nodes.ScalarNode):
-            s = loader.construct_scalar(node)
-            if not isinstance(s, str):
-                raise ValueError(f"Cannot eval anything other than a string. Found type {type(s)}: {s}")
-            return Eval(result, loader.construct_yaml_str(node))
+        data = load_from_str(
+            text,
+            {'np': numpy, 'falco': falco, 'math': math},
+            {'mp': result},
+            {
+                "!Probe": object_constructor(Probe),
+                "!ProbeSchedule": object_constructor(ProbeSchedule)
+            }
+        )
 
-        def _object_constructor(noarg_constructor):
-            def _result(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode):
-                obj = noarg_constructor(**loader.construct_mapping(node))
-                return obj
-            return _result
-
-        def _get_loader():
-            """Add constructors to PyYAML loader."""
-            loader = yaml.SafeLoader
-            loader.add_constructor(u'tag:yaml.org,2002:map', _object_constructor(Object))
-            loader.add_constructor("!Probe", _object_constructor(Probe))
-            loader.add_constructor("!ProbeSchedule", _object_constructor(ProbeSchedule))
-            loader.add_constructor("!eval", _eval_constructor)
-            return loader
-
-        result_obj = yaml.load(text, Loader=_get_loader())
-        result.__init__(**result_obj.data)
+        result.__init__(**data)
         return result
 
     @staticmethod
