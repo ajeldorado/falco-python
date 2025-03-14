@@ -205,7 +205,7 @@ class ModelParameters(Object):
         super().__init__(**kwargs)
 
     @staticmethod
-    def from_yaml(text):
+    def from_yaml(text, context=None):
         """
         Construct a ModelParameters object from a yaml string.
 
@@ -232,15 +232,20 @@ class ModelParameters(Object):
           Circular dependencies between expressions will be detected and an error will be raised.
 
         :param text: a yaml string to deserialize
+        :param context addition local variables to expose to eval code
         :return: a `ModelParameters` instance
         """
 
         result = ModelParameters()
 
+        if context is None:
+            context = dict()
+        context['mp'] = result
+
         data = load_from_str(
             text,
             {'np': numpy, 'falco': falco, 'math': math},
-            {'mp': result},
+            context,
             {
                 "!Probe": object_constructor(Probe),
                 "!ProbeSchedule": object_constructor(ProbeSchedule)
@@ -251,10 +256,10 @@ class ModelParameters(Object):
         return result
 
     @staticmethod
-    def from_yaml_file(path_string):
+    def from_yaml_file(path_string, context=None):
         """
         Reads the yaml file at the given path and passes it to `ModelParameters.from_yaml`.
 
         See `ModelParameters.from_yaml` for info.
         """
-        return ModelParameters.from_yaml(Path(path_string).read_text())
+        return ModelParameters.from_yaml(Path(path_string).read_text(), context)
