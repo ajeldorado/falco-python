@@ -553,7 +553,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 
         EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)                                 
         EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
-        EP4LS_grad = EP4_grad * pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr)
+        EP4LS_grad = EP4_grad * np.conj(pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr))
 
 #        plt.figure(); plt.imshow(np.abs(EP4_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(EP4_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4.png', format='png')
@@ -566,9 +566,11 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 
         if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
 
-            # Undo the rotation inherent to falco.prop.mft_p2v2p.m
-            if not mp.flagRotation:
-                EP4LS_grad = falco.prop.relay(EP4LS_grad, -1, mp.centering)
+            # Undo the 1 rotation inherent to falco.prop.mft_p2v2p.m
+            # if not mp.flagRotation:
+            #     EP4LS_grad = falco.prop.relay(EP4LS_grad, -1, mp.centering)
+            EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # EP4LS_grad = falco.prop.relay(EP4LS_grad, 1, mp.centering)  # DEBUGGING
 
             # Get FPM charge
             if isinstance(mp.F3.VortexCharge, np.ndarray):
@@ -587,8 +589,9 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
             else:
                 raise TypeError("mp.F3.VortexCharge must be int, float or numpy ndarray.")
 
-            EP4LS_grad = pad_crop(EP4LS_grad, mp.P1.compact.Narr)
+            # EP4LS_grad = pad_crop(EP4LS_grad, 2*mp.P1.compact.Narr)
             EP3_grad = falco.prop.mft_p2v2p(EP4LS_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
+            # EP3_grad *= -1  # DEBUGGING
 
         elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
 
@@ -596,6 +599,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
             EF3_grad = falco.prop.mft_p2f(EP4LS_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
             EF3_grad = np.conj(mp.F3.compact.mask) * EF3_grad
             EP3_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
+            # EP3_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
             # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
 
     #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
@@ -680,16 +684,18 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         if smooth != 0:
             phase_DM1_bar = ndimage.gaussian_filter(phase_DM1_bar, sigma=(smooth, smooth), order=0)
 
-#        phase_DM1_bar_tot = phase_DM1_bar_tot+phase_DM1_bar
-#        phase_DM1_bar_tot = phase_DM1_bar_tot/mp.Nsbp
-#        phase_DM2_bar_tot = phase_DM2_bar_tot/mp.Nsbp
-#        dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar_tot
-#        dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar_tot
-        dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar
-        dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar
+# #        phase_DM1_bar_tot = phase_DM1_bar_tot+phase_DM1_bar
+# #        phase_DM1_bar_tot = phase_DM1_bar_tot/mp.Nsbp
+# #        phase_DM2_bar_tot = phase_DM2_bar_tot/mp.Nsbp
+# #        dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar_tot
+# #        dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar_tot
+#         dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar
+#         dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar
+        dmSurf2_bar = (4*np.pi/wvl)*phase_DM2_bar
+        dmSurf1_bar = (4*np.pi/wvl)*phase_DM1_bar
 
+        dmSurf2_bar_tot += mp.jac.weights[iMode] * dmSurf2_bar
         dmSurf1_bar_tot += mp.jac.weights[iMode] * dmSurf1_bar
-        dmSurf2_bar_tot += mp.jac.weights[iMode] * dmSurf2_bar     
         # dmSurf1_bar_tot = dmSurf1_bar_tot + dmSurf1_bar/mp.Nsbp
         # dmSurf2_bar_tot = dmSurf2_bar_tot + dmSurf2_bar/mp.Nsbp
 
@@ -706,15 +712,154 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         Vout1 = -mp.dm1.differentiableModel.render_backprop(dmSurf1_bar_tot, wfe=False)
     else:
         Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot)
+        Vout1 *= mp.dm1.VtoH  # Yes, this is applied twice
 
     if mp.dm2.useDifferentiableModel:
         Vout2 = -mp.dm2.differentiableModel.render_backprop(dmSurf2_bar_tot, wfe=False)
     else:
-        Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact, dmSurf2_bar_tot) 
+        Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact, dmSurf2_bar_tot)
+        Vout2 *= mp.dm2.VtoH  # Yes, this is applied twice
+
+    Vout1 *= mp.dm1.VtoH
+    Vout2 *= mp.dm2.VtoH
+
+    # VtoH1 = mp.dm1.VtoH
+    # VtoH1[mp.dm1.VtoH == 0] = np.inf
+
+    # VtoH2 = mp.dm2.VtoH
+    # VtoH2[mp.dm2.VtoH == 0] = np.inf
 
     # apply regularization
     Vout1 += 2 * utu_coefs * dv_dm1  # command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
     Vout2 += 2 * utu_coefs * dv_dm2  # command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+
+    # import matplotlib.pyplot as plt
+    # plt.figure(21)
+    # plt.clf()
+    # plt.imshow(Vout1)
+    # # plt.imshow(np.log10(np.abs(pupilPre)**2))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('DM1')
+    # plt.pause(0.1)
+
+    # plt.figure(22)
+    # plt.clf()
+    # plt.imshow(Vout2)
+    # # plt.imshow(np.log10(np.abs(pupilPost)**2))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('DM2')
+    # plt.pause(0.1)
+
+    # plt.figure(23)
+    # plt.clf()
+    # plt.imshow(np.log10(np.abs(Fend_masked)**2))
+    # # plt.imshow(np.log10(np.abs(pupilPost)**2))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('Fend_masked squared')
+    # plt.pause(0.1)
+
+    # plt.figure(31)
+    # plt.clf()
+    # plt.imshow(np.abs(Edm2_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.abs(Edm2_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(32)
+    # plt.clf()
+    # plt.imshow(np.angle(Edm2_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.angle(Edm2_grad)')
+    # plt.pause(0.1)
+
+
+    # plt.figure(33)
+    # plt.clf()
+    # plt.imshow(np.abs(Edm1_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.abs(Edm1_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(34)
+    # plt.clf()
+    # plt.imshow(np.angle(Edm1_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.angle(Edm1_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(24)
+    # plt.clf()
+    # plt.imshow(dmSurf1_bar_tot)
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('dmSurf1_bar_tot')
+    # plt.pause(0.1)
+
+    # plt.figure(25)
+    # plt.clf()
+    # plt.imshow(dmSurf2_bar_tot)
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('dmSurf2_bar_tot')
+    # plt.pause(0.1)
+
+    # # plt.figure(124)
+    # # plt.clf()
+    # # plt.imshow(dmSurf1_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('dmSurf1_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(125)
+    # # plt.clf()
+    # # plt.imshow(dmSurf2_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('dmSurf2_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(26)
+    # # plt.clf()
+    # # plt.imshow(phase_DM1_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('phase_DM1_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(126)
+    # # plt.clf()
+    # # plt.imshow(phase_DM2_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('phase_DM2_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(27)
+    # # plt.clf()
+    # # plt.imshow(np.abs(EP3_grad))
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('EP3_grad')
+    # # plt.pause(0.1)
+
+    # # plt.figure(28)
+    # # plt.clf()
+    # # plt.imshow(np.abs(EP4LS_grad))
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('EP4LS_grad')
+    # # plt.pause(0.1)
+
+    # plt.pause(0.2)
+    # plt.show()
 
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
                                Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),

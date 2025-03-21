@@ -33,6 +33,12 @@ mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / l
 mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1
 
+# # Use least-squares surface fitting instead of back-propagation model.
+# mp.dm1.useDifferentiableModel = False
+# mp.dm2.useDifferentiableModel = False
+# mp.dm1.surfFitMethod = 'lsq'
+# mp.dm2.surfFitMethod = 'lsq'
+
 
 # %% Set up the workspace
 
