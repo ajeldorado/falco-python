@@ -19,6 +19,8 @@ class ModelParameters(Object):
             self.NdmPad = _spec_arg("NdmPad", kwargs, 0)
             self.useDifferentiableModel = \
                 _spec_arg("useDifferentiableModel", kwargs, False)
+            self.surfFitMethod = _spec_arg('surfFitMethod', kwargs, 'lsq')
+            self.ppact = _spec_arg('ppact', kwargs, 1)
 
     class _BaseDm2(Object):
         def __init__(self, **kwargs):
@@ -27,6 +29,8 @@ class ModelParameters(Object):
             self.dx = _spec_arg("dx", kwargs, 0.048)
             self.NdmPad = _spec_arg("NdmPad", kwargs, 0)
             self.useDifferentiableModel = _spec_arg("useDifferentiableModel", kwargs, False)
+            self.surfFitMethod = _spec_arg('surfFitMethod', kwargs, 'lsq')
+            self.ppact = _spec_arg('ppact', kwargs, 1)
 
     class _BaseDm8(Object):
         pass
