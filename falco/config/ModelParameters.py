@@ -16,7 +16,7 @@ class ModelParameters(Object):
             super().__init__(**kwargs)
             self.Dstop = _spec_arg("Dstop", kwargs, 0.048)
             self.dx = _spec_arg("dx", kwargs, 0)
-            self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
+            self.NdmPad = _spec_arg("NdmPad", kwargs, 0)
             self.useDifferentiableModel = \
                 _spec_arg("useDifferentiableModel", kwargs, False)
 
@@ -24,10 +24,9 @@ class ModelParameters(Object):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.Dstop = _spec_arg("Dstop", kwargs, 0)
-            self.dx= _spec_arg("dx", kwargs, 0.048)
-            self.NdmPad= _spec_arg("NdmPad", kwargs, 0)
-            self.useDifferentiableModel = \
-                _spec_arg("useDifferentiableModel", kwargs, False)
+            self.dx = _spec_arg("dx", kwargs, 0.048)
+            self.NdmPad = _spec_arg("NdmPad", kwargs, 0)
+            self.useDifferentiableModel = _spec_arg("useDifferentiableModel", kwargs, False)
 
     class _BaseDm8(Object):
         pass
