@@ -170,12 +170,12 @@ def test_jacobian_vc_no_fpm():
     assert rmsNormErrorDM2 < 1e-3
 
 
-def test_jacobian_vc_mft():
-    """Vortex Jacobian test using MFTs during some key propagations."""
-    pass
+# def test_jacobian_vc_mft():
+#     """Vortex Jacobian test using MFTs during some key propagations."""
+#     pass
 
 
 if __name__ == '__main__':
     test_jacobian_vc_fft()
-    test_jacobian_vc_mft()
     test_jacobian_vc_no_fpm()
+    # test_jacobian_vc_mft()
