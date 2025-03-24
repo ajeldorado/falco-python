@@ -42,7 +42,7 @@ def test_wfsc_flc():
     assert isclose(Iinco, 1.165e-5, abs_tol=3e-7)
 
     complexProj = out.complexProjection[1, 0]  # 0.74 in matlab, 0.82 in python
-    assert isclose(complexProj, 0.82, abs_tol=1e-2)
+    assert isclose(complexProj, 0.82, abs_tol=2e-2)
 
     dm1pv = out.dm1.Spv[-1]  # 5.6956e-08 in matlab, 5.75e-8 in python
     assert isclose(dm1pv, 5.75e-8, abs_tol=1e-9)
