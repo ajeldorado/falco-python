@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 
 import falco
 
+DEBUG = False
+
 
 def test_diff_dm_model():
     """Verify the orientation of the DM surface from gen_surf_from_act()."""
@@ -87,43 +89,44 @@ def test_diff_dm_model():
     surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
     backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, wfe=False)
     
-    plt.figure()
-    plt.imshow(surfFalcoDm)
-    plt.colorbar()
-    plt.title('DM Surface FALCO')
+    if DEBUG:
+        plt.figure()
+        plt.imshow(surfFalcoDm)
+        plt.colorbar()
+        plt.title('DM Surface FALCO')
 
-    plt.figure()
-    plt.imshow(surfDiffDm)
-    plt.colorbar()
-    plt.title('DM Surface Diff Model')
-    
-    plt.figure()
-    plt.imshow(surfFalcoDm-surfDiffDm)
-    plt.colorbar()
-    plt.title('DM Surface Difference')
-    
-    
-    plt.figure()
-    plt.imshow(mp.dm1.V)
-    plt.colorbar()
-    plt.title('DM Voltages Truth')
-    
-    plt.figure()
-    plt.imshow(backprojFalcoDm)
-    plt.colorbar()
-    plt.title('DM Backproj Voltages FALCO')
+        plt.figure()
+        plt.imshow(surfDiffDm)
+        plt.colorbar()
+        plt.title('DM Surface Diff Model')
+        
+        plt.figure()
+        plt.imshow(surfFalcoDm-surfDiffDm)
+        plt.colorbar()
+        plt.title('DM Surface Difference')
+        
+        
+        plt.figure()
+        plt.imshow(mp.dm1.V)
+        plt.colorbar()
+        plt.title('DM Voltages Truth')
+        
+        plt.figure()
+        plt.imshow(backprojFalcoDm)
+        plt.colorbar()
+        plt.title('DM Backproj Voltages FALCO')
 
-    plt.figure()
-    plt.imshow(backprojDiffDm)
-    plt.colorbar()
-    plt.title('DM Backproj Voltages Model')
-    
-    plt.figure()
-    plt.imshow(backprojFalcoDm-backprojDiffDm)
-    plt.colorbar()
-    plt.title('Backproj Voltage Difference')
+        plt.figure()
+        plt.imshow(backprojDiffDm)
+        plt.colorbar()
+        plt.title('DM Backproj Voltages Model')
+        
+        plt.figure()
+        plt.imshow(backprojFalcoDm-backprojDiffDm)
+        plt.colorbar()
+        plt.title('Backproj Voltage Difference')
 
-    plt.show()
+        plt.show()
 
     abs_tol = 0.005*np.max(surfFalcoDm)
 
