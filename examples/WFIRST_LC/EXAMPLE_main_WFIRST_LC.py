@@ -1,11 +1,12 @@
 # import sys
-# sys.path.insert(0, "../")
+# sys.path.insert(0,"../")
 from copy import deepcopy
+import os
 # import numpy as np
 
 import falco
 
-import EXAMPLE_config_WFIRST_SPC_Spec_PhaseB_simple as CONFIG
+import EXAMPLE_config_WFIRST_LC as CONFIG
 
 # %% Load/run config script
 mp = deepcopy(CONFIG.mp)
@@ -17,22 +18,21 @@ mp.path = falco.config.Object()
 # mp.path.ws = './'  # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
 
 
-# %% Overwrite values from config file if desired
+# %% Overwrite default values as desired
 
-# ## Special Computational Settings
+# Special Computational Settings
 mp.flagPlot = True
-mp.flagParallel = False  # whether to use multiprocessing to parallelize some large computations
-mp.Nthreads = 4  # Number of threads to use when using multiprocessing.
+mp.flagParallel = False   # whether to use multiprocessing to parallelize some large computations
+mp.Nthreads = 4  # Number of threads to use when using multiprocessing. If undefined, it is set to the max number of cores
 
 # Record Keeping
 mp.TrialNum = 1
 mp.SeriesNum = 1
 
-# Use just 1 wavelength for initial testing of code
+# Use just 1 wavelength for initial debugging of code
 mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
-mp.Nwpsbp = 1  # Number of wavelengths to used to approximate an image in each sub-bandpass
-mp.estimator = 'perfect'
+mp.Nwpsbp = 1
 
 
 # %% Perform the Wavefront Sensing and Control
@@ -49,5 +49,5 @@ falco.wfsc.loop(mp, out)
 
 falco.plot.plot_trial_output(out)
 
-fnPickle = mp.runLabel + '_snippet.pkl'
+fnPickle = os.path.join(mp.path.brief, f'{mp.runLabel}_snippet.pkl')
 falco.plot.plot_trial_output_from_pickle(fnPickle)

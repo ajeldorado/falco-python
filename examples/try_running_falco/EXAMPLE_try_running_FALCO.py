@@ -1,14 +1,11 @@
 """Simple functional example used to verify that FALCO runs correctly."""
-from copy import deepcopy
-# import numpy as np
-
+import os
+from pathlib import Path
 import falco
-
-import EXAMPLE_config_try_running_FALCO as CONFIG
 
 # %% Load the config file (a script)
 
-mp = deepcopy(CONFIG.mp)
+mp = falco.config.ModelParameters.from_yaml_file("config.yaml")
 
 
 # %% Define directories for data output
@@ -53,5 +50,5 @@ falco.wfsc.loop(mp, out)
 
 falco.plot.plot_trial_output(out)
 
-fnPickle = mp.runLabel + '_snippet.pkl'
+fnPickle = os.path.join(mp.path.brief, f'{mp.runLabel}_snippet.pkl')
 falco.plot.plot_trial_output_from_pickle(fnPickle)
