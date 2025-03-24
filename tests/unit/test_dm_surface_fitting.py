@@ -2,12 +2,13 @@
 import unittest
 
 from astropy.io import fits
+import matplotlib.pyplot as plt
 import numpy as np
 
 import falco
 
-import matplotlib.pyplot as plt
-DEBUG = False
+DEBUG = True
+
 
 class TestSurface(unittest.TestCase):
     """Test functionality and accuracy of DM surface generation and fitting."""
@@ -102,7 +103,7 @@ class TestSurface(unittest.TestCase):
 
         mp.dm1.useDifferentiableModel = True
         self.surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
-        self.backprojDiffDm = mp.dm1.differentiableModel.render_backprop(self.surfDiffDm, wfe=False) / mp.dm1.VtoH
+        self.backprojDiffDm = mp.dm1.differentiableModel.render_backprop(self.surfDiffDm,  mp.dm1.VtoH, wfe=False)
 
         self.V0 = mp.dm1.V
 
@@ -117,13 +118,13 @@ class TestSurface(unittest.TestCase):
             plt.colorbar()
             plt.gca().invert_yaxis()
 
-            plt.figure(32)
+            plt.figure(2)
             plt.imshow(self.surfDiffDm)
             plt.title('self.backprojDiffDm')
             plt.colorbar()
             plt.gca().invert_yaxis()
 
-            plt.figure(33)
+            plt.figure(3)
             plt.imshow(self.surfFalcoDm - self.surfDiffDm)
             plt.title('self.surfFalcoDm - self.backprojDiffDm')
             plt.colorbar()
@@ -183,6 +184,24 @@ class TestSurface(unittest.TestCase):
     def testFittingDifferentiableModel(self):
         """Test surface fitting with the differentiable model."""
         if DEBUG:
+
+            plt.figure(1)
+            plt.imshow(self.surfFalcoDm)
+            plt.title('self.surfFalcoDm')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.figure(2)
+            plt.imshow(self.surfDiffDm)
+            plt.title('self.backprojDiffDm')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+
+            plt.figure(3)
+            plt.imshow(self.surfFalcoDm - self.surfDiffDm)
+            plt.title('self.surfFalcoDm - self.backprojDiffDm')
+            plt.colorbar()
+            plt.gca().invert_yaxis()
 
             plt.figure(31)
             plt.imshow(self.V0)

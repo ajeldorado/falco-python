@@ -27,7 +27,7 @@ def test_diff_dm_model():
     # DM1 parameters
     mp.dm1.centering = 'pixel'
     mp.dm1.Nact = Nact
-    mp.dm1.VtoH = 0.9*np.ones((mp.dm1.Nact, mp.dm1.Nact))
+    mp.dm1.VtoH = 1e-9*np.ones((mp.dm1.Nact, mp.dm1.Nact))
     #mp.dm1.xtilt = 10 # for foreshortening. angle of rotation about x-axis [degrees]
     mp.dm1.xtilt = 0
     #mp.dm1.ytilt = 15 # for foreshortening. angle of rotation about y-axis [degrees]
@@ -87,7 +87,7 @@ def test_diff_dm_model():
     
     mp.dm1.useDifferentiableModel = True
     surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
-    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, wfe=False)
+    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, mp.dm1.VtoH, wfe=False)
     
     if DEBUG:
         plt.figure()

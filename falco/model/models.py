@@ -709,19 +709,21 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # print('utu_coefs = %.4g' % utu_coefs)
 
     if mp.dm1.useDifferentiableModel:
-        Vout1 = -mp.dm1.differentiableModel.render_backprop(dmSurf1_bar_tot, wfe=False)
+        Vout1 = -mp.dm1.differentiableModel.render_backprop(
+            dmSurf1_bar_tot, mp.dm1.VtoH, wfe=False)
     else:
         Vout1 = -falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot)
-        Vout1 *= mp.dm1.VtoH  # Yes, this is applied twice
+        # Vout1 *= mp.dm1.VtoH  # Yes, this is applied twice
 
     if mp.dm2.useDifferentiableModel:
-        Vout2 = -mp.dm2.differentiableModel.render_backprop(dmSurf2_bar_tot, wfe=False)
+        Vout2 = -mp.dm2.differentiableModel.render_backprop(
+            dmSurf2_bar_tot, mp.dm2.VtoH, wfe=False)
     else:
         Vout2 = -falco.dm.fit_surf_to_act(mp.dm2.compact, dmSurf2_bar_tot)
-        Vout2 *= mp.dm2.VtoH  # Yes, this is applied twice
+        # Vout2 *= mp.dm2.VtoH  # Yes, this is applied twice
 
-    Vout1 *= mp.dm1.VtoH
-    Vout2 *= mp.dm2.VtoH
+    Vout1 *= mp.dm1.VtoH*mp.dm1.VtoH
+    Vout2 *= mp.dm2.VtoH*mp.dm2.VtoH
 
     # VtoH1 = mp.dm1.VtoH
     # VtoH1[mp.dm1.VtoH == 0] = np.inf
@@ -752,6 +754,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # plt.title('DM2')
     # plt.pause(0.1)
 
+    # plt.show()
+
     # plt.figure(23)
     # plt.clf()
     # plt.imshow(np.log10(np.abs(Fend_masked)**2))
@@ -776,7 +780,6 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # plt.colorbar()
     # plt.title('np.angle(Edm2_grad)')
     # plt.pause(0.1)
-
 
     # plt.figure(33)
     # plt.clf()
