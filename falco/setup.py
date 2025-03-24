@@ -332,6 +332,8 @@ def set_optional_variables(mp):
         mp.dm1.facesheetFlatmap = mp.dm1.biasMap  # Voltage map that produces a flat DM1 surface. Used when enforcing the neighbor rule.
     if not hasattr(mp.dm1, 'surfFitMethod'):
         mp.dm1.surfFitMethod = 'lsq'  # Method of fitting the DM surface. Either least-squares in one shot with 'lsq' or an iterative fit with 'proper'.
+    if not hasattr(mp.dm1, 'useDifferentiableModel'):
+        mp.dm1.useDifferentiableModel = False
 
     # DM2
     if not hasattr(mp.dm2, 'orientation'):
@@ -364,6 +366,8 @@ def set_optional_variables(mp):
         mp.dm2.facesheetFlatmap = mp.dm2.biasMap  # Voltage map that produces a flat dm2 surface. Used when enforcing the neighbor rule.
     if not hasattr(mp.dm2, 'surfFitMethod'):
         mp.dm2.surfFitMethod = 'lsq'  # Method of fitting the DM surface. Either least-squares in one shot with 'lsq' or an iterative fit with 'proper'.
+    if not hasattr(mp.dm2, 'useDifferentiableModel'):
+        mp.dm2.useDifferentiableModel = False
 
     # Loading previous DM commands as the starting point
     # Stash DM8 and DM9 starting commands if they are given in the main script
