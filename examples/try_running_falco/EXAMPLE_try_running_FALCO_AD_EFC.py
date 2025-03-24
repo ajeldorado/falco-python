@@ -1,11 +1,12 @@
 """Simple functional example used to verify that FALCO runs correctly."""
-from copy import deepcopy
+import os
+
 import numpy as np
 
 import falco
 
-
-mp = falco.config.ModelParameters.from_yaml_file("config.yaml")
+HERE = os.path.dirname(os.path.abspath(__file__))
+mp = falco.config.ModelParameters.from_yaml_file(os.path.join(HERE, 'config.yaml'))
 
 # %% Define directories for data output
 # # Location of config files and minimal output files.
