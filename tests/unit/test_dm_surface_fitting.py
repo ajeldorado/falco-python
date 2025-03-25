@@ -7,7 +7,7 @@ import numpy as np
 
 import falco
 
-DEBUG = True
+DEBUG = False
 
 
 class TestSurface(unittest.TestCase):

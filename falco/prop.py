@@ -318,11 +318,11 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal, reverseGradient=False
     if reverseGradient:
         FPM = np.conj(FPM)
 
-    # [X,Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float),np.arange(-NB/2., NB/2., dtype=float))
-    # [RHO,THETA] = util.cart2pol(Y,X)
+    # [X, Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float), np.arange(-NB/2., NB/2., dtype=float))
+    # [RHO, THETA] = util.cart2pol(Y, X)
     RHO = util.radial_grid(np.arange(-NB/2., NB/2., dtype=float))
 
-    windowKnee = 1.-inVal/outVal
+    windowKnee = 1.0 - inVal/outVal
 
     windowMask1 = gen_tukey_for_vortex(2*outVal*lambdaOverD, RHO, windowKnee)
     windowMask2 = gen_tukey_for_vortex(NB, RHO, windowKnee)
@@ -374,7 +374,7 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal, reverseGradient=False
         plt.title('Fine sampled DFT (windowed)')
         plt.pause(0.1)
 
-    pupilPost = -1*(LP1 + LP2)
+    pupilPost = LP1 + LP2
     if showPlots2debug:
         plt.figure()
         plt.imshow(np.abs(pupilPost))
