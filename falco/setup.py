@@ -85,7 +85,7 @@ def verify_key_values(mp):
         'roman_phasec_proper', 'wfirst_phaseb_proper'))
     mp.allowedEstimators = frozenset((
         'perfect', 'pairwise', 'pairwise-square', 'pwp-bp-square',
-        'pairwise-rect', 'pwp-bp', 'pwp-kf'))
+        'pairwise-rect', 'pwp-bp', 'pwp-kf', 'ekf_maintenance'))
     mp.allowedControllers = frozenset(('gridsearchefc', 'plannedefc', 'ad-efc'))
 
     # Check centering
