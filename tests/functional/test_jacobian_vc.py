@@ -1,11 +1,15 @@
 """Jacobian accuracy tests for the vortex coronagraph."""
 from copy import deepcopy
-import numpy as np
 import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 import falco
 
 import config_wfsc_vc as CONFIG
+
+DEBUG = False
 
 
 def test_jacobian_vc_fft():
@@ -27,15 +31,43 @@ def test_jacobian_vc_fft():
     G1fastAll = jacStruct.G1
     G2fastAll = jacStruct.G2
     Nind = 20
-    subinds = np.ix_(np.arange(3, 20*4, 4).astype(int))
+    subinds = np.ix_(np.arange(3, Nind*4, 4).astype(int))
     absG1sum = np.sum(np.abs(G1fastAll), axis=1)
     indG1 = np.nonzero(absG1sum > 1e-2*np.max(absG1sum))[0]
-    indG1subset = indG1[subinds]  # Take a 20-actuator subset
+    indG1subset = indG1[subinds]
     absG2sum = np.sum(np.abs(G2fastAll), axis=1)
     indG2 = np.nonzero(absG2sum > 1e-2*np.max(absG2sum))[0]
     indG2subset = indG2[subinds]  # Take a 20-actuator subset
     G1fast = np.squeeze(G1fastAll[:, indG1subset])
     G2fast = np.squeeze(G2fastAll[:, indG2subset])
+
+    if DEBUG:
+
+        print(G1fast.shape)
+
+        for ii in range(Nind):
+
+            print(ii)
+            
+            G1fastFirst = np.squeeze(G1fast[:, ii])
+            G1_2D = np.zeros(mp.Fend.corr.maskBool.shape, dtype=complex)
+            G1_2D[mp.Fend.corr.maskBool] = G1fastFirst
+
+            plt.figure(1)
+            plt.clf()
+            plt.imshow(np.abs(G1_2D))
+            plt.colorbar()
+            plt.title('np.abs(G1_2D)')
+            plt.pause(0.1)
+
+            plt.figure(2)
+            plt.clf()
+            plt.imshow(np.angle(G1_2D))
+            plt.colorbar()
+            plt.title('np.abs(G1_2D)')
+
+            plt.pause(0.5)
+            # plt.show()
 
     # Compute Jacobian via differencing (slower)
     modvar = falco.config.ModelVariables()
@@ -57,6 +89,33 @@ def test_jacobian_vc_fft():
         Epoked = Epoked2D[mp.Fend.corr.maskBool]
         G1slow[:, ii] = (Epoked - Eunpoked) / DeltaV
 
+        if DEBUG:
+
+            print(ii)
+            
+            G1fastFirst = np.squeeze(G1fast[:, ii])
+            G1_2D = np.zeros(mp.Fend.corr.maskBool.shape, dtype=complex)
+            G1_2D[mp.Fend.corr.maskBool] = G1fastFirst
+
+            plt.figure(11)
+            plt.clf()
+            plt.imshow(np.abs(G1_2D))
+            plt.colorbar()
+            plt.title('np.abs(G1_2D) Slow')
+            plt.pause(0.1)
+
+            plt.figure(12)
+            plt.clf()
+            plt.imshow(np.angle(G1_2D))
+            plt.colorbar()
+            plt.title('np.abs(G1_2D) Slow')
+
+            plt.pause(0.5)
+            plt.pause(5)
+            # plt.show()
+
+
+    for ii in range(Nind):
         # DM2
         mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
         mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
@@ -64,6 +123,51 @@ def test_jacobian_vc_fft():
         Epoked2D = falco.model.compact(mp, modvar)
         Epoked = Epoked2D[mp.Fend.corr.maskBool]
         G2slow[:, ii] = (Epoked - Eunpoked) / DeltaV
+
+    if DEBUG:
+        plt.figure(1)
+        plt.clf()
+        plt.plot(np.abs(G1fast))
+        # plt.colorbar()
+        plt.title('np.abs(G1fast)')
+        plt.pause(0.1)
+
+        plt.figure(2)
+        plt.clf()
+        plt.plot(np.angle(G1fast))
+        # plt.colorbar()
+        plt.title('np.angle(G1fast)')
+        plt.pause(0.1)
+
+        plt.figure(11)
+        plt.clf()
+        plt.plot(np.abs(G1slow))
+        # plt.colorbar()
+        plt.title('np.abs(G1slow)')
+        plt.pause(0.1)
+
+        plt.figure(12)
+        plt.clf()
+        plt.plot(np.angle(G1slow))
+        # plt.colorbar()
+        plt.title('np.angle(G1slow)')
+        plt.pause(0.1)
+
+        plt.figure(21)
+        plt.clf()
+        plt.plot(np.abs(G1slow - G1fast))
+        # plt.colorbar()
+        plt.title('np.abs(G1slow - G1fast)')
+        plt.pause(0.1)
+
+        plt.figure(31)
+        plt.clf()
+        plt.plot(np.abs(G1slow + G1fast))
+        # plt.colorbar()
+        plt.title('np.abs(G1slow + G1fast)')
+        plt.pause(0.1)
+
+        plt.show()
 
     # Tests
     rmsNormErrorDM1 = (np.sqrt(np.sum(np.abs(G1slow - G1fast)**2) /
@@ -170,12 +274,12 @@ def test_jacobian_vc_no_fpm():
     assert rmsNormErrorDM2 < 1e-3
 
 
-def test_jacobian_vc_mft():
-    """Vortex Jacobian test using MFTs during some key propagations."""
-    pass
+# def test_jacobian_vc_mft():
+#     """Vortex Jacobian test using MFTs during some key propagations."""
+#     pass
 
 
 if __name__ == '__main__':
     test_jacobian_vc_fft()
-    test_jacobian_vc_mft()
     test_jacobian_vc_no_fpm()
+    # test_jacobian_vc_mft()

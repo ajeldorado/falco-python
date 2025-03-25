@@ -992,15 +992,15 @@ def fit_surf_to_act(dm, surfaceToFit):
         wArray = nSurface*dm.dx
         cshift = -wArray/2./nSurface/dm.dm_spacing if(dm.centering == 'interpixel') else 0.
         if flagXYZ:
-            gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
-            dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt,
-            YTILT=dm.ytilt, ZTILT=dm.zrot, XYZ=True, inf_sign=dm.inf_sign,
-            inf_fn=dm.inf_fn)
+            gridDerotAtActRes = derotate_resize_surface(
+                surfaceToFit, dm.dx, dm.Nact, dm.xc-cshift, dm.yc-cshift,
+                dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
+                XYZ=True, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
         else:
-            gridDerotAtActRes = derotate_resize_surface(surfaceToFit, dm.dx,
-            dm.Nact, dm.xc-cshift, dm.yc-cshift, dm.dm_spacing, XTILT=dm.xtilt,
-            YTILT=dm.ytilt, ZTILT=dm.zrot, ZYX=True, inf_sign=dm.inf_sign,
-            inf_fn=dm.inf_fn)
+            gridDerotAtActRes = derotate_resize_surface(
+                surfaceToFit, dm.dx, dm.Nact, dm.xc-cshift, dm.yc-cshift,
+                dm.dm_spacing, XTILT=dm.xtilt, YTILT=dm.ytilt, ZTILT=dm.zrot,
+                ZYX=True, inf_sign=dm.inf_sign, inf_fn=dm.inf_fn)
 
     elif nSurface < dm.Nact:
         raise ValueError('surfaceToFit cannot be smaller than [Nact x Nact].')

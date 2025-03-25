@@ -92,7 +92,7 @@ mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  # [2-D ndarray]
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.Object()
-mp.ctrl.log10regVec = np.array([-5, ])
+mp.ctrl.log10regVec = np.array([-6, ])
 # mp.ctrl.log10regVec = np.arange(-6, -1.5, 0.5) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
@@ -121,7 +121,7 @@ mp.ctrl.ad.maxfun = 1000000
 
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
-mp.Nitr = 5; #--Number of estimation+control iterations to perform
+mp.Nitr = 10; #5; #--Number of estimation+control iterations to perform
 mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 

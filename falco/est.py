@@ -444,11 +444,11 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
                 # Select which DM to use for probing. Allocate probe to that DM
                 if whichDM == 1:
-                    dDM1Vprobe = probeCmd/mp.dm1.VtoH  # Now in volts
+                    dDM1Vprobe = probeCmd  # Now in volts
                     dDM2Vprobe = 0
                 elif whichDM == 2:
                     dDM1Vprobe = 0
-                    dDM2Vprobe = probeCmd/mp.dm2.VtoH  # Now in volts
+                    dDM2Vprobe = probeCmd  # Now in volts
                 else:
                     raise ValueError('DM for probing must be 1 or 2.')
 
@@ -584,8 +584,11 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             # Batch process the measurements to estimate the electric field in the
             # dark hole. Done pixel by pixel.
 
-            if (mp.estimator in ('pairwise', 'pairwise-square','pairwise-rect', 'pwp-bp', 'pwp-bp-square')) or \
-                (mp.estimator == 'pwp-kf' and ev.Itr < mp.est.ItrStartKF):
+            if (mp.estimator in
+                ('pairwise', 'pairwise-square', 'pairwise-rect',
+                 'pwp-bp', 'pwp-bp-square')
+                ) or \
+                    (mp.estimator == 'pwp-kf' and ev.Itr < mp.est.ItrStartKF):
 
                 Eest = np.zeros((mp.Fend.corr.Npix,), dtype=complex)
                 zerosCounter = 0  # number of zeroed-out dark hole pixels
@@ -656,9 +659,24 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     if mp.flagPlot:
         Eest2D = np.zeros((mp.Fend.Neta, mp.Fend.Nxi), dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = Eest
-        # figure(701); imagesc(real(Eest2D)); title('real(Eest)', 'Fontsize', 18); set(gca, 'Fontsize', 18); axis xy equal tight; colorbar;
-        # figure(702); imagesc(imag(Eest2D)); title('imag(Eest)', 'Fontsize', 18); set(gca, 'Fontsize', 18); axis xy equal tight; colorbar;
-        # figure(703); imagesc(log10(abs(Eest2D).^2)); title('abs(Eest)^2', 'Fontsize', 18); set(gca, 'Fontsize', 18); axis xy equal tight; colorbar;
+
+        # plt.figure(701)
+        # plt.imshow(np.real(Eest2D))
+        # plt.title('real(Eest)', 'Fontsize', 18)
+        # plt.colorbar()
+        # plt.gca().invert_yaxis()
+
+        # plt.figure(702)
+        # plt.imshow(np.imag(Eest2D))
+        # plt.title('imag(Eest)', 'Fontsize', 18)
+        # plt.colorbar()
+        # plt.gca().invert_yaxis()
+
+        # plt.figure(703)
+        # plt.imshow(np.log10(np.abs(Eest2D)**2))
+        # plt.title('abs(Eest)**2', 'Fontsize', 18)
+        # plt.colorbar()
+        # plt.gca().invert_yaxis()
 
     # Reset nominal values that were changed
     if np.any(mp.dm_ind == 1):
@@ -720,7 +738,6 @@ def gen_pairwise_probe_square(mp, InormDes, psi, badAxis, rotation):
         rotRad = np.radians(rotation)
         XS = RS*np.cos(THETAS-rotRad)
         YS = RS*np.sin(THETAS-rotRad)
-        
 
     # Restrict the probing region if it is not possible to achieve
     if mp.est.probe.radius > Nact/2.0:
@@ -826,7 +843,8 @@ def gen_pairwise_probe(mp, InormDes, phaseShift, starIndex, rotation):
 
     # Generate the DM command for the probe
     surfMax = 4*np.pi*mp.lambda0*np.sqrt(InormDes)  # [meters]
-    probeHeight = surfMax * np.sinc(width*XS) * np.sinc(height*YS) * np.cos(2*np.pi*(xiOffset*XS + etaOffset*YS) + phaseShift)
+    probeHeight = surfMax * np.sinc(width*XS) * np.sinc(height*YS) * \
+        np.cos(2*np.pi*(xiOffset*XS + etaOffset*YS) + phaseShift)
     probeCmd = falco.dm.fit_surf_to_act(dm, probeHeight)
     probeCmd = mp.est.probe.gainFudge[starIndex] * probeCmd  # Scale the probe amplitude empirically if needed
 

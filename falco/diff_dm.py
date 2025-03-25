@@ -52,7 +52,7 @@ from astropy.io import fits
 # SOFTWARE.
 
 def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs):
-    
+
     if "ZYX" in kwargs and "XYZ" in kwargs:
         raise ValueError('PROP_DM: Error: Cannot specify both XYZ and ZYX ' +
                          'rotation orders. Stopping')
@@ -80,7 +80,7 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     else:
         ztilt = 0.
 
-    if type(dm_z0) == str:
+    if isinstance(dm_z0, str):
         dm_z = proper.prop_fits_read(dm_z0)  # Read DM setting from FITS file
     else:
         dm_z = dm_z0
@@ -138,8 +138,7 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
 
     dx_inf = dx_inf * dx_dm / dx_dm_inf  # Influence function sampling scaled
                                          # to specified DM actuator spacing
-    
-    
+
     #else:
     dm_z_commanded = dm_z
     s = dm_z.shape
@@ -150,32 +149,34 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
     margin = 9 * inf_mag
     nx_grid = nx_dm * inf_mag + 2 * margin
     ny_grid = ny_dm * inf_mag + 2 * margin
-    
-    surf_mag =  dx_inf / dx_surf
- 
+
+    surf_mag = dx_inf / dx_surf
+
     #scale and recenter to calculate the new coordinates
     #xnew = (np.arange(xdim) - xdim//2) * dx_inf/dx_surf + nx_inf//2
     #ynew = (np.arange(ydim) - ydim//2) * dx_inf/dx_surf + ny_inf//2
     #[Xnew,Ynew] = np.meshgrid(xnew,ynew)
     #intrpolate tine infuence function to the new coordinates
     #inf_scaled = ndimage.map_coordinates(inf, (Ynew[:], Xnew[:]))
-    
+
     shiftx = -1*int((dm.xc - dm.Nact//2 + 0.5) * inf_mag)
     shifty = -1*int((dm.yc - dm.Nact//2 + 0.5) * inf_mag)
-    
+
     inf_pad = util.pad_crop(inf, int(nx_grid))
-    
+
     if XYZ:
         rot_order = 'xyz'
     else:
         rot_order = 'zyx'
-        
-    dmModel = DM(inf_pad,NoutDefault=Narray,Nact=dm.Nact,sep=inf_mag,upsample=surf_mag,\
-                 shift=(shiftx,shifty),rot=(-1*ztilt,ytilt,xtilt),rot_order=rot_order);
+
+    dmModel = DM(
+        inf_pad, NoutDefault=Narray, Nact=dm.Nact, sep=inf_mag,
+        upsample=surf_mag, shift=(shiftx, shifty),
+        rot=(-1*ztilt, ytilt, xtilt), rot_order=rot_order)
     dmModel.update(dm_z_commanded)
-    
+
     return dmModel
-    
+
 def make_rotation_matrix(angles_zyx, use_zyx_order=True,radians=False):
     """Build a rotation matrix.
 
@@ -429,17 +430,17 @@ def fourier_resample(f, zoom):
     m, n = f.shape
     M = int(np.round(m*zoom[0]))
     N = int(np.round(n*zoom[1]))
-    
+
     # commented out below, an alternative that does not use the fft2 norm keyword argument
     # doing it this way is mildly preferrable;
     F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f), norm='ortho'))
     # F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f)))
-    
+
     Mx, My = setup_mft_matricies_scalars((M, N), F.shape, 1, 1)
     fprime = imft2_core(F, Mx, My).real
     fprime *= np.sqrt((zoom[0]*zoom[1]))
     # fprime *= np.sqrt((zoom[0]*zoom[1]))/(np.sqrt(f.size))
-    
+
     return fprime
 
 
@@ -603,7 +604,7 @@ class DM:
                 use_zyx_order = False
             else:
                 raise ValueError("rot_order must be \'zyx\' or \'xyz\'")
-            
+
             fwd, rev = prepare_fwd_reverse_projection_coordinates(s, rot, use_zyx_order)
             self.projx, self.projy = fwd
             self.invprojx, self.invprojy = rev
@@ -660,10 +661,10 @@ class DM:
         """
         if Nout is None:
             Nout = self.NoutDefault
-        
+
         if isinstance(Nout, int):
             Nout = (Nout, Nout)
-        
+
         # self.dx is unused inside apply tf, but :shrug:
         sfe = apply_precomputed_transfer_function(self.poke_arr, self.tf)
         if self.needs_rot:
@@ -681,7 +682,7 @@ class DM:
         warped = util.pad_crop(warped, Nout)
         return warped
 
-    def render_backprop(self, protograd, wfe=True):
+    def render_backprop(self, protograd, gain_map, wfe=True):
         """Gradient backpropagation for render().
 
         Parameters
@@ -703,6 +704,8 @@ class DM:
 
             and you would call
             dm.render_backprop(diff)
+        gain_map : numpy.ndarray
+            nact x nact map of actuator gains in units of meters/Volt.
         wfe : bool, optional
             if True, the return is scaled as for a wavefront error instead
             of surface figure error
@@ -732,4 +735,4 @@ class DM:
 
         # return protograd
         in_actuator_space = apply_precomputed_transfer_function(protograd, np.conj(self.tf))
-        return in_actuator_space[self.iyy, self.ixx]
+        return in_actuator_space[self.iyy, self.ixx] / gain_map

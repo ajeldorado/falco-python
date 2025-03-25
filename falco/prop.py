@@ -1,8 +1,11 @@
-import numpy as np
 import logging
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.signal.windows import tukey
+
 from falco import util, check
 from falco.mask import falco_gen_vortex_mask
-from scipy.signal.windows import tukey
 
 log = logging.getLogger(__name__)
 
@@ -240,6 +243,16 @@ def mft_p2f(E_pup, fl, wavelength, dx, dxi, Nxi, deta, Neta, centering='pixel'):
     return scaling * np.linalg.multi_dot([pre, E_pup, post])
 
 
+def fft2d(arrayIn):
+    check.twoD_array(arrayIn, 'arrayIn', TypeError)
+    return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(arrayIn), norm='ortho'))
+
+
+def ifft2d(arrayIn):
+    check.twoD_array(arrayIn, 'arrayIn', TypeError)
+    return np.fft.ifftshift(np.fft.ifft2(np.fft.fftshift(arrayIn), norm='ortho'))
+
+
 def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal, reverseGradient=False):
     """
     Propagate from the pupil plane before a vortex FPM to pupil plane after it.
@@ -262,7 +275,6 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal, reverseGradient=False
         Whether the propagation is for a reverse gradient model or not.
         If True, the FPM and propagation matrices are conjugated. Default
         is False.
-    
 
     Returns
     -------
@@ -276,56 +288,100 @@ def mft_p2v2p(pupilPre, charge, beamRadius, inVal, outVal, reverseGradient=False
     check.real_positive_scalar(inVal, 'inVal', TypeError)
     check.real_positive_scalar(outVal, 'outVal', TypeError)
 
-    # showPlots2debug = False
-
     D = 2.0*beamRadius
-    lambdaOverD = 4. # samples per lambda/D
+    lambdaOverD = 4.  # samples per lambda/D #TODO: Don't hard-code this value.
     if reverseGradient:
-        rg_fac = -1
+        rg_fac = -1.0
     else:
         rg_fac = 1.0
 
-    NA = pupilPre.shape[1]
     NB = util.ceil_even(lambdaOverD*D)
 
-    # [X,Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float),np.arange(-NB/2., NB/2., dtype=float))
-    # [RHO,THETA] = util.cart2pol(Y,X)
+    FPM = falco_gen_vortex_mask(charge, NB)
+
+    # if reverseGradient:
+    #     pupilPre = util.pad_crop(pupilPre, NB)
+    NA = pupilPre.shape[1]
+
+    # # DEBUGGING: Use FFTs only for propagation
+    # if reverseGradient:
+    #     pupilPost = ifft2d(np.conj(FPM)*ifft2d(pupilPre))
+    # else:
+    #     pupilPost = fft2d(FPM*fft2d(pupilPre))
+    # return pupilPost
+
+    if reverseGradient:
+        showPlots2debug = False
+    else:
+        showPlots2debug = False
+
+    if reverseGradient:
+        FPM = np.conj(FPM)
+
+    # [X, Y] = np.meshgrid(np.arange(-NB/2., NB/2., dtype=float), np.arange(-NB/2., NB/2., dtype=float))
+    # [RHO, THETA] = util.cart2pol(Y, X)
     RHO = util.radial_grid(np.arange(-NB/2., NB/2., dtype=float))
 
-    windowKnee = 1.-inVal/outVal
+    windowKnee = 1.0 - inVal/outVal
 
     windowMask1 = gen_tukey_for_vortex(2*outVal*lambdaOverD, RHO, windowKnee)
     windowMask2 = gen_tukey_for_vortex(NB, RHO, windowKnee)
 
     # DFT vectors
-    x = np.arange(-NA/2,NA/2,dtype=float)/D   #(-NA/2:NA/2-1)/D
-    u1 = np.arange(-NB/2,NB/2,dtype=float)/lambdaOverD #(-NB/2:NB/2-1)/lambdaOverD
-    u2 = np.arange(-NB/2,NB/2,dtype=float)*2*outVal/NB # (-NB/2:NB/2-1)*2*outVal/N
+    x = np.arange(-NA/2, NA/2, dtype=float)/D  # (-NA/2:NA/2-1)/D
+    u1 = np.arange(-NB/2, NB/2, dtype=float)/lambdaOverD  # (-NB/2:NB/2-1)/lambdaOverD
+    u2 = np.arange(-NB/2, NB/2, dtype=float)*2*outVal/NB  # (-NB/2:NB/2-1)*2*outVal/N
 
-    FPM = falco_gen_vortex_mask(charge, NB)
-    if reverseGradient:
-        FPM = np.conj(reverseGradient)
+    # if showPlots2debug; figure;imshow(abs(pupilPre));axis image;colorbar; title('pupil'); end;
 
-    #if showPlots2debug; figure;imagesc(abs(pupilPre));axis image;colorbar; title('pupil'); end;
-
-    ## Low-sampled DFT of entire region
-
+    # Low-sampled DFT of entire region
     FP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*rg_fac*2*np.pi*np.outer(u1, x)) @ pupilPre @ np.exp(-1j*rg_fac*2*np.pi*np.outer(x, u1))
-    #if showPlots2debug; figure;imagesc(log10(abs(FP1).^2));axis image;colorbar; title('Large scale DFT'); end;
+    # if showPlots2debug; figure;imshow(log10(abs(FP1).^2));axis image;colorbar; title('Large scale DFT'); end;
+    if showPlots2debug:
+        plt.figure()
+        plt.imshow(np.log10(np.abs(FP1)**2))
+        plt.gca().invert_yaxis()
+        plt.colorbar()
+        plt.title('Large scale DFT')
+        plt.pause(0.1)
 
     LP1 = 1/(1*D*lambdaOverD)*np.exp(-1j*rg_fac*2*np.pi*np.outer(x, u1)) @ (FP1*FPM*(1-windowMask1)) @ np.exp(-1j*rg_fac*2*np.pi*np.outer(u1, x))
-    #if showPlots2debug; figure;imagesc(abs(FP1.*(1-windowMask1)));axis image;colorbar; title('Large scale DFT (windowed)'); end;
-    
-    ## Fine sampled DFT of inner region
+    # if showPlots2debug; figure;imshow(abs(FP1.*(1-windowMask1)));axis image;colorbar; title('Large scale DFT (windowed)'); end;
+    if showPlots2debug:
+        plt.figure()
+        plt.imshow(np.log10(np.abs(FP1*(1-windowMask1))**2))
+        plt.gca().invert_yaxis()
+        plt.colorbar()
+        plt.title('Large scale DFT')
+        plt.pause(0.1)
+
+    # Fine sampled DFT of inner region
     FP2 = 2*outVal/(1*D*NB)*np.exp(-1j*rg_fac*2*np.pi*np.outer(u2, x)) @ pupilPre @ np.exp(-1j*rg_fac*2*np.pi*np.outer(x, u2))
-    #if showPlots2debug; figure;imagesc(log10(abs(FP2).^2));axis image;colorbar; title('Fine sampled DFT'); end;
-    FPM = falco_gen_vortex_mask(charge, NB)
-    if reverseGradient:
-        FPM = np.conj(reverseGradient)
+    if showPlots2debug:
+        plt.figure()
+        plt.imshow(np.log10(np.abs(FP2)**2))
+        plt.gca().invert_yaxis()
+        plt.colorbar()
+        plt.title('Fine sampled DFT')
+        plt.pause(0.1)
+
     LP2 = 2.0*outVal/(1*D*NB)*np.exp(-1j*rg_fac*2*np.pi*np.outer(x, u2)) @ (FP2*FPM*windowMask2) @ np.exp(-1j*rg_fac*2*np.pi*np.outer(u2, x))       
-    #if showPlots2debug; figure;imagesc(abs(FP2.*windowMask2));axis image;colorbar; title('Fine sampled DFT (windowed)'); end;
-    pupilPost = LP1 + LP2;
-    #if showPlots2debug; figure;imagesc(abs(pupilPost));axis image;colorbar; title('Lyot plane'); end;
+    if showPlots2debug:
+        plt.figure()
+        plt.imshow(np.abs(FP2*windowMask2))
+        plt.gca().invert_yaxis()
+        plt.colorbar()
+        plt.title('Fine sampled DFT (windowed)')
+        plt.pause(0.1)
+
+    pupilPost = LP1 + LP2
+    if showPlots2debug:
+        plt.figure()
+        plt.imshow(np.abs(pupilPost))
+        plt.gca().invert_yaxis()
+        plt.colorbar()
+        plt.title('Lyot plane')
+        plt.pause(0.1)
 
     return pupilPost
 
@@ -355,7 +411,7 @@ def gen_tukey_for_vortex(Nwindow, RHO, alpha):
 
     Nlut = int(10*Nwindow)
     rhos0 = np.linspace(-Nwindow/2, Nwindow/2, Nlut)
-    lut = tukey(Nlut, alpha)  #,left=0,right=0)
+    lut = tukey(Nlut, alpha)  # ,left=0,right=0)
     windowTukey = np.interp(RHO, rhos0, lut)
 
     return windowTukey

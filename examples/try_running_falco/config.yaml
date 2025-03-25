@@ -1,0 +1,303 @@
+path: {}
+
+# Record Keeping
+SeriesNum: 1
+TrialNum: 1
+  
+# Special Computational Settings
+flagParallel: false
+flagPlot: false
+
+
+# %% General
+centering: pixel
+
+# Method of computing core throughput:
+# - 'HMI' for energy within half-max isophote divided by energy at telescope pupil
+# - 'EE' for encircled energy within a radius (thput_radius) divided by energy at telescope pupil
+thput_metric: EE
+thput_radius: 0.7  # photometric aperture radius [lambda_c/D]. Used ONLY for 'EE' method.
+thput_eval_x: 7  # x location [lambda_c/D] in dark hole at which to evaluate throughput
+thput_eval_y: 0  # y location [lambda_c/D] in dark hole at which to evaluate throughput
+
+# Where to shift the source to compute the intensity normalization value.
+source_x_offset_norm: 7  # x location [lambda_c/D] in dark hole at which to compute intensity normalization
+source_y_offset_norm: 0  # y location [lambda_c/D] in dark hole at which to compute intensity normalization
+
+# Bandwidth and Wavelength Specs
+lambda0: 550.0e-9  # Central wavelength of the whole spectral bandpass [meters]
+fracBW: 0.10  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
+Nsbp: 5  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
+Nwpsbp: 1  # Number of wavelengths to used to approximate an image in each sub-bandpass
+
+# %% Wavefront Estimation
+
+# Estimator Options:
+# - 'perfect' for exact numerical answer from full model
+# - 'pairwise' for pairwise probing with batch process estimation
+estimator: perfect
+  
+  # Pairwise probing:
+est:
+  probe: !Probe
+    Npairs: 3  # Number of pair-wise probe PAIRS to use.
+    whichDM: 1  # Which DM # to use for probing. 1 or 2. Default is 1
+    radius: 12  # Max x/y extent of probed region [lambda/D].
+    xOffset: 0  # offset of probe center in x [actuators]. Use to avoid central obscurations.
+    yOffset: 0  # offset of probe center in y [actuators]. Use to avoid central obscurations.
+    axis: alternate  # which axis to have the phase discontinuity along [x or y or xy/alt/alternate]
+    gainFudge: 1  # empirical fudge factor to make average probe amplitude match desired value.
+
+# %% Wavefront Control: General
+
+ctrl:
+  flagUseModel: False  # Whether to perform a model-based (vs empirical) grid search for the controller
+
+  log10regVec: !eval np.arange(-6, -2+0.5, 0.5)  # log10 of the regularization exponents (often called Beta values)
+  dmfacVec: !eval np.array([1.])  # Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
+  
+# Threshold for culling weak actuators from the Jacobian:
+logGmin: -6  # 10^(mp.logGmin) used on the intensity of DM1 and DM2 Jacobians to weed out the weakest actuators
+  
+# Zernikes to suppress with controller
+jac:
+  zerns: [1]  # Which Noll Zernike modes to include in Jacobian. Always include the value "1" for the on-axis piston mode.
+  Zcoef: !eval 1e-9*np.ones(np.size(mp.jac.zerns))  # meters RMS of Zernike aberrations. (piston value is reset to 1 later)
+  
+# Zernikes to compute sensitivities for
+eval:
+  indsZnoll: [2, 3]  # Noll indices of Zernikes to compute values for [1-D ndarray]
+  
+  # Annuli to compute 1nm RMS Zernike sensitivities over. Columns are [inner radius, outer radius]. One row per annulus.
+  Rsens: !eval np.array([[2., 3.], [3., 4.], [4., 5.]])  # [2-D ndarray]
+  
+  # Grid- or Line-Search Settings
+
+  
+  # Spatial pixel weighting
+WspatialDef: []  # [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)] [ndarray]
+  
+  # DM weighting
+dm1:
+  weight: 1.
+
+  # Influence Function Options:
+  # - falco.INFLUENCE_XINETICS uses the file 'influence_dm5v2.fits' for one type of Xinetics DM
+  # - INFLUENCE_BMC_2K uses the file 'influence_BMC_2kDM_400micron_res10.fits' for BMC 2k DM
+  # - INFLUENCE_BMC_KILO uses the file 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
+  inf_fn: !eval falco.INFLUENCE_BMC_2K
+
+  inf_sign: '+'
+  dm_spacing: 400.e-6 #--User defined actuator pitch
+
+  Nact: 32               # of actuators across DM array
+  VtoH: !eval 1.0e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
+  xtilt: 0               # for foreshortening. angle of rotation about x-axis [degrees]
+  ytilt: 0               # for foreshortening. angle of rotation about y-axis [degrees]
+  zrot: 0                # clocking of DM surface [degrees]
+  xc: !eval (32/2 - 1/2)       # x-center location of DM surface [actuator widths]
+  yc: !eval (32/2 - 1/2)       # y-center location of DM surface [actuator widths]
+  edgeBuffer: 1          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
+
+  Dstop: 50.e-3  # Diameter of iris [meters]
+
+dm2:
+  weight: 1.
+
+  # Influence Function Options:
+  # - falco.INFLUENCE_XINETICS uses the file 'influence_dm5v2.fits' for one type of Xinetics DM
+  # - INFLUENCE_BMC_2K uses the file 'influence_BMC_2kDM_400micron_res10.fits' for BMC 2k DM
+  # - INFLUENCE_BMC_KILO uses the file 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
+  inf_fn: !eval falco.INFLUENCE_BMC_2K
+
+  inf_sign: '+'
+  dm_spacing: 400.e-6 #--User defined actuator pitch
+
+  Nact: 32               # # of actuators across DM array
+  VtoH: !eval 1.0e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
+  xtilt: 0               # for foreshortening. angle of rotation about x-axis [degrees]
+  ytilt: 0                # for foreshortening. angle of rotation about y-axis [degrees]
+  zrot: 0                 # clocking of DM surface [degrees]
+  xc: !eval (32/2 - 1/2)        # x-center location of DM surface [actuator widths]
+  yc: !eval (32/2 - 1/2)        # y-center location of DM surface [actuator widths]
+  edgeBuffer: 1          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
+
+  Dstop: 50.e-3  # Diameter of iris [meters]
+
+# %% Wavefront Control: Controller Specific
+# Controller options: 
+#  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
+#  - 'plannedEFC' for EFC with an automated regularization schedule
+controller: gridsearchEFC
+  
+  # # GRID SEARCH EFC DEFAULTS
+  # WFSC Iterations and Control Matrix Relinearization
+Nitr: 5  # Number of estimation+control iterations to perform
+relinItrVec: !eval np.arange(0, mp.Nitr)  # Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
+dm_ind: !eval np.array([1, 2]) # Which DMs to use [1-D ndarray]
+
+# # # PLANNED SEARCH EFC DEFAULTS
+# mp.dm_ind: [1 2 ]; # vector of DMs used in controller at ANY time (not necessarily all at once or all the time).
+# mp.ctrl.dmfacVec: 1;
+# #--CONTROL SCHEDULE. Columns of mp.ctrl.sched_mat are:
+#     # Column 1: # of iterations,
+#     # Column 2: log10(regularization),
+#     # Column 3: which DMs to use (12, 128, 129, or 1289) for control
+#     # Column 4: flag (0: False, 1: True), whether to re-linearize
+#     #   at that iteration.
+#     # Column 5: flag (0: False, 1: True), whether to perform an
+#     #   EFC parameter grid search to find the set giving the best
+#     #   contrast .
+#     # The imaginary part of the log10(regularization) in column 2 is
+#     #  replaced for that iteration with the optimal log10(regularization)
+#     # A row starting with [0, 0, 0, 1...] is for relinearizing only at that time
+#
+# mp.ctrl.sched_mat: [...
+#     repmat([1,1j,12,1,1],[4,1]);...
+#     repmat([1,1j-1,12,1,1],[25,1]);...
+#     repmat([1,1j,12,1,1],[1,1]);...
+#     ];
+# [mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched]: falco_ctrl_EFC_schedule_generator(mp.ctrl.sched_mat);
+
+  #  Aperture stops at DMs
+flagDM1stop: False   # Whether to apply an iris or not
+flagDM2stop: True  # Whether to apply an iris or not
+
+  # DM separations
+d_P2_dm1: 0  # distance (along +z axis) from P2 pupil to DM1 [meters]
+d_dm1_dm2: 0.20  # distance between DM1 and DM2 [meters]
+
+
+
+# %% Optical Layout: All models
+
+# Key Optical Layout Choices
+flagSim: true  # Simulation or not
+layout: Fourier  # Which optical layout to use
+coro: vortex
+  
+Fend:
+  # Final Focal Plane Properties
+  res: 3  # Sampling [ pixels per lambda0/D]
+  FOV: 15.  # half-width of the field of view in both dimensions [lambda0/D]
+
+  # Correction and scoring region definition
+  corr:
+    Rin: 2.0   # inner radius of dark hole correction region [lambda0/D]
+    Rout: 10  # outer radius of dark hole correction region [lambda0/D]
+    ang: 180  # angular opening of dark hole correction region [degrees]
+
+  score:
+    Rin: 2.0  # inner radius of dark hole scoring region [lambda0/D]
+    Rout: 10  # outer radius of dark hole scoring region [lambda0/D]
+    ang: 180  # angular opening of dark hole scoring region [degrees]
+
+  sides: leftright  # Which side(s) for correction: 'left', 'right', 'top', 'up', 'bottom', 'down', 'lr', 'rl', 'leftright', 'rightleft', 'tb', 'bt', 'ud', 'du', 'topbottom', 'bottomtop', 'updown', 'downup'
+  
+# %% Optical Layout: Compact Model (and Jacobian Model)
+  
+# Focal Lengths
+fl: 1.  # [meters] Focal length value used for all FTs in the compact model. Don't need different values since this is a Fourier model.
+  
+
+
+P1:
+  compact:
+    Nbeam: 250
+    mask: !eval >
+      falco.util.pad_crop(
+        falco.mask.falco_gen_pupil_LUVOIR_B({"centering": mp.centering, "Nbeam": mp.P1.compact.Nbeam}),
+        2**(falco.util.nextpow2(mp.P1.compact.Nbeam))
+      )
+  full:
+    Nbeam: 250
+    mask: !eval >
+      falco.util.pad_crop(
+        falco.mask.falco_gen_pupil_LUVOIR_B({"centering": mp.centering, "Nbeam": mp.P1.full.Nbeam}),
+        2**(falco.util.nextpow2(mp.P1.full.Nbeam))
+      )
+  IDnorm: 0.00  # ID of the central obscuration [diameter]. Used only for computing the RMS DM surface from the ID to the OD of the pupil. OD is assumed to be 1.
+  ODnorm: 1.00  # Outer diameter of the telescope [diameter]
+  D: 7.989  # circumscribed telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
+
+P2:
+  D: !eval mp.dm1.Nact*mp.dm1.dm_spacing
+
+P3:
+  D: !eval mp.P2.D
+  full:
+    mask: !eval >
+      falco.mask.falco_gen_pupil_Simple({
+        "OD": 0.84,
+        "Nbeam": mp.P1.full.Nbeam,
+        "Npad": 2**(falco.util.nextpow2(mp.P1.full.Nbeam))
+      })
+  compact:
+    mask: !eval >
+      falco.mask.falco_gen_pupil_Simple({
+        "OD": 0.84,
+        "Nbeam": mp.P1.compact.Nbeam,
+        "Npad": 2**(falco.util.nextpow2(mp.P1.compact.Nbeam))
+      })
+
+P4:
+  full:
+    Nbeam: !eval mp.P1.full.Nbeam # P4 size must be the same as P1 for Vortex.
+    mask: !eval >
+      falco.mask.falco_gen_pupil_Simple({
+        "ID": mp.P4.IDnorm,
+        "OD": mp.P4.ODnorm,
+        "Nbeam": mp.P4.full.Nbeam,
+        "Npad": 2**(falco.util.nextpow2(mp.P4.full.Nbeam))
+      })
+  compact:
+    Nbeam: !eval mp.P1.compact.Nbeam # P4 size must be the same as P1 for Vortex.
+    mask: !eval >
+      falco.mask.falco_gen_pupil_Simple({
+        "ID": mp.P4.IDnorm,
+        "OD": mp.P4.ODnorm,
+        "Nbeam": mp.P4.compact.Nbeam,
+        "Npad": 2**(falco.util.nextpow2(mp.P4.compact.Nbeam))
+      })
+  D: !eval mp.P2.D
+  IDnorm: 0  # Lyot stop ID [Dtelescope]
+  ODnorm: 0.82  # Lyot stop OD [Dtelescope]
+
+# Number of re-imaging relays between pupil planesin compact model. Needed
+# to keep track of 180-degree rotations compared to the full model, which
+# in general can have probably has extra collimated beams compared to the
+# compact model.
+flagRotation: true  # Whether to rotate 180 degrees between conjugate planes in the compact model
+Nrelay1to2: 1
+Nrelay2to3: 1
+Nrelay3to4: 1
+NrelayFend: 0  # How many times to rotate the final image by 180 degrees
+  
+  
+  # %% Optical Layout: Full Model 
+  
+  # # Focal Lengths
+  # mp.fl: 1
+  
+  # Mask Definitions
+full: {}
+compact: {}
+
+
+# %% Entrance Pupil (P1) Definition and Generation
+
+whichPupil: LUVOIR_B  # Used only for run label
+
+
+  # %% "Apodizer" (P3) Definition and Generation
+  
+flagApod: True  # Whether to use an apodizer or not
+
+# %% Vortex Specific Values
+
+F3:
+  VortexCharge: 6  # Charge of the vortex mask
+  compact: {res: 6}  # FPM sampling in compact model [pixels per lambda0/D]
+  full: {res: 6}  # FPM sampling in full model [pixels per lambda0/D]
+
+
