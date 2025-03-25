@@ -4,6 +4,63 @@ Python implementation of initialize_ekf_matrices function from FALCO MATLAB.
 
 import numpy as np
 
+import falco
+from .est_utils import rearrange_jacobians
+
+def initialize_ekf_dzm(mp, ev, jacStruct):
+    """
+    Initialize the EKF maintenance estimator.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Object containing optical model parameters
+    ev : FALCO object
+        Structure containing estimation variables.
+    jacStruct : ModelParameters
+        Structure containing control Jacobians for each specified DM.
+
+    Returns
+    -------
+    ev : FALCO object
+        Updated structure containing estimation variables.
+    """
+
+    # Check if sim mode to avoid calling tb obj in sim mode
+    if mp.flagSim:
+        sbp_texp = mp.detector.tExpVec  # exposure times for non-pairwise-probe images in each subband
+        psf_peaks = mp.detector.peakFluxVec
+    else:
+        sbp_texp = mp.tb.info.sbp_texp
+        psf_peaks = mp.tb.info.PSFpeaks
+
+    # Find values to convert images back to counts rather than normalized intensity
+    ev.peak_psf_counts = np.zeros(mp.Nsbp)
+    ev.e_scaling = np.zeros(mp.Nsbp)
+
+    for iSubband in range(mp.Nsbp):
+        # potentially set mp.detector.peakFluxVec[iSubband] * mp.detector.tExpUnprobedVec[iSubband]
+        # to mp.tb.info.sbp_texp[iSubband]*mp.tb.info.PSFpeaks[iSubband] for cleaner setup
+        ev.peak_psf_counts[iSubband] = sbp_texp[iSubband] * psf_peaks[iSubband]
+        ev.e_scaling[iSubband] = np.sqrt(psf_peaks[iSubband])
+
+    # Rearrange jacobians
+    ev.G_tot_cont = rearrange_jacobians(mp, jacStruct, mp.dm_ind)
+    ev.G_tot_drift = rearrange_jacobians(mp, jacStruct, mp.dm_drift_ind)
+
+    # Initialize EKF matrices
+    initialize_ekf_matrices(mp, ev, sbp_texp)
+
+    # Initialize pinned actuator check
+    ev.dm1_initial_pinned_actuators = mp.dm1.pinned.copy()
+    if np.any(mp.dm_ind == 2):
+        ev.dm2_initial_pinned_actuators = mp.dm2.pinned.copy()
+    ev.dm1_new_pinned_actuators = []
+    ev.dm2_new_pinned_actuators = []
+    ev.dm1_act_ele_pinned = []
+    ev.dm2_act_ele_pinned = []
+
+    return ev
 
 def initialize_ekf_matrices(mp, ev, sbp_texp):
     """
