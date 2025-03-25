@@ -12,60 +12,7 @@ import astropy.io.fits as fits
 import falco
 
 
-def initialize_ekf_maintenance(mp, ev, jacStruct):
-    """
-    Initialize the EKF maintenance estimator.
-    
-    Parameters
-    ----------
-    mp : ModelParameters
-        Object containing optical model parameters
-    ev : FALCO object
-        Structure containing estimation variables.
-    jacStruct : ModelParameters
-        Structure containing control Jacobians for each specified DM.
-    
-    Returns
-    -------
-    ev : FALCO object
-        Updated structure containing estimation variables.
-    """
-    
-    # Check if sim mode to avoid calling tb obj in sim mode
-    if mp.flagSim:
-        sbp_texp = mp.detector.tExpUnprobedVec  # exposure times for non-pairwise-probe images in each subband
-        psf_peaks = mp.detector.peakFluxVec
-    else:
-        sbp_texp = mp.tb.info.sbp_texp
-        psf_peaks = mp.tb.info.PSFpeaks
-    
-    # Find values to convert images back to counts rather than normalized intensity
-    ev.peak_psf_counts = np.zeros(mp.Nsbp)
-    ev.e_scaling = np.zeros(mp.Nsbp)
-    
-    for iSubband in range(mp.Nsbp):
-        # potentially set mp.detector.peakFluxVec[iSubband] * mp.detector.tExpUnprobedVec[iSubband] 
-        # to mp.tb.info.sbp_texp[iSubband]*mp.tb.info.PSFpeaks[iSubband] for cleaner setup
-        ev.peak_psf_counts[iSubband] = sbp_texp[iSubband] * psf_peaks[iSubband]
-        ev.e_scaling[iSubband] = np.sqrt(psf_peaks[iSubband])
-        
-    # Rearrange jacobians
-    ev.G_tot_cont = rearrange_jacobians(mp, jacStruct, mp.dm_ind)
-    ev.G_tot_drift = rearrange_jacobians(mp, jacStruct, mp.dm_drift_ind)
-    
-    # Initialize EKF matrices
-    initialize_ekf_matrices(mp, ev, sbp_texp)
-    
-    # Initialize pinned actuator check
-    ev.dm1.initial_pinned_actuators = mp.dm1.pinned.copy()
-    if np.any(mp.dm_ind == 2):
-        ev.dm2.initial_pinned_actuators = mp.dm2.pinned.copy()
-    ev.dm1.new_pinned_actuators = []
-    ev.dm2.new_pinned_actuators = []
-    ev.dm1.act_ele_pinned = []
-    ev.dm2.act_ele_pinned = []
-    
-    return ev
+
 
 
 def get_open_loop_data(mp, ev):
@@ -89,19 +36,23 @@ def get_open_loop_data(mp, ev):
     # If DM is used for drift and control, apply V_dz and Vdrift, if DM is only
     # used for control, apply V_dz
     if (np.any(mp.dm_drift_ind == 1) and np.any(mp.dm_ind == 1)) or np.any(mp.dm_drift_ind == 1):
-        mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz + mp.dm1.V_drift)
+        mp.dm1.V = mp.dm1.V_dz + mp.dm1.V_drift
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     elif np.any(mp.dm_ind == 1) or np.any(mp.dm_ind_static == 1):
-        mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz)
+        mp.dm1.V = mp.dm1.V_dz
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     
     if (np.any(mp.dm_drift_ind == 2) and np.any(mp.dm_ind == 2)) or np.any(mp.dm_drift_ind == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz + mp.dm2.V_drift)
+        mp.dm2.V = mp.dm2.V_dz + mp.dm2.V_drift
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     elif np.any(mp.dm_ind == 2) or np.any(mp.dm_ind_static == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz)
+        mp.dm2.V = mp.dm2.V_dz
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     
     # Do safety check for pinned actuators
-    print('OL DM safety check.')
-    ev = pinned_act_safety_check(mp, ev)
-    
+    # print('OL DM safety check.')
+    # ev = pinned_act_safety_check(mp, ev)
+    #
     if ev.Itr == 1:
         ev.IOLScoreHist = np.zeros((mp.Nitr, mp.Nsbp))
     
@@ -173,7 +124,7 @@ def save_ekf_data(mp, ev, DM1Vdither, DM2Vdither):
         fits.writeto(os.path.join(mp.path.config, 'dark_zone_command_0_pwp.fits'), dz_init, overwrite=True)
 
 
-def falco_est_ekf_maintenance(mp, ev, jacStruct=None):
+def est_ekf_dzm(mp, ev, jacStruct=None):
     """
     EKF maintenance estimator for FALCO.
     
@@ -230,14 +181,14 @@ def falco_est_ekf_maintenance(mp, ev, jacStruct=None):
     ev.Im = np.zeros((mp.Fend.Neta, mp.Fend.Nxi))
     
     if whichDM == 1:
-        ev.dm1.Vall = np.zeros((mp.dm1.Nact, mp.dm1.Nact, 1, mp.Nsbp))
+        ev.dm1_Vall = np.zeros((mp.dm1.Nact, mp.dm1.Nact, 1, mp.Nsbp))
     if whichDM == 2:
-        ev.dm2.Vall = np.zeros((mp.dm2.Nact, mp.dm2.Nact, 1, mp.Nsbp))
+        ev.dm2_Vall = np.zeros((mp.dm2.Nact, mp.dm2.Nact, 1, mp.Nsbp))
     
     # Get dither command
     # Set random number generator seed
     # Dither commands get re-used every dither_cycle_iters iterations
-    if (Itr - 1) % mp.est.dither_cycle_iters == 0 or Itr == 1:
+    if (Itr - 1) % mp.est.dither_cycle_iters == 0 or Itr == 0:
         ev.dm1_seed_num = 0
         ev.dm2_seed_num = 1000  # Don't want same random commands on DM1 and DM2
         print(f"Dither random seed reset at iteration {Itr}")
@@ -247,16 +198,19 @@ def falco_est_ekf_maintenance(mp, ev, jacStruct=None):
     
     # Generate random dither command
     if np.any(mp.dm_ind == 1):
+        # TODO: FIX ALL OF THE THINGS TO MATCH THIS
         np.random.seed(ev.dm1_seed_num)
-        DM1Vdither = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
-        DM1Vdither.flat[mp.dm1.act_ele] = np.random.normal(0, mp.est.dither, mp.dm1.Nele)
+        # DM1Vdither = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+        DM1Vdither = np.zeros((mp.dm1.Nact**2, 1))
+        DM1Vdither[np.reshape(mp.dm1.act_ele, (1, mp.dm1.Nele))] = np.random.normal(0, mp.est.dither, mp.dm1.Nele).reshape((mp.dm1.Nele, 1))
+        DM1Vdither = np.reshape(DM1Vdither, (mp.dm1.Nact, mp.dm1.Nact))
     else:
         DM1Vdither = np.zeros_like(mp.dm1.V)  # The 'else' block would mean we're only using DM2
     
     if np.any(mp.dm_ind == 2):
         np.random.seed(ev.dm2_seed_num)
         DM2Vdither = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
-        DM2Vdither.flat[mp.dm2.act_ele] = np.random.normal(0, mp.est.dither, mp.dm2.Nele)
+        DM2Vdither[mp.dm2.act_ele] = np.random.normal(0, mp.est.dither, mp.dm2.Nele)
     else:
         DM2Vdither = np.zeros_like(mp.dm2.V)  # The 'else' block would mean we're only using DM1
     
@@ -278,8 +232,8 @@ def falco_est_ekf_maintenance(mp, ev, jacStruct=None):
     # Note if dm_drift_ind != i, the command is set to zero in falco_drift_injection
     mp = set_constrained_full_command(mp, DM1Vdither, DM2Vdither)
     
-    # Do safety check to make sure no actuators are pinned
-    ev = pinned_act_safety_check(mp, ev)
+    # # Do safety check to make sure no actuators are pinned
+    # ev = pinned_act_safety_check(mp, ev)
     
     closed_loop_command = dither + efc_command + get_dm_command_vector(mp, mp.dm1.V_shift, mp.dm2.V_shift)
     
@@ -306,9 +260,9 @@ def falco_est_ekf_maintenance(mp, ev, jacStruct=None):
     for iSubband in range(mp.Nsbp):
         ev.Eest[:, iSubband] = (ev.x_hat[0::2, iSubband] + 1j*ev.x_hat[1::2, iSubband]) / (ev.e_scaling[iSubband] * np.sqrt(sbp_texp[iSubband]))
         if np.any(mp.dm_ind == 1):
-            ev.dm1.Vall[:, :, 0, iSubband] = mp.dm1.V
+            ev.dm1_Vall[:, :, 0, iSubband] = mp.dm1.V
         if np.any(mp.dm_ind == 2):
-            ev.dm2.Vall[:, :, 0, iSubband] = mp.dm2.V
+            ev.dm2_Vall[:, :, 0, iSubband] = mp.dm2.V
         
         ev.Im += mp.sbp_weights[iSubband] * ev.imageArray[:, :, 0, iSubband]
     
@@ -332,14 +286,18 @@ def falco_est_ekf_maintenance(mp, ev, jacStruct=None):
     
     # Remove control from DM command so that controller images are correct
     if np.any(mp.dm_ind == 1):
-        mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz + mp.dm1.V_drift + DM1Vdither + mp.dm1.V_shift)
+        mp.dm1.V = mp.dm1.V_dz + mp.dm1.V_drift + DM1Vdither + mp.dm1.V_shift
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     elif np.any(mp.dm_ind_static == 1):
-        mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz)
+        mp.dm1.V = mp.dm1.V_dz
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     
     if np.any(mp.dm_ind == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz + mp.dm2.V_drift + DM2Vdither + mp.dm2.V_shift)
+        mp.dm2.V = mp.dm2.V_dz + mp.dm2.V_drift + DM2Vdither + mp.dm2.V_shift
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     elif np.any(mp.dm_ind_static == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz)
+        mp.dm2.V = mp.dm2.V_dz
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     
     save_ekf_data(mp, ev, DM1Vdither, DM2Vdither)
     
@@ -469,9 +427,11 @@ def get_gdu(mp, ev, iSubband, y_measured, closed_loop_command, DM1Vdither, DM2Vd
     else:
         # For unprobed field based on model
         if np.any(mp.dm_ind == 1) or np.any(mp.dm_ind_static == 1):
-            mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz)
+            mp.dm1.V = mp.dm1.V_dz
+            mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
         if np.any(mp.dm_ind == 2) or np.any(mp.dm_ind_static == 2):
-            mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz)
+            mp.dm2.V = mp.dm2.V_dz
+            mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
         
         E0 = falco.model.compact(mp, modvar)
         E0vec = E0[mp.Fend.corr.maskBool]
@@ -480,9 +440,11 @@ def get_gdu(mp, ev, iSubband, y_measured, closed_loop_command, DM1Vdither, DM2Vd
         gdu = np.zeros(2 * len(y_measured[:, iSubband]))
         
         if np.any(mp.dm_ind == 1) or np.any(mp.dm_ind_static == 1):
-            mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz + mp.dm1.dV + DM1Vdither + mp.dm1.V_shift)
+            mp.dm1.V = mp.dm1.V_dz + mp.dm1.dV + DM1Vdither + mp.dm1.V_shift
+            mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
         if np.any(mp.dm_ind == 2) or np.any(mp.dm_ind_static == 2):
-            mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz + mp.dm2.dV + DM2Vdither + mp.dm2.V_shift)
+            mp.dm2.V = mp.dm2.V_dz + mp.dm2.dV + DM2Vdither + mp.dm2.V_shift
+            mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
         
         Edither = falco.model.compact(mp, modvar)
         Edithervec = Edither[mp.Fend.corr.maskBool]
@@ -543,23 +505,25 @@ def set_constrained_full_command(mp, DM1Vdither, DM2Vdither):
         Updated object
     """
     if np.any(mp.dm_ind == 1):
-        # note falco_set_constrained_voltage does not apply the command to the DM
-        mp.dm1 = falco.dm.set_constrained_voltage(
-            mp.dm1, mp.dm1.V_dz + mp.dm1.V_drift + mp.dm1.dV + DM1Vdither + mp.dm1.V_shift
-        )
+        # note falco_enforce_constraints does not apply the command to the DM
+        mp.dm1.V = mp.dm1.V_dz + mp.dm1.V_drift + mp.dm1.dV + DM1Vdither + mp.dm1.V_shift
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     elif np.any(mp.dm_drift_ind == 1):
-        mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz + mp.dm1.V_drift)
+        mp.dm1.V = mp.dm1.V_dz + mp.dm1.V_drift
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     elif np.any(mp.dm_ind_static == 1):
-        mp.dm1 = falco.dm.set_constrained_voltage(mp.dm1, mp.dm1.V_dz)
+        mp.dm1.V = mp.dm1.V_dz
+        mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
     
     if np.any(mp.dm_ind == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(
-            mp.dm2, mp.dm2.V_dz + mp.dm2.V_drift + mp.dm2.dV + DM2Vdither + mp.dm2.V_shift
-        )
+        mp.dm2.V = mp.dm2.V_dz + mp.dm2.V_drift + mp.dm2.dV + DM2Vdither + mp.dm2.V_shift
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     elif np.any(mp.dm_drift_ind == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz + mp.dm2.V_drift)
+        mp.dm2.V = mp.dm2.V_dz + mp.dm2.V_drift
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     elif np.any(mp.dm_ind_static == 2):
-        mp.dm2 = falco.dm.set_constrained_voltage(mp.dm2, mp.dm2.V_dz)
+        mp.dm2.V = mp.dm2.V_dz
+        mp.dm2 = falco.dm.enforce_constraints(mp.dm2)
     
     return mp
 
@@ -582,23 +546,23 @@ def pinned_act_safety_check(mp, ev):
     """
     # Update new pinned actuators
     if np.any(mp.dm_ind == 1) or np.any(mp.dm_drift_ind == 1):
-        ev.dm1.new_pinned_actuators = np.setdiff1d(mp.dm1.pinned, ev.dm1.initial_pinned_actuators)
-        mask = np.isin(ev.dm1.new_pinned_actuators, mp.dm1.act_ele)
-        ev.dm1.act_ele_pinned = ev.dm1.new_pinned_actuators[mask]
+        ev.dm1_new_pinned_actuators = np.setdiff1d(mp.dm1.pinned, ev.dm1_initial_pinned_actuators)
+        mask = np.isin(ev.dm1_new_pinned_actuators, mp.dm1.act_ele)
+        ev.dm1_act_ele_pinned = ev.dm1_new_pinned_actuators[mask]
     
     if np.any(mp.dm_ind == 2) or np.any(mp.dm_drift_ind == 2):
-        ev.dm2.new_pinned_actuators = np.setdiff1d(mp.dm2.pinned, ev.dm2.initial_pinned_actuators)
-        mask = np.isin(ev.dm2.new_pinned_actuators, mp.dm2.act_ele)
-        ev.dm2.act_ele_pinned = ev.dm2.new_pinned_actuators[mask]
+        ev.dm2_new_pinned_actuators = np.setdiff1d(mp.dm2.pinned, ev.dm2_initial_pinned_actuators)
+        mask = np.isin(ev.dm2_new_pinned_actuators, mp.dm2.act_ele)
+        ev.dm2_act_ele_pinned = ev.dm2_new_pinned_actuators[mask]
     
     # Check that no new actuators have been pinned
-    if len(ev.dm1.new_pinned_actuators) > 0 or len(ev.dm2.new_pinned_actuators) > 0:
+    if len(ev.dm1_new_pinned_actuators) > 0 or len(ev.dm2_new_pinned_actuators) > 0:
         # Print error warning
-        print(f"New DM1 pinned: [{','.join(map(str, ev.dm1.new_pinned_actuators))}]")
-        print(f"New DM2 pinned: [{','.join(map(str, ev.dm2.new_pinned_actuators))}]")
+        print(f"New DM1 pinned: [{','.join(map(str, ev.dm1_new_pinned_actuators))}]")
+        print(f"New DM2 pinned: [{','.join(map(str, ev.dm2_new_pinned_actuators))}]")
         
         # If actuators are used in jacobian, quit
-        if len(ev.dm1.act_ele_pinned) > 0 or len(ev.dm2.act_ele_pinned) > 0:
+        if len(ev.dm1_act_ele_pinned) > 0 or len(ev.dm2_act_ele_pinned) > 0:
             fits.writeto(os.path.join(mp.path.config, f'/ev_exit_{ev.Itr}.mat'), ev, overwrite=True)
             fits.writeto(os.path.join(mp.path.config, f'/mp_exit_{ev.Itr}.mat'), mp, overwrite=True)
             
@@ -607,134 +571,75 @@ def pinned_act_safety_check(mp, ev):
     return ev
 
 
-def rearrange_jacobians(mp, jacStruct, dm_inds):
-    """
-    Rearrange Jacobians for EKF.
-    
-    Parameters
-    ----------
-    mp : ModelParameters
-        Object containing optical model parameters
-    jacStruct : ModelParameters
-        Structure containing control Jacobians for each specified DM.
-    dm_inds : array_like
-        Indices of DMs to include in the Jacobian
-    
-    Returns
-    -------
-    G_tot : ndarray
-        Rearranged Jacobian with real and imaginary parts separated.
-    """
-    
-    if np.any(dm_inds == 1):
-        G1 = np.zeros((2 * jacStruct.G1.shape[0], mp.dm1.Nele, mp.Nsbp))
-    else:
-        G1 = np.array([])
-        
-    if np.any(dm_inds == 2):
-        G2 = np.zeros((2 * jacStruct.G2.shape[0], mp.dm2.Nele, mp.Nsbp))
-    else:
-        G2 = np.array([])
-    
-    # Set up jacobian so real and imag components alternate and jacobian from each DM is stacked
-    for iSubband in range(mp.Nsbp):
-        
-        if np.any(dm_inds == 1):
-            G1_comp = jacStruct.G1[:, :, iSubband]
-            G1_split = np.zeros((2 * jacStruct.G1.shape[0], mp.dm1.Nele))
-            G1_split[0::2, :] = np.real(G1_comp)
-            G1_split[1::2, :] = np.imag(G1_comp)
-            
-            G1[:, :, iSubband] = G1_split
-        
-        if np.any(dm_inds == 2):
-            G2_comp = jacStruct.G2[:, :, iSubband]
-            G2_split = np.zeros((2 * jacStruct.G2.shape[0], mp.dm2.Nele))
-            G2_split[0::2, :] = np.real(G2_comp)
-            G2_split[1::2, :] = np.imag(G2_comp)
-            
-            G2[:, :, iSubband] = G2_split
-    
-    # Combine the Jacobians
-    if np.any(dm_inds == 1) and np.any(dm_inds == 2):
-        G_tot = np.concatenate((G1, G2), axis=1)
-    elif np.any(dm_inds == 1):
-        G_tot = G1
-    elif np.any(dm_inds == 2):
-        G_tot = G2
-    else:
-        G_tot = np.array([])
-    
-    return G_tot
 
 
-def initialize_ekf_matrices(mp, ev, sbp_texp):
-    """
-    Initialize EKF matrices for the estimator.
-    
-    Parameters
-    ----------
-    mp : ModelParameters
-        Object containing optical model parameters
-    ev : FALCO object
-        Structure containing estimation variables.
-    sbp_texp : array_like
-        Exposure times for each subband
-    
-    Returns
-    -------
-    ev : FALCO object
-        Updated structure containing estimation variables.
-    """
-    
-    # Below are the definitions of the EKF matrices. There are multiple EKFs 
-    # defined in parallel.
-
-    # To get an idea of what the code below does, it's easier to play with 
-    # the toy example at https://github.com/leonidprinceton/DHMaintenanceExample
-    ev.SS = 2  # Pixel state size. Two for real and imaginary parts of the electric field.
-               # If incoherent intensity is not ignored, SS should be 3 and the EKF modified accordingly.
-    ev.BS = ev.SS * 1  # EKF block size - number of pixels per EKF (currently 1).
-                        # Computation time grows as the cube of BS.
-    
-    ev.SL = ev.SS * mp.Fend.corr.Npix  # Total length of the state vector (all pixels)
-    
-    # 3D matrices that include all the 2D EKF matrices for all pixels at once
-    BS_SS_ratio = int(np.floor(ev.BS/ev.SS))
-    SL_BS_ratio = int(np.floor(ev.SL/ev.BS))
-    
-    ev.H = np.zeros((BS_SS_ratio, ev.BS, SL_BS_ratio))
-    ev.R = np.zeros((BS_SS_ratio, BS_SS_ratio, SL_BS_ratio))
-    
-    # Create kronecker product for H_indices
-    eye_mat = np.eye(BS_SS_ratio)
-    ones_vec = np.ones((1, ev.SS))
-    kron_product = np.kron(eye_mat, ones_vec)
-    
-    ones_mat1 = np.ones((BS_SS_ratio, BS_SS_ratio*ev.SS, SL_BS_ratio))
-    # Find indices where product is non-zero
-    ev.H_indices = np.nonzero(kron_product[:, :, np.newaxis] * ones_mat1)
-    
-    # For R_indices
-    eye_3d = np.eye(BS_SS_ratio)[:, :, np.newaxis] * np.ones((1, 1, SL_BS_ratio))
-    ev.R_indices = eye_3d.astype(bool)
-    
-    # The drift covariance matrix for each pixel (or block of pixels).
-    # Needs to be estimated if the model is not perfectly known.
-    # This is a 4D matrix (re | im | px | wavelength).
-    # Need to convert jacobian from contrast units to counts.
-    ev.Q = np.zeros((ev.SS, ev.SS, SL_BS_ratio, mp.Nsbp))
-    
-    for iSubband in range(mp.Nsbp):
-        print(f"assembling Q for subband {iSubband+1}")
-        
-        G_reordered = ev.G_tot_drift[:, :, iSubband]
-        dm_drift_covariance = np.eye(G_reordered.shape[1]) * (mp.drift.presumed_dm_std**2)
-        
-        for i in range(SL_BS_ratio):
-            start_idx = i * ev.BS
-            end_idx = (i + 1) * ev.BS
-            
-            G_slice = G_reordered[start_idx:end_idx, :]
-            Q_term = G_slice @ dm_drift_covariance @ G_slice.T * sbp_texp[iSubband] * (ev.e_scaling[iSubband]**2)
-            ev.Q[:, :, i, iSubband] =
+# def initialize_ekf_matrices(mp, ev, sbp_texp):
+#     """
+#     Initialize EKF matrices for the estimator.
+#
+#     Parameters
+#     ----------
+#     mp : ModelParameters
+#         Object containing optical model parameters
+#     ev : FALCO object
+#         Structure containing estimation variables.
+#     sbp_texp : array_like
+#         Exposure times for each subband
+#
+#     Returns
+#     -------
+#     ev : FALCO object
+#         Updated structure containing estimation variables.
+#     """
+#
+#     # Below are the definitions of the EKF matrices. There are multiple EKFs
+#     # defined in parallel.
+#
+#     # To get an idea of what the code below does, it's easier to play with
+#     # the toy example at https://github.com/leonidprinceton/DHMaintenanceExample
+#     ev.SS = 2  # Pixel state size. Two for real and imaginary parts of the electric field.
+#                # If incoherent intensity is not ignored, SS should be 3 and the EKF modified accordingly.
+#     ev.BS = ev.SS * 1  # EKF block size - number of pixels per EKF (currently 1).
+#                         # Computation time grows as the cube of BS.
+#
+#     ev.SL = ev.SS * mp.Fend.corr.Npix  # Total length of the state vector (all pixels)
+#
+#     # 3D matrices that include all the 2D EKF matrices for all pixels at once
+#     BS_SS_ratio = int(np.floor(ev.BS/ev.SS))
+#     SL_BS_ratio = int(np.floor(ev.SL/ev.BS))
+#
+#     ev.H = np.zeros((BS_SS_ratio, ev.BS, SL_BS_ratio))
+#     ev.R = np.zeros((BS_SS_ratio, BS_SS_ratio, SL_BS_ratio))
+#
+#     # Create kronecker product for H_indices
+#     eye_mat = np.eye(BS_SS_ratio)
+#     ones_vec = np.ones((1, ev.SS))
+#     kron_product = np.kron(eye_mat, ones_vec)
+#
+#     ones_mat1 = np.ones((BS_SS_ratio, BS_SS_ratio*ev.SS, SL_BS_ratio))
+#     # Find indices where product is non-zero
+#     ev.H_indices = np.nonzero(kron_product[:, :, np.newaxis] * ones_mat1)
+#
+#     # For R_indices
+#     eye_3d = np.eye(BS_SS_ratio)[:, :, np.newaxis] * np.ones((1, 1, SL_BS_ratio))
+#     ev.R_indices = eye_3d.astype(bool)
+#
+#     # The drift covariance matrix for each pixel (or block of pixels).
+#     # Needs to be estimated if the model is not perfectly known.
+#     # This is a 4D matrix (re | im | px | wavelength).
+#     # Need to convert jacobian from contrast units to counts.
+#     ev.Q = np.zeros((ev.SS, ev.SS, SL_BS_ratio, mp.Nsbp))
+#
+#     for iSubband in range(mp.Nsbp):
+#         print(f"assembling Q for subband {iSubband+1}")
+#
+#         G_reordered = ev.G_tot_drift[:, :, iSubband]
+#         dm_drift_covariance = np.eye(G_reordered.shape[1]) * (mp.drift.presumed_dm_std**2)
+#
+#         for i in range(SL_BS_ratio):
+#             start_idx = i * ev.BS
+#             end_idx = (i + 1) * ev.BS
+#
+#             G_slice = G_reordered[start_idx:end_idx, :]
+#             Q_term = G_slice @ dm_drift_covariance @ G_slice.T * sbp_texp[iSubband] * (ev.e_scaling[iSubband]**2)
+#             ev.Q[:, :, i, iSubband] =
