@@ -43,6 +43,14 @@ def wrapper(mp, ev, jacStruct):
         else:  # Otherwise don't pass the Jacobian
             falco.est.pairwise_probing(mp, ev)
 
+    elif mp.estimator in ['ekf_maintenance']:
+        if ev.Itr == 0:
+            print('starting ekf initialization')
+            ev = falco.initialize_ekf_dzm(mp, ev, jacStruct)
+            print('done ekf initialization')
+
+        falco.est_ekf_dzm(mp, ev, jacStruct)
+
     return None
 
 
