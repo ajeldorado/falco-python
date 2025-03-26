@@ -3,6 +3,8 @@
 from copy import deepcopy
 import os
 import numpy as np
+import pickle
+
 
 import falco
 
@@ -16,7 +18,6 @@ mp = deepcopy(CONFIG.mp)
 mp.path = falco.config.Object()
 # mp.path.config = './'  # Location of config files and minimal output files. Default is [mainPath filesep 'data' filesep 'brief' filesep]
 # mp.path.ws = './'  # (Mostly) complete workspace from end of trial. Default is [mainPath filesep 'data' filesep 'ws' filesep];
-
 
 # %% Overwrite default values as desired
 
@@ -44,8 +45,6 @@ mp.est.flagUseJacAlgDiff = False
 #-- DM settings
 # mp.dm1.V_dz = mp.dm1.V #--DM command that generates the initial dark zone
 # mp.dm2.V_dz = mp.dm2.V
-mp.dm1.V_dz = np.zeros((mp.dm1.Nact, mp.dm1.Nact)) #--Drift injected, initialize to 0
-mp.dm2.V_dz = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
 # TODO: Do these nede to be lists?
 mp.dm1.V_drift = np.zeros((mp.dm1.Nact, mp.dm1.Nact)) #--Drift injected, initialize to 0
@@ -60,6 +59,24 @@ mp.runLabel = ('DZM_Series%04d_Trial%04d_%s' %
                (mp.SeriesNum, mp.TrialNum, mp.coro))
 
 out = falco.setup.flesh_out_workspace(mp)
+
+##---- Initial state
+startSoln_TrialNum = 1
+startSoln_SeriesNum = 1
+startSoln_coro = 'LC'
+startSoln_runLabel = ('Series%04d_Trial%04d_%s' %
+                      (startSoln_SeriesNum, startSoln_TrialNum, startSoln_coro))
+
+fnPickle = os.path.join(mp.path.brief, f'{startSoln_runLabel}_snippet.pkl')
+with open(fnPickle, 'rb') as pickle_file:
+    startSoln_out = pickle.load(pickle_file)
+
+mp.dm1.V_dz = startSoln_out.dm1.Vall[:, :, -1] #np.zeros((mp.dm1.Nact, mp.dm1.Nact)) #--Drift injected, initialize to 0
+mp.dm2.V_dz = startSoln_out.dm2.Vall[:, :, -1] #np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+
+##----
+
+
 
 falco.wfsc.loop(mp, out)
 
