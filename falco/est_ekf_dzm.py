@@ -200,17 +200,36 @@ def est_ekf_dzm(mp, ev, jacStruct=None):
     if np.any(mp.dm_ind == 1):
         # TODO: FIX ALL OF THE THINGS TO MATCH THIS
         np.random.seed(ev.dm1_seed_num)
-        # DM1Vdither = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
-        DM1Vdither = np.zeros((mp.dm1.Nact**2, 1))
-        DM1Vdither[np.reshape(mp.dm1.act_ele, (1, mp.dm1.Nele))] = np.random.normal(0, mp.est.dither, mp.dm1.Nele).reshape((mp.dm1.Nele, 1))
-        DM1Vdither = np.reshape(DM1Vdither, (mp.dm1.Nact, mp.dm1.Nact))
+        # Create an empty array for DM1 dithering at the final shape directly
+        DM1Vdither = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+
+        # Generate random normal values for only the active elements
+        dither_values = np.random.normal(0, mp.est.dither, mp.dm1.Nele)
+
+        # Convert 1D indices to 2D coordinates
+        act_rows, act_cols = np.unravel_index(mp.dm1.act_ele, (mp.dm1.Nact, mp.dm1.Nact))
+
+        # Directly assign values to active elements
+        DM1Vdither[act_rows, act_cols] = dither_values
+
     else:
         DM1Vdither = np.zeros_like(mp.dm1.V)  # The 'else' block would mean we're only using DM2
     
     if np.any(mp.dm_ind == 2):
         np.random.seed(ev.dm2_seed_num)
+        # DM2Vdither = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+        # DM2Vdither[mp.dm2.act_ele] = np.random.normal(0, mp.est.dither, mp.dm2.Nele)
+        #
         DM2Vdither = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
-        DM2Vdither[mp.dm2.act_ele] = np.random.normal(0, mp.est.dither, mp.dm2.Nele)
+
+        # Generate random normal values for only the active elements
+        dither_values_2 = np.random.normal(0, mp.est.dither, mp.dm2.Nele)
+
+        # Convert 1D indices to 2D coordinates
+        act_rows2, act_cols2 = np.unravel_index(mp.dm2.act_ele, (mp.dm2.Nact, mp.dm2.Nact))
+
+        # Directly assign values to active elements
+        DM2Vdither[act_rows2, act_cols2] = dither_values_2
     else:
         DM2Vdither = np.zeros_like(mp.dm2.V)  # The 'else' block would mean we're only using DM1
     
@@ -252,7 +271,9 @@ def est_ekf_dzm(mp, ev, jacStruct=None):
     
     # Save out the estimate
     if mp.flagSim:
-        sbp_texp = mp.detector.tExpUnprobedVec  # exposure times for non-pairwise-probe images in each subband
+        # sbp_texp = mp.detector.tExpUnprobedVec
+        # TODO: Check if this is direct or coron exposure time
+        sbp_texp = mp.detector.tExpVec
     else:
         sbp_texp = mp.tb.info.sbp_texp
     
@@ -335,7 +356,9 @@ def ekf_estimate(mp, ev, jacStruct, y_measured, closed_loop_command, DM1Vdither,
     """
     # Estimation part. All EKFs are advanced in parallel
     if mp.flagSim:
-        sbp_texp = mp.detector.tExpUnprobedVec
+        # sbp_texp = mp.detector.tExpUnprobedVec
+        # TODO: Check if this is direct or coron exposure time
+        sbp_texp = mp.detector.tExpVec
     else:
         sbp_texp = mp.tb.info.sbp_texp
     
@@ -360,7 +383,8 @@ def ekf_estimate(mp, ev, jacStruct, y_measured, closed_loop_command, DM1Vdither,
         
         # Update P
         ev.P[:, :, :, iSubband] = ev.P[:, :, :, iSubband] + ev.Q[:, :, :, iSubband]
-        
+
+        # TODO: change all the matrix dimensions
         # Matrix multiplications for Kalman gain calculation
         P_H_T = np.matmul(ev.P[:, :, :, iSubband], H_T)
         S = np.matmul(ev.H, P_H_T) + ev.R
@@ -474,12 +498,12 @@ def get_dm_command_vector(mp, command1, command2):
         Combined command vector
     """
     if np.any(mp.dm_ind == 1):
-        comm1 = command1.flat[mp.dm1.act_ele]
+        comm1 = np.ravel(command1)[mp.dm1.act_ele]
     else:
         comm1 = np.array([])  # The 'else' block would mean we're only using DM2
     
     if np.any(mp.dm_ind == 2):
-        comm2 = command2.flat[mp.dm2.act_ele]
+        comm2 = np.ravel(command2)[mp.dm2.act_ele]
     else:
         comm2 = np.array([])
     
