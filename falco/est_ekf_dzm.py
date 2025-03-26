@@ -53,7 +53,7 @@ def get_open_loop_data(mp, ev):
     # print('OL DM safety check.')
     # ev = pinned_act_safety_check(mp, ev)
     #
-    if ev.Itr == 1:
+    if ev.Itr == 0:
         ev.IOLScoreHist = np.zeros((mp.Nitr, mp.Nsbp))
     
     I_OL = np.zeros((ev.imageArray.shape[0], ev.imageArray.shape[1], mp.Nsbp))
@@ -90,35 +90,33 @@ def save_ekf_data(mp, ev, DM1Vdither, DM2Vdither):
         drift[:, :, 0] = mp.dm1.V_drift
     if mp.dm_drift_ind[0] == 2:
         drift[:, :, 0] = mp.dm2.V_drift
-    else:
+    elif len(mp.dm_drift_ind) > 2:
         drift[:, :, 1] = mp.dm2.V_drift
     
     if mp.dm_ind[0] == 1:
         dither[:, :, 0] = DM1Vdither
-    if mp.dm_ind[0] == 2:
-        dither[:, :, 0] = DM2Vdither
-    else:
-        dither[:, :, 1] = DM2Vdither
-    
-    if mp.dm_ind[0] == 1:
         efc[:, :, 0] = mp.dm1.dV
     if mp.dm_ind[0] == 2:
+        dither[:, :, 0] = DM2Vdither
         efc[:, :, 0] = mp.dm2.dV
-    else:
+    elif len(mp.dm_ind) > 2:
+        dither[:, :, 1] = DM2Vdither
         efc[:, :, 1] = mp.dm2.dV
-    
+
+
+
     # TODO: move to plot_progress_iact
     fits.writeto(os.path.join(mp.path.config, f'drift_command_it{ev.Itr}.fits'), drift, overwrite=True)
     fits.writeto(os.path.join(mp.path.config, f'dither_command_it{ev.Itr}.fits'), dither, overwrite=True)
     fits.writeto(os.path.join(mp.path.config, f'efc_command_it{ev.Itr-1}.fits'), efc, overwrite=True)
     
-    if ev.Itr == 1:
+    if ev.Itr == 0:
         dz_init = np.zeros((mp.dm1.Nact, mp.dm1.Nact, len(mp.dm_ind)))
         if mp.dm_ind[0] == 1:
             dz_init[:, :, 0] = mp.dm1.V_dz
         if mp.dm_ind[0] == 2:
             dz_init[:, :, 0] = mp.dm2.V_dz
-        else:
+        elif len(mp.dm_ind) > 2:
             dz_init[:, :, 1] = mp.dm2.V_dz
         
         fits.writeto(os.path.join(mp.path.config, 'dark_zone_command_0_pwp.fits'), dz_init, overwrite=True)
@@ -280,9 +278,9 @@ def est_ekf_dzm(mp, ev, jacStruct=None):
     ev.Im = np.zeros((mp.Fend.Neta, mp.Fend.Nxi))
     for iSubband in range(mp.Nsbp):
         ev.Eest[:, iSubband] = (ev.x_hat[0::2, iSubband] + 1j*ev.x_hat[1::2, iSubband]) / (ev.e_scaling[iSubband] * np.sqrt(sbp_texp[iSubband]))
-        if np.any(mp.dm_ind == 1):
+        if whichDM == 1:
             ev.dm1_Vall[:, :, 0, iSubband] = mp.dm1.V
-        if np.any(mp.dm_ind == 2):
+        if whichDM == 2:
             ev.dm2_Vall[:, :, 0, iSubband] = mp.dm2.V
         
         ev.Im += mp.sbp_weights[iSubband] * ev.imageArray[:, :, 0, iSubband]
@@ -379,14 +377,14 @@ def ekf_estimate(mp, ev, jacStruct, y_measured, closed_loop_command, DM1Vdither,
         ev.H[ev.H_indices] = 2 * x_hat_CL
         
         # Transpose H matrix
-        H_T = np.transpose(ev.H, (1, 0, 2))
+        H_T = ev.H.transpose(0, 2, 1) #np.transpose(ev.H, (1, 0, 2)) sfr 26032025
         
         # Update P
-        ev.P[:, :, :, iSubband] = ev.P[:, :, :, iSubband] + ev.Q[:, :, :, iSubband]
+        ev.P[iSubband] = ev.P[iSubband] + ev.Q[iSubband]
 
         # TODO: change all the matrix dimensions
         # Matrix multiplications for Kalman gain calculation
-        P_H_T = np.matmul(ev.P[:, :, :, iSubband], H_T)
+        P_H_T = np.matmul(ev.P[iSubband], H_T)
         S = np.matmul(ev.H, P_H_T) + ev.R
         S_inv = np.linalg.inv(S)
         
@@ -394,26 +392,16 @@ def ekf_estimate(mp, ev, jacStruct, y_measured, closed_loop_command, DM1Vdither,
         K = np.matmul(P_H_T, S_inv)
         
         # Update P
-        ev.P[:, :, :, iSubband] = ev.P[:, :, :, iSubband] - np.matmul(P_H_T, np.transpose(K, (1, 0, 2)))
+        ev.P[iSubband] = ev.P[iSubband] - np.matmul(P_H_T, K.transpose(0, 2, 1))
+        # ev.P[iSubband] = ev.P[iSubband] - np.matmul(P_H_T, np.transpose(K, (1, 0, 2))) sfr 26032025
         
         # EKF correction
         dy = y_measured[:, iSubband] - y_hat
-        
-        # Stack the measurement differences
-        dy_hat_stacked = np.zeros_like(K)
-        dy_hat_stacked[0, :, :] = dy
-        dy_hat_stacked[1, :, :] = dy
-        
-        # Apply Kalman gain
-        dx_hat_stacked = K * dy_hat_stacked
-        
-        # Unstack the state corrections
-        dx_hat = np.zeros_like(x_hat_CL)
-        dx_hat[0::ev.SS] = dx_hat_stacked[0, :, :]
-        dx_hat[1::ev.SS] = dx_hat_stacked[1, :, :]
-        
-        # Update state estimate
+
+        dx_hat = np.matmul(K, dy.reshape((-1, ev.BS // ev.SS, 1))).reshape(-1)
+
         ev.x_hat[:, iSubband] = ev.x_hat[:, iSubband] + dx_hat
+
     
     return ev
 
