@@ -1,5 +1,6 @@
-from falco.config import Object
+import numpy as np
 
+from falco.config import Object
 
 class Drift(Object):
     """Define the probe properties."""
@@ -8,7 +9,7 @@ class Drift(Object):
         self.type = 'rand_walk'
         "Type of drift injected."
 
-        self.whichDM = 1
+        self.whichDM = np.array([1])
         "Which DM to use for drift injection. 1, 2, or [1,2]."
 
         self.magnitude = 9e-6
