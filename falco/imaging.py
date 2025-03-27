@@ -345,7 +345,7 @@ def get_sbp_image(mp, si):
     if mp.flagSim:
         Isbp = get_sim_sbp_image(mp, si)
     else:
-        Isbp = get_testbed_sbp_image(mp, si)
+        Isbp = mp.tb.get_sbp_image(si)
 
     return Isbp
 
