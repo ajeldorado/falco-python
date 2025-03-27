@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import falco
 
 
-def loop(mp, out):
+def loop(mp, out, tb = None):
     """
     Loop over the estimator and controller for WFSC.
 
@@ -19,6 +19,8 @@ def loop(mp, out):
         Structure of model parameters
     out : falco.config.Object
         Output variables
+    tb : pyHCIT_hwControl.interface.TestbedInterface or None
+        (Optional) Control interface for a physical testbed.
 
     Returns
     -------
@@ -90,7 +92,7 @@ def loop(mp, out):
         if Itr > 0:
             EestPrev = ev.Eest  # save previous estimate for Delta E plot
 
-        falco.est.wrapper(mp, ev, jacStruct)
+        falco.est.wrapper(mp, ev, jacStruct, tb)
 
         store_intensities(mp, out, ev, Itr)
 

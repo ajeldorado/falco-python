@@ -4,6 +4,7 @@ import multiprocessing
 from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 # from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import matplotlib.pyplot as plt
+from pyHCIT_hwControl.interface import TestbedInterface
 
 import falco
 from falco import check
@@ -246,7 +247,7 @@ def _model_full_norm_wrapper(mp, ilist, inds_list):
     return np.max(np.abs(Etemp)**2)
 
 
-def get_summed_image(mp):
+def get_summed_image(mp, tb = None):
     """
     Get the broadband image over the entire bandpass.
 
@@ -257,6 +258,8 @@ def get_summed_image(mp):
     ----------
     mp: falco.config.ModelParameters
         Structure of model parameters
+    tb: pyHCIT_hwControl.interface.TestbedInterface
+        (Optional) control interface for a physical testbed
 
     Returns
     -------
@@ -270,7 +273,7 @@ def get_summed_image(mp):
     if not (mp.flagParallel and mp.flagSim):
         summedImage = 0
         for si in range(mp.Nsbp):
-            summedImage += mp.sbp_weights[si] * get_sbp_image(mp, si)
+            summedImage += mp.sbp_weights[si] * get_sbp_image(mp, si, tb)
 
     else:  # Compute simulated images in parallel
 
@@ -360,7 +363,7 @@ def _get_single_sim_full_image(mp, ilist, vals_list):
     return np.abs(Estar)**2  # Apply spectral weighting outside this function
 
 
-def get_sbp_image(mp, si):
+def get_sbp_image(mp, si, tb = None):
     """
     Get an image in the specified sub-bandpass.
 
@@ -373,6 +376,8 @@ def get_sbp_image(mp, si):
         Structure of model parameters
     si: int
         Index of sub-bandpass for which to take the image
+    tb: pyHCIT_hwControl.interface.TestbedInterface or None
+        (Optional) Control interface for a physical testbed
 
     Returns
     -------
@@ -387,7 +392,10 @@ def get_sbp_image(mp, si):
     if mp.flagSim:
         Isbp = get_sim_sbp_image(mp, si)
     else:
-        Isbp = get_testbed_sbp_image(mp, si)
+        if type(tb) is not TestbedInterface:
+            raise TypeError('Input "tb" must be of type TestbedInterface')
+        tb.dm.apply(mp.dm1.V)
+        Isbp = tb.get_sbp_image(si)
 
     return Isbp
 
