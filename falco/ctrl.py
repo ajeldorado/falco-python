@@ -2,11 +2,12 @@
 import copy
 import time
 
-from concurrent.futures import ThreadPoolExecutor as PoolExecutor
-# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
-import multiprocessing
 import numpy as np
+import multiprocessing
 import scipy.optimize
+from prysm.x.optym import F77LBFGSB
+# from astropy.io import fits
+# import matplotlib.pyplot as plt
 
 import falco
 
@@ -319,11 +320,8 @@ def _grid_search_efc(mp, cvar):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
     # Empirically find the regularization value giving the best contrast
-
-    # Run the controller in parallel only when mp.ctrl.flagUseModel is True because that makes
-    # single calls to the compact model. When it is False and in simulation, it calls
-    # falco.imaging.get_summed_image(), which has its own internal parallelization.
     if mp.flagParallel and mp.ctrl.flagUseModel:
+        # # Run the controller in parallel
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
         # results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
         # results_ctrl = [p.get() for p in results] # All the Jacobians in a list
@@ -338,12 +336,7 @@ def _grid_search_efc(mp, cvar):
         pool.close()
         pool.join()
 
-        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
-        #     resultsRaw = executor.map(
-        #         lambda p: _efc(*p),
-        #         [(ni, vals_list, mp, cvar) for ni in range(Nvals)],
-        #     )
-        # results_ctrl = tuple(resultsRaw)
+        # [(mp, ilist, vals_list) for ilist in range(Nvals)]
 
         # Convert from a list to arrays:
         for ni in range(Nvals):
@@ -386,7 +379,6 @@ def _grid_search_efc(mp, cvar):
 
     # Find the best scaling factor and regularization pair based on the
     # best contrast.
-    cvar.InormVec = InormVec
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
     cvar.Im = np.squeeze(ImCube[indBest, :, :])
@@ -933,8 +925,15 @@ def _ad_efc(ni, vals_list, mp, cvar):
         EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False,
                                     useFPM=True, forRevGradModel=False)
         EFendPrev.append(EFend)
+        
+        
+    def optim_cost_func(Vdm):
+        #cost function for L-BFGS 
+        return falco.model.compact_reverse_gradient(Vdm, mp, cvar.Eest, EFendPrev, log10reg)
 
     t0 = time.time()
+    
+    '''
     u_sol = scipy.optimize.minimize(
         falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
         method='L-BFGS-B', jac=True, bounds=bounds,
@@ -943,12 +942,23 @@ def _ad_efc(ni, vals_list, mp, cvar):
                  'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun,
                  'maxls': 20, 'iprint': mp.ctrl.ad.iprint},
         )
-    t1 = time.time()
-    print('Optimization time = %.3f' % (t1-t0))
-
     duVec = u_sol.x
     print(u_sol.success)
     print(u_sol.nit)
+    
+    '''
+    opt = F77LBFGSB(fg=optim_cost_func, x0=dm0)
+    nIter = 0;
+    for _ in range(mp.ctrl.ad.maxiter):
+        nIter += 1
+        xk, fk, gk = opt.step()
+    
+    
+    print("Niter LBFGS: ", nIter)
+    duVec = xk
+
+    t1 = time.time()
+    print('Optimization time = %.3f' % (t1-t0))
 
     # Parse the command vector by DM and assign the output commands
     mp, dDM = wrapup(mp, cvar, duVec)
