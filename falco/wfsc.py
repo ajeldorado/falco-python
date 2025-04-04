@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 import falco
 
+from .drift_injection import drift_injection
 
 def loop(mp, out):
     """
@@ -85,6 +86,12 @@ def loop(mp, out):
         else:
             jacStruct = None
 
+        # %% Inject drift for (Only) Dark Zone Maintenance
+        # Get Drift Command
+        if mp.estimator.lower() == 'ekf_maintenance':
+            [mp, ev] = drift_injection(mp, ev)
+
+
         # %% Wavefront Estimation
 
         if Itr > 0:
@@ -130,6 +137,10 @@ def loop(mp, out):
             out.IrawScoreHist[Itr+1] = np.mean(cvar.Im[mp.Fend.score.maskBool])
             out.IrawCorrHist[Itr+1] = np.mean(cvar.Im[mp.Fend.corr.maskBool])
             out.InormHist[Itr+1] = out.IrawCorrHist[Itr+1]
+
+            # Save out open loop contrast if running dark zone maintenance
+            if mp.estimator is 'ekf_maintenance':
+                out.IOLScoreHist = ev.IOLScoreHist
 
         # Enforce constraints on DM commands
         if any(mp.dm_ind == 1):

@@ -37,7 +37,7 @@ mp.Nwpsbp = 1
 
 # Estimator stuff:
 mp.est.probe.whichDM = 2 #--Which DM is used for dither/control
-mp.est.dither = 9.5e-5 #--std dev of dither command for random dither [V/sqtr(iter)]
+mp.est.dither = 0.04 #--std dev of dither command for random dither [V/sqtr(iter)]
 mp.est.itr_ol = np.arange(0, mp.Nitr) #--"open-loop" iterations where an image is taken with initial DM command + drift command
 mp.est.itr_reset = [mp.Nitr+1]
 mp.est.flagUseJacAlgDiff = False
@@ -58,6 +58,7 @@ mp.dm2.V_shift = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 mp.runLabel = ('DZM_Series%04d_Trial%04d_%s' %
                (mp.SeriesNum, mp.TrialNum, mp.coro))
 
+# TODO: add OL to this?
 out = falco.setup.flesh_out_workspace(mp)
 
 ##---- Initial state
