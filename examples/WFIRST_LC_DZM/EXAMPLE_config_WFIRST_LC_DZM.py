@@ -166,7 +166,7 @@ mp.drift = falco.config.Drift()
 mp.dm_drift_ind = np.array([1])  #--which DM is drifting
 mp.drift.WhichDM = np.array([1])   #--which DM is drifting
 mp.drift.type = 'rand_walk'  #--what type of drift is happening
-mp.drift.magnitude = 9e-6  #--std dev of random walk [V/sqrt(iter)]
+mp.drift.magnitude = 0.008  #--std dev of random walk [V/sqrt(iter)]
 mp.drift.presumed_dm_std = mp.drift.magnitude  #--std dev of random walk provided to estimator, change this to account for the uncertainty of the drift magnitude
 
 

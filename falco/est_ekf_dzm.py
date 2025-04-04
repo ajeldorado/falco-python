@@ -11,6 +11,8 @@ import numpy as np
 import astropy.io.fits as fits
 import falco
 
+from .est_utils import get_dm_command_vector
+
 
 
 
@@ -468,36 +470,6 @@ def get_gdu(mp, ev, iSubband, y_measured, closed_loop_command, DM1Vdither, DM2Vd
     
     return gdu
 
-
-def get_dm_command_vector(mp, command1, command2):
-    """
-    Combine DM commands into a single vector.
-    
-    Parameters
-    ----------
-    mp : ModelParameters
-        Object containing optical model parameters
-    command1, command2 : ndarray
-        Commands for DM1 and DM2
-        
-    Returns
-    -------
-    comm_vector : ndarray
-        Combined command vector
-    """
-    if np.any(mp.dm_ind == 1):
-        comm1 = np.ravel(command1)[mp.dm1.act_ele]
-    else:
-        comm1 = np.array([])  # The 'else' block would mean we're only using DM2
-    
-    if np.any(mp.dm_ind == 2):
-        comm2 = np.ravel(command2)[mp.dm2.act_ele]
-    else:
-        comm2 = np.array([])
-    
-    comm_vector = np.concatenate((comm1, comm2))
-    
-    return comm_vector
 
 
 def set_constrained_full_command(mp, DM1Vdither, DM2Vdither):

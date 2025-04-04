@@ -62,3 +62,34 @@ def rearrange_jacobians(mp, jacStruct, dm_inds):
         G_tot = np.array([])
 
     return G_tot
+
+
+def get_dm_command_vector(mp, command1, command2):
+    """
+    Combine DM commands into a single vector.
+
+    Parameters
+    ----------
+    mp : ModelParameters
+        Object containing optical model parameters
+    command1, command2 : ndarray
+        Commands for DM1 and DM2
+
+    Returns
+    -------
+    comm_vector : ndarray
+        Combined command vector
+    """
+    if np.any(mp.dm_ind == 1):
+        comm1 = np.ravel(command1)[mp.dm1.act_ele]
+    else:
+        comm1 = np.array([])  # The 'else' block would mean we're only using DM2
+
+    if np.any(mp.dm_ind == 2):
+        comm2 = np.ravel(command2)[mp.dm2.act_ele]
+    else:
+        comm2 = np.array([])
+
+    comm_vector = np.concatenate((comm1, comm2))
+
+    return comm_vector
