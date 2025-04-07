@@ -239,7 +239,7 @@ class ModelParameters(Object):
         result = ModelParameters()
 
         if context is None:
-            context = dict()
+            context = {}
         context['mp'] = result
 
         data = load_from_str(

@@ -39,6 +39,8 @@ class Eval:
             raise ValueError("Circular parameter evaluation dependency detected.")
 
         self.in_progress = True
-        result = eval(self.code, self.globals, self.locals)
-        self.in_progress = False
+        try:
+            result = eval(self.code, self.globals, self.locals)
+        finally:
+            self.in_progress = False
         return result
