@@ -11,7 +11,7 @@ mp = falco.config.ModelParameters()
 
 mp.SeriesNum = 1;
 mp.TrialNum = 34;
-mp.Nitr = 5; #--Number of estimation+control iterations to perform
+mp.Nitr = 250; #--Number of estimation+control iterations to perform
 
 ###--Special Computational Settings
 mp.flagParallel = True;
@@ -133,7 +133,7 @@ mp.controller = 'gridsearchEFC';
 
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
-mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
+mp.relinItrVec = [0] #np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 
 ### # # PLANNED SEARCH EFC DEFAULTS     
@@ -153,9 +153,9 @@ mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 ###     # A row starting with [0, 0, 0, 1...] is for relinearizing only at that time
 ### 
 ### mp.ctrl.sched_mat = [...
-###     repmat([1,1j,12,1,1],[4,1]);...
-###     repmat([1,1j-1,12,1,1],[25,1]);...
-###     repmat([1,1j,12,1,1],[1,1]);...
+###     repmat([1,1j,12,0,1],[4,1]);...
+###     repmat([1,1j-1,12,0,1],[25,1]);...
+###     repmat([1,1j,12,0,1],[1,1]);...
 ###     ];
 ### [mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched] = falco_ctrl_EFC_schedule_generator(mp.ctrl.sched_mat);
 
