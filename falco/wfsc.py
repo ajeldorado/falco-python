@@ -139,7 +139,7 @@ def loop(mp, out):
             out.InormHist[Itr+1] = out.IrawCorrHist[Itr+1]
 
             # Save out open loop contrast if running dark zone maintenance
-            if mp.estimator is 'ekf_maintenance':
+            if mp.estimator.lower() == 'ekf_maintenance':
                 out.IOLScoreHist = ev.IOLScoreHist
 
         # Enforce constraints on DM commands
