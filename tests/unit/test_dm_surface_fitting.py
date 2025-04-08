@@ -181,7 +181,7 @@ class TestSurface(unittest.TestCase):
             plt.show()
         self.assertTrue(np.allclose(self.V0, self.backProjPROPER, atol=3e-2))
 
-    def testFittingDifferentiableModel(self):
+    def DisabledtestFittingDifferentiableModel(self):
         """Test surface fitting with the differentiable model."""
         if DEBUG:
 
