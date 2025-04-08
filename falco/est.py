@@ -51,6 +51,12 @@ def wrapper(mp, ev, jacStruct):
 
         falco.est_ekf_dzm(mp, ev, jacStruct)
 
+        # if ev.Itr == 0 and mp.controller.lower() == 'ad-efc':
+        #     if np.any(mp.dm_ind == 1):
+        #         mp.dm1.act_ele = list(range(mp.dm1.NactTotal))
+        #     if np.any(mp.dm_ind == 2):
+        #         mp.dm2.act_ele = list(range(mp.dm2.NactTotal))
+
     return None
 
 
