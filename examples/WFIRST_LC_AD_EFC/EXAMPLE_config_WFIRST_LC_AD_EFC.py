@@ -92,11 +92,11 @@ mp.eval.Rsens = np.array([[3., 4.],[4., 8.]]);  # [2-D ndarray]
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.Object()
-mp.ctrl.log10regVec = np.array([-3, ])
+mp.ctrl.log10regVec = np.array([-6, ])
 # mp.ctrl.log10regVec = np.arange(-6, -1.5, 0.5) #-6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
 mp.ctrl.dmfacVec = np.array([1.])            #--Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
-   
+
 ###--Spatial pixel weighting
 mp.WspatialDef = [];# [3, 4.5, 3]; #--spatial control Jacobian weighting by annulus: [Inner radius, outer radius, intensity weight; (as many rows as desired)] [ndarray]
 
@@ -112,14 +112,16 @@ mp.dm2.weight = 1.;
 mp.controller = 'AD-EFC'
 
 mp.ctrl.ad = falco.config.Object()
-mp.ctrl.ad.cost_func_scale_fac = 100
+# mp.ctrl.ad.dv_max = 20  # max delta voltage step per iteration. must be positive
 mp.ctrl.ad.maxiter = 30
 mp.ctrl.ad.iprint = 10
 mp.ctrl.ad.maxfun = 1000000
+# mp.ctrl.ad.utu_scale_fac = 4e-6  # find the value empirically with falco.ctrl.set_utu_scale_fac(mp)
+
 
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
-mp.Nitr = 5; #--Number of estimation+control iterations to perform
+mp.Nitr = 10; #5; #--Number of estimation+control iterations to perform
 mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 
@@ -170,9 +172,10 @@ mp.dm1.VtoH = 1e-9*np.ones((48,48))  # gains of all actuators [nm/V of free stro
 mp.dm1.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm1.ytilt = 5.83;               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm1.zrot = 0;                # clocking of DM surface [degrees]
-mp.dm1.xc = (48/2 - 1/2);       # x-center location of DM surface [actuator widths]
-mp.dm1.yc = (48/2 - 1/2);       # y-center location of DM surface [actuator widths]
+mp.dm1.xc = (mp.dm1.Nact/2 - 1/2);       # x-center location of DM surface [actuator widths]
+mp.dm1.yc = (mp.dm1.Nact/2 - 1/2);       # y-center location of DM surface [actuator widths]
 mp.dm1.edgeBuffer = 1;          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
+mp.dm1.useDifferentiableModel = True;
 
 ##--DM2 parameters
 mp.dm2.Nact = 48;               # # of actuators across DM array
@@ -180,9 +183,10 @@ mp.dm2.VtoH = 1e-9*np.ones((48,48))  # gains of all actuators [nm/V of free stro
 mp.dm2.xtilt = 0;               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm2.ytilt = 5.55;#8;               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm2.zrot = 0;              # clocking of DM surface [degrees]
-mp.dm2.xc = (48/2 - 1/2);       # x-center location of DM surface [actuator widths]
-mp.dm2.yc = (48/2 - 1/2);       # y-center location of DM surface [actuator widths]
+mp.dm2.xc = (mp.dm1.Nact/2 - 1/2);       # x-center location of DM surface [actuator widths]
+mp.dm2.yc = (mp.dm1.Nact/2 - 1/2);       # y-center location of DM surface [actuator widths]
 mp.dm2.edgeBuffer = 1;          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
+mp.dm2.useDifferentiableModel = True;
 
 ##--Aperture stops at DMs
 mp.flagDM1stop = False; #--Whether to apply an iris or not
@@ -192,7 +196,7 @@ mp.dm2.Dstop = 50e-3;   #--Diameter of iris [meters]
 
 ##--DM separations
 mp.d_P2_dm1 = 0;        # distance (along +z axis) from P2 pupil to DM1 [meters]
-mp.d_dm1_dm2 = 1.000;   # distance between DM1 and DM2 [meters]
+mp.d_dm1_dm2 = 2.000;   # distance between DM1 and DM2 [meters]
 
 
 ### Optical Layout: All models

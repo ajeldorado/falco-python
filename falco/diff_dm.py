@@ -2,9 +2,12 @@ import copy
 
 import numpy as np
 
+import os
+
 from scipy import ndimage
 
-from falco import fftutils, util
+from falco import fftutils, util, proper
+from astropy.io import fits
 
 # the functions:
 #   make_rotation_matrix
@@ -48,14 +51,142 @@ from falco import fftutils, util
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs):
 
-def make_rotation_matrix(zyx, radians=False):
+    if "ZYX" in kwargs and "XYZ" in kwargs:
+        raise ValueError('PROP_DM: Error: Cannot specify both XYZ and ZYX ' +
+                         'rotation orders. Stopping')
+    elif "ZYX" not in kwargs and 'XYZ' not in kwargs:
+        XYZ = 1  # default is rotation around X, then Y, then Z
+        # ZYX = 0
+    elif "ZYX" in kwargs:
+        # ZYX = 1
+        XYZ = 0
+    elif "XYZ" in kwargs:
+        XYZ = 1
+
+    if "XTILT" in kwargs:
+        xtilt = kwargs["XTILT"]
+    else:
+        xtilt = 0.
+
+    if "YTILT" in kwargs:
+        ytilt = kwargs["YTILT"]
+    else:
+        ytilt = 0.
+
+    if "ZTILT" in kwargs:
+        ztilt = kwargs["ZTILT"]
+    else:
+        ztilt = 0.
+
+    if isinstance(dm_z0, str):
+        dm_z = proper.prop_fits_read(dm_z0)  # Read DM setting from FITS file
+    else:
+        dm_z = dm_z0
+
+    if "inf_fn" in kwargs:
+        inf_fn = kwargs["inf_fn"]
+    else:
+        inf_fn = "influence_dm5v2.fits"
+
+    if "inf_sign" in kwargs:
+        if(kwargs["inf_sign"] == '+'):
+            sign_factor = 1.
+        elif(kwargs["inf_sign"] == '-'):
+            sign_factor = -1.
+    else:
+        sign_factor = 1.
+
+    n = Narray
+    dx_surf = dx  # sampling of surface in meters
+    beamradius = Narray*dx_surf/2.0
+
+    # Default influence function sampling is 0.1 mm, peak at (x,y)=(45,45)
+    # Default influence function has shape = 1x91x91. Saving it as a 2D array
+    # before continuing with processing
+    dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            "data")
+    inf = proper.prop_fits_read(os.path.join(dir_path, inf_fn))
+    inf = sign_factor*np.squeeze(inf)
+
+    s = inf.shape
+    nx_inf = s[1]
+    ny_inf = s[0]
+    xc_inf = nx_inf // 2
+    yc_inf = ny_inf // 2
+
+    header = fits.getheader(inf_fn)
+    dx_inf = header["P2PDX_M"]  # pixel width in meters
+    dx_dm_inf = header["C2CDX_M"]  # center2cen dist of actuators in meters
+    inf_mag = round(dx_dm_inf/dx_inf)
+    if np.abs(inf_mag - dx_dm_inf/dx_inf) > 1e-8:
+        raise ValueError('%s must have an integer number of pixels per actuator' % (inf_fn))
+
+    if spacing != 0 and "N_ACT_ACROSS_PUPIL" in kwargs:
+        raise ValueError("PROP_DM: User cannot specify both actuator spacing" +
+                         "and N_ACT_ACROSS_PUPIL. Stopping.")
+
+    if spacing == 0 and "N_ACT_ACROSS_PUPIL" not in kwargs:
+        raise ValueError("PROP_DM: User must specify either actuator spacing" +
+                         " or N_ACT_ACROSS_PUPIL. Stopping.")
+
+    if "N_ACT_ACROSS_PUPIL" in kwargs:
+        dx_dm = 2. * beamradius / int(kwargs["N_ACT_ACROSS_PUPIL"])
+    else:
+        dx_dm = spacing
+
+    dx_inf = dx_inf * dx_dm / dx_dm_inf  # Influence function sampling scaled
+                                         # to specified DM actuator spacing
+
+    #else:
+    dm_z_commanded = dm_z
+    s = dm_z.shape
+    nx_dm = s[1]
+    ny_dm = s[0]
+
+    # Create subsampled DM grid
+    margin = 9 * inf_mag
+    nx_grid = nx_dm * inf_mag + 2 * margin
+    ny_grid = ny_dm * inf_mag + 2 * margin
+
+    surf_mag = dx_inf / dx_surf
+
+    #scale and recenter to calculate the new coordinates
+    #xnew = (np.arange(xdim) - xdim//2) * dx_inf/dx_surf + nx_inf//2
+    #ynew = (np.arange(ydim) - ydim//2) * dx_inf/dx_surf + ny_inf//2
+    #[Xnew,Ynew] = np.meshgrid(xnew,ynew)
+    #intrpolate tine infuence function to the new coordinates
+    #inf_scaled = ndimage.map_coordinates(inf, (Ynew[:], Xnew[:]))
+
+    shiftx = -1*int((dm.xc - dm.Nact//2 + 0.5) * inf_mag)
+    shifty = -1*int((dm.yc - dm.Nact//2 + 0.5) * inf_mag)
+
+    inf_pad = util.pad_crop(inf, int(nx_grid))
+
+    if XYZ:
+        rot_order = 'xyz'
+    else:
+        rot_order = 'zyx'
+
+    dmModel = DM(
+        inf_pad, NoutDefault=Narray, Nact=dm.Nact, sep=inf_mag,
+        upsample=surf_mag, shift=(shiftx, shifty),
+        rot=(-1*ztilt, ytilt, xtilt), rot_order=rot_order)
+    dmModel.update(dm_z_commanded)
+
+    return dmModel
+
+def make_rotation_matrix(angles_zyx, use_zyx_order=True,radians=False):
     """Build a rotation matrix.
 
     Parameters
     ----------
-    zyx : tuple of float
+    angles_zyx : tuple of float
         Z, Y, X rotation angles in that order
+    use_zyx_order: bool, optional
+        if True, apply the rotations in the order Z, Y, X. If False, apply the
+        rotations in the order X, Y, Z.
     radians : bool, optional
         if True, abg are assumed to be radians.  If False, abg are
         assumed to be degrees.
@@ -67,13 +198,13 @@ def make_rotation_matrix(zyx, radians=False):
 
     """
     ZYX = np.zeros(3)
-    ZYX[:len(zyx)] = zyx
-    zyx = ZYX
+    ZYX[:len(angles_zyx)] = angles_zyx
+    angles_zyx = ZYX
     if not radians:
-        zyx = np.radians(zyx)
+        angles_zyx = np.radians(angles_zyx)
 
     # alpha, beta, gamma = abg
-    gamma, beta, alpha = zyx
+    gamma, beta, alpha = angles_zyx
     cos1 = np.cos(alpha)
     cos2 = np.cos(beta)
     cos3 = np.cos(gamma)
@@ -96,7 +227,12 @@ def make_rotation_matrix(zyx, radians=False):
         [sin3,  cos3, 0],
         [0,        0, 1],
     ])
-    m = Rz@Ry@Rx
+    
+    if use_zyx_order:
+        m = Rx@Ry@Rz
+    else:
+        m = Rz@Ry@Rx
+        
     return m
 
 
@@ -203,15 +339,15 @@ def apply_homography(M, x, y):
     return xp, yp
 
 
-def prepare_fwd_reverse_projection_coordinates(shape, rot):
+def prepare_fwd_reverse_projection_coordinates(shape, rot, use_zyx_order=True):
     # 1. make the matrix that describes the rigid body transformation
     # 2. make the coordinate grid (in "pixels") for the data
     # 3. project the coordinates "forward" (for forward_model())
     # 4. project the coordinates "backwards" (for backprop)
-    R = make_rotation_matrix(rot)
-    oy, ox = [(s-1)/2 for s in shape]
+    R = make_rotation_matrix(rot,use_zyx_order)
+    oy, ox = [(s)/2 for s in shape]
     y, x = [np.arange(s, dtype=np.float64) for s in shape]
-    y, x = np.meshgrid(y, x)
+    x, y = np.meshgrid(x, y)
     Tin = make_homomorphic_translation_matrix(-ox, -oy)
     Tout = make_homomorphic_translation_matrix(ox, oy)
     R = promote_3d_transformation_to_homography(R)
@@ -292,17 +428,19 @@ def fourier_resample(f, zoom):
         zoom = tuple(float(zoom) for zoom in zoom)
 
     m, n = f.shape
-    M = int(m*zoom[0])
-    N = int(n*zoom[1])
+    M = int(np.round(m*zoom[0]))
+    N = int(np.round(n*zoom[1]))
 
     # commented out below, an alternative that does not use the fft2 norm keyword argument
     # doing it this way is mildly preferrable;
     F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f), norm='ortho'))
     # F = fftutils.fftshift(fftutils.fft2(fftutils.ifftshift(f)))
+
     Mx, My = setup_mft_matricies_scalars((M, N), F.shape, 1, 1)
     fprime = imft2_core(F, Mx, My).real
     fprime *= np.sqrt((zoom[0]*zoom[1]))
     # fprime *= np.sqrt((zoom[0]*zoom[1]))/(np.sqrt(f.size))
+
     return fprime
 
 
@@ -365,7 +503,7 @@ def setup_mft_matricies_scalars(shape_space, shape_frequency, zoomx, zoomy):
 
 class DM:
     """A DM whose actuators fill a rectangular region on a perfect grid, and have the same influence function."""
-    def __init__(self, ifn, Nout, Nact=50, sep=10, shift=(0, 0), rot=(0, 0, 0), upsample=1):
+    def __init__(self, ifn, NoutDefault, Nact=50, sep=10, shift=(0, 0), rot=(0, 0, 0), upsample=1, rot_order='zyx'):
         """Create a new DM model.
 
         This model is based on convolution of a 'poke lattice' with the influence
@@ -381,8 +519,8 @@ class DM:
         Parameters
         ----------
         ifn : numpy.ndarray
-            influence function; assumes the same for all actuators and must
-            be the same shape as (x,y).  Assumed centered on N//2th sample of x, y.
+            influence function; assumes the same for all actuators.
+            Assumed centered on N//2th sample of x, y.
             Assumed to be well-conditioned for use in convolution, i.e.
             compact compared to the array holding it
         Nout : int or tuple of int, length 2
@@ -405,6 +543,10 @@ class DM:
             how to deal with centering when projecting the surface into the beam normal
             fft = the N/2 th sample, rounded to the right, defines the origin.
             interpixel = the N/2 th sample, without rounding, defines the origin
+        rot_order : string
+            if 'zyx', rotations will be applied around axis Z, then Y, then X,
+            in that order. If 'xyz', rotations will be appied in that order.
+            This convention agrees with FALCO/PROPER.
 
         Notes
         -----
@@ -418,8 +560,8 @@ class DM:
         achieve the desired array size.
 
         """
-        if isinstance(Nout, int):
-            Nout = (Nout, Nout)
+        if isinstance(NoutDefault, int):
+            NoutDefault = (NoutDefault, NoutDefault)
         if isinstance(Nact, int):
             Nact = (Nact, Nact)
         if isinstance(sep, int):
@@ -430,13 +572,14 @@ class DM:
         # stash inputs and some computed values on self
         self.ifn = ifn
         self.Ifn = fftutils.fft2(ifn)
-        self.Nout = Nout
+        self.NoutDefault = NoutDefault
         self.Nact = Nact
         self.sep = sep
         self.shift = shift
         self.obliquity = np.cos(np.radians(np.linalg.norm(rot)))
         self.rot = rot
         self.upsample = upsample
+        self.rot_order = rot_order
 
         # prepare the poke array and supplimentary integer arrays needed to
         # copy it into the working array
@@ -455,7 +598,14 @@ class DM:
             self.invprojx = None
             self.invprojy = None
         else:
-            fwd, rev = prepare_fwd_reverse_projection_coordinates(s, rot)
+            if self.rot_order == 'zyx':
+                use_zyx_order = True
+            elif self.rot_order == 'xyz':
+                use_zyx_order = False
+            else:
+                raise ValueError("rot_order must be \'zyx\' or \'xyz\'")
+
+            fwd, rev = prepare_fwd_reverse_projection_coordinates(s, rot, use_zyx_order)
             self.projx, self.projy = fwd
             self.invprojx, self.invprojy = rev
 
@@ -492,7 +642,7 @@ class DM:
         self.poke_arr[self.iyy, self.ixx] = self.actuators
         return
 
-    def render(self, wfe=True):
+    def render(self, Nout=None, wfe=True):
         """Render the DM's surface figure or wavefront error.
 
         Parameters
@@ -509,6 +659,12 @@ class DM:
             by self.rot
 
         """
+        if Nout is None:
+            Nout = self.NoutDefault
+
+        if isinstance(Nout, int):
+            Nout = (Nout, Nout)
+
         # self.dx is unused inside apply tf, but :shrug:
         sfe = apply_precomputed_transfer_function(self.poke_arr, self.tf)
         if self.needs_rot:
@@ -523,10 +679,10 @@ class DM:
             warped = fourier_resample(warped, self.upsample)
 
         self.Nintermediate = warped.shape
-        warped = util.pad_crop(warped, self.Nout)
+        warped = util.pad_crop(warped, Nout)
         return warped
 
-    def render_backprop(self, protograd, wfe=True):
+    def render_backprop(self, protograd, gain_map, wfe=True):
         """Gradient backpropagation for render().
 
         Parameters
@@ -548,6 +704,8 @@ class DM:
 
             and you would call
             dm.render_backprop(diff)
+        gain_map : numpy.ndarray
+            nact x nact map of actuator gains in units of meters/Volt.
         wfe : bool, optional
             if True, the return is scaled as for a wavefront error instead
             of surface figure error
@@ -577,4 +735,4 @@ class DM:
 
         # return protograd
         in_actuator_space = apply_precomputed_transfer_function(protograd, np.conj(self.tf))
-        return in_actuator_space[self.iyy, self.ixx]
+        return in_actuator_space[self.iyy, self.ixx] / gain_map

@@ -1,11 +1,12 @@
 """Control functions for WFSC."""
+import copy
 import time
 
-import numpy as np
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import multiprocessing
+import numpy as np
 import scipy.optimize
-# from astropy.io import fits
-# import matplotlib.pyplot as plt
 
 import falco
 
@@ -318,8 +319,11 @@ def _grid_search_efc(mp, cvar):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
     # Empirically find the regularization value giving the best contrast
+
+    # Run the controller in parallel only when mp.ctrl.flagUseModel is True because that makes
+    # single calls to the compact model. When it is False and in simulation, it calls
+    # falco.imaging.get_summed_image(), which has its own internal parallelization.
     if mp.flagParallel and mp.ctrl.flagUseModel:
-        # # Run the controller in parallel
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
         # results = [pool.apply_async(_efc, args=(ni,vals_list,mp,cvar)) for ni in np.arange(Nvals,dtype=int) ]
         # results_ctrl = [p.get() for p in results] # All the Jacobians in a list
@@ -334,7 +338,12 @@ def _grid_search_efc(mp, cvar):
         pool.close()
         pool.join()
 
-        # [(mp, ilist, vals_list) for ilist in range(Nvals)]
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     resultsRaw = executor.map(
+        #         lambda p: _efc(*p),
+        #         [(ni, vals_list, mp, cvar) for ni in range(Nvals)],
+        #     )
+        # results_ctrl = tuple(resultsRaw)
 
         # Convert from a list to arrays:
         for ni in range(Nvals):
@@ -377,6 +386,7 @@ def _grid_search_efc(mp, cvar):
 
     # Find the best scaling factor and regularization pair based on the
     # best contrast.
+    cvar.InormVec = InormVec
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
     cvar.Im = np.squeeze(ImCube[indBest, :, :])
@@ -890,29 +900,51 @@ def _ad_efc(ni, vals_list, mp, cvar):
         # print(dm0[cvar.uLegend==1].shape)
         # print(len(mp.dm1.act_ele))
         # print(mp.dm1.V[mp.dm1.act_ele].shape)
-        
-        dm1vec = mp.dm1.V.flatten()
-        dm0[cvar.uLegend==1] = np.zeros(mp.dm1.Nele)  # dm1vec
-        bounds[cvar.uLegend==1, 0] = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
-        bounds[cvar.uLegend==1, 1] = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
 
-    if any(mp.dm_ind==2):
+        dm1vec = mp.dm1.V.flatten()
+        dm1lb = mp.dm1.Vmin - (dm1vec + mp.dm1.biasMap.flatten())
+        # dm1lb[dm1lb < -mp.ctrl.ad.dv_max] = -mp.ctrl.ad.dv_max
+        dm1ub = mp.dm1.Vmax - (dm1vec + mp.dm1.biasMap.flatten())
+        # dm1ub[dm1ub > mp.ctrl.ad.dv_max] = mp.ctrl.ad.dv_max
+        dm0[cvar.uLegend == 1] = np.zeros(mp.dm1.Nele)  # dm1vec
+        bounds[cvar.uLegend == 1, 0] = dm1lb[mp.dm1.act_ele]
+        bounds[cvar.uLegend == 1, 1] = dm1ub[mp.dm1.act_ele]
+
+    if any(mp.dm_ind == 2):
         dm2vec = mp.dm2.V.flatten()
-        dm0[cvar.uLegend==2] = np.zeros(mp.dm2.Nele)  #dm2vec
-        bounds[cvar.uLegend==2, 0] = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
-        bounds[cvar.uLegend==2, 1] = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
+        dm2lb = mp.dm2.Vmin - (dm2vec + mp.dm2.biasMap.flatten())
+        # dm2lb[dm2lb < -mp.ctrl.ad.dv_max] = -mp.ctrl.ad.dv_max
+        dm2ub = mp.dm2.Vmax - (dm2vec + mp.dm2.biasMap.flatten())
+        # dm2ub[dm2ub > mp.ctrl.ad.dv_max] = mp.ctrl.ad.dv_max
+        dm0[cvar.uLegend == 2] = np.zeros(mp.dm2.Nele)  # dm2vec
+        bounds[cvar.uLegend == 2, 0] = dm2lb[mp.dm2.act_ele]
+        bounds[cvar.uLegend == 2, 1] = dm2ub[mp.dm2.act_ele]
+
+    EFendPrev = []
+    for iMode in range(mp.jac.Nmode):
+
+        modvar = falco.config.ModelVariables()
+        modvar.whichSource = 'star'
+        modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+        modvar.zernIndex = mp.jac.zern_inds[iMode]
+        modvar.starIndex = mp.jac.star_inds[iMode]
+
+        # Calculate E-Field for previous EFC iteration
+        EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False,
+                                    useFPM=True, forRevGradModel=False)
+        EFendPrev.append(EFend)
 
     t0 = time.time()
     u_sol = scipy.optimize.minimize(
-        falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, log10reg),
-        method='L-BFGS-B', jac=True, bounds=bounds, 
+        falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
+        method='L-BFGS-B', jac=True, bounds=bounds,
         tol=None, callback=None,
         options={'disp': None, 'ftol': 1e-12, 'gtol': 1e-10, 
-                 'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun ,
+                 'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun,
                  'maxls': 20, 'iprint': mp.ctrl.ad.iprint},
         )
     t1 = time.time()
-    print('Optimization time = %.3f'%(t1-t0))
+    print('Optimization time = %.3f' % (t1-t0))
 
     duVec = u_sol.x
     print(u_sol.success)
@@ -1025,6 +1057,7 @@ def init(mp, cvar):
     u8dummy = 8*np.ones(mp.dm8.Nele, dtype=int) if(any(mp.dm_ind == 8)) else np.array([])
     u9dummy = 9*np.ones(mp.dm9.Nele, dtype=int) if(any(mp.dm_ind == 9)) else np.array([])
     cvar.uLegend = np.concatenate((u1dummy, u2dummy, u8dummy, u9dummy))
+    mp.ctrl.uLegend = cvar.uLegend
 
     return None
 
@@ -1088,3 +1121,66 @@ def wrapup(mp, cvar, duVec):
         mp.dm9.V = cvar.DM9Vnom + dDM.dDM9V
 
     return mp, dDM
+
+
+def set_utu_scale_fac(mp):
+    falco.imaging.calc_psf_norm_factor(mp)
+
+    # Save the original values and then use only the specified subset of actuators
+    if np.any(mp.dm_ind == 1):
+        dm1_act_ele = copy.copy(mp.dm1.act_ele)
+        dm1_Nele = copy.copy(mp.dm1.Nele)
+        mp.dm1.act_ele = np.arange(mp.dm1.NactTotal, dtype=int)[mp.ctrl.ad.dm1_act_mask_for_jac_norm]
+        mp.dm1.Nele = len(mp.dm1.act_ele)
+
+    if np.any(mp.dm_ind == 2):
+        dm2_act_ele = copy.copy(mp.dm2.act_ele)
+        dm2_Nele = copy.copy(mp.dm2.Nele)
+        mp.dm2.act_ele = np.arange(mp.dm2.NactTotal, dtype=int)[mp.ctrl.ad.dm2_act_mask_for_jac_norm]
+        mp.dm2.Nele = len(mp.dm2.act_ele)
+
+    # Compute the Jacobian for some actuators
+    jacStruct = falco.model.jacobian(mp)
+
+    print('Using the Jacobian to make other matrices...', end='')
+
+    # Compute matrices for linear control with regular EFC
+    cvar = falco.config.Object()
+    # Make the vector of total DM commands from before
+    u1 = mp.dm1.V.reshape(mp.dm1.NactTotal)[mp.dm1.act_ele] if any(mp.dm_ind == 1) else np.array([])
+    u2 = mp.dm2.V.reshape(mp.dm2.NactTotal)[mp.dm2.act_ele] if any(mp.dm_ind == 2) else np.array([])
+    cvar.uVec = np.concatenate((u1, u2))
+    cvar.NeleAll = cvar.uVec.size
+
+    cvar.GstarG_wsum = np.zeros((cvar.NeleAll, cvar.NeleAll))
+    cvar.RealGstarEab_wsum = np.zeros((cvar.NeleAll, 1))
+
+    for iMode in range(mp.jac.Nmode):
+
+        Gstack = np.zeros((mp.Fend.corr.Npix, 1), dtype=complex)  # Initialize a row to concatenate onto
+        if any(mp.dm_ind == 1):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G1[:, :, iMode])))
+        if any(mp.dm_ind == 2):
+            Gstack = np.hstack((Gstack, np.squeeze(jacStruct.G2[:, :, iMode])))
+        Gstack = Gstack[:, 1:]  # Remove the column used for initialization
+
+        # Square matrix part stays the same if no re-linearization has occurrred.
+        cvar.GstarG_wsum += mp.jac.weights[iMode]*np.real(np.conj(Gstack).T @ Gstack)
+
+    # Make the regularization matrix. (Define only diagonal here to save RAM.)
+    cvar.EyeGstarGdiag = np.max(np.diag(cvar.GstarG_wsum))*np.ones(cvar.NeleAll)
+    cvar.EyeNorm = np.max(np.diag(cvar.GstarG_wsum))
+    print('done.')
+
+    # Reset back to all actuators
+    if np.any(mp.dm_ind == 1):
+        mp.dm1.act_ele = dm1_act_ele  # list(range(mp.dm1.NactTotal))
+        mp.dm1.Nele = dm1_Nele  # len(mp.dm1.act_ele)
+    if np.any(mp.dm_ind == 2):
+        mp.dm2.act_ele = dm2_act_ele  # list(range(mp.dm2.NactTotal))
+        mp.dm2.Nele = dm2_Nele  # len(mp.dm2.act_ele)
+
+    # Set the scaling factor in the cost function for the squared actuator voltage term
+    mp.ctrl.ad.utu_scale_fac = cvar.EyeNorm
+
+    print('mp.ctrl.ad.utu_scale_fac = %.4g' % mp.ctrl.ad.utu_scale_fac)

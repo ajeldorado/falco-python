@@ -1,12 +1,16 @@
 """Functions for Zernike generation and sensitivity calculations."""
 import copy
 import math
+import pdb
+
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+# from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import multiprocessing
 import numpy as np
 
 import falco
-
 import falco.proper as proper
+
 
 _VALID_CENTERING = ['pixel', 'interpixel']
 _CENTERING_ERR = 'Invalid centering specification. Options: {}'.format(_VALID_CENTERING)
@@ -93,11 +97,32 @@ def calc_zern_sens(mp):
         # for iv in range(Nvals):
         #     Eunab[:, :, iv] = results[iv]
 
+        # def dummy_func(ii):
+        #     return ii
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     resultsRaw = executor.map(
+        #         dummy_func,
+        #         [iv for iv in range(50)],
+        #     )
+        # results = tuple(resultsRaw)
+        # print(len(results))
+        # print(results)
+
         pool = multiprocessing.Pool(processes=mp.Nthreads)
         results = pool.starmap(falco_get_single_sim_Efield_LamPol,
                                [(iv, inds_list, mp) for iv in range(Nvals)])
         pool.close()
         pool.join()
+        print(len(results))
+
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     resultsRaw = executor.map(
+        #         lambda p: falco_get_single_sim_Efield_LamPol(*p),
+        #         [(iv, inds_list, mp) for iv in range(Nvals)],
+        #     )
+        # results = tuple(resultsRaw)
+        # print(len(results))
+
         for iv in range(Nvals):
             Eunab[:, :, iv] = results[iv]
     else:
@@ -140,9 +165,33 @@ def calc_zern_sens(mp):
                                 for iv in range(NvalsZern)])
         pool.close()
         pool.join()
+
+        # a = np.array(results)
+        # from astropy.io import fits
+        # fits.writeto('/Users/ajriggs/Downloads/zern_sens_ser_imag.fits', np.imag(a))
+        # fits.writeto('/Users/ajriggs/Downloads/zern_sens_ser_real.fits', np.real(a))
+
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     resultsRaw = executor.map(
+        #         lambda p: falco_get_single_sim_Efield_LamPolZern(*p),
+        #         [(iv, inds_list_zern, mp) for iv in range(NvalsZern)],
+        #     )
+        # results = tuple(resultsRaw)
+
+        # a = np.array(results)
+        # from astropy.io import fits
+        # fits.writeto('/Users/ajriggs/Downloads/zern_sens_par_imag.fits', np.imag(a))
+        # fits.writeto('/Users/ajriggs/Downloads/zern_sens_par_real.fits', np.real(a))
+
+        # pdb.set_trace()
+
+        # print(10*'\n')
+        # print('*************')
+        # print(np.array(results).shape)
+        # print(len(results))
+
         for iv in range(NvalsZern):
             Eab[:, :, iv] = results[iv]
-        pass
     else:
         for iv in range(NvalsZern):
             Eab[:, :, iv] = falco_get_single_sim_Efield_LamPolZern(iv, inds_list_zern, mp)
@@ -338,8 +387,8 @@ def gen_norm_zern_maps(Nbeam, centering, indsZnoll):
 
     bm.centering = centering
     for iz in range(Nzern):
-        ZmapCube[:, :, iz] = propcustom_zernikes(bm, np.array([indsZnoll[iz]]),
-                np.array([1.]), NO_APPLY=True, CENTERING=centering)
+        ZmapCube[:, :, iz] = propcustom_zernikes(
+            bm, np.array([indsZnoll[iz]]), np.array([1.]), NO_APPLY=True, CENTERING=centering)
 
     return ZmapCube
 

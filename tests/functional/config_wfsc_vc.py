@@ -142,7 +142,7 @@ mp.dm2.inf_sign = '+'
 
 # DM1 parameters
 mp.dm1.Nact = 32               # of actuators across DM array
-mp.dm1.VtoH = 1e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
+mp.dm1.VtoH = 1.0e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
 mp.dm1.xtilt = 0               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm1.ytilt = 0               # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm1.zrot = 0                # clocking of DM surface [degrees]
@@ -152,7 +152,7 @@ mp.dm1.edgeBuffer = 1          # max radius (in actuator spacings) outside of be
 
 # DM2 parameters
 mp.dm2.Nact = 32               # # of actuators across DM array
-mp.dm2.VtoH = 1e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
+mp.dm2.VtoH = 1.0e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
 mp.dm2.xtilt = 0               # for foreshortening. angle of rotation about x-axis [degrees]
 mp.dm2.ytilt = 0                # for foreshortening. angle of rotation about y-axis [degrees]
 mp.dm2.zrot = 0                 # clocking of DM surface [degrees]

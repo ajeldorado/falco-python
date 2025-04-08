@@ -7,7 +7,10 @@ import unittest
 import falco
 
 import config_wfsc_vc as CONFIG
+import matplotlib.pyplot as plt
 
+
+DEBUG = False
 
 class TestPairwiseProbing(unittest.TestCase):
 
@@ -97,6 +100,36 @@ class TestPairwiseProbing(unittest.TestCase):
                                    Eest2D[mp.Fend.corr.maskBool])**2)
         percentEstError = meanIdiff/meanI*100
 
+        if DEBUG:
+            mp.est.probe.show()
+
+            plt.figure()
+            plt.imshow(np.abs(Etrue2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Etrue2D)')
+
+            plt.figure()
+            plt.imshow(np.angle(Etrue2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Etrue2D)')
+
+            plt.figure()
+            plt.imshow(np.abs(Eest2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Eest2D)')
+
+            plt.figure()
+            plt.imshow(np.angle(Eest2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Eest2D)')
+
+            plt.show()
+
+
         self.assertTrue(percentEstError < 4.0)
 
     def test_rectangular_region(self):
@@ -139,6 +172,35 @@ class TestPairwiseProbing(unittest.TestCase):
         meanIdiff = np.mean(np.abs(Etrue2D[mp.Fend.corr.maskBool] -
                                    Eest2D[mp.Fend.corr.maskBool])**2)
         percentEstError = meanIdiff/meanI*100
+
+        if DEBUG:
+            mp.est.probe.show()
+            
+            plt.figure()
+            plt.imshow(np.abs(Etrue2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Etrue2D)')
+
+            plt.figure()
+            plt.imshow(np.angle(Etrue2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Etrue2D)')
+
+            plt.figure()
+            plt.imshow(np.abs(Eest2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Eest2D)')
+
+            plt.figure()
+            plt.imshow(np.angle(Eest2D))
+            plt.colorbar()
+            plt.gca().invert_yaxis()
+            plt.title('np.abs(Eest2D)')
+
+            plt.show()
 
         self.assertTrue(percentEstError < 4.0)
 

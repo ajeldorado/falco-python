@@ -25,7 +25,7 @@ source_x_offset_norm: 7  # x location [lambda_c/D] in dark hole at which to comp
 source_y_offset_norm: 0  # y location [lambda_c/D] in dark hole at which to compute intensity normalization
 
 # Bandwidth and Wavelength Specs
-lambda0: 550.e-9  # Central wavelength of the whole spectral bandpass [meters]
+lambda0: 550.0e-9  # Central wavelength of the whole spectral bandpass [meters]
 fracBW: 0.10  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
 Nsbp: 5  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 Nwpsbp: 1  # Number of wavelengths to used to approximate an image in each sub-bandpass
@@ -91,7 +91,7 @@ dm1:
   dm_spacing: 400.e-6 #--User defined actuator pitch
 
   Nact: 32               # of actuators across DM array
-  VtoH: !eval 1e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
+  VtoH: !eval 1.0e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
   xtilt: 0               # for foreshortening. angle of rotation about x-axis [degrees]
   ytilt: 0               # for foreshortening. angle of rotation about y-axis [degrees]
   zrot: 0                # clocking of DM surface [degrees]
@@ -99,7 +99,7 @@ dm1:
   yc: !eval (32/2 - 1/2)       # y-center location of DM surface [actuator widths]
   edgeBuffer: 1          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
 
-  Dstop: 50e-3  # Diameter of iris [meters]
+  Dstop: 50.e-3  # Diameter of iris [meters]
 
 dm2:
   weight: 1.
@@ -110,11 +110,11 @@ dm2:
   # - INFLUENCE_BMC_KILO uses the file 'influence_BMC_kiloDM_300micron_res10_spline.fits' for BMC kiloDM
   inf_fn: !eval falco.INFLUENCE_BMC_2K
 
-  inf_sign: +
+  inf_sign: '+'
   dm_spacing: 400.e-6 #--User defined actuator pitch
 
   Nact: 32               # # of actuators across DM array
-  VtoH: !eval 1e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
+  VtoH: !eval 1.0e-9*np.ones((32, 32))  # gains of all actuators [nm/V of free stroke]
   xtilt: 0               # for foreshortening. angle of rotation about x-axis [degrees]
   ytilt: 0                # for foreshortening. angle of rotation about y-axis [degrees]
   zrot: 0                 # clocking of DM surface [degrees]
