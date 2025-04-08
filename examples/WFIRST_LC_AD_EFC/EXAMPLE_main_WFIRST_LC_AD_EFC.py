@@ -44,7 +44,7 @@ mp.Nwpsbp = 1
 
 # %% Set up the workspace
 
-mp.runLabel = ('Series%04d_Trial%04d_%s' %
+mp.runLabel = ('ADEFC_Series%04d_Trial%04d_%s' %
                (mp.SeriesNum, mp.TrialNum, mp.coro))
 
 out = falco.setup.flesh_out_workspace(mp)

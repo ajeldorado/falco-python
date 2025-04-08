@@ -135,7 +135,7 @@ def initialize_ekf_matrices(mp, ev, sbp_texp):
         # Try to use existing estimate if available
         try:
             # MATLAB: E_hat = mp.est.Eest(:,iSubband) * ev.e_scaling(iSubband) * sqrt(mp.tb.info.sbp_texp(iSubband));
-            E_hat = mp.est.Eest[:, iSubband] * ev.e_scaling[iSubband] * np.sqrt(sbp_texp[iSubband])
+            E_hat = mp.est.Eest[:, iSubband] #* ev.e_scaling[iSubband] * np.sqrt(sbp_texp[iSubband])
         except (AttributeError, IndexError):
             # MATLAB: E_hat = zeros(ev.SL/ev.BS,1);
             E_hat = np.zeros(int(ev.SL / ev.BS), dtype=complex)
