@@ -9,6 +9,7 @@ import pickle
 import falco
 
 import EXAMPLE_config_WFIRST_LC_ADDZM as CONFIG
+# import EXAMPLE_config_WFIRST_LC_DZM as CONFIG
 
 # %% Load/run config script
 mp = deepcopy(CONFIG.mp)
@@ -62,8 +63,8 @@ mp.runLabel = ('DZM_Series%04d_Trial%04d_%s' %
 out = falco.setup.flesh_out_workspace(mp)
 
 ##---- Initial state
-startSoln_TrialNum = 1
-startSoln_SeriesNum = 1
+startSoln_TrialNum = 2
+startSoln_SeriesNum = 2
 startSoln_coro = 'LC'
 startSoln_runLabel = ('Series%04d_Trial%04d_%s' %
                       (startSoln_SeriesNum, startSoln_TrialNum, startSoln_coro))
@@ -75,10 +76,40 @@ with open(fnPickle, 'rb') as pickle_file:
 mp.dm1.V_dz = startSoln_out.dm1.Vall[:, :, -1] #np.zeros((mp.dm1.Nact, mp.dm1.Nact)) #--Drift injected, initialize to 0
 mp.dm2.V_dz = startSoln_out.dm2.Vall[:, :, -1] #np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
+mp.est.load_prev_Esens = True
+if mp.est.load_prev_Esens:
+    startSoln_Eest = startSoln_out.Eest_real[-1,:,:] + startSoln_out.Eest_real[-1,:,:] * 1j
+    mp.est.Eest = startSoln_Eest
+
 ##----
+if mp.controller.lower() == 'ad-efc':
+    # %% Compute the scaling factor for the actuator commands in the AD-EFC cost function
+
+    # Check a subset of actuators to see what the max actuator effect is in the pupil plane
+    if np.any(mp.dm_ind == 1):
+        mp.ctrl.ad.dm1_act_mask_for_jac_norm = np.eye(mp.dm1.Nact, dtype=bool).flatten()
+    if np.any(mp.dm_ind == 2):
+        mp.ctrl.ad.dm2_act_mask_for_jac_norm = np.eye(mp.dm2.Nact, dtype=bool).flatten()
+
+    falco.ctrl.set_utu_scale_fac(mp)
 
 
+    # %% Calculate and use the Jacobian just upfront to weed out weak actuators
 
+    cvar = falco.config.Object()
+    cvar.Itr = 0
+    cvar.flagRelin = True
+
+    falco.setup.falco_set_jacobian_modal_weights(mp)
+
+    # Compute the control Jacobians for each DM
+    jacStruct = falco.model.jacobian(mp)
+
+    falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
+    falco.ctrl.init(mp, cvar)
+
+
+# %% Start loop
 falco.wfsc.loop(mp, out)
 
 
