@@ -9,11 +9,18 @@ class Eval:
     When evaluating, it exposes numpy, falco, and math to the injected code under `np`, `falco`, and `math`,
     and the model parameters object under `mp`.
     """
-    mp: any
+
+    globals: any
     """
-    The model parameters object exposed to the injected code.
-    
-    Modifying the `mp` object after instantiating this class is OK. (and necessary in most cases)
+    The globals exposed to the injected code, in a dictionary.
+    Use this to provide libraries, i.e. `{"np": numpy}`
+    """
+
+    locals: any
+    """
+    The locals exposed to the injected code, in a dictionary.
+    This can be used to provide recursive access to the parsed config object.
+    Modifying the locals after instantiating this class is OK. (and often necessary)
     """
 
     code: str
@@ -32,9 +39,8 @@ class Eval:
             raise ValueError("Circular parameter evaluation dependency detected.")
 
         self.in_progress = True
-
-        import falco
-        import numpy
-        import math
-
-        return eval(self.code, {'np': numpy, 'falco': falco, 'math': math}, {'mp': self.mp})
+        try:
+            result = eval(self.code, self.globals, self.locals)
+        finally:
+            self.in_progress = False
+        return result

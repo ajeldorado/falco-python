@@ -35,9 +35,7 @@ class Object:
             raise AttributeError
 
         if isinstance(self.data[item], Eval):
-            result = self.data[item].evaluate()
-            self.data[item] = result
-            return result
+            return self.data[item].evaluate()
         return self.data[item]
 
     def __getitem__(self, item):

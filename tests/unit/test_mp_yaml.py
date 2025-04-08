@@ -87,7 +87,7 @@ def test_dependency():
     assert result.a == 4
 
 
-def test_cache():
+def test_no_cache():
     result = parse("""
         val: !eval 2+2
         
@@ -112,7 +112,7 @@ def test_cache():
     assert invocation_count == 1
 
     assert result.val == 4
-    assert invocation_count == 1
+    assert invocation_count == 2
 
 
 def test_circular_dependency():
