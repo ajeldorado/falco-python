@@ -114,8 +114,7 @@ mp.eval.Rsens = np.array([[3., 4.], [4., 8.]]);  # [2-D ndarray]
 ####### NEED TO DETERMINE
 ###--Grid- or Line-Search Settings
 mp.ctrl = falco.config.Object()
-mp.ctrl.log10regVec = np.arange(-6, -1.5,
-                                0.5)  # -6:1/2:-2; #--log10 of the regularization exponents (often called Beta values)
+mp.ctrl.log10regVec = np.array([-3, ])
 mp.ctrl.dmfacVec = np.array(
     [1.])  # --Proportional gain term applied to the total DM delta command. Usually in range [0.5,1]. [1-D ndarray]
 ### # mp.ctrl.dm9regfacVec = 1;        #--Additional regularization factor applied to DM9
@@ -132,19 +131,25 @@ mp.dm2.weight = 1.;
 ###  - 'gridsearchEFC' for EFC as an empirical grid search over tuning parameters
 ###  - 'plannedEFC' for EFC with an automated regularization schedule
 ###  - 'SM-CVX' for constrained EFC using CVX. --> DEVELOPMENT ONLY
-mp.controller = 'gridsearchEFC';
+mp.controller = 'AD-EFC'
 
-### # # GRID SEARCH EFC DEFAULTS     
+mp.ctrl.ad = falco.config.Object()
+mp.ctrl.ad.cost_func_scale_fac = 100
+mp.ctrl.ad.maxiter = 30
+mp.ctrl.ad.iprint = 10
+mp.ctrl.ad.maxfun = 1000000
+
+### # # GRID SEARCH EFC DEFAULTS
 ###--WFSC Iterations and Control Matrix Relinearization
 mp.relinItrVec = [0]  # np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1, 2])  # [1, 2]; #--Which DMs to use [1-D ndarray]
 
-### # # PLANNED SEARCH EFC DEFAULTS     
-### mp.dm_ind = [1 2 ]; # vector of DMs used in controller at ANY time (not necessarily all at once or all the time). 
+### # # PLANNED SEARCH EFC DEFAULTS
+### mp.dm_ind = [1 2 ]; # vector of DMs used in controller at ANY time (not necessarily all at once or all the time).
 ### mp.ctrl.dmfacVec = 1;
-### #--CONTROL SCHEDULE. Columns of mp.ctrl.sched_mat are: 
-###     # Column 1: # of iterations, 
-###     # Column 2: log10(regularization), 
+### #--CONTROL SCHEDULE. Columns of mp.ctrl.sched_mat are:
+###     # Column 1: # of iterations,
+###     # Column 2: log10(regularization),
 ###     # Column 3: which DMs to use (12, 128, 129, or 1289) for control
 ###     # Column 4: flag (0 = False, 1 = True), whether to re-linearize
 ###     #   at that iteration.
@@ -154,7 +159,7 @@ mp.dm_ind = np.array([1, 2])  # [1, 2]; #--Which DMs to use [1-D ndarray]
 ###     # The imaginary part of the log10(regularization) in column 2 is
 ###     #  replaced for that iteration with the optimal log10(regularization)
 ###     # A row starting with [0, 0, 0, 1...] is for relinearizing only at that time
-### 
+###
 ### mp.ctrl.sched_mat = [...
 ###     repmat([1,1j,12,0,1],[4,1]);...
 ###     repmat([1,1j-1,12,0,1],[25,1]);...
@@ -267,7 +272,7 @@ mp.P1.compact.Nbeam = 250;
 mp.P4.compact.Nbeam = 250;
 
 ##--Number of re-imaging relays between pupil planesin compact model. Needed
-## to keep track of 180-degree rotations compared to the full model, which 
+## to keep track of 180-degree rotations compared to the full model, which
 ## in general can have probably has extra collimated beams compared to the
 ## compact model.
 mp.Nrelay1to2 = 1;
@@ -277,10 +282,10 @@ mp.NrelayFend = 0;  # --How many times to rotate the final image by 180 degrees
 
 mp.F3.compact.res = 4;  # sampling of FPM for full model [pixels per lambda0/D]
 
-### Optical Layout: Full Model 
+### Optical Layout: Full Model
 
 ##--Focal Lengths
-## mp.fl = 1; 
+## mp.fl = 1;
 #
 ####### NEED TO DETERMINE
 ##--Pupil Plane Resolutions
@@ -319,7 +324,7 @@ mp.F3.full.res = 4  # sampling of FPM for full model [pixels per lambda0/D]
 mp.F3.compact.res = 4  # sampling of FPM for full model [pixels per lambda0/D]
 
 mp.F3.Rin = 2.7  # maximum radius of inner part of the focal plane mask [lambda0/D]
-mp.F3.RinA = 2.7  # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin 
+mp.F3.RinA = 2.7  # inner hard-edge radius of the focal plane mask [lambda0/D]. Needs to be <= mp.F3.Rin
 mp.F3.Rout = np.inf  # radius of outer opaque edge of FPM [lambda0/D]
 mp.F3.ang = 180  # on each side, opening angle [degrees]
 mp.FPMampFac = 0  # amplitude transmission of the FPM

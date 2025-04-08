@@ -72,7 +72,7 @@ def loop(mp, out):
         mp.thput_vec[Itr] = np.max(thput)
 
         # %% Control Jacobian
-        if mp.controller.lower() != 'ad-efc':
+        if mp.controller.lower() != 'ad-efc':  # or mp.estimator.lower() == 'ekf_maintenance':
             # Re-compute the Jacobian weights
             falco.setup.falco_set_jacobian_modal_weights(mp)
     

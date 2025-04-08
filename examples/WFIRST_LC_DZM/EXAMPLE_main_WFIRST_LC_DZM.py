@@ -8,7 +8,7 @@ import pickle
 
 import falco
 
-import EXAMPLE_config_WFIRST_LC_DZM as CONFIG
+import EXAMPLE_config_WFIRST_LC_ADDZM as CONFIG
 
 # %% Load/run config script
 mp = deepcopy(CONFIG.mp)
@@ -28,7 +28,7 @@ mp.Nthreads = 4  # Number of threads to use when using multiprocessing. If undef
 
 # Record Keeping
 mp.TrialNum = 1
-mp.SeriesNum = 2
+mp.SeriesNum = 3
 
 # Use just 1 wavelength for initial debugging of code
 mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
@@ -40,7 +40,7 @@ mp.est.probe.whichDM = 2 #--Which DM is used for dither/control
 mp.est.dither = 0.04 #--std dev of dither command for random dither [V/sqtr(iter)]
 mp.est.itr_ol = np.arange(0, mp.Nitr) #--"open-loop" iterations where an image is taken with initial DM command + drift command
 mp.est.itr_reset = [mp.Nitr+1]
-mp.est.flagUseJacAlgDiff = False
+mp.est.flagUseJacAlgDiff = True
 
 #-- DM settings
 # mp.dm1.V_dz = mp.dm1.V #--DM command that generates the initial dark zone

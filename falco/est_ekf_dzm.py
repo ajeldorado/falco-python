@@ -436,7 +436,7 @@ def get_gdu(mp, ev, iSubband, y_measured, closed_loop_command, DM1Vdither, DM2Vd
     modvar.starIndex = 0
     modvar.whichSource = 'star'
     
-    if mp.est.flagUseJacAlgDiff:
+    if not mp.est.flagUseJacAlgDiff:
         gdu = ev.G_tot_cont[:, :, iSubband] @ closed_loop_command
     else:
         # For unprobed field based on model
