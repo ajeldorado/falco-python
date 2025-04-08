@@ -133,6 +133,11 @@ def loop(mp, out):
 
         # Store key data in out object
         out.log10regHist[Itr] = cvar.log10regUsed
+
+        for iSubband in range(mp.Nsbp):
+            out.Eest_real[Itr, :, iSubband] = np.real(np.ravel(cvar.Eest))
+            out.Eest_imag[Itr, :, iSubband] = np.imag(np.ravel(cvar.Eest))
+
         if hasattr(cvar, 'Im') and not mp.ctrl.flagUseModel:
             out.IrawScoreHist[Itr+1] = np.mean(cvar.Im[mp.Fend.score.maskBool])
             out.IrawCorrHist[Itr+1] = np.mean(cvar.Im[mp.Fend.corr.maskBool])

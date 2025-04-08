@@ -53,7 +53,7 @@ mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind
 
 # %% Set up the workspace
 
-mp.runLabel = ('Series%04d_Trial%04d_%s' %
+mp.runLabel = ('ADEFC_Series%04d_Trial%04d_%s' %
                (mp.SeriesNum, mp.TrialNum, mp.coro))
 
 out = falco.setup.flesh_out_workspace(mp)

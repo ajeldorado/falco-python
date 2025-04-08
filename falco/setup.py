@@ -1482,6 +1482,10 @@ def init_storage_arrays(mp):
     out.normIntUnmodCorr = np.zeros((mp.Nitr, mp.Nsbp*mp.compact.star.count))  # Estimated unmodulated NI in correction region of dark hole.
     out.normIntUnmodScore = np.zeros((mp.Nitr, mp.Nsbp*mp.compact.star.count))  # Estimated unmodulated NI in correction region of dark hole.
 
+    # E-field estimate every iteration
+    out.Eest_real = np.zeros((mp.Nitr, np.sum(mp.Fend.corr.maskBool), mp.Nsbp*mp.compact.star.count))
+    out.Eest_imag = np.zeros((mp.Nitr, np.sum(mp.Fend.corr.maskBool), mp.Nsbp*mp.compact.star.count))
+
     # Storage array for throughput at each iteration
     out.thput = np.zeros(mp.Nitr + 1)
 

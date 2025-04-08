@@ -26,8 +26,8 @@ mp.flagParallel = False   # whether to use multiprocessing to parallelize some l
 mp.Nthreads = 4  # Number of threads to use when using multiprocessing. If undefined, it is set to the max number of cores
 
 # Record Keeping
-mp.TrialNum = 1
-mp.SeriesNum = 1
+mp.TrialNum = 2
+mp.SeriesNum = 2
 
 # Use just 1 wavelength for initial debugging of code
 mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
