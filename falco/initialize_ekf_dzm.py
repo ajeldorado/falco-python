@@ -26,6 +26,19 @@ def initialize_ekf_dzm(mp, ev, jacStruct):
         Updated structure containing estimation variables.
     """
 
+    if mp.controller.lower() == 'ad-efc':
+        cvar = falco.config.Object()
+        cvar.Itr = ev.Itr
+        cvar.flagRelin = True
+
+        # Re-compute the Jacobian weights
+        falco.setup.falco_set_jacobian_modal_weights(mp)
+
+        # Compute the control Jacobians for each DM
+        jacStruct = falco.model.jacobian(mp)
+
+        falco.ctrl.cull_weak_actuators(mp, cvar, jacStruct)
+
     # Check if sim mode to avoid calling tb obj in sim mode
     if mp.flagSim:
         sbp_texp = mp.detector.tExpVec  # exposure times for non-pairwise-probe images in each subband
