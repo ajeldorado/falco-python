@@ -1429,7 +1429,12 @@ def jacobian(mp):
             print('done.')
 
     # TIED ACTUATORS
+    apply_ties_to_jac(mp, jacStruct)
 
+    return jacStruct
+
+
+def apply_ties_to_jac(mp, jacStruct):
     # Handle tied actuators by adding the 2nd actuator's Jacobian column to the
     # first actuator's column, and then zeroing out the 2nd actuator's column.
     if any(mp.dm_ind == 1):
@@ -1453,7 +1458,7 @@ def jacobian(mp):
             jacStruct.G2[:, Index1subset, :] += jacStruct.G2[:, Index2subset, :]  # adding the 2nd actuators Jacobian column to the first actuator's column
             jacStruct.G2[:, Index2subset, :] = 0*jacStruct.G2[:, Index2subset, :]  # zero out the 2nd actuator's column.
 
-    return jacStruct
+    return None
 
 
 def _func_Jac_ordering(imode, idm):
@@ -1488,8 +1493,34 @@ def write_jac_slices(fn_mp, combo_list):
         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
             jac_slice = jacobians.vortex(mp, imode, idm, iact)
 
-        fn_out = os.path.join(mp.path.jac, 'jac_mode%d_dm%d_act%d.npy')
+        fn_out = os.path.join(mp.path.jac, 'jac_mode%d_dm%d_act%d.npy' % (imode, idm, iact))
         np.save(fn_out, jac_slice)
+
+
+def reassemble_jac_from_slices(mp):
+
+    # Initialize the Jacobians for each DM
+    jacStruct = falco.config.Object()  # Initialize the new structure
+    jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
+                            dtype=complex)
+    jacStruct.G2 = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele, mp.jac.Nmode),
+                            dtype=complex)
+
+    # Reorder Jacobian by mode and DM from the list
+    for imode in range(mp.jac.Nmode):
+
+        for index, iact in mp.dm1.act_ele:
+            fn_dm1 = os.path.join(mp.path.jac, 'jac_mode%d_dm1_act%d.npy' % (imode, iact))
+            jacStruct.G1[:, index, imode] = np.load(fn_dm1)
+
+        for index, iact in mp.dm2.act_ele:
+            fn_dm2 = os.path.join(mp.path.jac, 'jac_mode%d_dm2_act%d.npy' % (imode, iact))
+            jacStruct.G2[:, index, imode] = np.load(fn_dm2)
+
+    # TIED ACTUATORS
+    apply_ties_to_jac(mp, jacStruct)
+
+    return jacStruct
 
 
 def _jac_middle_layer(mp, imode, idm):
