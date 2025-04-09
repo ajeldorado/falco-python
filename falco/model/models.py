@@ -504,17 +504,17 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     total_cost = 0  # initialize
     normFacADweightedSum = 0
 
-    for iMode in range(mp.jac.Nmode):
+    for imode in range(mp.jac.Nmode):
         modvar = falco.config.ModelVariables()
         modvar.whichSource = 'star'
-        modvar.sbpIndex = mp.jac.sbp_inds[iMode]
-        modvar.zernIndex = mp.jac.zern_inds[iMode]
-        modvar.starIndex = mp.jac.star_inds[iMode]
+        modvar.sbpIndex = mp.jac.sbp_inds[imode]
+        modvar.zernIndex = mp.jac.zern_inds[imode]
+        modvar.starIndex = mp.jac.star_inds[imode]
 
         wvl = mp.sbp_centers[modvar.sbpIndex]
         # normFac = mp.Fend.compact.I00[modvar.sbpIndex]
         # normFacFull = np.mean(mp.Fend.full.I00[modvar.sbpIndex, :])
-        EestVec = EestAll[:, iMode]
+        EestVec = EestAll[:, imode]
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = EestVec  # * np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
@@ -530,7 +530,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         mp.dm2.V = mp.dm2.V0.copy()
 
         # Compute the delta E-field from the latest commands (model new - model old).
-        EFendA = EFendPrev[iMode]
+        EFendA = EFendPrev[imode]
         dEend = EFendB - EFendA
         DM1surf = DM1surfB
         DM2surf = DM2surfB
@@ -539,14 +539,14 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.abs(DH)**2)
-        total_cost += mp.jac.weights[iMode] * int_in_dh / normFacAD
-        normFacADweightedSum += mp.jac.weights[iMode] / normFacAD
+        total_cost += mp.jac.weights[imode] * int_in_dh / normFacAD
+        normFacADweightedSum += mp.jac.weights[imode] / normFacAD
 
         g1 = np.exp(1j*mirrorFac*2*np.pi*DM1surf/wvl)
         g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surf/wvl)
 
         # Gradient
-        Fend_masked = mp.jac.weights[iMode]*2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float))
+        Fend_masked = mp.jac.weights[imode]*2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float))
 
 #        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
@@ -694,8 +694,8 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         dmSurf2_bar = (4*np.pi/wvl)*phase_DM2_bar
         dmSurf1_bar = (4*np.pi/wvl)*phase_DM1_bar
 
-        dmSurf2_bar_tot += mp.jac.weights[iMode] * dmSurf2_bar
-        dmSurf1_bar_tot += mp.jac.weights[iMode] * dmSurf1_bar
+        dmSurf2_bar_tot += mp.jac.weights[imode] * dmSurf2_bar
+        dmSurf1_bar_tot += mp.jac.weights[imode] * dmSurf1_bar
         # dmSurf1_bar_tot = dmSurf1_bar_tot + dmSurf1_bar/mp.Nsbp
         # dmSurf2_bar_tot = dmSurf2_bar_tot + dmSurf2_bar/mp.Nsbp
 
@@ -1317,28 +1317,34 @@ def jacobian(mp):
                 mp.compact.fpmCube, mp.dm8.surf, mp.dm9.surf = \
                     falco.hlc.gen_fpm_cube_from_LUT(mp, 'compact')
 
+    # Precompute the E-fields at the DMs
+    with falco.util.TicToc():
+        print('Running control Jacobian precomputation...', end='')
+        jacobians.precomp(mp)
+        print('done.')
+
     # Initialize the Jacobians for each DM
     jacStruct.G1 = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele, mp.jac.Nmode),
                             dtype=complex)
     jacStruct.G2 = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele, mp.jac.Nmode),
                             dtype=complex)
-    jacStruct.G8 = np.zeros((mp.Fend.corr.Npix, mp.dm8.Nele, mp.jac.Nmode),
-                            dtype=complex)
-    jacStruct.G9 = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele, mp.jac.Nmode),
-                            dtype=complex)
+    # jacStruct.G8 = np.zeros((mp.Fend.corr.Npix, mp.dm8.Nele, mp.jac.Nmode),
+    #                         dtype=complex)
+    # jacStruct.G9 = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele, mp.jac.Nmode),
+    #                         dtype=complex)
 
     # Calculate the Jacobian in parallel or serial
     if mp.flagParallel:
         # print('Computing control Jacobian matrices in parallel via multiprocessing.Process...', end='')
         # with falco.util.TicToc():
-        #      ##results_order = [pool.apply(_func_Jac_ordering, args=(im,idm)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
-        #     results_order = [(im, idm) for idm in mp.dm_ind for im in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
+        #      ##results_order = [pool.apply(_func_Jac_ordering, args=(imode,idm)) for imode,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int),mp.dm_ind))) ]       
+        #     results_order = [(imode, idm) for idm in mp.dm_ind for imode in np.arange(mp.jac.Nmode,dtype=int)] # Use for assigning parts of the Jacobian list to the correct DM and mode
 
         #     print(zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind))))
 
         #     output = multiprocessing.Queue()
         #     processes = [multiprocessing.Process(target=_jac_middle_layer_process,
-        #                  args=(mp,im,idm,output)) for im,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
+        #                  args=(mp,imode,idm,output)) for imode,idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode,dtype=int), mp.dm_ind)))]
 
         #     # if __name__ == '__main__':
         #     jobs = []
@@ -1359,23 +1365,23 @@ def jacobian(mp):
 
         #     # Reorder Jacobian by mode and DM from the list
         #     for ii in range(mp.jac.Nmode*mp.dm_ind.size):
-        #         im = results_order[ii][0]
+        #         imode = results_order[ii][0]
         #         idm = results_order[ii][1]
         #         if idm == 1:
-        #             jacStruct.G1[:, :, im] = results_Jac[ii]
+        #             jacStruct.G1[:, :, imode] = results_Jac[ii]
         #         if idm == 2:
-        #             jacStruct.G2[:, :, im] = results_Jac[ii]
+        #             jacStruct.G2[:, :, imode] = results_Jac[ii]
 
         print('Computing control Jacobian matrices in parallel...', end='')
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
 
         with falco.util.TicToc():
-            results_order = [(im, idm) for idm in mp.dm_ind for im in range(mp.jac.Nmode)]
+            results_order = [(imode, idm) for idm in mp.dm_ind for imode in range(mp.jac.Nmode)]
 
             # # OLD WAY: with multiprocessing.Pool.starmap()
             # results = pool.starmap(
             #     _jac_middle_layer,
-            #     [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))])
+            #     [(mp, imode, idm)for imode, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))])
             # results_Jac = results
             # pool.close()
             # pool.join()
@@ -1383,41 +1389,41 @@ def jacobian(mp):
             with PoolExecutor(max_workers=mp.Nthreads) as executor:
                 result = executor.map(
                     lambda p: _jac_middle_layer(*p),
-                    [(mp, im, idm)for im, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))]
+                    [(mp, imode, idm)for imode, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))]
                 )
             results_Jac = tuple(result)
 
             # Reorder Jacobian by mode and DM from the list
             for ii in range(mp.jac.Nmode*mp.dm_ind.size):
-                im = results_order[ii][0]
+                imode = results_order[ii][0]
                 idm = results_order[ii][1]
                 if idm == 1:
-                    jacStruct.G1[:, :, im] = results_Jac[ii]
+                    jacStruct.G1[:, :, imode] = results_Jac[ii]
                 if idm == 2:
-                    jacStruct.G2[:, :, im] = results_Jac[ii]
+                    jacStruct.G2[:, :, imode] = results_Jac[ii]
                 if idm == 8:
-                    jacStruct.G8[:, :, im] = results_Jac[ii]
+                    jacStruct.G8[:, :, imode] = results_Jac[ii]
                 if idm == 9:
-                    jacStruct.G9[:, :, im] = results_Jac[ii]
+                    jacStruct.G9[:, :, imode] = results_Jac[ii]
 
             print('done.')
 
     else:
         print('Computing control Jacobian matrices in serial:\n  ', end='')
         with falco.util.TicToc():
-            for im in range(mp.jac.Nmode):
+            for imode in range(mp.jac.Nmode):
                 if any(mp.dm_ind == 1):
-                    print('mode%ddm%d...' % (im, 1), end='')
-                    jacStruct.G1[:, :, im] = _jac_middle_layer(mp, im, 1)
+                    print('mode%ddm%d...' % (imode, 1), end='')
+                    jacStruct.G1[:, :, imode] = _jac_middle_layer(mp, imode, 1)
                 if any(mp.dm_ind == 2):
-                    print('mode%ddm%d...' % (im, 2), end='')
-                    jacStruct.G2[:, :, im] = _jac_middle_layer(mp, im, 2)
-                if any(mp.dm_ind == 8):
-                    print('mode%ddm%d...' % (im, 8), end='')
-                    jacStruct.G8[:, :, im] = _jac_middle_layer(mp, im, 8)
-                if any(mp.dm_ind == 9):
-                    print('mode%ddm%d...' % (im, 9), end='')
-                    jacStruct.G9[:, :, im] = _jac_middle_layer(mp, im, 9)
+                    print('mode%ddm%d...' % (imode, 2), end='')
+                    jacStruct.G2[:, :, imode] = _jac_middle_layer(mp, imode, 2)
+                # if any(mp.dm_ind == 8):
+                #     print('mode%ddm%d...' % (imode, 8), end='')
+                #     jacStruct.G8[:, :, imode] = _jac_middle_layer(mp, imode, 8)
+                # if any(mp.dm_ind == 9):
+                #     print('mode%ddm%d...' % (imode, 9), end='')
+                #     jacStruct.G9[:, :, imode] = _jac_middle_layer(mp, imode, 9)
             print('done.')
 
     # TIED ACTUATORS
@@ -1428,8 +1434,8 @@ def jacobian(mp):
         # Update the sets of tied actuators
         mp.dm1 = falco.dm.enforce_constraints(mp.dm1)
         for ti in range(mp.dm1.tied.shape[0]):
-            Index1all = mp.dm1.tied[ti, 0]  # Index of first tied actuator in whole actuator set. 
-            Index2all = mp.dm1.tied[ti, 1]  # Index of second tied actuator in whole actuator set. 
+            Index1all = mp.dm1.tied[ti, 0]  # Index of first tied actuator in whole actuator set.
+            Index2all = mp.dm1.tied[ti, 1]  # Index of second tied actuator in whole actuator set.
             Index1subset = np.nonzero(mp.dm1.act_ele == Index1all)[0]  # Index of first tied actuator in subset of used actuators. 
             Index2subset = np.nonzero(mp.dm1.act_ele == Index2all)[0]  # Index of second tied actuator in subset of used actuators. 
             jacStruct.G1[:, Index1subset, :] += jacStruct.G1[:, Index2subset, :]  # adding the 2nd actuators Jacobian column to the first actuator's column
@@ -1448,12 +1454,12 @@ def jacobian(mp):
     return jacStruct
 
 
-def _func_Jac_ordering(im, idm):
+def _func_Jac_ordering(imode, idm):
     """Order modes for parallelized Jacobian calculation."""
-    return (im, idm)
+    return (imode, idm)
 
 
-def _jac_middle_layer(mp, im, idm):
+def _jac_middle_layer(mp, imode, idm):
     """
     Select which optical layout's Jacobian model to use and get E-field.
 
@@ -1469,14 +1475,27 @@ def _jac_middle_layer(mp, im, idm):
 
     """
     if mp.layout.lower() in ('fourier', 'proper', 'fpm_scale'):
+
+        if idm == 1:
+            Nele = mp.dm1.Nele
+            act_ele = mp.dm1.act_ele
+        elif idm == 2:
+            Nele = mp.dm2.Nele
+            act_ele = mp.dm2.act_ele
+        jacMode = np.zeros((mp.Fend.corr.Npix, Nele), dtype=complex)
+
         if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'FLC', 'SPLC'):
-            jacMode = jacobians.lyot(mp, im, idm)
+            for index, iact in enumerate(act_ele):
+                jacMode[:, index] = jacobians.lyot(mp, imode, idm, iact)
+
         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
-            jacMode = jacobians.vortex(mp, im, idm)
+            for index, iact in enumerate(act_ele):
+                jacMode[:, index] = jacobians.vortex(mp, imode, idm, iact)
 
     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
-            jacMode = jacobians.lyot(mp, im, idm)
+            for index, iact in enumerate(act_ele):
+                jacMode[:, index] = jacobians.lyot(mp, imode, idm, iact)
         else:
             raise ValueError('%s not recognized as value for mp.coro' %
                              mp.coro)
@@ -1487,7 +1506,7 @@ def _jac_middle_layer(mp, im, idm):
     return jacMode
 
 
-def _jac_middle_layer_process(mp, im, idm, output):
+def _jac_middle_layer_process(mp, imode, idm, output):
     """
     Select which optical layout's Jacobian model to use and get E-field.
 
@@ -1504,12 +1523,12 @@ def _jac_middle_layer_process(mp, im, idm, output):
     """
     if mp.layout.lower() in ('fourier', 'proper'):
         if mp.coro.upper() in ('LC', 'APLC', 'FLC', 'SPLC'):
-            jacMode = jacobians.lyot(mp, im, idm)
+            jacMode = jacobians.lyot(mp, imode, idm)
         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
-            jacMode = jacobians.vortex(mp, im, idm)
+            jacMode = jacobians.vortex(mp, imode, idm)
     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
-            jacMode = jacobians.lyot(mp, im, idm)
+            jacMode = jacobians.lyot(mp, imode, idm)
         else:
             raise ValueError('%s not recognized as value for mp.coro' %
                              mp.coro)
