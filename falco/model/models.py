@@ -1,12 +1,14 @@
 """Compact and full diffractive optical models."""
 import copy
+import os
+# import pdb
+import pickle
 
 from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 # from concurrent.futures import ProcessPoolExecutor as PoolExecutor
-import multiprocessing
+# import multiprocessing
 import numpy as np
 import scipy.ndimage as ndimage
-import pdb
 # import matplotlib.pyplot as plt
 
 from . import jacobians
@@ -1457,6 +1459,37 @@ def jacobian(mp):
 def _func_Jac_ordering(imode, idm):
     """Order modes for parallelized Jacobian calculation."""
     return (imode, idm)
+
+
+def load_pickle_file(file_path):
+    """Load data from a pickle file."""
+    try:
+        with open(file_path, 'rb') as file:
+            data = pickle.load(file)
+            return data
+    except FileNotFoundError:
+        print(f"Error: File not found at {file_path}")
+        return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
+def write_jac_slices(fn_mp, combo_list):
+
+    mp = load_pickle_file(fn_mp)
+
+    for combo in combo_list:
+        [imode, idm, iact] = combo
+
+        if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'FLC', 'SPLC'):
+            jac_slice = jacobians.lyot(mp, imode, idm, iact)
+
+        elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
+            jac_slice = jacobians.vortex(mp, imode, idm, iact)
+
+        fn_out = os.path.join(mp.path.jac, 'jac_mode%d_dm%d_act%d.npy')
+        np.save(fn_out, jac_slice)
 
 
 def _jac_middle_layer(mp, imode, idm):
