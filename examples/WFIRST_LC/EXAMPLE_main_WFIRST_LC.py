@@ -34,7 +34,6 @@ mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / l
 mp.Nsbp = 1  # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1
 
-mp.jac.minimizeNI = True
 
 # %% Perform the Wavefront Sensing and Control
 

@@ -1506,33 +1506,33 @@ def _jac_middle_layer(mp, imode, idm):
     return jacMode
 
 
-def _jac_middle_layer_process(mp, imode, idm, output):
-    """
-    Select which optical layout's Jacobian model to use and get E-field.
+# def _jac_middle_layer_process(mp, imode, idm, output):
+#     """
+#     Select which optical layout's Jacobian model to use and get E-field.
 
-    Parameters
-    ----------
-    mp : ModelParameters
-        Structure containing optical model parameters
+#     Parameters
+#     ----------
+#     mp : ModelParameters
+#         Structure containing optical model parameters
 
-    Returns
-    -------
-    jacMode : numpy ndarray
-        Complex-valued, 2-D array containing the Jacobian for the specified DM.
+#     Returns
+#     -------
+#     jacMode : numpy ndarray
+#         Complex-valued, 2-D array containing the Jacobian for the specified DM.
 
-    """
-    if mp.layout.lower() in ('fourier', 'proper'):
-        if mp.coro.upper() in ('LC', 'APLC', 'FLC', 'SPLC'):
-            jacMode = jacobians.lyot(mp, imode, idm)
-        elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
-            jacMode = jacobians.vortex(mp, imode, idm)
-    elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
-        if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
-            jacMode = jacobians.lyot(mp, imode, idm)
-        else:
-            raise ValueError('%s not recognized as value for mp.coro' %
-                             mp.coro)
-    else:
-        raise ValueError('mp.layout.lower not recognized')
+#     """
+#     if mp.layout.lower() in ('fourier', 'proper'):
+#         if mp.coro.upper() in ('LC', 'APLC', 'FLC', 'SPLC'):
+#             jacMode = jacobians.lyot(mp, imode, idm)
+#         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
+#             jacMode = jacobians.vortex(mp, imode, idm)
+#     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
+#         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
+#             jacMode = jacobians.lyot(mp, imode, idm)
+#         else:
+#             raise ValueError('%s not recognized as value for mp.coro' %
+#                              mp.coro)
+#     else:
+#         raise ValueError('mp.layout.lower not recognized')
 
-    output.put(jacMode)
+#     output.put(jacMode)

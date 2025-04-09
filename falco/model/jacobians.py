@@ -738,14 +738,14 @@ def vortex(mp, imode, idm, iact):
         Edm2WFE = np.ones((NdmPad, NdmPad))
 
     """Propagation"""
-    # Get the unocculted peak E-field and coronagraphic E-field
-    if mp.jac.minimizeNI:
-        modvar.whichSource = 'star'
-        Eocculted = falco.model.compact(mp, modvar)
-        Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
-        indPeak = np.unravel_index(np.argmax(np.abs(Eunocculted), axis=None),
-                                   Eunocculted.shape)
-        Epeak = Eunocculted[indPeak]
+    # # Get the unocculted peak E-field and coronagraphic E-field
+    # if mp.jac.minimizeNI:
+    #     modvar.whichSource = 'star'
+    #     Eocculted = falco.model.compact(mp, modvar)
+    #     Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
+    #     indPeak = np.unravel_index(np.argmax(np.abs(Eunocculted), axis=None),
+    #                                Eunocculted.shape)
+    #     Epeak = Eunocculted[indPeak]
 
     # # Define pupil P1 and Propagate to pupil P2
     # EP1 = pupil*Ein  # E-field at pupil plane P1
@@ -797,7 +797,7 @@ def vortex(mp, imode, idm, iact):
         y_box = mp.dm1.compact.y_pupPad[y_box_AS_ind]  # full pupil y-coordinates of the box
 
         # Propagate from DM1 to DM2, and then back to P2
-        dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:, :, iact]), NboxPad1AS) # Pad influence function at DM1 for angular spectrum propagation.
+        dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:, :, iact]), NboxPad1AS)  # Pad influence function at DM1 for angular spectrum propagation.
         dEbox = fp.ptp(dEbox*Edm1pad[indBoxAS], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
         dEP2box = fp.ptp(dEbox*Edm2WFEpad[indBoxAS]*DM2stop[indBoxAS]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[indBoxAS]), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to DM1
 #                dEbox = fp.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2, mp.dm1.dm_spacing, mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
@@ -830,7 +830,6 @@ def vortex(mp, imode, idm, iact):
             EP4 = mp.P4.compact.croppedMask*pad_crop(EP4, mp.P4.compact.Narr)  # Crop EP4 and then apply Lyot stop 
         else:
             EP4 = pad_crop(mp.P4.compact.croppedMask, Nfft1)*EP4  # Crop the Lyot stop and then apply it.
-            pass
 
         # MFT to camera
         EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
@@ -844,7 +843,7 @@ def vortex(mp, imode, idm, iact):
             JacOfPeak = no_fpm(mp, imode, idm, iact)  # scalar
             Gchunk = Gchunk/Epeak - Eocculted[mp.Fend.corr.maskBool]/(Epeak*Epeak) * JacOfPeak
 
-        Gchunk *= mp.dm1.weight  
+        Gchunk *= mp.dm1.weight
 
     """ ---------- DM2 ---------- """
     if idm == 2:
@@ -862,9 +861,9 @@ def vortex(mp, imode, idm, iact):
 
         # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
         NboxPad2AS = int(mp.dm2.compact.NboxAS)
-        mp.dm2.compact.xy_box_lowerLeft_AS = mp.dm2.compact.xy_box_lowerLeft - (NboxPad2AS-mp.dm2.compact.Nbox)/2 # Account for the padding of the influence function boxes
+        mp.dm2.compact.xy_box_lowerLeft_AS = mp.dm2.compact.xy_box_lowerLeft - (NboxPad2AS-mp.dm2.compact.Nbox)/2  # Account for the padding of the influence function boxes
 
-        # apodReimaged = pad_crop(apodReimaged, mp.dm2.compact.NdmPad)
+        apodReimaged = pad_crop(apodReimaged, mp.dm2.compact.NdmPad)
         # DM2stopPad = pad_crop(DM2stop, mp.dm2.compact.NdmPad)
         # Edm2WFEpad = pad_crop(Edm2WFE, mp.dm2.compact.NdmPad)
 
@@ -929,6 +928,8 @@ def vortex(mp, imode, idm, iact):
             Gchunk = Gchunk/Epeak - Eocculted[mp.Fend.corr.maskBool]/(Epeak*Epeak) * JacOfPeak
 
         Gchunk *= mp.dm2.weight
+
+    return Gchunk
 
 
 def no_fpm(mp, imode, idm, iact):
