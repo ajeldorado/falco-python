@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+import copy
 
 @dataclass
 class Eval:
@@ -44,3 +44,6 @@ class Eval:
         finally:
             self.in_progress = False
         return result
+    
+    def __deepcopy__(self, memo):
+        return Eval(self.globals, copy.deepcopy(self.locals, memo), self.code)
