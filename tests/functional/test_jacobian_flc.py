@@ -106,8 +106,15 @@ def test_jacobian_flc_no_fpm():
         mp.dm2.compact.surfM = np.zeros((NdmPad, NdmPad))
 
     # No-FPM calculation
-    G1fastAll = falco.model.jacobians.no_fpm(mp, iMode, 1)
-    G2fastAll = falco.model.jacobians.no_fpm(mp, iMode, 2)
+    falco.model.jacobians.precomp(mp)
+    G1fastAll = np.zeros((1, mp.dm1.Nele), dtype=complex)
+    G2fastAll = np.zeros((1, mp.dm2.Nele), dtype=complex)
+    for index, iact in enumerate(mp.dm1.act_ele):
+        G1fastAll[0, index] = falco.model.jacobians.no_fpm(mp, iMode, 1, iact)
+    for index, iact in enumerate(mp.dm2.act_ele):
+        G2fastAll[0, index] = falco.model.jacobians.no_fpm(mp, iMode, 2, iact)
+#     G1fastAll = falco.model.jacobians.no_fpm(mp, iMode, 1)
+#     G2fastAll = falco.model.jacobians.no_fpm(mp, iMode, 2)
 
     Nind = 20
     thresh = 1e-1
