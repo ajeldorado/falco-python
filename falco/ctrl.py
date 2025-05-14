@@ -430,84 +430,114 @@ def _planned_ad_efc(mp, cvar):
     InormVec = np.zeros(Nvals)
 
     # # Make more obvious names for conditions:
-    # runNewGridSearch = any(np.array(mp.gridSearchItrVec) == cvar.Itr)
-    # useBestLog10Reg = np.imag(mp.ctrl.log10regSchedIn[cvar.Itr]) != 0
-    # realLog10RegIsZero = np.real(mp.ctrl.log10regSchedIn[cvar.Itr]) == 0
+    runNewGridSearch = any(np.array(mp.gridSearchItrVec) == cvar.Itr)
+    useBestLog10Reg = np.imag(mp.ctrl.log10regSchedIn[cvar.Itr]) != 0
+    realLog10RegIsZero = np.real(mp.ctrl.log10regSchedIn[cvar.Itr]) == 0
 
     # Step 1: Empirically find the "optimal" regularization value
-
-    # Temporarily store computed DM commands so that the best one does
-    # not have to be re-computed
-    if any(mp.dm_ind == 1):
-        dDM1V_store = np.zeros((mp.dm1.Nact, mp.dm1.Nact, Nvals))
-    if any(mp.dm_ind == 2):
-        dDM2V_store = np.zeros((mp.dm2.Nact, mp.dm2.Nact, Nvals))
-    if any(mp.dm_ind == 8):
-        dDM8V_store = np.zeros((mp.dm8.NactTotal, Nvals))
-    if any(mp.dm_ind == 9):
-        dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
-
-    ImCube = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
-
-    for ni in range(Nvals):
-
-        [InormVec[ni], dDM_temp] = _ad_efc(ni, vals_list, mp, cvar)
-        ImCube[ni, :, :] = dDM_temp.Itotal
-
-        # delta voltage commands
+    # (if told to for this iteration).
+    
+    if runNewGridSearch:
+        # Temporarily store computed DM commands so that the best one does
+        # not have to be re-computed
         if any(mp.dm_ind == 1):
-            dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+            dDM1V_store = np.zeros((mp.dm1.Nact, mp.dm1.Nact, Nvals))
         if any(mp.dm_ind == 2):
-            dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+            dDM2V_store = np.zeros((mp.dm2.Nact, mp.dm2.Nact, Nvals))
         if any(mp.dm_ind == 8):
-            dDM8V_store[:, ni] = dDM_temp.dDM8V
+            dDM8V_store = np.zeros((mp.dm8.NactTotal, Nvals))
         if any(mp.dm_ind == 9):
-            dDM9V_store[:, ni] = dDM_temp.dDM9V
-
-    # Print out results to the command line
-    print('Scaling factor:\t\t', end='')
-    for ni in range(Nvals):
-        print('%.2f\t\t' % (vals_list[ni][1]), end='')
-
-    print('\nlog10reg:    \t\t', end='')
-    for ni in range(Nvals):
-        print('%.1f\t\t' % (vals_list[ni][0]), end='')
-
-    print('\nInorm:       \t\t', end='')
-    for ni in range(Nvals):
-        print('%.2e\t' % (InormVec[ni]), end='')
-    print('\n', end='')
-
-    # Find the best scaling factor and Lagrange multiplier pair based on
-    # the best contrast.
-    # [cvar.cMin,indBest] = np.min(InormVec)
-    indBest = np.argmin(InormVec)
-    cvar.cMin = np.min(InormVec)
-    cvar.Im = np.squeeze(ImCube[indBest, :, :])
-    cvar.latestBestlog10reg = vals_list[indBest][0]
-    cvar.latestBestDMfac = vals_list[indBest][1]
-
-    if mp.ctrl.flagUseModel:
-        print(('Model-based grid search expects log10reg, = %.1f,\t ' +
-              'dmfac = %.2f,\t %4.2e normalized intensity.') %
-              (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
+            dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
+    
+        ImCube = np.zeros((Nvals, mp.Fend.Neta, mp.Fend.Nxi))
+    
+        for ni in range(Nvals):
+    
+            [InormVec[ni], dDM_temp] = _ad_efc(ni, vals_list, mp, cvar)
+            ImCube[ni, :, :] = dDM_temp.Itotal
+    
+            # delta voltage commands
+            if any(mp.dm_ind == 1):
+                dDM1V_store[:, :, ni] = dDM_temp.dDM1V
+            if any(mp.dm_ind == 2):
+                dDM2V_store[:, :, ni] = dDM_temp.dDM2V
+            if any(mp.dm_ind == 8):
+                dDM8V_store[:, ni] = dDM_temp.dDM8V
+            if any(mp.dm_ind == 9):
+                dDM9V_store[:, ni] = dDM_temp.dDM9V
+    
+        # Print out results to the command line
+        print('Scaling factor:\t\t', end='')
+        for ni in range(Nvals):
+            print('%.2f\t\t' % (vals_list[ni][1]), end='')
+    
+        print('\nlog10reg:    \t\t', end='')
+        for ni in range(Nvals):
+            print('%.1f\t\t' % (vals_list[ni][0]), end='')
+    
+        print('\nInorm:       \t\t', end='')
+        for ni in range(Nvals):
+            print('%.2e\t' % (InormVec[ni]), end='')
+        print('\n', end='')
+    
+        # Find the best scaling factor and Lagrange multiplier pair based on
+        # the best contrast.
+        # [cvar.cMin,indBest] = np.min(InormVec)
+        indBest = np.argmin(InormVec)
+        cvar.cMin = np.min(InormVec)
+        cvar.Im = np.squeeze(ImCube[indBest, :, :])
+        cvar.latestBestlog10reg = vals_list[indBest][0]
+        cvar.latestBestDMfac = vals_list[indBest][1]
+    
+        if mp.ctrl.flagUseModel:
+            print(('Model-based grid search expects log10reg, = %.1f,\t ' +
+                  'dmfac = %.2f,\t %4.2e normalized intensity.') %
+                  (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
+        else:
+            print(('Empirical grid search finds log10reg, = %.1f,\t dmfac' +
+                  ' = %.2f,\t %4.2e normalized intensity.') %
+                  (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
+    
+    # Skip steps 2 and 3 if the schedule for this iteration is just to use the
+    # "optimal" regularization AND if grid search was performed this iteration.
+    if runNewGridSearch and useBestLog10Reg and realLog10RegIsZero:
+        # delta voltage commands
+        dDM = falco.config.Object()  # Initialize
+        if any(mp.dm_ind == 1):
+            dDM.dDM1V = np.squeeze(dDM1V_store[:, :, indBest])
+        if any(mp.dm_ind == 2):
+            dDM.dDM2V = np.squeeze(dDM2V_store[:, :, indBest])
+        if any(mp.dm_ind == 8):
+            dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
+        if any(mp.dm_ind == 9):
+            dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
+    
+        log10regSchedOut = cvar.latestBestlog10reg
     else:
-        print(('Empirical grid search finds log10reg, = %.1f,\t dmfac' +
-              ' = %.2f,\t %4.2e normalized intensity.') %
-              (cvar.latestBestlog10reg, cvar.latestBestDMfac, cvar.cMin))
+        # Step 2: For this iteration in the schedule, replace the imaginary
+        # part of the regularization with the latest "optimal" regularization
+        if useBestLog10Reg:
+            log10regSchedOut = cvar.latestBestlog10reg + \
+                np.real(mp.ctrl.log10regSchedIn[cvar.Itr])
+        else:
+            log10regSchedOut = np.real(mp.ctrl.log10regSchedIn[cvar.Itr])
 
-    # delta voltage commands
-    dDM = falco.config.Object()  # Initialize
-    if any(mp.dm_ind == 1):
-        dDM.dDM1V = np.squeeze(dDM1V_store[:, :, indBest])
-    if any(mp.dm_ind == 2):
-        dDM.dDM2V = np.squeeze(dDM2V_store[:, :, indBest])
-    if any(mp.dm_ind == 8):
-        dDM.dDM8V = np.squeeze(dDM8V_store[:, indBest])
-    if any(mp.dm_ind == 9):
-        dDM.dDM9V = np.squeeze(dDM9V_store[:, indBest])
+        # Step 3: Compute the EFC command to use
+        ni = 0
+        if not hasattr(cvar, 'latestBestDMfac'):
+            cvar.latestBestDMfac = 1
+        vals_list = [(x, y) for y in np.array([cvar.latestBestDMfac])
+                     for x in np.array([log10regSchedOut])]
 
-    log10regSchedOut = cvar.latestBestlog10reg
+        [cvar.cMin, dDM] = _ad_efc(ni, vals_list, mp, cvar)
+        cvar.Im = np.squeeze(dDM.Itotal)
+        if mp.ctrl.flagUseModel:
+            print(('Model expects scheduled log10(reg) = %.1f\t to give ' +
+                  '%4.2e normalized intensity.') %
+                  (log10regSchedOut, cvar.cMin))
+        else:
+            print(('Scheduled log10reg = %.1f\t gives %4.2e normalized' +
+                  ' intensity.') % (log10regSchedOut, cvar.cMin))
 
     cvar.log10regUsed = log10regSchedOut
 
