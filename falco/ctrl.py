@@ -2,10 +2,12 @@
 import copy
 import time
 
-import numpy as np
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 import multiprocessing
+import numpy as np
+
 import scipy.optimize
-from prysm.x.optym import F77LBFGSB
+#from prysm.x.optym import F77LBFGSB
 # from astropy.io import fits
 # import matplotlib.pyplot as plt
 
@@ -319,6 +321,10 @@ def _grid_search_efc(mp, cvar):
     if any(mp.dm_ind == 9):
         dDM9V_store = np.zeros((mp.dm9.NactTotal, Nvals))
 
+    # Run the controller in parallel only when mp.ctrl.flagUseModel is True because that makes
+    # single calls to the compact model. When it is False and in simulation, it calls
+    # falco.imaging.get_summed_image(), which has its own internal parallelization.
+
     # Empirically find the regularization value giving the best contrast
     if mp.flagParallel and mp.ctrl.flagUseModel:
         # # Run the controller in parallel
@@ -336,7 +342,12 @@ def _grid_search_efc(mp, cvar):
         pool.close()
         pool.join()
 
-        # [(mp, ilist, vals_list) for ilist in range(Nvals)]
+        # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+        #     resultsRaw = executor.map(
+        #         lambda p: _efc(*p),
+        #         [(ni, vals_list, mp, cvar) for ni in range(Nvals)],
+        #     )
+        # results_ctrl = tuple(resultsRaw
 
         # Convert from a list to arrays:
         for ni in range(Nvals):
@@ -957,13 +968,9 @@ def _ad_efc(ni, vals_list, mp, cvar):
         EFendPrev.append(EFend)
         
         
-    def optim_cost_func(Vdm):
-        #cost function for L-BFGS 
-        return falco.model.compact_reverse_gradient(Vdm, mp, cvar.Eest, EFendPrev, log10reg)
 
     t0 = time.time()
-    
-    '''
+
     u_sol = scipy.optimize.minimize(
         falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
         method='L-BFGS-B', jac=True, bounds=bounds,
@@ -977,6 +984,10 @@ def _ad_efc(ni, vals_list, mp, cvar):
     print(u_sol.nit)
     
     '''
+    def optim_cost_func(Vdm):
+        #cost function for L-BFGS 
+        return falco.model.compact_reverse_gradient(Vdm, mp, cvar.Eest, EFendPrev, log10reg)
+    
     opt = F77LBFGSB(fg=optim_cost_func, x0=dm0)
     nIter = 0;
     for _ in range(mp.ctrl.ad.maxiter):
@@ -985,7 +996,7 @@ def _ad_efc(ni, vals_list, mp, cvar):
     
     
     print("Niter LBFGS: ", nIter)
-    duVec = xk
+    duVec = xk '''
 
     t1 = time.time()
     print('Optimization time = %.3f' % (t1-t0))
