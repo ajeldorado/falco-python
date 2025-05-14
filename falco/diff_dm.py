@@ -734,5 +734,5 @@ class DM:
             protograd = warp(protograd, self.invprojx, self.invprojy)
 
         # return protograd
-        in_actuator_space = apply_precomputed_transfer_function(protograd, np.conj(self.tf))
-        return in_actuator_space[self.iyy, self.ixx] / gain_map
+        in_actuator_space = apply_precomputed_transfer_function( protograd, np.conj(self.tf) )
+        return in_actuator_space[self.iyy, self.ixx] / gain_map / np.sum(self.ifn)

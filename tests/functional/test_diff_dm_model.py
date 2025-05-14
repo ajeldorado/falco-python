@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import falco
 
-DEBUG = False
+DEBUG = True
 
 
 def test_diff_dm_model():
@@ -29,14 +29,14 @@ def test_diff_dm_model():
     mp.dm1.Nact = Nact
     mp.dm1.VtoH = 1e-9*np.ones((mp.dm1.Nact, mp.dm1.Nact))
     #mp.dm1.xtilt = 10 # for foreshortening. angle of rotation about x-axis [degrees]
-    mp.dm1.xtilt = 0
+    mp.dm1.xtilt = 10
     #mp.dm1.ytilt = 15 # for foreshortening. angle of rotation about y-axis [degrees]
     mp.dm1.ytilt = 0
     #mp.dm1.zrot = -6  # clocking of DM surface [degrees]
-    mp.dm1.zrot = 0
+    mp.dm1.zrot = 20
     mp.dm1.flagZYX = False
-    mp.dm1.xc = (mp.dm1.Nact/2 - 1/2) + 1  # x-center location of DM surface [actuator widths]
-    mp.dm1.yc = (mp.dm1.Nact/2 - 1/2) + 0.5 # y-center location of DM surface [actuator widths]
+    mp.dm1.xc = (mp.dm1.Nact/2 - 1/2) + 1.1  # x-center location of DM surface [actuator widths]
+    mp.dm1.yc = (mp.dm1.Nact/2 - 1/2) + 0.4 # y-center location of DM surface [actuator widths]
     mp.dm1.edgeBuffer = 1  # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
 
     mp.dm1.fitType = 'linear'
@@ -62,7 +62,7 @@ def test_diff_dm_model():
         PrimaryData = hdul[0].header
         dx1 = PrimaryData['P2PDX_M']  # pixel width of influence function IN THE FILE [meters]
         pitch1 = PrimaryData['C2CDX_M']  # actuator spacing x (m)
-
+        mp.dm1.ppact = pitch1/dx1
         mp.dm1.inf0 = np.squeeze(hdul[0].data)
     mp.dm1.dx_inf0 = mp.dm1.dm_spacing*(dx1/pitch1)
 
@@ -74,7 +74,7 @@ def test_diff_dm_model():
         raise ValueError('Sign of influence function not recognized')
 
 
-    ppact = 3
+    ppact = 5.43
     mp.dm1.dx = mp.dm1.dm_spacing/ppact
     Narray = int(np.ceil(ppact*Nact*1.5/2)*2 + 2)  # Must be odd for this test
 
