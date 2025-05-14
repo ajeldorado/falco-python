@@ -38,10 +38,10 @@ mp.Nitr = 3  # Number of wavefront control iterations
 mp.controller = 'AD-EFC'
 mp.ctrl.ad = falco.config.Object()
 # mp.ctrl.ad.dv_max = 20  # max delta voltage step per iteration. must be positive
-mp.ctrl.ad.maxiter = 30
+mp.ctrl.ad.maxiter = 30 #100
 mp.ctrl.ad.iprint = 1
 mp.ctrl.ad.maxfun = 1000000
-
+mp.ctrl.ad.maxcor = 5 #10
 
 mp.ctrl.log10regVec = [-5.5,]  # [-12]  # np.array([-6, ])
 
@@ -52,6 +52,7 @@ mp.ctrl.log10regVec = [-5.5,]  # [-12]  # np.array([-6, ])
 # Use least-squares surface fitting instead of back-propagation model.
 mp.dm1.useDifferentiableModel = True
 mp.dm2.useDifferentiableModel = True
+
 # mp.dm1.surfFitMethod = 'lsq'
 # mp.dm2.surfFitMethod = 'lsq'
 # mp.dm1.surfFitMethod = 'lsq'
