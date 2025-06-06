@@ -387,7 +387,7 @@ def propcustom_dm(wf, dm_z0, dm_xc, dm_yc, spacing=0., **kwargs):
     margin = 9 * inf_mag
     nx_grid = nx_dm * inf_mag + 2 * margin
     ny_grid = ny_dm * inf_mag + 2 * margin
-    xoff_grid = margin + inf_mag/2  # pixel location of 1st actuator center in subsampled grid
+    xoff_grid = margin + inf_mag//2  # pixel location of 1st actuator center in subsampled grid
     yoff_grid = xoff_grid
     dm_grid = np.zeros([ny_grid, nx_grid], dtype=float)
 
@@ -1220,7 +1220,7 @@ def derotate_resize_surface(surfaceToFit, dx, Nact, dm_xc, dm_yc, spacing,
     margin = 9 * inf_mag
     nx_grid = nx_dm * inf_mag + 2 * margin
     ny_grid = ny_dm * inf_mag + 2 * margin
-    xoff_grid = margin + inf_mag/2  # pixel location of 1st actuator center in subsampled grid
+    xoff_grid = margin + inf_mag//2  # pixel location of 1st actuator center in subsampled grid
     yoff_grid = xoff_grid
     dm_grid = np.zeros([ny_grid, nx_grid], dtype=float)
 
