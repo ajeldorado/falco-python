@@ -390,6 +390,7 @@ def _grid_search_efc(mp, cvar):
 
     # Find the best scaling factor and regularization pair based on the
     # best contrast.
+    cvar.InormVec = InormVec
     indBest = np.argmin(InormVec)
     cvar.cMin = np.min(InormVec)
     cvar.Im = np.squeeze(ImCube[indBest, :, :])
