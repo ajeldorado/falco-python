@@ -58,7 +58,7 @@ class TestSurface(unittest.TestCase):
         mp.dm1.inf_fn = falco.INFLUENCE_BMC_2K
         mp.dm1.dm_spacing = 400e-6  # User defined actuator pitch [meters]
         mp.dm1.inf_sign = '+'
-
+        
         # mp.dm1.surfFitMethod = 'lsq'  # 'proper' or 'lsq'
         with fits.open(mp.dm1.inf_fn) as hdul:
             PrimaryData = hdul[0].header
@@ -103,7 +103,7 @@ class TestSurface(unittest.TestCase):
 
         mp.dm1.useDifferentiableModel = True
         self.surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
-        self.backprojDiffDm = mp.dm1.differentiableModel.render_backprop(self.surfDiffDm,  mp.dm1.VtoH, wfe=False)
+        self.backprojDiffDm = mp.dm1.differentiableModel.render_backprop(self.surfDiffDm, mp.dm1.VtoH, wfe=False)
 
         self.V0 = mp.dm1.V
 
