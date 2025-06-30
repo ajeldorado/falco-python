@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import falco
 
-DEBUG = True
+DEBUG = False
 
 
 def test_diff_dm_model():
