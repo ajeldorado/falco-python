@@ -121,7 +121,7 @@ mp.ctrl.ad.maxfun = 1000000
 
 ### # # GRID SEARCH EFC DEFAULTS     
 ###--WFSC Iterations and Control Matrix Relinearization
-mp.Nitr = 10; #5; #--Number of estimation+control iterations to perform
+mp.Nitr = 1; #5; #--Number of estimation+control iterations to perform
 mp.relinItrVec = np.arange(0, mp.Nitr) #1:mp.Nitr;  #--Which correction iterations at which to re-compute the control Jacobian [1-D ndarray]
 mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 
