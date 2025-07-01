@@ -29,7 +29,7 @@ mp.Nthreads = 4  # Number of threads to use when using multiprocessing. If undef
 
 # Record Keeping
 mp.TrialNum = 1
-mp.SeriesNum = 3
+mp.SeriesNum = 4
 
 # Use just 1 wavelength for initial debugging of code
 mp.fracBW = 0.01  # fractional bandwidth of the whole bandpass (Delta lambda / lambda0)
@@ -56,7 +56,7 @@ mp.dm2.V_shift = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
 # %% Perform the Wavefront Sensing and Control
 
-mp.runLabel = ('DZM_Series%04d_Trial%04d_%s' %
+mp.runLabel = ('ADDZM_Series%04d_Trial%04d_%s' %
                (mp.SeriesNum, mp.TrialNum, mp.coro))
 
 # TODO: add OL to this?

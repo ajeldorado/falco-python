@@ -11,7 +11,7 @@ mp = falco.config.ModelParameters()
 
 mp.SeriesNum = 1;
 mp.TrialNum = 34;
-mp.Nitr = 50;  # --Number of estimation+control iterations to perform
+mp.Nitr = 1;  # --Number of estimation+control iterations to perform
 
 ###--Special Computational Settings
 mp.flagParallel = True;
