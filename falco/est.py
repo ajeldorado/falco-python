@@ -41,9 +41,9 @@ def wrapper(mp, ev, jacStruct, tb = None):
                           'pwp-bp-square', 'pwp-bp', 'pwp-kf']:
 
         if mp.est.flagUseJac:  # Send in the Jacobian if true
-            falco.est.pairwise_probing(mp, ev, jacStruct=jacStruct, tb)
+            falco.est.pairwise_probing(mp, ev, jacStruct=jacStruct, tb=tb)
         else:  # Otherwise don't pass the Jacobian
-            falco.est.pairwise_probing(mp, ev, tb)
+            falco.est.pairwise_probing(mp, ev, tb=tb)
 
     return None
 
