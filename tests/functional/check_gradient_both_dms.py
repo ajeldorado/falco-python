@@ -9,6 +9,7 @@ import numpy as np
 import falco
 from falco.util import pad_crop
 
+
 show_plots = False
 
 n_pupil = 50

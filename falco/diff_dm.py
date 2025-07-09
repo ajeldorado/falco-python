@@ -737,5 +737,4 @@ class DM:
         # return protograd
         in_actuator_space = apply_precomputed_transfer_function(protograd, np.conj(self.tf))
 
-        print(f'np.sum(self.ifn) = {np.sum(self.ifn)}')
         return in_actuator_space[self.iyy, self.ixx]
