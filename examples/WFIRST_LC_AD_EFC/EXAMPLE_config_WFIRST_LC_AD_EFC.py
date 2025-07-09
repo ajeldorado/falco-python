@@ -148,6 +148,14 @@ mp.dm_ind = np.array([1,2]) #[1, 2]; #--Which DMs to use [1-D ndarray]
 ###     ];
 ### [mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched] = falco_ctrl_EFC_schedule_generator(mp.ctrl.sched_mat);
 
+mp.ctrl.sched_mat = np.array([
+    [1, -2, 12, 1, 0],
+    [1, -2, 12, 1, 0],
+    [1, -4, 12, 1, 0],
+    [1, -4, 12, 1, 0],
+    [1, -2, 12, 1, 0],
+    ])
+mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched = falco.ctrl.efc_schedule_generator(mp.ctrl.sched_mat)
 
 ### Deformable Mirrors: Influence Functions
 ##--Influence Function Options:

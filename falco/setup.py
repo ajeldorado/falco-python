@@ -65,8 +65,9 @@ def flesh_out_workspace(mp):
     out = init_storage_arrays(mp)
 
     print('\nBeginning Trial %d of Series %d.\n' % (mp.TrialNum, mp.SeriesNum))
-    print('DM 1-to-2 Fresnel number (using radius) = ' +
-          str((mp.P2.D/2)**2/(mp.d_dm1_dm2*mp.lambda0)))
+    if mp.d_dm1_dm2*mp.lambda0 != 0:
+        print('DM 1-to-2 Fresnel number (using radius) = ' +
+            str((mp.P2.D/2)**2/(mp.d_dm1_dm2*mp.lambda0)))
 
     return out
 
@@ -171,7 +172,6 @@ def set_optional_variables(mp):
     if not hasattr(mp.path, 'jac'):
         mp.path.jac = os.path.join(mp.path.falco, 'data', 'jac')
 
-
     # Parallel processing
     if not hasattr(mp, "flagParallel"):
         mp.flagParallel = False
@@ -201,7 +201,7 @@ def set_optional_variables(mp):
         mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
     if not hasattr(mp.ctrl, 'flagUseModel'):
         mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
-    
+
     # Algorithmic Differentiation EFC options
     if not hasattr(mp.ctrl, 'ad'):
         mp.ctrl.ad = falco.config.Object()

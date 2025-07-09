@@ -138,7 +138,6 @@ def dm_init_falco_wrapper(dm,dx,Narray,dm_z0, dm_xc, dm_yc, spacing=0.,**kwargs)
 
     dx_inf = dx_inf * dx_dm / dx_dm_inf  # Influence function sampling scaled
                                          # to specified DM actuator spacing
-
     #else:
     dm_z_commanded = dm_z
     s = dm_z.shape
@@ -440,6 +439,7 @@ def fourier_resample(f, zoom):
     fprime = imft2_core(F, Mx, My).real
     fprime *= np.sqrt((zoom[0]*zoom[1]))
     # fprime *= np.sqrt((zoom[0]*zoom[1]))/(np.sqrt(f.size))
+    # fprime *= np.sum(fprime)/np.sum(f)
 
     return fprime
 
@@ -682,7 +682,7 @@ class DM:
         warped = util.pad_crop(warped, Nout)
         return warped
 
-    def render_backprop(self, protograd, gain_map, wfe=True):
+    def render_backprop(self, protograd, wfe=True):
         """Gradient backpropagation for render().
 
         Parameters
@@ -725,6 +725,7 @@ class DM:
         if self.upsample != 1:
             upsample = self.ifn.shape[0]/protograd.shape[0]
             protograd = fourier_resample(protograd, upsample)
+            protograd /= upsample**2
 
         if wfe:
             protograd *= (2*self.obliquity)
@@ -734,5 +735,6 @@ class DM:
             protograd = warp(protograd, self.invprojx, self.invprojy)
 
         # return protograd
-        in_actuator_space = apply_precomputed_transfer_function( protograd, np.conj(self.tf) )
-        return in_actuator_space[self.iyy, self.ixx] / gain_map / np.sum(self.ifn)
+        in_actuator_space = apply_precomputed_transfer_function(protograd, np.conj(self.tf))
+
+        return in_actuator_space[self.iyy, self.ixx]

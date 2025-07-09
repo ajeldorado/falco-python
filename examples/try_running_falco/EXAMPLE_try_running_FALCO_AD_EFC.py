@@ -33,7 +33,17 @@ mp.fracBW = 0.01       # fractional bandwidth of the whole bandpass (Delta lambd
 mp.Nsbp = 1            # Number of sub-bandpasses to divide the whole bandpass into for estimation and control
 mp.Nwpsbp = 1          # Number of wavelengths to used to approximate an image in each sub-bandpass
 
-mp.Nitr = 3  # Number of wavefront control iterations
+mp.dm1.useDifferentiableModel = True
+mp.dm2.useDifferentiableModel = True
+
+# mp.Nitr = 3  # Number of wavefront control iterations
+mp.ctrl.sched_mat = np.array([
+    [1, -4, 12, 1, 0],
+    [1, -4, 12, 1, 0],
+    [1, -4, 12, 1, 0],
+    ])
+mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched = falco.ctrl.efc_schedule_generator(mp.ctrl.sched_mat)
+
 
 mp.controller = 'AD-EFC'
 mp.ctrl.ad = falco.config.Object()
@@ -45,11 +55,6 @@ mp.ctrl.ad.maxfun = 1000000
 
 mp.ctrl.log10regVec = np.array([-6, ])
 
-# # Use least-squares surface fitting instead of back-propagation model.
-# mp.dm1.useDifferentiableModel = False
-# mp.dm2.useDifferentiableModel = False
-# mp.dm1.surfFitMethod = 'lsq'
-# mp.dm2.surfFitMethod = 'lsq'
 
 
 # %% Perform the Wavefront Sensing and Control

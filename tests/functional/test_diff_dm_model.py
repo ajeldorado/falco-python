@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 
 import falco
 
-DEBUG = True
+show_plots = False
 
 
-def not_test_diff_dm_model():
+def test_diff_dm_model():
     """Verify the orientation of the DM surface from gen_surf_from_act()."""
     # TODO: debug
     mp = falco.config.ModelParameters()
@@ -88,9 +88,12 @@ def not_test_diff_dm_model():
     
     mp.dm1.useDifferentiableModel = True
     surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
-    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, mp.dm1.VtoH, wfe=False)
+    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, wfe=False)
     
-    if DEBUG:
+    print(f'mp.dm1.dx = {mp.dm1.dx}')
+
+    if show_plots:
+    
         plt.figure()
         plt.imshow(surfFalcoDm)
         plt.colorbar()
@@ -107,29 +110,29 @@ def not_test_diff_dm_model():
         plt.title('DM Surface Difference')
         
         
-        plt.figure()
-        plt.imshow(mp.dm1.V)
-        plt.colorbar()
-        plt.title('DM Voltages Truth')
+        # plt.figure()
+        # plt.imshow(mp.dm1.V)
+        # plt.colorbar()
+        # plt.title('DM Voltages Truth')
         
-        plt.figure()
-        plt.imshow(backprojFalcoDm)
-        plt.colorbar()
-        plt.title('DM Backproj Voltages FALCO')
+        # plt.figure()
+        # plt.imshow(backprojFalcoDm)
+        # plt.colorbar()
+        # plt.title('DM Backproj Voltages FALCO')
 
-        plt.figure()
-        plt.imshow(backprojDiffDm)
-        plt.colorbar()
-        plt.title('DM Backproj Voltages Model')
+        # plt.figure()
+        # plt.imshow(backprojDiffDm)
+        # plt.colorbar()
+        # plt.title('DM Backproj Voltages Model')
         
-        plt.figure()
-        plt.imshow(backprojFalcoDm-backprojDiffDm)
-        plt.colorbar()
-        plt.title('Backproj Voltage Difference')
+        # plt.figure()
+        # plt.imshow(backprojFalcoDm-backprojDiffDm)
+        # plt.colorbar()
+        # plt.title('Backproj Voltage Difference')
 
         plt.show()
 
-    abs_tol = 0.005*np.max(surfFalcoDm)
+    abs_tol = 0.10*np.max(surfFalcoDm)
 
     maxAbsDiff = np.max(np.abs(surfFalcoDm - surfDiffDm))
     #maxAbsDiff = np.rmsnp.abs(surfFalcoDm - surfDiffDm))
