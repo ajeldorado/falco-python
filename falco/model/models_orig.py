@@ -288,127 +288,127 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
         EP2eff = falco.prop.ptp(Edm2, mp.P2.full.dx*NdmPad, wvl,
                                 -1*(mp.d_dm1_dm2 + mp.d_P2_dm1))
 
-    # # Re-image to pupil P3
-    # EP3 = falco.prop.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
+    # Re-image to pupil P3
+    EP3 = falco.prop.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
 
-    # # Apply the apodizer mask (if there is one)
-    # if(mp.flagApod):
-    #     EP3 = mp.P3.full.mask*pad_crop(EP3, mp.P3.full.Narr)
+    # Apply the apodizer mask (if there is one)
+    if(mp.flagApod):
+        EP3 = mp.P3.full.mask*pad_crop(EP3, mp.P3.full.Narr)
 
-    # # Propagations Specific to the Coronagraph Type
-    # if mp.coro.upper() in ('LC', 'APLC'):
-    #     # MFT from apodizer plane to FPM (i.e., P3 to F3)
-    #     EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
-    #                                 fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi,
-    #                                 fpmScaleFac*mp.F3.full.deta,
-    #                                 mp.F3.full.Neta, mp.centering)
-    #     # Apply (1-FPM) for Babinet's principle later
-    #     EF3 = (1.-mp.F3.full.mask)*EF3inc
-    #     #  Use Babinet's principle at the Lyot plane.
-    #     EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
-    #     #  MFT from FPM to Lyot Plane (i.e., F3 to P4)
-    #     EP4subtrahend = falco.prop.mft_f2p(EF3, mp.fl, wvl,
-    #                                        fpmScaleFac*mp.F3.full.dxi,
-    #                                        mp.F3.full.deta,
-    #                                        fpmScaleFac*mp.P4.full.dx,
-    #                                        mp.P4.full.Narr, mp.centering)
-    #     # Babinet's principle at P4
-    #     EP4 = pad_crop(EP4noFPM, mp.P4.full.Narr) - EP4subtrahend
+    # Propagations Specific to the Coronagraph Type
+    if mp.coro.upper() in ('LC', 'APLC'):
+        # MFT from apodizer plane to FPM (i.e., P3 to F3)
+        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
+                                    fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi,
+                                    fpmScaleFac*mp.F3.full.deta,
+                                    mp.F3.full.Neta, mp.centering)
+        # Apply (1-FPM) for Babinet's principle later
+        EF3 = (1.-mp.F3.full.mask)*EF3inc
+        #  Use Babinet's principle at the Lyot plane.
+        EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+        #  MFT from FPM to Lyot Plane (i.e., F3 to P4)
+        EP4subtrahend = falco.prop.mft_f2p(EF3, mp.fl, wvl,
+                                           fpmScaleFac*mp.F3.full.dxi,
+                                           mp.F3.full.deta,
+                                           fpmScaleFac*mp.P4.full.dx,
+                                           mp.P4.full.Narr, mp.centering)
+        # Babinet's principle at P4
+        EP4 = pad_crop(EP4noFPM, mp.P4.full.Narr) - EP4subtrahend
 
-    # elif mp.coro.upper() == 'HLC':
-    #     # Complex transmission of the points outside the FPM (just fused silica
-    #     # with optional dielectric and no metal).
+    elif mp.coro.upper() == 'HLC':
+        # Complex transmission of the points outside the FPM (just fused silica
+        # with optional dielectric and no metal).
 
-    #     if hasattr(mp.full, 'fpmCube'):
-    #         transOuterFPM = mp.F3.full.mask[0, 0]
-    #     else:
-    #         t_Ti_base = 0
-    #         t_Ni_vec = [0]
-    #         t_PMGI_vec = [1e-9 * mp.t_diel_bias_nm]  # [meters]
-    #         pol = 2
-    #         transOuterFPM, rCoef = falco.thinfilm.calc_complex_trans_matrix(
-    #             mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, wvl, mp.aoi,
-    #             t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
+        if hasattr(mp.full, 'fpmCube'):
+            transOuterFPM = mp.F3.full.mask[0, 0]
+        else:
+            t_Ti_base = 0
+            t_Ni_vec = [0]
+            t_PMGI_vec = [1e-9 * mp.t_diel_bias_nm]  # [meters]
+            pol = 2
+            transOuterFPM, rCoef = falco.thinfilm.calc_complex_trans_matrix(
+                mp.F3.substrate, mp.F3.metal, mp.F3.dielectric, wvl, mp.aoi,
+                t_Ti_base, t_Ni_vec, t_PMGI_vec, wvl*mp.F3.d0fac, pol)
 
-    #     # MFT from apodizer plane to FPM (i.e., P3 to F3)
-    #     EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
-    #                         fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi, 
-    #                         fpmScaleFac*mp.F3.full.deta,
-    #                         mp.F3.full.Neta, mp.centering)
-    #     # Apply (transOuterFPM-FPM) for Babinet's principle later
-    #     EF3 = (transOuterFPM - mp.F3.full.mask) * EF3inc
-    #     # Use Babinet's principle at the Lyot plane.
-    #     # Propagate forward another pupil plane
-    #     EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
-    #     # Apply the change from the FPM's outer complex transmission.
-    #     EP4noFPM = transOuterFPM * pad_crop(EP4noFPM, mp.P4.full.Narr)
-    #     # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-    #     # Subtrahend term for Babinet's principle
-    #     EP4subtra = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.full.dxi,
-    #             fpmScaleFac*mp.F3.full.deta, mp.P4.full.dx, mp.P4.full.Narr, mp.centering)
-    #     # Babinet's principle at P4
-    #     EP4 = EP4noFPM - EP4subtra
+        # MFT from apodizer plane to FPM (i.e., P3 to F3)
+        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
+                            fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi, 
+                            fpmScaleFac*mp.F3.full.deta,
+                            mp.F3.full.Neta, mp.centering)
+        # Apply (transOuterFPM-FPM) for Babinet's principle later
+        EF3 = (transOuterFPM - mp.F3.full.mask) * EF3inc
+        # Use Babinet's principle at the Lyot plane.
+        # Propagate forward another pupil plane
+        EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+        # Apply the change from the FPM's outer complex transmission.
+        EP4noFPM = transOuterFPM * pad_crop(EP4noFPM, mp.P4.full.Narr)
+        # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+        # Subtrahend term for Babinet's principle
+        EP4subtra = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.full.dxi,
+                fpmScaleFac*mp.F3.full.deta, mp.P4.full.dx, mp.P4.full.Narr, mp.centering)
+        # Babinet's principle at P4
+        EP4 = EP4noFPM - EP4subtra
 
-    # elif(mp.coro.upper() == 'SPLC' or mp.coro.upper() == 'FLC'):
-    #     # MFT from apodizer plane to FPM (i.e., P3 to F3)
-    #     EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
-    #                                 fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi,
-    #                                 fpmScaleFac*mp.F3.full.deta,
-    #                                 mp.F3.full.Neta, mp.centering)
-    #     EF3 = mp.F3.full.mask * EF3inc
+    elif(mp.coro.upper() == 'SPLC' or mp.coro.upper() == 'FLC'):
+        # MFT from apodizer plane to FPM (i.e., P3 to F3)
+        EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.full.dx,
+                                    fpmScaleFac*mp.F3.full.dxi, mp.F3.full.Nxi,
+                                    fpmScaleFac*mp.F3.full.deta,
+                                    mp.F3.full.Neta, mp.centering)
+        EF3 = mp.F3.full.mask * EF3inc
 
-    #     # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-    #     EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.full.dxi,
-    #                              fpmScaleFac*mp.F3.full.deta, mp.P4.full.dx,
-    #                              mp.P4.full.Narr, mp.centering)
-    #     EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+        # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+        EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.full.dxi,
+                                 fpmScaleFac*mp.F3.full.deta, mp.P4.full.dx,
+                                 mp.P4.full.Narr, mp.centering)
+        EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-    # elif mp.coro.upper() in ('VORTEX', 'VC'):
-    #     # Get FPM charge
-    #     if isinstance(mp.F3.VortexCharge, np.ndarray):
-    #         # Passing an array for mp.F3.VortexCharge with
-    #         # corresponding wavelengths mp.F3.VortexCharge_lambdas
-    #         # represents a chromatic vortex FPM
-    #         if mp.F3.VortexCharge.size == 1:
-    #             charge = mp.F3.VortexCharge
-    #         else:
-    #             np.interp(wvl, mp.F3.VortexCharge_lambdas, mp.F3.VortexCharge,
-    #                       'linear', 'extrap')
+    elif mp.coro.upper() in ('VORTEX', 'VC'):
+        # Get FPM charge
+        if isinstance(mp.F3.VortexCharge, np.ndarray):
+            # Passing an array for mp.F3.VortexCharge with
+            # corresponding wavelengths mp.F3.VortexCharge_lambdas
+            # represents a chromatic vortex FPM
+            if mp.F3.VortexCharge.size == 1:
+                charge = mp.F3.VortexCharge
+            else:
+                np.interp(wvl, mp.F3.VortexCharge_lambdas, mp.F3.VortexCharge,
+                          'linear', 'extrap')
 
-    #     elif isinstance(mp.F3.VortexCharge, (int, float)):
-    #         # single value indicates fully achromatic mask
-    #         charge = mp.F3.VortexCharge
-    #     else:
-    #         raise TypeError("mp.F3.VortexCharge must be an int, float, or\
-    #                         numpy ndarray.")
-    #         pass
-    #     EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
-    #     EP4 = pad_crop(EP4, mp.P4.full.Narr)
+        elif isinstance(mp.F3.VortexCharge, (int, float)):
+            # single value indicates fully achromatic mask
+            charge = mp.F3.VortexCharge
+        else:
+            raise TypeError("mp.F3.VortexCharge must be an int, float, or\
+                            numpy ndarray.")
+            pass
+        EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.full.Nbeam/2., 0.3, 5)
+        EP4 = pad_crop(EP4, mp.P4.full.Narr)
 
-    #     # Undo the rotation inherent to falco.prop.mft_p2v2p.m
-    #     if not mp.flagRotation:
-    #         EP4 = falco.prop.relay(EP4, -1, mp.centering)
+        # Undo the rotation inherent to falco.prop.mft_p2v2p.m
+        if not mp.flagRotation:
+            EP4 = falco.prop.relay(EP4, -1, mp.centering)
 
-    # else:
-    #     log.warning('The chosen coronagraph type is not included yet.')
-    #     raise ValueError("Value of mp.coro not recognized.")
-    #     pass
+    else:
+        log.warning('The chosen coronagraph type is not included yet.')
+        raise ValueError("Value of mp.coro not recognized.")
+        pass
 
-    # # Remove FPM completely if normalization value being found for vortex
-    # if normFac == 0:
-    #     if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
-    #         EP4 = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
-    #         EP4 = pad_crop(EP4, mp.P4.full.Narr)
-    #         pass
-    #     pass
+    # Remove FPM completely if normalization value being found for vortex
+    if normFac == 0:
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+            EP4 = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+            EP4 = pad_crop(EP4, mp.P4.full.Narr)
+            pass
+        pass
 
-    # """ Back to common propagation any coronagraph type """
-    # # Apply the (cropped-down) Lyot stop
-    # EP4 *= mp.P4.full.croppedMask
+    """ Back to common propagation any coronagraph type """
+    # Apply the (cropped-down) Lyot stop
+    EP4 *= mp.P4.full.croppedMask
 
-    # # MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
-    # EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-    EFend = falco.prop.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.full.dx, mp.Fend.dxi,
+    # MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
+    EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
+    EFend = falco.prop.mft_p2f(EP4, mp.fl, wvl, mp.P4.full.dx, mp.Fend.dxi,
                                mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta,
                                mp.centering)
 
@@ -417,7 +417,6 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
         Eout = EFend  # Don't normalize if normalization value is being found
     else:
         Eout = EFend/np.sqrt(normFac)  # Apply normalization
-    # Eout = EFend  # DEBUGGING
 
     return Eout
 
@@ -470,8 +469,10 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     else:
         NrelayFactor = 0  # zero out the number of relays
 
-    surf_dm1_bar_total = 0
-    surf_dm2_bar_total = 0
+    dmSurf1_bar_tot = 0
+    dmSurf2_bar_tot = 0
+
+    # flag_debug = False  #  hard-coded for now
 
     # Store initial cumulative DM commands
     mp.dm1.V0 = mp.dm1.V.copy()
@@ -491,6 +492,14 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     # mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
     # mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
+    # # TODO: Change to be more generic, e.g. for one DM at a time.
+    # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    # mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+
+    # # TODO: Change to be more generic, e.g. for one DM at a time.
+    # mp.dm1.V = command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    # mp.dm2.V = command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+
     total_cost = 0  # initialize
     normFacADweightedSum = 0
 
@@ -502,201 +511,186 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         modvar.starIndex = mp.jac.star_inds[iMode]
 
         wvl = mp.sbp_centers[modvar.sbpIndex]
-        kk = mirrorFac*2*np.pi/wvl
-        I00 = mp.Fend.compact.I00[modvar.sbpIndex]
         # normFac = mp.Fend.compact.I00[modvar.sbpIndex]
         # normFacFull = np.mean(mp.Fend.full.I00[modvar.sbpIndex, :])
         EestVec = EestAll[:, iMode]
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = EestVec  # * np.sqrt(normFacFull)  # Remove normalization
         normFacAD = np.sum(np.abs(EestVec)**2)
-        print(f'normFacAD = {normFacAD}')
-        # normFacAD = 1  # DEBUGGING
-
-        # Get model-based E-field before deltas
-        EFendA, Edm1post, Edm2pre, DM1surf, DM2surf = compact(
-           mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM,
-           forRevGradModel=True)
 
         # Get model-based E-field With delta DM commands applied.
         mp.dm1.V = mp.dm1.V0 + dv_dm1
         mp.dm2.V = mp.dm2.V0 + dv_dm2
-        EFendB = compact(
+        EFendB, Edm1inc, Edm2inc, DM1surfTotal, DM2surfTotal = compact(
            mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM,
-           forRevGradModel=False)
+           forRevGradModel=True)
         # Reset DM commands
         mp.dm1.V = mp.dm1.V0.copy()
         mp.dm2.V = mp.dm2.V0.copy()
 
         # Compute the delta E-field from the latest commands (model new - model old).
-        # EFendA = EFendPrev[iMode]
+        EFendA = EFendPrev[iMode]
         dEend = EFendB - EFendA
 
-        # import matplotlib.pyplot as plt
-        # plt.figure(1)
-        # plt.imshow(np.abs(Edm1pre))
-        # plt.colorbar()
-        # plt.title('abs(Edm1pre)')
-
-        # plt.figure(2)
-        # plt.imshow(np.abs(Edm2pre))
-        # plt.colorbar()
-        # plt.title('abs(Edm2pre)')
-
-        # plt.show()
-
-
-
-        # import matplotlib.pyplot as plt
-        # plt.figure(1)
-        # plt.imshow(np.abs(EFendA))
-        # plt.colorbar()
-        # plt.title('abs(EFendA)')
-
-        # plt.figure(2)
-        # plt.imshow(np.abs(EFendB))
-        # plt.colorbar()
-        # plt.title('abs(EFendB)')
-
-        # plt.figure(3)
-        # plt.imshow(np.abs(dEend))
-        # plt.colorbar()
-        # plt.title('abs(dEend)')
-
-        # plt.figure(4)
-        # plt.imshow(np.abs(Eest2D))
-        # plt.colorbar()
-        # plt.title('abs(Eest2D)')
-
-        # plt.figure(5)
-        # plt.imshow(np.abs(Eest2D - EFendA)*mp.Fend.corr.maskBool.astype(int))
-        # plt.colorbar()
-        # plt.title('abs(Eest2D-EFendA)')
-        # # plt.show()
-
-        # plt.figure(11)
-        # plt.imshow(np.angle(EFendA))
-        # plt.colorbar()
-        # plt.title('angle(EFendA)')
-
-        # plt.figure(14)
-        # plt.imshow(np.angle(Eest2D))
-        # plt.colorbar()
-        # plt.title('angle(Eest2D)')
-
-        # plt.show()
-
         # DH = EFend[mp.Fend.corr.maskBool]
-        # Eest2D = EFendA  # DEBUGGING
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.abs(DH)**2)
-        print(f'int_in_dh = {int_in_dh}')
         total_cost += mp.jac.weights[iMode] * int_in_dh / normFacAD
         normFacADweightedSum += mp.jac.weights[iMode] / normFacAD
 
+        g1 = np.exp(1j*mirrorFac*2*np.pi*DM1surfTotal/wvl)
+        g2 = np.exp(1j*mirrorFac*2*np.pi*DM2surfTotal/wvl)
+
         # Gradient
-        Fend_masked = mp.jac.weights[iMode]*2/np.sqrt(I00)*EdhNew*mp.Fend.corr.maskBool
+        Fend_masked = mp.jac.weights[iMode]*2/normFacAD*EdhNew*np.real(mp.Fend.corr.maskBool.astype(float))
 
 #        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
 #        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
 
-        EP2eff_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P2.compact.dx, NdmPad, mp.centering)
+        EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+        EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
+        EP4LS_grad = EP4_grad * np.conj(pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr))
 
+#        plt.figure(); plt.imshow(np.abs(EP4_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP4_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4.png', format='png')
 
-#         EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-#         EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
-#         EP4LS_grad = EP4_grad * np.conj(pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr))
+#        plt.figure(); plt.imshow(np.abs(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP4LS.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP4LS_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP4LS.png', format='png')
 
-#         if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+#        plt.figure(); plt.imshow(np.real(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('real(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_EP4LS.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(EP4LS_grad)); plt.colorbar(); plt.magma(); plt.title('imag(EP4LS)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_EP4LS.png', format='png')
 
-#             # Undo the 1 rotation inherent to falco.prop.mft_p2v2p.m
-#             # if not mp.flagRotation:
-#             #     EP4LS_grad = falco.prop.relay(EP4LS_grad, -1, mp.centering)
-#             EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-#             # EP4LS_grad = falco.prop.relay(EP4LS_grad, 1, mp.centering)  # DEBUGGING
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
 
-#             # Get FPM charge
-#             if isinstance(mp.F3.VortexCharge, np.ndarray):
-#                 # Passing an array for mp.F3.VortexCharge with
-#                 # corresponding wavelengths mp.F3.VortexCharge_lambdas
-#                 # represents a chromatic vortex FPM
-#                 if mp.F3.VortexCharge.size == 1:
-#                     charge = mp.F3.VortexCharge
-#                 else:
-#                     np.interp(wvl, mp.F3.VortexCharge_lambdas,
-#                               mp.F3.VortexCharge, 'linear', 'extrap')
+            # Undo the 1 rotation inherent to falco.prop.mft_p2v2p.m
+            # if not mp.flagRotation:
+            #     EP4LS_grad = falco.prop.relay(EP4LS_grad, -1, mp.centering)
+            EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # EP4LS_grad = falco.prop.relay(EP4LS_grad, 1, mp.centering)  # DEBUGGING
 
-#             elif isinstance(mp.F3.VortexCharge, (int, float)):
-#                 # single value indicates fully achromatic mask
-#                 charge = mp.F3.VortexCharge
-#             else:
-#                 raise TypeError("mp.F3.VortexCharge must be int, float or numpy ndarray.")
+            # Get FPM charge
+            if isinstance(mp.F3.VortexCharge, np.ndarray):
+                # Passing an array for mp.F3.VortexCharge with
+                # corresponding wavelengths mp.F3.VortexCharge_lambdas
+                # represents a chromatic vortex FPM
+                if mp.F3.VortexCharge.size == 1:
+                    charge = mp.F3.VortexCharge
+                else:
+                    np.interp(wvl, mp.F3.VortexCharge_lambdas,
+                              mp.F3.VortexCharge, 'linear', 'extrap')
 
-#             # EP4LS_grad = pad_crop(EP4LS_grad, 2*mp.P1.compact.Narr)
-#             EP3_grad = falco.prop.mft_p2v2p(EP4LS_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
-#             # EP3_grad *= -1  # DEBUGGING
+            elif isinstance(mp.F3.VortexCharge, (int, float)):
+                # single value indicates fully achromatic mask
+                charge = mp.F3.VortexCharge
+            else:
+                raise TypeError("mp.F3.VortexCharge must be int, float or numpy ndarray.")
 
-#         elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
+            # EP4LS_grad = pad_crop(EP4LS_grad, 2*mp.P1.compact.Narr)
+            EP3_grad = falco.prop.mft_p2v2p(EP4LS_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
+            # EP3_grad *= -1  # DEBUGGING
 
-#             EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-#             EF3_grad = falco.prop.mft_p2f(EP4LS_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
-#             EF3_grad = np.conj(mp.F3.compact.mask) * EF3_grad
-#             EP3_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
-#             # EP3_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-#             # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
+        elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
 
-#     #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
-#     #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
+            EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            EF3_grad = falco.prop.mft_p2f(EP4LS_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
+            EF3_grad = np.conj(mp.F3.compact.mask) * EF3_grad
+            EP3_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
+            # EP3_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
 
-#         elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
-#             # MFT Method
-#             EP4noFPM_grad = EP4LS_grad
-#             EP3noFPM_grad = pad_crop(falco.prop.relay(EP4noFPM_grad, NrelayFactor*mp.Nrelay3to4, mp.centering), NdmPad)
-#             EP4subtr_grad = -EP4LS_grad
-#             EP4subtr_grad = falco.prop.relay(EP4subtr_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-#             # EP4subtr_grad = falco.propcustom.propcustom_relay(EP4subtr_grad, mp.Nrelay3to4 - 1, mp.centering)
-#             auxEP4subtr_grad = falco.prop.mft_p2f(EP4subtr_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
-#     #        auxEP4subtr_grad_plot = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi*10,mp.F3.compact.deta,mp.F3.compact.Neta*10,mp.centering) #--E-field incident upon the FPM
-#             EF3_grad = np.conj(transOuterFPM - mp.F3.compact.mask) * auxEP4subtr_grad  # TODO check if np.conj() usage is correct here
-#             EP3subtr_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
-#             # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
+    #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
+    #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
 
-#     #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
-#     #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
+        elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+            # MFT Method
+            EP4noFPM_grad = EP4LS_grad
+            EP3noFPM_grad = pad_crop(falco.prop.relay(EP4noFPM_grad, NrelayFactor*mp.Nrelay3to4, mp.centering), NdmPad)
+            EP4subtr_grad = -EP4LS_grad
+            EP4subtr_grad = falco.prop.relay(EP4subtr_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # EP4subtr_grad = falco.propcustom.propcustom_relay(EP4subtr_grad, mp.Nrelay3to4 - 1, mp.centering)
+            auxEP4subtr_grad = falco.prop.mft_p2f(EP4subtr_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
+    #        auxEP4subtr_grad_plot = falco.propcustom.propcustom_mft_PtoF(EP4subtr_grad, -mp.fl,wvl,mp.P2.compact.dx,mp.F3.compact.dxi,mp.F3.compact.Nxi*10,mp.F3.compact.deta,mp.F3.compact.Neta*10,mp.centering) #--E-field incident upon the FPM
+            EF3_grad = np.conj(transOuterFPM - mp.F3.compact.mask) * auxEP4subtr_grad  # TODO check if np.conj() usage is correct here
+            EP3subtr_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
+            # EP3subtr_grad_plot = falco.propcustom.propcustom_mft_FtoP(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad*10, mp.centering) # Subtrahend term for Babinet's principle 
 
-#             EP3_grad = EP3noFPM_grad + EP3subtr_grad
+    #        plt.figure(); plt.imshow(np.abs(auxEP4subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EF3bab.png', format='png')
+    #        plt.figure(); plt.imshow(np.angle(auxEP4subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EF3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EF3bab.png', format='png')
 
-#         else:
-#             raise ValueError('%s value of mp.coro not supported yet' % mp.coro)
+            EP3_grad = EP3noFPM_grad + EP3subtr_grad
 
-# #        plt.figure(); plt.imshow(np.abs(EP3subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3bab.png', format='png')
-# #        plt.figure(); plt.imshow(np.angle(EP3subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3bab.png', format='png')
-# #
-# #        plt.figure(); plt.imshow(np.abs(EP3_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3.png', format='png')
-# #        plt.figure(); plt.imshow(np.angle(EP3_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3.png', format='png')
+        else:
+            raise ValueError('%s value of mp.coro not supported yet' % mp.coro)
 
-#         if mp.flagApod:
-#             EP3_grad = pad_crop(mp.P3.compact.mask, EP3_grad.shape) * EP3_grad
+#        plt.figure(); plt.imshow(np.abs(EP3subtr_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3bab.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP3subtr_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3bab)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3bab.png', format='png')
+#
+#        plt.figure(); plt.imshow(np.abs(EP3_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP3.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP3_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP3)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP3.png', format='png')
 
-#         EP2eff_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay2to3, mp.centering)
+        if mp.flagApod:
+            EP3_grad = pad_crop(mp.P3.compact.mask, EP3_grad.shape) * EP3_grad
+
+        EP2eff_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay2to3, mp.centering)
         EP2eff_grad = pad_crop(EP2eff_grad, NdmPad)
 
-        # To DM2
+#        plt.figure(); plt.imshow(np.abs(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('abs(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_EP2eff.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_EP2eff.png', format='png')  
+#        plt.figure(); plt.imshow(np.real(EP2eff_grad)); plt.colorbar(); plt.magma(); plt.title('real(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_EP2eff.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(EP2eff_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(EP2eff)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_EP2eff.png', format='png')
+#
         d_p2_to_dm2 = mp.d_P2_dm1 + mp.d_dm1_dm2
-        if d_p2_to_dm2 == 0:
+        if (d_p2_to_dm2 == 0):
             Edm2_grad = EP2eff_grad
         else:
             Edm2_grad = falco.prop.ptp(EP2eff_grad, mp.P2.compact.dx*NdmPad, wvl, d_p2_to_dm2)
-        Edm2_grad *= np.conj(np.exp(1j*kk*DM2surf))
-        surf_dm2_bar = -kk*np.imag(Edm2_grad * np.conj(Edm2pre))
+
+#        plt.figure(); plt.imshow(np.abs(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm2.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm2.png', format='png')
+#        plt.figure(); plt.imshow(np.real(Edm2_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm2.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(Edm2_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(Edm2)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_Edm2.png', format='png')
+
+        # To DM2
+        g2_bar = np.conj(Edm2inc) * Edm2_grad
+        phase_DM2_bar = pad_crop(np.imag(g2_bar*np.conj(g2)), mp.P1.compact.Nbeam)
+
+        # plt.figure(); plt.imshow(phase_DM2_bar); plt.colorbar(); plt.magma(); plt.title('DM2 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM2_phase.png', format='png')
+        # Vout2 = -falco.dms.falco_fit_dm_surf(mp.dm2, dmSurf2_bar)
 
         # To DM1
-        Edm1_grad = falco.prop.ptp(Edm2_grad, mp.P2.compact.dx*NdmPad, wvl, -mp.d_dm1_dm2)
-        surf_dm1_bar = -kk*np.imag(Edm1_grad * np.conj(Edm1post))
+        Edm2_bar = np.conj(g2) * Edm2_grad
+        Edm1_grad = falco.prop.ptp(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, -mp.d_dm1_dm2)
+#        Edm1_grad = falco.propcustom.propcustom_PTP_grad(Edm2_bar, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
 
-        surf_dm2_bar_total += mp.jac.weights[iMode] * surf_dm2_bar
-        surf_dm1_bar_total += mp.jac.weights[iMode] * surf_dm1_bar
+#        plt.figure(); plt.imshow(np.abs(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('abs(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Edm1.png', format='png')
+#        plt.figure(); plt.imshow(np.angle(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('angle(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Edm1.png', format='png')
+#        plt.figure(); plt.imshow(np.real(Edm1_grad)); plt.colorbar(); plt.magma(); plt.title('real(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_real_Edm1.png', format='png')
+#        plt.figure(); plt.imshow(np.imag(Edm1_grad)); plt.colorbar(); plt.hsv(); plt.title('imag(Edm1)'); plt.savefig('/Users/ajriggs/Downloads/fig_imag_Edm1.png', format='png')
+
+        g1_bar = np.conj(Edm1inc) * Edm1_grad
+        phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), mp.P1.compact.Nbeam)
+#        phase_DM1_bar = pad_crop(np.imag(g1_bar*np.conj(g1)), NdmPad)
+
+#        plt.figure(); plt.imshow(phase_DM1_bar); plt.colorbar(); plt.magma(); plt.title('DM1 Phase'); plt.savefig('/Users/ajriggs/Downloads/fig_DM1_phase.png', format='png')
+
+# #        phase_DM1_bar_tot = phase_DM1_bar_tot+phase_DM1_bar
+# #        phase_DM1_bar_tot = phase_DM1_bar_tot/mp.Nsbp
+# #        phase_DM2_bar_tot = phase_DM2_bar_tot/mp.Nsbp
+# #        dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar_tot
+# #        dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar_tot
+#         dmSurf2_bar = (4*np.pi/wvl*np.mean(mp.dm2.VtoH))*phase_DM2_bar
+#         dmSurf1_bar = (4*np.pi/wvl*np.mean(mp.dm1.VtoH))*phase_DM1_bar
+        dmSurf2_bar = phase_DM2_bar
+        dmSurf1_bar = phase_DM1_bar
+
+        dmSurf2_bar_tot += mp.jac.weights[iMode] * dmSurf2_bar
+        dmSurf1_bar_tot += mp.jac.weights[iMode] * dmSurf1_bar
+        # dmSurf1_bar_tot = dmSurf1_bar_tot + dmSurf1_bar/mp.Nsbp
+        # dmSurf2_bar_tot = dmSurf2_bar_tot + dmSurf2_bar/mp.Nsbp
+
+    # Vout1 = -quick_fit_dm_surf(mp.dm1.compact, dmSurf1_bar_tot)
+    # Vout2 = -quick_fit_dm_surf(mp.dm2.compact, dmSurf2_bar_tot)
 
     # # Calculate DM penalty term component of cost function
     # utu_coefs = normFacADweightedSum * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
@@ -706,18 +700,164 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 
     if mp.dm1.useDifferentiableModel:
         Vout1 = mp.dm1.differentiableModel.render_backprop(
-            surf_dm1_bar_total, wfe=False)
+            dmSurf1_bar_tot, mp.dm1.VtoH, wfe=False)
     else:
         raise ValueError('mp.dm1.useDifferentiableModel must be True for AD-EFC.')
+        # Vout1 = falco.dm.fit_surf_to_act(mp.dm1.compact, dmSurf1_bar_tot)
 
     if mp.dm2.useDifferentiableModel:
         Vout2 = mp.dm2.differentiableModel.render_backprop(
-            surf_dm2_bar_total, wfe=False)
+            dmSurf2_bar_tot, mp.dm2.VtoH, wfe=False)
     else:
         raise ValueError('mp.dm2.useDifferentiableModel must be True for AD-EFC.')
+        # Vout2 = falco.dm.fit_surf_to_act(mp.dm2.compact, dmSurf2_bar_tot)
 
-    Vout1 *= mp.dm1.VtoH
-    Vout2 *= mp.dm2.VtoH
+    # print(Vout1.dtype)
+    # print(Vout2.dtype)
+    Vout1 *= -np.conj(mirrorFac*2*np.pi/wvl) * mp.dm1.VtoH
+    Vout2 *= -np.conj(mirrorFac*2*np.pi/wvl) * mp.dm2.VtoH
+    # Vout1 *= mp.dm1.VtoH*mp.dm1.VtoH
+    # Vout2 *= mp.dm2.VtoH*mp.dm2.VtoH
+
+    # VtoH1 = mp.dm1.VtoH
+    # VtoH1[mp.dm1.VtoH == 0] = np.inf
+
+    # VtoH2 = mp.dm2.VtoH
+    # VtoH2[mp.dm2.VtoH == 0] = np.inf
+
+    # # apply regularization
+    # Vout1 += 2 * utu_coefs * dv_dm1  # command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
+    # Vout2 += 2 * utu_coefs * dv_dm2  # command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
+
+    # import matplotlib.pyplot as plt
+    # plt.figure(21)
+    # plt.clf()
+    # plt.imshow(Vout1)
+    # # plt.imshow(np.log10(np.abs(pupilPre)**2))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('DM1')
+    # plt.pause(0.1)
+
+    # plt.figure(22)
+    # plt.clf()
+    # plt.imshow(Vout2)
+    # # plt.imshow(np.log10(np.abs(pupilPost)**2))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('DM2')
+    # plt.pause(0.1)
+
+    # plt.show()
+
+    # plt.figure(23)
+    # plt.clf()
+    # plt.imshow(np.log10(np.abs(Fend_masked)**2))
+    # # plt.imshow(np.log10(np.abs(pupilPost)**2))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('Fend_masked squared')
+    # plt.pause(0.1)
+
+    # plt.figure(31)
+    # plt.clf()
+    # plt.imshow(np.abs(Edm2_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.abs(Edm2_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(32)
+    # plt.clf()
+    # plt.imshow(np.angle(Edm2_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.angle(Edm2_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(33)
+    # plt.clf()
+    # plt.imshow(np.abs(Edm1_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.abs(Edm1_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(34)
+    # plt.clf()
+    # plt.imshow(np.angle(Edm1_grad))
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('np.angle(Edm1_grad)')
+    # plt.pause(0.1)
+
+    # plt.figure(24)
+    # plt.clf()
+    # plt.imshow(dmSurf1_bar_tot)
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('dmSurf1_bar_tot')
+    # plt.pause(0.1)
+
+    # plt.figure(25)
+    # plt.clf()
+    # plt.imshow(dmSurf2_bar_tot)
+    # plt.gca().invert_yaxis()
+    # plt.colorbar()
+    # plt.title('dmSurf2_bar_tot')
+    # plt.pause(0.1)
+
+    # # plt.figure(124)
+    # # plt.clf()
+    # # plt.imshow(dmSurf1_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('dmSurf1_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(125)
+    # # plt.clf()
+    # # plt.imshow(dmSurf2_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('dmSurf2_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(26)
+    # # plt.clf()
+    # # plt.imshow(phase_DM1_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('phase_DM1_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(126)
+    # # plt.clf()
+    # # plt.imshow(phase_DM2_bar)
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('phase_DM2_bar')
+    # # plt.pause(0.1)
+
+    # # plt.figure(27)
+    # # plt.clf()
+    # # plt.imshow(np.abs(EP3_grad))
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('EP3_grad')
+    # # plt.pause(0.1)
+
+    # # plt.figure(28)
+    # # plt.clf()
+    # # plt.imshow(np.abs(EP4LS_grad))
+    # # plt.gca().invert_yaxis()
+    # # plt.colorbar()
+    # # plt.title('EP4LS_grad')
+    # # plt.pause(0.1)
+
+    # plt.pause(0.2)
+    # plt.show()
+
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
                                Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),
                               axis=None)
@@ -981,142 +1121,142 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
 
     # Propagate from P2 to DM1, and apply DM1 surface and aperture stop
     if not (abs(mp.d_P2_dm1) == 0):  # E-field arriving at DM1
-        Edm1pre = falco.prop.ptp(EP2, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
+        Edm1inc = falco.prop.ptp(EP2, mp.P2.compact.dx*NdmPad, wvl, mp.d_P2_dm1)
     else:
-        Edm1pre = EP2
+        Edm1inc = EP2
 
     # E-field leaving DM1
-    Edm1pre *= DM1stop
-    Edm1post = Edm1pre*Edm1WFE*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl)
+    Edm1inc *= DM1stop
+    Edm1 = Edm1inc*Edm1WFE*np.exp(mirrorFac*2*np.pi*1j*DM1surf/wvl)
 
     # Propagate from DM1 to DM2, and apply DM2 surface and aperture stop
-    Edm2pre = DM2stop * falco.prop.ptp(Edm1post, mp.P2.compact.dx*NdmPad, wvl, mp.d_dm1_dm2)
-    Edm2 = Edm2WFE * Edm2pre*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
+    Edm2inc = DM2stop * falco.prop.ptp(Edm1, mp.P2.compact.dx*NdmPad, wvl, mp.d_dm1_dm2)
+    Edm2 = Edm2WFE * Edm2inc*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
 
     # Back-propagate to pupil P2
-    d_p2_to_dm2 = mp.d_P2_dm1 + mp.d_dm1_dm2
-    if d_p2_to_dm2 == 0:
+    if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
         EP2eff = Edm2
     else:
-        EP2eff = falco.prop.ptp(Edm2, mp.P2.compact.dx*NdmPad, wvl, -d_p2_to_dm2)
+        EP2eff = falco.prop.ptp(Edm2, mp.P2.compact.dx*NdmPad, wvl, -1 *
+                                (mp.d_dm1_dm2 + mp.d_P2_dm1))
 
-    # # Re-image to pupil P3
-    # EP3 = falco.prop.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
+    # Re-image to pupil P3
+    EP3 = falco.prop.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
 
-    # # Apply apodizer mask.
-    # if mp.flagApod:
-    #     EP3 = mp.P3.compact.mask*pad_crop(EP3, mp.P3.compact.Narr)
+    # Apply apodizer mask.
+    if mp.flagApod:
+        EP3 = mp.P3.compact.mask*pad_crop(EP3, mp.P3.compact.Narr)
 
 
-    # """Propagation from P3 to P4 depends on coronagraph type."""
-    # # Remove FPM completely if normalization value is being found for vortex
-    # if normFac == 0:
-    #     if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
-    #         useFPM = False
+    """Propagation from P3 to P4 depends on coronagraph type."""
+    # Remove FPM completely if normalization value is being found for vortex
+    if normFac == 0:
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+            useFPM = False
 
-    # if useFPM:
+    if useFPM:
 
-    #     if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
+        if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
 
-    #         # Get FPM charge
-    #         if isinstance(mp.F3.VortexCharge, np.ndarray):
-    #             # Passing an array for mp.F3.VortexCharge with
-    #             # corresponding wavelengths mp.F3.VortexCharge_lambdas
-    #             # represents a chromatic vortex FPM
-    #             if mp.F3.VortexCharge.size == 1:
-    #                 charge = mp.F3.VortexCharge
-    #             else:
-    #                 np.interp(wvl, mp.F3.VortexCharge_lambdas,
-    #                           mp.F3.VortexCharge, 'linear', 'extrap')
+            # Get FPM charge
+            if isinstance(mp.F3.VortexCharge, np.ndarray):
+                # Passing an array for mp.F3.VortexCharge with
+                # corresponding wavelengths mp.F3.VortexCharge_lambdas
+                # represents a chromatic vortex FPM
+                if mp.F3.VortexCharge.size == 1:
+                    charge = mp.F3.VortexCharge
+                else:
+                    np.interp(wvl, mp.F3.VortexCharge_lambdas,
+                              mp.F3.VortexCharge, 'linear', 'extrap')
 
-    #         elif isinstance(mp.F3.VortexCharge, (int, float)):
-    #             # single value indicates fully achromatic mask
-    #             charge = mp.F3.VortexCharge
-    #         else:
-    #             raise TypeError("mp.F3.VortexCharge must be int, float or numpy\
-    #                             ndarray.")
-    #             pass
-    #         EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
-    #         EP4 = pad_crop(EP4, mp.P4.compact.Narr)
+            elif isinstance(mp.F3.VortexCharge, (int, float)):
+                # single value indicates fully achromatic mask
+                charge = mp.F3.VortexCharge
+            else:
+                raise TypeError("mp.F3.VortexCharge must be int, float or numpy\
+                                ndarray.")
+                pass
+            EP4 = falco.prop.mft_p2v2p(EP3, charge, mp.P1.compact.Nbeam/2., 0.3, 5)
+            EP4 = pad_crop(EP4, mp.P4.compact.Narr)
 
-    #         # Undo the rotation inherent to falco.prop.mft_p2v2p.m
-    #         if not mp.flagRotation:
-    #             EP4 = falco.prop.relay(EP4, -1, mp.centering)
+            # Undo the rotation inherent to falco.prop.mft_p2v2p.m
+            if not mp.flagRotation:
+                EP4 = falco.prop.relay(EP4, -1, mp.centering)
 
-    #     elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
-    #         # MFT from SP to FPM (i.e., P3 to F3)
-    #         # E-field incident upon the FPM
-    #         EF3inc = falco.prop.mft_p2f(
-    #             EP3, mp.fl, wvl, mp.P2.compact.dx, fpmScaleFac*mp.F3.compact.dxi,
-    #             mp.F3.compact.Nxi, fpmScaleFac*mp.F3.compact.deta,
-    #             mp.F3.compact.Neta, mp.centering)
+        elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
+            # MFT from SP to FPM (i.e., P3 to F3)
+            # E-field incident upon the FPM
+            EF3inc = falco.prop.mft_p2f(
+                EP3, mp.fl, wvl, mp.P2.compact.dx, fpmScaleFac*mp.F3.compact.dxi,
+                mp.F3.compact.Nxi, fpmScaleFac*mp.F3.compact.deta,
+                mp.F3.compact.Neta, mp.centering)
 
-    #         # Apply FPM
-    #         EF3 = mp.F3.compact.mask * EF3inc
+            # Apply FPM
+            EF3 = mp.F3.compact.mask * EF3inc
 
-    #         # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-    #         EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.compact.dxi,
-    #                                  fpmScaleFac*mp.F3.compact.deta, mp.P4.compact.dx,
-    #                                  mp.P4.compact.Narr, mp.centering)
-    #         EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+            EP4 = falco.prop.mft_f2p(EF3, mp.fl, wvl, fpmScaleFac*mp.F3.compact.dxi,
+                                     fpmScaleFac*mp.F3.compact.deta, mp.P4.compact.dx,
+                                     mp.P4.compact.Narr, mp.centering)
+            EP4 = falco.prop.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-    #     elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
-    #         # MFT from SP to FPM (i.e., P3 to F3)
-    #         # E-field incident upon the FPM
-    #         EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
-    #                                     fpmScaleFac*mp.F3.compact.dxi,
-    #                                     mp.F3.compact.Nxi,
-    #                                     fpmScaleFac*mp.F3.compact.deta,
-    #                                     mp.F3.compact.Neta, mp.centering)
+        elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+            # MFT from SP to FPM (i.e., P3 to F3)
+            # E-field incident upon the FPM
+            EF3inc = falco.prop.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx,
+                                        fpmScaleFac*mp.F3.compact.dxi,
+                                        mp.F3.compact.Nxi,
+                                        fpmScaleFac*mp.F3.compact.deta,
+                                        mp.F3.compact.Neta, mp.centering)
 
-    #         EF3 = (transOuterFPM - mp.F3.compact.mask)*EF3inc
+            EF3 = (transOuterFPM - mp.F3.compact.mask)*EF3inc
 
-    #         # Use Babinet's principle at the Lyot plane.
-    #         EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
-    #         EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)
-    #         if mp.coro.upper() == 'HLC':
-    #             EP4noFPM = transOuterFPM*EP4noFPM
-    #         # MFT from FPM to Lyot Plane (i.e., F3 to P4)
-    #         # Subtrahend term for Babinet's principle
-    #         EP4sub = falco.prop.mft_f2p(EF3, mp.fl, wvl,
-    #                                     fpmScaleFac*mp.F3.compact.dxi,
-    #                                     fpmScaleFac*mp.F3.compact.deta,
-    #                                     mp.P4.compact.dx, mp.P4.compact.Narr,
-    #                                     mp.centering)
-    #         EP4subRelay = falco.prop.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-    #         # Babinet's principle at P4
-    #         EP4 = (EP4noFPM-EP4subRelay)
+            # Use Babinet's principle at the Lyot plane.
+            EP4noFPM = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+            EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)
+            if mp.coro.upper() == 'HLC':
+                EP4noFPM = transOuterFPM*EP4noFPM
+            # MFT from FPM to Lyot Plane (i.e., F3 to P4)
+            # Subtrahend term for Babinet's principle
+            EP4sub = falco.prop.mft_f2p(EF3, mp.fl, wvl,
+                                        fpmScaleFac*mp.F3.compact.dxi,
+                                        fpmScaleFac*mp.F3.compact.deta,
+                                        mp.P4.compact.dx, mp.P4.compact.Narr,
+                                        mp.centering)
+            EP4subRelay = falco.prop.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+            # Babinet's principle at P4
+            EP4 = (EP4noFPM-EP4subRelay)
 
-    # else:  # No FPM
+    else:  # No FPM
 
-    #     EP4 = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
-    #     EP4 *= transOuterFPM
+        EP4 = falco.prop.relay(EP3, NrelayFactor*mp.Nrelay3to4, mp.centering)
+        EP4 *= transOuterFPM
 
-    #     # Downsample the beam if Lyot plane has lower resolution
-    #     if mp.P4.compact.Nbeam != mp.P1.compact.Nbeam:
-    #         # Make sure array is oversized before downsampling
-    #         padFac = 1.2
-    #         EP4 = pad_crop(EP4,
-    #                        falco.util.ceil_even(padFac*mp.P1.compact.Nbeam))
+        # Downsample the beam if Lyot plane has lower resolution
+        if mp.P4.compact.Nbeam != mp.P1.compact.Nbeam:
+            # Make sure array is oversized before downsampling
+            padFac = 1.2
+            EP4 = pad_crop(EP4,
+                           falco.util.ceil_even(padFac*mp.P1.compact.Nbeam))
 
-    #         EP4tempReal = falco.mask.rotate_shift_downsample_pupil_mask(
-    #             np.real(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
-    #         EP4tempImag = falco.mask.rotate_shift_downsample_pupil_mask(
-    #             np.imag(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
+            EP4tempReal = falco.mask.rotate_shift_downsample_pupil_mask(
+                np.real(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
+            EP4tempImag = falco.mask.rotate_shift_downsample_pupil_mask(
+                np.imag(EP4), mp.P1.compact.Nbeam, mp.P4.compact.Nbeam, 0, 0, 0)
 
-    #         EP4 = EP4tempReal + 1j*EP4tempImag
-    #         # Preserve summed intensity in the pupil:
-    #         EP4 *= mp.P1.compact.Nbeam/mp.P4.compact.Nbeam
+            EP4 = EP4tempReal + 1j*EP4tempImag
+            # Preserve summed intensity in the pupil:
+            EP4 *= mp.P1.compact.Nbeam/mp.P4.compact.Nbeam
 
-    #     EP4 = pad_crop(EP4, mp.P4.compact.Narr)
+        EP4 = pad_crop(EP4, mp.P4.compact.Narr)
 
-    # """  Back to common propagation any coronagraph type   """
-    # # Apply the Lyot stop
-    # EP4 = mp.P4.compact.croppedMask*EP4
+    """  Back to common propagation any coronagraph type   """
+    # Apply the Lyot stop
+    EP4 = mp.P4.compact.croppedMask*EP4
 
-    # # MFT to camera
-    # EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-    EFend = falco.prop.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, dxi, Nxi,
+    # MFT to camera
+    EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
+    EFend = falco.prop.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, dxi, Nxi,
                                deta, Neta, mp.centering)
 
     # Don't apply FPM if normalization value is being found
@@ -1124,12 +1264,9 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
         Eout = EFend  # Don't normalize if normalization value is being found
     else:
         Eout = EFend/np.sqrt(normFac)  # Apply normalization
-        print(f'np.sqrt(normFac) = {np.sqrt(normFac)}')
-    # print(f'normFac = {normFac}')
-    # Eout = EFend  # DEBUGGING
 
     if forRevGradModel:
-        return Eout, Edm1post, Edm2pre, DM1surf, DM2surf
+        return Eout, Edm1inc, Edm2inc, DM1surf, DM2surf
     else:
         return Eout
 

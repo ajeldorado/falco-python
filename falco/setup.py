@@ -65,8 +65,9 @@ def flesh_out_workspace(mp):
     out = init_storage_arrays(mp)
 
     print('\nBeginning Trial %d of Series %d.\n' % (mp.TrialNum, mp.SeriesNum))
-    print('DM 1-to-2 Fresnel number (using radius) = ' +
-          str((mp.P2.D/2)**2/(mp.d_dm1_dm2*mp.lambda0)))
+    if mp.d_dm1_dm2*mp.lambda0 != 0:
+        print('DM 1-to-2 Fresnel number (using radius) = ' +
+            str((mp.P2.D/2)**2/(mp.d_dm1_dm2*mp.lambda0)))
 
     return out
 

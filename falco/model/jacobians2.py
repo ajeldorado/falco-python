@@ -140,7 +140,7 @@ def lyot(mp, iMode, idm):
     """Propagation"""
     # Get the unocculted peak E-field and coronagraphic E-field
     if mp.jac.minimizeNI:
-        modvar.whichSource = 'star'
+        modvar.whichSource = 'star';
         Eocculted = falco.model.compact(mp, modvar)
         Eunocculted = falco.model.compact(mp, modvar, useFPM=False)
         indPeak = np.unravel_index(np.argmax(np.abs(Eunocculted), axis=None),
@@ -160,7 +160,7 @@ def lyot(mp, iMode, idm):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.NpupilTotal), dtype=complex)
 
         # Two array sizes (at same resolution) of influence functions for MFT
         # and angular spectrum
@@ -184,90 +184,88 @@ def lyot(mp, iMode, idm):
 
         # Propagate each actuator from DM1 through the optical system
         Gindex = 0  # initialize index counter
-        for iact in mp.dm1.act_ele:
+        for iact in range(mp.NpupilTotal):  # mp.dm1.act_ele:
             # Compute only for influence functions that are not zeroed out
-            if np.sum(np.abs(mp.dm1.compact.inf_datacube[:, :, iact])) > 1e-12:
+            if True:  # np.sum(np.abs(mp.dm1.compact.inf_datacube[:, :, iact])) > 1e-12:
 
-                # x- and y- coordinate indices of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0,iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=int) # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1,iact], mp.dm1.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad1AS, dtype=int) # y-indices in pupil arrays for the box
-                indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
-                # x- and y- coordinates of the UN-padded influence function in the full padded pupil
-                x_box = mp.dm1.compact.x_pupPad[x_box_AS_ind] # full pupil x-coordinates of the box 
-                y_box = mp.dm1.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box
+                # # x- and y- coordinate indices of the padded influence function in the full padded pupil
+                # x_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[0,iact], mp.dm1.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad1AS, dtype=int) # x-indices in pupil arrays for the box
+                # y_box_AS_ind = np.arange(mp.dm1.compact.xy_box_lowerLeft_AS[1,iact], mp.dm1.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad1AS, dtype=int) # y-indices in pupil arrays for the box
+                # indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
+                # # x- and y- coordinates of the UN-padded influence function in the full padded pupil
+                # x_box = mp.dm1.compact.x_pupPad[x_box_AS_ind] # full pupil x-coordinates of the box 
+                # y_box = mp.dm1.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box
 
-                # Propagate from DM1 to DM2, and then back to P2
-                dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:,:,iact]),NboxPad1AS) # Pad influence function at DM1 for angular spectrum propagation.
-                dEbox = fp.ptp(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
-                dEP2box = fp.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
-#                dEbox = fp.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2, mp.dm1.dm_spacing, mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
-#                dEP2box = fp.ptp_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1), mp.dm1.dm_spacing, mp.propMethodPTP ) # back-propagate to DM1
+                dEboxFlat = np.zeros((mp.NpupilTotal,), dtype=complex)
+                dEboxFlat[iact] = (4*np.pi*1j/wvl)*mp.dm1.VtoH[0, 0]
+                dEP2box = Edm1pad * pad_crop(dEboxFlat.reshape((mp.Npupil, mp.Npupil)), mp.dm1.compact.NdmPad)
+                dEP3box = fp.relay(dEP2box, NrelayFactor*mp.Nrelay2to3, mp.centering)  # np.rot90(dEP2box, k=NrelayFactor*2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+                EF3inc = fp.mft_p2f(dEP3box, mp.fl, wvl, mp.P2.compact.dx, dxiF3, len(mp.F3.compact.xis), detaF3, len(mp.F3.compact.etas), mp.centering)
 
-                # Re-insert the window around the influence function back into the full beam array.
-                EP2eff = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad), dtype=complex)
-                EP2eff[indBoxAS] = dEP2box
+#                 # Propagate from DM1 to DM2, and then back to P2
+#                 # dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:,:,iact]),NboxPad1AS) # Pad influence function at DM1 for angular spectrum propagation.
+#                 dEbox = fp.ptp(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
+#                 dEP2box = fp.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
+# #                dEbox = fp.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2, mp.dm1.dm_spacing, mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
+# #                dEP2box = fp.ptp_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1), mp.dm1.dm_spacing, mp.propMethodPTP ) # back-propagate to DM1
+# #
+#                 # To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
+#                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
+#                 # Second, negate the coordinates of the box used.
+#                 dEP2box = apodReimaged[indBoxAS]*dEP2box # Apply 180deg-rotated SP mask.
+#                 dEP3box = np.rot90(dEP2box, k=NrelayFactor*2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+#                 # Negate and reverse coordinate values to effectively rotate by 180 degrees. No change if 360 degree rotation.
+#                 if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
+#                     x_box = -1*x_box[::-1]
+#                     y_box = -1*y_box[::-1]
 
-                # # To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
-                # # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
-                # # Second, negate the coordinates of the box used.
-                # dEP2box = apodReimaged[indBoxAS]*dEP2box # Apply 180deg-rotated SP mask.
-                # dEP3box = np.rot90(dEP2box, k=NrelayFactor*2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+#                 # Matrices for the MFT from the pupil P3 to the focal plane mask
+#                 rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(etasF3, y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
+#                 rect_mat_post = (np.exp(-2*np.pi*1j*np.outer(x_box, xisF3)/(wvl*mp.fl)))
 
+#                 EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post  # MFT to FPM
 
-                # Negate and reverse coordinate values to effectively rotate by 180 degrees. No change if 360 degree rotation.
-                # if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
-                #     x_box = -1*x_box[::-1]
-                #     y_box = -1*y_box[::-1]
+                if mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+                    # Propagate through (1 - FPM) for Babinet's principle
+                    EF3 = (transOuterFPM-fpm) * EF3inc
 
-                # # Matrices for the MFT from the pupil P3 to the focal plane mask
-                # rect_mat_pre = (np.exp(-2*np.pi*1j*np.outer(etasF3, y_box)/(wvl*mp.fl)))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
-                # rect_mat_post = (np.exp(-2*np.pi*1j*np.outer(x_box, xisF3)/(wvl*mp.fl)))
+                    # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
+                    EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+                    EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-                # EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post  # MFT to FPM
+                    # Full Lyot plane pupil (for Babinet)
+                    # EP4noFPM = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad),dtype=complex)
+                    # EP4noFPM[indBoxAS] = dEP2box # Propagating the E-field from P2 to P4 without masks gives the same E-field.
+                    EP4noFPM = fp.relay(dEP3box, NrelayFactor*mp.Nrelay3to4, mp.centering)  # Get the correct orientation 
+                    EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
+                    EP4 = transOuterFPM*EP4noFPM - EP4sub  # Babinet's principle to get E-field at Lyot plane
 
-                # if mp.coro.upper() in ('LC', 'APLC', 'HLC'):
-                #     # Propagate through (1 - FPM) for Babinet's principle
-                #     EF3 = (transOuterFPM-fpm) * EF3inc
+                elif mp.coro.upper() in ('FLC', 'SPLC'):
+                    EF3 = fpm * EF3inc  # Apply FPM
 
-                #     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                #     EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-                #     EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+                    # MFT to Lyot plane
+                    EP4 = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+                    EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
 
-                #     # Full Lyot plane pupil (for Babinet)
-                #     EP4noFPM = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad),dtype=complex)
-                #     EP4noFPM[indBoxAS] = dEP2box # Propagating the E-field from P2 to P4 without masks gives the same E-field. 
-                #     EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering) # Get the correct orientation 
-                #     EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
-                #     EP4 = transOuterFPM*EP4noFPM - EP4sub  # Babinet's principle to get E-field at Lyot plane
+                EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
 
-                # elif mp.coro.upper() in ('FLC', 'SPLC'):
-                #     EF3 = fpm * EF3inc  # Apply FPM
-
-                #     # MFT to Lyot plane
-                #     EP4 = fp.mft_f2p(EF3, mp.fl,wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-                #     EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
-
-                # EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
-
-                # # MFT to camera
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering) # Rotate the final image 180 degrees if necessary
-                EFend = fp.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                # MFT to camera
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
                 Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
-        # print(f'np.sqrt(mp.Fend.compact.I00) = {np.sqrt(mp.Fend.compact.I00)}')
-
-        # if mp.jac.minimizeNI:
-        #     JacOfPeak = no_fpm(mp, iMode, idm)
-        #     Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm1.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
+        if mp.jac.minimizeNI:
+            JacOfPeak = no_fpm(mp, iMode, idm)
+            Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm1.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
 
         Gmode *= mp.dm1.weight
 
     """ ---------- DM2 ---------- """
     if idm == 2:
-        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm2.Nele), dtype=complex)
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.NpupilTotal), dtype=complex)
 
         # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
         NboxPad2AS = int(mp.dm2.compact.NboxAS)
@@ -284,164 +282,167 @@ def lyot(mp, iMode, idm):
 
         # Propagate each actuator from DM2 through the rest of the optical system
         Gindex = 0  # initialize index counter
-        for iact in mp.dm2.act_ele:
-            if np.sum(np.abs(mp.dm2.compact.inf_datacube[:, :, iact])) > 1e-12:  # Only compute for acutators specified for use or for influence functions that are not zeroed out
+        for iact in range(mp.NpupilTotal):  # mp.dm2.act_ele:
+            if True:  # np.sum(np.abs(mp.dm2.compact.inf_datacube[:, :, iact])) > 1e-12:  # Only compute for acutators specified for use or for influence functions that are not zeroed out
 
-                # x- and y- coordinates of the padded influence function in the full padded pupil
-                x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0, iact], mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS, dtype=int) # x-indices in pupil arrays for the box
-                y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1, iact], mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS, dtype=int) # y-indices in pupil arrays for the box
-                indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
-                # x- and y- coordinates of the UN-padded influence function in the full padded pupil
-                x_box = mp.dm2.compact.x_pupPad[x_box_AS_ind]  # full pupil x-coordinates of the box 
-                y_box = mp.dm2.compact.y_pupPad[y_box_AS_ind]  # full pupil y-coordinates of the box 
+                dEboxFlat = np.zeros((mp.NpupilTotal,), dtype=complex)
+                dEboxFlat[iact] = (4*np.pi*1j/wvl)*mp.dm2.VtoH[0, 0]
+                dEP2box = Edm2 * pad_crop(dEboxFlat.reshape((mp.Npupil, mp.Npupil)), mp.dm2.compact.NdmPad)
+                dEP2box = fp.ptp(dEP2box, mp.P2.compact.dx*mp.dm2.compact.NdmPad, wvl, -1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
+                dEP3box = fp.relay(dEP2box, NrelayFactor*mp.Nrelay2to3, mp.centering)  # np.rot90(dEP2box, k=NrelayFactor*2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+                EF3inc = fp.mft_p2f(dEP3box, mp.fl, wvl, mp.P2.compact.dx, dxiF3, len(mp.F3.compact.xis), detaF3, len(mp.F3.compact.etas), mp.centering)
 
-                dEbox = (mp.dm2.VtoH.reshape(mp.dm2.Nact**2)[iact])*(surfIntoPhase*2*np.pi*1j/wvl)*pad_crop(np.squeeze(mp.dm2.compact.inf_datacube[:, :, iact]), NboxPad2AS) # the padded influence function at DM2
-                dEP2box = fp.ptp(dEbox*Edm2[indBoxAS], mp.P2.compact.dx*NboxPad2AS, wvl, -1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
-#                dEP2box = ptp_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind), mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1), mp.dm2.dm_spacing, mp.propMethodPTP); # back-propagate to pupil P2
+#                 # x- and y- coordinates of the padded influence function in the full padded pupil
+#                 x_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[0, iact], mp.dm2.compact.xy_box_lowerLeft_AS[0, iact]+NboxPad2AS, dtype=int) # x-indices in pupil arrays for the box
+#                 y_box_AS_ind = np.arange(mp.dm2.compact.xy_box_lowerLeft_AS[1, iact], mp.dm2.compact.xy_box_lowerLeft_AS[1, iact]+NboxPad2AS, dtype=int) # y-indices in pupil arrays for the box
+#                 indBoxAS = np.ix_(y_box_AS_ind, x_box_AS_ind)
+#                 # x- and y- coordinates of the UN-padded influence function in the full padded pupil
+#                 x_box = mp.dm2.compact.x_pupPad[x_box_AS_ind]  # full pupil x-coordinates of the box 
+#                 y_box = mp.dm2.compact.y_pupPad[y_box_AS_ind]  # full pupil y-coordinates of the box 
 
-                # Re-insert the window around the influence function back into the full beam array.
-                EP2eff = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad), dtype=complex)
-                EP2eff[indBoxAS] = dEP2box
+#                 dEbox = (mp.dm2.VtoH.reshape(mp.dm2.Nact**2)[iact])*(surfIntoPhase*2*np.pi*1j/wvl)*pad_crop(np.squeeze(mp.dm2.compact.inf_datacube[:, :, iact]), NboxPad2AS) # the padded influence function at DM2
+#                 dEP2box = fp.ptp(dEbox*Edm2[indBoxAS], mp.P2.compact.dx*NboxPad2AS, wvl, -1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to pupil P2
+# #                dEP2box = ptp_inf_func(dEbox.*Edm2(y_box_AS_ind,x_box_AS_ind), mp.P2.compact.dx*NboxPad2AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1), mp.dm2.dm_spacing, mp.propMethodPTP); # back-propagate to pupil P2
 
-                # # To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
-                # # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
-                # # Second, negate the coordinates of the box used.
-                # dEP2box = apodReimaged[indBoxAS]*dEP2box  # Apply 180deg-rotated SP mask.
-                # dEP3box = np.rot90(dEP2box, k=2*NrelayFactor*mp.Nrelay2to3)  # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
-                # # Negate and rotate coordinates to effectively rotate by 180 degrees. No change if 360 degree rotation.
-                # if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
-                #     x_box = -1*x_box[::-1]
-                #     y_box = -1*y_box[::-1]
+#                 # To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
+#                 # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
+#                 # Second, negate the coordinates of the box used.
+#                 dEP2box = apodReimaged[indBoxAS]*dEP2box  # Apply 180deg-rotated SP mask.
+#                 dEP3box = np.rot90(dEP2box, k=2*NrelayFactor*mp.Nrelay2to3)  # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
+#                 # Negate and rotate coordinates to effectively rotate by 180 degrees. No change if 360 degree rotation.
+#                 if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
+#                     x_box = -1*x_box[::-1]
+#                     y_box = -1*y_box[::-1]
 
-                # # Matrices for the MFT from the pupil P3 to the focal plane mask
-                # rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(etasF3, y_box)/(wvl*mp.fl))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
-                # rect_mat_post = np.exp(-2*np.pi*1j*np.outer(x_box, xisF3)/(wvl*mp.fl))
+#                 # Matrices for the MFT from the pupil P3 to the focal plane mask
+#                 rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(etasF3, y_box)/(wvl*mp.fl))*np.sqrt(mp.P2.compact.dx*mp.P2.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
+#                 rect_mat_post = np.exp(-2*np.pi*1j*np.outer(x_box, xisF3)/(wvl*mp.fl))
 
-                # EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post  # MFT to FPM
+#                 EF3inc = rect_mat_pre @ dEP3box @ rect_mat_post  # MFT to FPM
 
-                # if mp.coro.upper() in ('LC', 'APLC', 'HLC'):
-                #     # Propagate through (1 - fpm) for Babinet's principle
-                #     EF3 = (transOuterFPM-fpm) * EF3inc
+                if mp.coro.upper() in ('LC', 'APLC', 'HLC'):
+                    # Propagate through (1 - fpm) for Babinet's principle
+                    EF3 = (transOuterFPM-fpm) * EF3inc
 
-                #     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                #     EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering) # Subtrahend term for the Lyot plane E-field    
-                #     EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering) # Get the correct orientation
+                    # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
+                    EP4sub = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering) # Subtrahend term for the Lyot plane E-field    
+                    EP4sub = fp.relay(EP4sub, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
 
-                #     EP4noFPM = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=complex)
-                #     EP4noFPM[indBoxAS] = dEP2box  # Propagating the E-field from P2 to P4 without masks gives the same E-field.
-                #     EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering) # Get the number or re-imaging relays between pupils P3 and P4. 
-                #     EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
-                #     EP4 = transOuterFPM*EP4noFPM - EP4sub  # Babinet's principle to get E-field at Lyot plane
+                    # EP4noFPM = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=complex)
+                    # EP4noFPM[indBoxAS] = dEP2box  # Propagating the E-field from P2 to P4 without masks gives the same E-field.
+                    EP4noFPM = fp.relay(dEP3box, NrelayFactor*mp.Nrelay3to4, mp.centering)  # Get the correct orientation 
+                    EP4noFPM = fp.relay(EP4noFPM, NrelayFactor*(mp.Nrelay2to3+mp.Nrelay3to4), mp.centering)  # Get the number or re-imaging relays between pupils P3 and P4. 
+                    EP4noFPM = pad_crop(EP4noFPM, mp.P4.compact.Narr)  # Crop down to the size of the Lyot stop opening
+                    EP4 = transOuterFPM*EP4noFPM - EP4sub  # Babinet's principle to get E-field at Lyot plane
 
-                # elif mp.coro.upper() in ('FLC', 'SPLC'):
+                elif mp.coro.upper() in ('FLC', 'SPLC'):
 
-                #     EF3 = fpm * EF3inc  # Apply FPM
+                    EF3 = fpm * EF3inc  # Apply FPM
 
-                #     # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
-                #     EP4 = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-                #     EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+                    # MFT to LS ("Sub" name for Subtrahend part of the Lyot-plane E-field)
+                    EP4 = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+                    EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-                # EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
+                EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
 
-                # # MFT to detector
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
-                EFend = fp.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                # MFT to detector
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
                 Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
-        # print(f'np.sqrt(mp.Fend.compact.I00) = {np.sqrt(mp.Fend.compact.I00)}')
-        # if mp.jac.minimizeNI:
-        #     JacOfPeak = no_fpm(mp, iMode, idm)
-        #     Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm2.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
+        if mp.jac.minimizeNI:
+            JacOfPeak = no_fpm(mp, iMode, idm)
+            Gmode = Gmode/Epeak - np.tile(Eocculted[mp.Fend.corr.maskBool].reshape([-1, 1])/(Epeak*Epeak), [1, mp.dm2.Nele])*np.tile(JacOfPeak, [mp.Fend.corr.Npix, 1])
 
         Gmode *= mp.dm2.weight
 
-    # """ ---------- DM9 (HLC only) ---------- """
-    # if idm == 9:
-    #     Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele), dtype=complex)
-    #     Nbox9 = int(mp.dm9.compact.Nbox)
+    """ ---------- DM9 (HLC only) ---------- """
+    if idm == 9:
+        Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm9.Nele), dtype=complex)
+        Nbox9 = int(mp.dm9.compact.Nbox)
 
-    #     # Adjust the step size in the Jacobian, then divide back out. Used for
-    #     # helping counteract effect of discretization.
-    #     if not hasattr(mp.dm9, 'stepFac'):
-    #         stepFac = 20
-    #     else:
-    #         stepFac = mp.dm9.stepFac
+        # Adjust the step size in the Jacobian, then divide back out. Used for
+        # helping counteract effect of discretization.
+        if not hasattr(mp.dm9, 'stepFac'):
+            stepFac = 20
+        else:
+            stepFac = mp.dm9.stepFac
 
-    #     # Propagate from DM1 to DM2, and apply DM2 surface and aperture stop
-    #     Edm2 = Edm2WFE * DM2stop * np.exp(surfIntoPhase*2*np.pi*1j*DM2surf/wvl) * \
-    #         fp.ptp(Edm1out, mp.P2.compact.dx*NdmPad, wvl, mp.d_dm1_dm2)
+        # Propagate from DM1 to DM2, and apply DM2 surface and aperture stop
+        Edm2 = Edm2WFE * DM2stop * np.exp(surfIntoPhase*2*np.pi*1j*DM2surf/wvl) * \
+            fp.ptp(Edm1out, mp.P2.compact.dx*NdmPad, wvl, mp.d_dm1_dm2)
 
-    #     # Back-propagate to pupil P2
-    #     dz2 = mp.d_P2_dm1 + mp.d_dm1_dm2
-    #     if dz2 < 10*wvl:
-    #         EP2eff = Edm2
-    #     else:
-    #         EP2eff = fp.ptp(Edm2, mp.P2.compact.dx*NdmPad, wvl, -dz2)
+        # Back-propagate to pupil P2
+        dz2 = mp.d_P2_dm1 + mp.d_dm1_dm2
+        if dz2 < 10*wvl:
+            EP2eff = Edm2
+        else:
+            EP2eff = fp.ptp(Edm2, mp.P2.compact.dx*NdmPad, wvl, -dz2)
 
-    #     # Rotate 180 degrees mp.Nrelay2to3 times to go from pupil P2 to P3
-    #     EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
+        # Rotate 180 degrees mp.Nrelay2to3 times to go from pupil P2 to P3
+        EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
 
-    #     # Apply apodizer mask
-    #     if mp.flagApod:
-    #         EP3 = mp.P3.compact.mask * pad_crop(EP3, mp.P1.compact.Narr)
+        # Apply apodizer mask
+        if mp.flagApod:
+            EP3 = mp.P3.compact.mask * pad_crop(EP3, mp.P1.compact.Narr)
 
-    #     # MFT from pupil P3 to FPM (at focus F3)
-    #     EF3inc = fp.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx, dxiF3, mp.F3.compact.Nxi, detaF3, mp.F3.compact.Neta, mp.centering)
-    #     EF3inc = pad_crop(EF3inc, mp.dm9.compact.NdmPad)
-    #     # Coordinates for metal thickness and dielectric thickness
-    #     DM8transIndAll = falco.hlc.discretize_fpm_surf(mp.dm8.surf, mp.t_metal_nm_vec, mp.dt_metal_nm)  # All of the mask
+        # MFT from pupil P3 to FPM (at focus F3)
+        EF3inc = fp.mft_p2f(EP3, mp.fl, wvl, mp.P2.compact.dx, dxiF3, mp.F3.compact.Nxi, detaF3, mp.F3.compact.Neta, mp.centering)
+        EF3inc = pad_crop(EF3inc, mp.dm9.compact.NdmPad)
+        # Coordinates for metal thickness and dielectric thickness
+        DM8transIndAll = falco.hlc.discretize_fpm_surf(mp.dm8.surf, mp.t_metal_nm_vec, mp.dt_metal_nm)  # All of the mask
 
-    #     # Propagate each actuator from DM2 through the rest of the optical system
-    #     Gindex = 0  # initialize index counter
-    #     for iact in mp.dm9.act_ele:
-    #         if np.sum(np.abs(mp.dm9.compact.inf_datacube[:, :, iact])) > 1e-12:  # Only compute for acutators specified for use or for influence functions that are not zeroed out
+        # Propagate each actuator from DM2 through the rest of the optical system
+        Gindex = 0  # initialize index counter
+        for iact in mp.dm9.act_ele:
+            if np.sum(np.abs(mp.dm9.compact.inf_datacube[:, :, iact])) > 1e-12:  # Only compute for acutators specified for use or for influence functions that are not zeroed out
 
-    #             # xi- and eta- coordinates in the full FPM portion of the focal plane
-    #             xyLL = mp.dm9.compact.xy_box_lowerLeft[:, iact]
-    #             xi_box_ind = np.arange(xyLL[0], xyLL[0]+Nbox9, dtype=int)  # xi-indices in focal arrays for the box
-    #             eta_box_ind = np.arange(xyLL[1], xyLL[1]+Nbox9, dtype=int)  # eta-indices in focal arrays for the box
-    #             indBox = np.ix_(eta_box_ind, xi_box_ind)
-    #             xi_box = mp.dm9.compact.x_pupPad[xi_box_ind]
-    #             eta_box = mp.dm9.compact.y_pupPad[eta_box_ind]
+                # xi- and eta- coordinates in the full FPM portion of the focal plane
+                xyLL = mp.dm9.compact.xy_box_lowerLeft[:, iact]
+                xi_box_ind = np.arange(xyLL[0], xyLL[0]+Nbox9, dtype=int)  # xi-indices in focal arrays for the box
+                eta_box_ind = np.arange(xyLL[1], xyLL[1]+Nbox9, dtype=int)  # eta-indices in focal arrays for the box
+                indBox = np.ix_(eta_box_ind, xi_box_ind)
+                xi_box = mp.dm9.compact.x_pupPad[xi_box_ind]
+                eta_box = mp.dm9.compact.y_pupPad[eta_box_ind]
 
-    #             # Obtain values for the "poked" FPM's complex transmission (only in the sub-array where poked)
-    #             Nxi = Nbox9
-    #             Neta = Nbox9
-    #             DM9surfCropNew = stepFac*mp.dm9.VtoH[iact]*mp.dm9.compact.inf_datacube[:, :, iact] + mp.dm9.surf[indBox]  # New DM9 surface profile in the poked region (meters)
-    #             DM9transInd = falco.hlc.discretize_fpm_surf(DM9surfCropNew, mp.t_diel_nm_vec,  mp.dt_diel_nm)
-    #             DM8transInd = DM8transIndAll[indBox]  # Cropped region of the FPM.
+                # Obtain values for the "poked" FPM's complex transmission (only in the sub-array where poked)
+                Nxi = Nbox9
+                Neta = Nbox9
+                DM9surfCropNew = stepFac*mp.dm9.VtoH[iact]*mp.dm9.compact.inf_datacube[:, :, iact] + mp.dm9.surf[indBox]  # New DM9 surface profile in the poked region (meters)
+                DM9transInd = falco.hlc.discretize_fpm_surf(DM9surfCropNew, mp.t_diel_nm_vec,  mp.dt_diel_nm)
+                DM8transInd = DM8transIndAll[indBox]  # Cropped region of the FPM.
 
-    #             # Look up table to compute complex transmission coefficient of the FPM at each pixel
-    #             fpmPoked = np.zeros((Neta, Nxi), dtype=complex)  # Initialize output array of FPM's complex transmission
-    #             for ix in range(Nxi):
-    #                 for iy in range(Neta):
-    #                     ind_metal = DM8transInd[iy, ix]
-    #                     ind_diel = DM9transInd[iy, ix]
-    #                     fpmPoked[iy, ix] = mp.complexTransCompact[ind_diel, ind_metal, modvar.sbpIndex]
+                # Look up table to compute complex transmission coefficient of the FPM at each pixel
+                fpmPoked = np.zeros((Neta, Nxi), dtype=complex)  # Initialize output array of FPM's complex transmission
+                for ix in range(Nxi):
+                    for iy in range(Neta):
+                        ind_metal = DM8transInd[iy, ix]
+                        ind_diel = DM9transInd[iy, ix]
+                        fpmPoked[iy, ix] = mp.complexTransCompact[ind_diel, ind_metal, modvar.sbpIndex]
 
 
-    #             dEF3box = ((transOuterFPM-fpmPoked) - (transOuterFPM-fpm[indBox])) * EF3inc[indBox]  # Delta field (in a small region) at the FPM
+                dEF3box = ((transOuterFPM-fpmPoked) - (transOuterFPM-fpm[indBox])) * EF3inc[indBox]  # Delta field (in a small region) at the FPM
 
-    #             # Matrices for the MFT from the FPM stamp to the Lyot stop
-    #             rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(mp.P4.compact.ys, eta_box)/(wvl*mp.fl)) *\
-    #                 np.sqrt(mp.P4.compact.dx*mp.P4.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
-    #             rect_mat_post = np.exp(-2*np.pi*1j*np.outer(xi_box, mp.P4.compact.xs)/(wvl*mp.fl))
+                # Matrices for the MFT from the FPM stamp to the Lyot stop
+                rect_mat_pre = np.exp(-2*np.pi*1j*np.outer(mp.P4.compact.ys, eta_box)/(wvl*mp.fl)) *\
+                    np.sqrt(mp.P4.compact.dx*mp.P4.compact.dx)*np.sqrt(dxiF3*detaF3)/(wvl*mp.fl)
+                rect_mat_post = np.exp(-2*np.pi*1j*np.outer(xi_box, mp.P4.compact.xs)/(wvl*mp.fl))
 
-    #             # MFT from FPM to Lyot stop (Nominal term transOuterFPM*EP4noFPM subtracts out to 0 since it ignores the FPM change).
-    #             EP4 = 0 - rect_mat_pre @ dEF3box @ rect_mat_post  # MFT from FPM (F3) to Lyot stop plane (P4)
-    #             EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-    #             EP4 = mp.P4.compact.croppedMask * EP4  # Apply Lyot stop
+                # MFT from FPM to Lyot stop (Nominal term transOuterFPM*EP4noFPM subtracts out to 0 since it ignores the FPM change).
+                EP4 = 0 - rect_mat_pre @ dEF3box @ rect_mat_post  # MFT from FPM (F3) to Lyot stop plane (P4)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+                EP4 = mp.P4.compact.croppedMask * EP4  # Apply Lyot stop
 
-    #             # MFT to final focal plane
-    #             EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-    #             EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                # MFT to final focal plane
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-    #             Gmode[:, Gindex] = mp.dm9.act_sens / stepFac * mp.dm9.weight*EFend[mp.Fend.corr.maskBool] / np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+                Gmode[:, Gindex] = mp.dm9.act_sens / stepFac * mp.dm9.weight*EFend[mp.Fend.corr.maskBool] / np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
-    #         Gindex += 1
+            Gindex += 1
 
     return Gmode
 
@@ -657,29 +658,29 @@ def vortex(mp, iMode, idm):
                 EP2eff = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad), dtype=complex)
                 EP2eff[indBoxAS] = dEP2boxEff
 
-                # # Forward propagate from P2 (effective) to P3
-                # EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
+                # Forward propagate from P2 (effective) to P3
+                EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
 
-                # # Pad pupil P3 for FFT
-                # EP3pad = pad_crop(EP3, Nfft1)
+                # Pad pupil P3 for FFT
+                EP3pad = pad_crop(EP3, Nfft1)
 
-                # # FFT from P3 to Fend.and apply vortex
-                # EF3 = fftshiftVortex*fft2(fftshift(EP3pad))/Nfft1
+                # FFT from P3 to Fend.and apply vortex
+                EF3 = fftshiftVortex*fft2(fftshift(EP3pad))/Nfft1
 
-                # # FFT from Vortex FPM to Lyot Plane
-                # EP4 = fftshift(fft2(EF3))/Nfft1
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Add more re-imaging relays if necessary
-                # if(Nfft1 > mp.P4.compact.Narr):
-                #     EP4 = mp.P4.compact.croppedMask*pad_crop(EP4, mp.P4.compact.Narr)  # Crop EP4 and then apply Lyot stop 
-                # else:
-                #     EP4 = pad_crop(mp.P4.compact.croppedMask, Nfft1)*EP4  # Crop the Lyot stop and then apply it.
-                #     pass
+                # FFT from Vortex FPM to Lyot Plane
+                EP4 = fftshift(fft2(EF3))/Nfft1
+                EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Add more re-imaging relays if necessary
+                if(Nfft1 > mp.P4.compact.Narr):
+                    EP4 = mp.P4.compact.croppedMask*pad_crop(EP4, mp.P4.compact.Narr)  # Crop EP4 and then apply Lyot stop 
+                else:
+                    EP4 = pad_crop(mp.P4.compact.croppedMask, Nfft1)*EP4  # Crop the Lyot stop and then apply it.
+                    pass
 
-                # # MFT to camera
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
-                EFend = fp.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                # MFT to camera
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool] #/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
@@ -709,7 +710,7 @@ def vortex(mp, iMode, idm):
 
         # Propagate full field to DM2 before back-propagating in small boxes
         Edm2inc = pad_crop(fp.ptp(Edm1out, mp.compact.NdmPad*mp.P2.compact.dx,wvl, mp.d_dm1_dm2), mp.dm2.compact.NdmPad) # E-field incident upon DM2
-        Edm2inc = pad_crop(Edm2inc, mp.dm2.compact.NdmPad)
+        Edm2inc = pad_crop(Edm2inc, mp.dm2.compact.NdmPad);
         Edm2 = DM2stopPad * Edm2WFEpad * Edm2inc * np.exp(surfIntoPhase*2*np.pi*1j/wvl * pad_crop(DM2surf, mp.dm2.compact.NdmPad)) # Initial E-field at DM2 including its own phase contribution
 
         # Propagate each actuator from DM2 through the rest of the optical system
@@ -743,30 +744,30 @@ def vortex(mp, iMode, idm):
                 EP2eff = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=complex)
                 EP2eff[indBoxAS] = dEP2boxEff
 
-                # # Forward propagate from P2 (effective) to P3
-                # EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
+                # Forward propagate from P2 (effective) to P3
+                EP3 = fp.relay(EP2eff, NrelayFactor*mp.Nrelay2to3, mp.centering)
 
-                # # Pad pupil P3 for FFT
-                # EP3pad = pad_crop(EP3, Nfft2)
+                # Pad pupil P3 for FFT
+                EP3pad = pad_crop(EP3, Nfft2)
 
-                # # FFT from P3 to Fend.and apply vortex
-                # EF3 = fftshiftVortex*fft2(fftshift(EP3pad))/Nfft2
+                # FFT from P3 to Fend.and apply vortex
+                EF3 = fftshiftVortex*fft2(fftshift(EP3pad))/Nfft2
 
-                # # FFT from Vortex FPM to Lyot Plane
-                # EP4 = fftshift(fft2(EF3))/Nfft2
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+                # FFT from Vortex FPM to Lyot Plane
+                EP4 = fftshift(fft2(EF3))/Nfft2
+                EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-                # if(Nfft2 > mp.P4.compact.Narr):
-                #     EP4 = mp.P4.compact.croppedMask * pad_crop(EP4, mp.P4.compact.Narr)
-                # else:
-                #     EP4 = pad_crop(mp.P4.compact.croppedMask, Nfft2) * EP4
+                if(Nfft2 > mp.P4.compact.Narr):
+                    EP4 = mp.P4.compact.croppedMask * pad_crop(EP4, mp.P4.compact.Narr)
+                else:
+                    EP4 = pad_crop(mp.P4.compact.croppedMask, Nfft2) * EP4
 
-                # # MFT to detector
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-                EFend = fp.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                # MFT to detector
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
-                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool] #/ \
-                    #np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
+                Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool] / \
+                    np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
             Gindex += 1
 
