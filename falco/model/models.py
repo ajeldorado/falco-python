@@ -537,7 +537,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.abs(DH)**2)
         # print(f'int_in_dh = {int_in_dh}')
-        total_cost += mp.jac.weights[imode] * int_in_dh / normFacAD
+        total_cost += mp.jac.weights[imode] * int_in_dh
         normFacADweightedSum += mp.jac.weights[imode] / normFacAD
 
         # Gradient
