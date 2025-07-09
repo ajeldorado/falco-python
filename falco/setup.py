@@ -209,6 +209,8 @@ def set_optional_variables(mp):
         mp.ctrl.ad.maxiter = 30
     if not hasattr(mp.ctrl.ad, 'maxfun'):
         mp.ctrl.ad.maxfun = 1000000
+    if not hasattr(mp.ctrl.ad, 'maxcor'):
+        mp.ctrl.ad.maxcor = 10
 
     # Model options (Very specialized cases--not for the average user)
     if not hasattr(mp, 'flagFiber'):

@@ -5,10 +5,9 @@ import pickle
 
 from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 # from concurrent.futures import ProcessPoolExecutor as PoolExecutor
-import multiprocessing
+# import multiprocessing
 import numpy as np
 import scipy.ndimage as ndimage
-import pdb
 # import matplotlib.pyplot as plt
 
 from . import jacobians
@@ -627,6 +626,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
             surf_dm1_bar_total, wfe=False)
         Vout2 = mp.dm2.differentiableModel.render_backprop(
             surf_dm2_bar_total, wfe=False)
+
     else:
         raise ValueError('mp.dm1.useDifferentiableModel and mp.dm2.useDifferentiableModel must be True for AD-EFC.')
 
@@ -1224,9 +1224,9 @@ def apply_ties_to_jac(mp, jacStruct):
     return None
 
 
-def _func_Jac_ordering(im, idm):
+def _func_Jac_ordering(imode, idm):
     """Order modes for parallelized Jacobian calculation."""
-    return (im, idm)
+    return (imode, idm)
 
 
 def load_pickle_file(file_path):
@@ -1333,7 +1333,8 @@ def _jac_middle_layer(mp, imode, idm):
     return jacMode
 
 
-# def _jac_middle_layer_process(mp, im, idm, output):
+
+# def _jac_middle_layer_process(mp, imode, idm, output):
 #     """
 #     Select which optical layout's Jacobian model to use and get E-field.
 
@@ -1350,12 +1351,12 @@ def _jac_middle_layer(mp, imode, idm):
 #     """
 #     if mp.layout.lower() in ('fourier', 'proper'):
 #         if mp.coro.upper() in ('LC', 'APLC', 'FLC', 'SPLC'):
-#             jacMode = jacobians.lyot(mp, im, idm)
+#             jacMode = jacobians.lyot(mp, imode, idm)
 #         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
-#             jacMode = jacobians.vortex(mp, im, idm)
+#             jacMode = jacobians.vortex(mp, imode, idm)
 #     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
 #         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
-#             jacMode = jacobians.lyot(mp, im, idm)
+#             jacMode = jacobians.lyot(mp, imode, idm)
 #         else:
 #             raise ValueError('%s not recognized as value for mp.coro' %
 #                              mp.coro)

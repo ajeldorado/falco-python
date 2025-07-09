@@ -262,7 +262,6 @@ def lyot(mp, imode, idm, iact):
         transOuterFPM = fpm[0, 0]
 
     # """Input E-fields"""
-
     # # Include the star position and weight in the starting wavefront
     # iStar = modvar.starIndex
     # xiOffset = mp.compact.star.xiOffsetVec[iStar]
@@ -307,10 +306,10 @@ def lyot(mp, imode, idm, iact):
     else:
         DM2surf = np.zeros((NdmPad, NdmPad))
 
-    if mp.flagDM1stop:
-        DM1stop = pad_crop(mp.dm1.compact.mask, NdmPad) 
-    else:
-        DM1stop = np.ones((NdmPad, NdmPad))
+    # if mp.flagDM1stop:
+    #     DM1stop = pad_crop(mp.dm1.compact.mask, NdmPad) 
+    # else:
+    #     DM1stop = np.ones((NdmPad, NdmPad))
     if mp.flagDM2stop:
         DM2stop = pad_crop(mp.dm2.compact.mask, NdmPad) 
     else:
@@ -373,7 +372,7 @@ def lyot(mp, imode, idm, iact):
             DM2stop = np.ones((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad))
         apodReimaged = pad_crop(apodReimaged, mp.dm1.compact.NdmPad)
 
-        Edm1pad = pad_crop(Edm1out, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
+        Edm1pad = pad_crop(Edm1, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
         Edm2WFEpad = pad_crop(Edm2WFE, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
 
         # # Propagate each actuator from DM1 through the optical system
@@ -394,10 +393,6 @@ def lyot(mp, imode, idm, iact):
         dEP2box = fp.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind, x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind, x_box_AS_ind)]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind, x_box_AS_ind)]), mp.P2.compact.dx*NboxPad1AS, wvl, -1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to DM1
         # dEbox = fp.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2, mp.dm1.dm_spacing, mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
         # dEP2box = fp.ptp_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1), mp.dm1.dm_spacing, mp.propMethodPTP ) # back-propagate to DM1
-
-        # # Re-insert the window around the influence function back into the full beam array. # DEBUGGING
-        # EP2eff = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad), dtype=complex)
-        # EP2eff[indBoxAS] = dEP2box
 
         # To simulate going forward to the next pupil plane (with the apodizer) most efficiently, 
         # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
@@ -814,7 +809,7 @@ def vortex(mp, imode, idm, iact):
             DM2stop = np.ones((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad))
         apodReimaged = pad_crop(apodReimaged, mp.dm1.compact.NdmPad)
 
-        Edm1pad = pad_crop(Edm1out, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
+        Edm1pad = pad_crop(Edm1, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
         Edm2WFEpad = pad_crop(Edm2WFE, mp.dm1.compact.NdmPad)  # Pad or crop for expected sub-array indexing
 
         # Propagate each actuator from DM1 through the optical system
@@ -924,6 +919,7 @@ def vortex(mp, imode, idm, iact):
         # To simulate going forward to the next pupil plane (with the apodizer) most efficiently,
         # First, back-propagate the apodizer (by rotating 180-degrees) to the previous pupil.
         dEP2boxEff = apodReimaged[indBoxAS]*dEP2box
+
         EP2eff = np.zeros((mp.dm2.compact.NdmPad, mp.dm2.compact.NdmPad), dtype=complex)
         EP2eff[indBoxAS] = dEP2boxEff
 
@@ -947,7 +943,7 @@ def vortex(mp, imode, idm, iact):
 
         # MFT to detector
         EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-        EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+        EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P4.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
         Gchunk = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 

@@ -1,12 +1,14 @@
 # import copy
+import math
 from pathlib import Path
 
+import numpy
 from numpy import inf
 
-from falco.config.Eval import Eval
+import falco
+from falco.config.yaml_loader import object_constructor, load_from_str
 from falco.util import _spec_arg
 from falco.config import Probe, ProbeSchedule, Object
-import yaml
 
 
 class ModelParameters(Object):
@@ -25,8 +27,8 @@ class ModelParameters(Object):
     class _BaseDm2(Object):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
-            self.Dstop = _spec_arg("Dstop", kwargs, 0)
-            self.dx = _spec_arg("dx", kwargs, 0.048)
+            self.Dstop = _spec_arg("Dstop", kwargs, 0.048)
+            self.dx = _spec_arg("dx", kwargs, 0)
             self.NdmPad = _spec_arg("NdmPad", kwargs, 0)
             self.useDifferentiableModel = _spec_arg("useDifferentiableModel", kwargs, False)
             self.surfFitMethod = _spec_arg('surfFitMethod', kwargs, 'lsq')
@@ -210,7 +212,7 @@ class ModelParameters(Object):
         super().__init__(**kwargs)
 
     @staticmethod
-    def from_yaml(text):
+    def from_yaml(text, context=None):
         """
         Construct a ModelParameters object from a yaml string.
 
@@ -237,41 +239,34 @@ class ModelParameters(Object):
           Circular dependencies between expressions will be detected and an error will be raised.
 
         :param text: a yaml string to deserialize
+        :param context addition local variables to expose to eval code
         :return: a `ModelParameters` instance
         """
 
         result = ModelParameters()
 
-        def _eval_constructor(loader: yaml.SafeLoader, node: yaml.nodes.ScalarNode):
-            s = loader.construct_scalar(node)
-            if not isinstance(s, str):
-                raise ValueError(f"Cannot eval anything other than a string. Found type {type(s)}: {s}")
-            return Eval(result, loader.construct_yaml_str(node))
+        if context is None:
+            context = {}
+        context['mp'] = result
 
-        def _object_constructor(noarg_constructor):
-            def _result(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode):
-                obj = noarg_constructor(**loader.construct_mapping(node))
-                return obj
-            return _result
+        data = load_from_str(
+            text,
+            {'np': numpy, 'falco': falco, 'math': math},
+            context,
+            {
+                "!Probe": object_constructor(Probe),
+                "!ProbeSchedule": object_constructor(ProbeSchedule)
+            }
+        )
 
-        def _get_loader():
-            """Add constructors to PyYAML loader."""
-            loader = yaml.SafeLoader
-            loader.add_constructor(u'tag:yaml.org,2002:map', _object_constructor(Object))
-            loader.add_constructor("!Probe", _object_constructor(Probe))
-            loader.add_constructor("!ProbeSchedule", _object_constructor(ProbeSchedule))
-            loader.add_constructor("!eval", _eval_constructor)
-            return loader
-
-        result_obj = yaml.load(text, Loader=_get_loader())
-        result.__init__(**result_obj.data)
+        result.__init__(**data)
         return result
 
     @staticmethod
-    def from_yaml_file(path_string):
+    def from_yaml_file(path_string, context=None):
         """
         Reads the yaml file at the given path and passes it to `ModelParameters.from_yaml`.
 
         See `ModelParameters.from_yaml` for info.
         """
-        return ModelParameters.from_yaml(Path(path_string).read_text())
+        return ModelParameters.from_yaml(Path(path_string).read_text(), context)

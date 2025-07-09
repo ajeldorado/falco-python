@@ -976,9 +976,15 @@ def _ad_efc(ni, vals_list, mp, cvar):
         falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
         method='L-BFGS-B', jac=True, bounds=bounds,
         tol=None, callback=None,
-        options={'disp': None, 'ftol': 1e-12, 'gtol': 1e-10, 
-                 'maxiter': mp.ctrl.ad.maxiter, 'maxfun': mp.ctrl.ad.maxfun,
-                 'maxls': 20, 'iprint': mp.ctrl.ad.iprint},
+        options={'disp': None,
+                 'ftol': 1e-12,
+                 'gtol': 1e-10,
+                 'maxls': 20,
+                 'maxiter': mp.ctrl.ad.maxiter,
+                 'maxfun': mp.ctrl.ad.maxfun,
+                 'maxcor': mp.ctrl.ad.maxcor,
+                 'iprint': mp.ctrl.ad.iprint,
+                 },
         )
     duVec = u_sol.x
     print(u_sol.success)
