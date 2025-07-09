@@ -282,7 +282,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     Edm2 *= Edm2WFE*DM2stop*np.exp(mirrorFac*2*np.pi*1j*DM2surf/wvl)
 
     # Back-propagate to pupil P2
-    if(mp.d_P2_dm1 + mp.d_dm1_dm2 == 0):
+    if mp.d_P2_dm1 + mp.d_dm1_dm2 == 0:
         EP2eff = Edm2  # Do nothing if zero distance
     else:
         EP2eff = falco.prop.ptp(Edm2, mp.P2.full.dx*NdmPad, wvl,
@@ -404,11 +404,12 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
 
     # """ Back to common propagation any coronagraph type """
     # # Apply the (cropped-down) Lyot stop
-    # EP4 *= mp.P4.full.croppedMask
+    EP4 = pad_crop(EP2eff, mp.P4.compact.Narr)  # DEBUGGING
+    EP4 *= mp.P4.full.croppedMask
 
     # # MFT from Lyot Stop to final focal plane (i.e., P4 to Fend)
-    # EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-    EFend = falco.prop.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.full.dx, mp.Fend.dxi,
+    EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
+    EFend = falco.prop.mft_p2f(EP4, mp.fl, wvl, mp.P2.full.dx, mp.Fend.dxi,
                                mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta,
                                mp.centering)
 
@@ -598,23 +599,17 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         # Gradient
         Fend_masked = mp.jac.weights[iMode]*2/np.sqrt(I00)*EdhNew*mp.Fend.corr.maskBool
 
-#        plt.figure(); plt.imshow(np.abs(Fend_masked)); plt.colorbar(); plt.magma(); plt.title('abs(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_abs_Fend.png', format='png')
-#        plt.figure(); plt.imshow(np.angle(Fend_masked)); plt.colorbar(); plt.hsv(); plt.title('angle(Fend)'); plt.savefig('/Users/ajriggs/Downloads/fig_angle_Fend.png', format='png')
-
-        EP2eff_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P2.compact.dx, NdmPad, mp.centering)
-
-
-#         EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
-#         EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
-#         EP4LS_grad = EP4_grad * np.conj(pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr))
+        EP4_grad = falco.prop.mft_f2p(Fend_masked, -mp.fl, wvl, mp.Fend.dxi, mp.Fend.deta, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
+        EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.NrelayFend, mp.centering)
+        EP4_grad = EP4_grad * np.conj(pad_crop(mp.P4.compact.croppedMask, mp.P4.compact.Narr))
 
 #         if mp.coro.upper() in ('VORTEX', 'VC', 'AVC'):
 
 #             # Undo the 1 rotation inherent to falco.prop.mft_p2v2p.m
 #             # if not mp.flagRotation:
-#             #     EP4LS_grad = falco.prop.relay(EP4LS_grad, -1, mp.centering)
-#             EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-#             # EP4LS_grad = falco.prop.relay(EP4LS_grad, 1, mp.centering)  # DEBUGGING
+#             #     EP4_grad = falco.prop.relay(EP4_grad, -1, mp.centering)
+#             EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+#             # EP4_grad = falco.prop.relay(EP4_grad, 1, mp.centering)  # DEBUGGING
 
 #             # Get FPM charge
 #             if isinstance(mp.F3.VortexCharge, np.ndarray):
@@ -633,14 +628,14 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 #             else:
 #                 raise TypeError("mp.F3.VortexCharge must be int, float or numpy ndarray.")
 
-#             # EP4LS_grad = pad_crop(EP4LS_grad, 2*mp.P1.compact.Narr)
-#             EP3_grad = falco.prop.mft_p2v2p(EP4LS_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
+#             # EP4_grad = pad_crop(EP4_grad, 2*mp.P1.compact.Narr)
+#             EP3_grad = falco.prop.mft_p2v2p(EP4_grad, charge, mp.P1.compact.Nbeam/2., 0.3, 5, reverseGradient=True)
 #             # EP3_grad *= -1  # DEBUGGING
 
 #         elif mp.coro.upper() == 'FLC' or mp.coro.upper() == 'SPLC':
 
-#             EP4LS_grad = falco.prop.relay(EP4LS_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
-#             EF3_grad = falco.prop.mft_p2f(EP4LS_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
+#             EP4_grad = falco.prop.relay(EP4_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
+#             EF3_grad = falco.prop.mft_p2f(EP4_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
 #             EF3_grad = np.conj(mp.F3.compact.mask) * EF3_grad
 #             EP3_grad = falco.prop.mft_f2p(EF3_grad, -mp.fl, wvl, mp.F3.compact.dxi, mp.F3.compact.deta, mp.P4.compact.dx, NdmPad, mp.centering) # Subtrahend term for Babinet's principle 
 #             # EP3_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
@@ -651,9 +646,9 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 
 #         elif mp.coro.upper() in ('LC', 'APLC', 'HLC'):
 #             # MFT Method
-#             EP4noFPM_grad = EP4LS_grad
+#             EP4noFPM_grad = EP4_grad
 #             EP3noFPM_grad = pad_crop(falco.prop.relay(EP4noFPM_grad, NrelayFactor*mp.Nrelay3to4, mp.centering), NdmPad)
-#             EP4subtr_grad = -EP4LS_grad
+#             EP4subtr_grad = -EP4_grad
 #             EP4subtr_grad = falco.prop.relay(EP4subtr_grad, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 #             # EP4subtr_grad = falco.propcustom.propcustom_relay(EP4subtr_grad, mp.Nrelay3to4 - 1, mp.centering)
 #             auxEP4subtr_grad = falco.prop.mft_p2f(EP4subtr_grad, -mp.fl, wvl, mp.P2.compact.dx, mp.F3.compact.dxi, mp.F3.compact.Nxi, mp.F3.compact.deta, mp.F3.compact.Neta, mp.centering)  # E-field incident upon the FPM
@@ -680,7 +675,7 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
 #             EP3_grad = pad_crop(mp.P3.compact.mask, EP3_grad.shape) * EP3_grad
 
 #         EP2eff_grad = falco.prop.relay(EP3_grad, NrelayFactor*mp.Nrelay2to3, mp.centering)
-        EP2eff_grad = pad_crop(EP2eff_grad, NdmPad)
+        EP2eff_grad = pad_crop(EP4_grad, NdmPad)
 
         # To DM2
         d_p2_to_dm2 = mp.d_P2_dm1 + mp.d_dm1_dm2
@@ -899,7 +894,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
 
     mirrorFac = 2.  # Phase change is twice the DM surface height.
     NdmPad = int(mp.compact.NdmPad)
-    
+
     # Complex trans of points outside FPM
     if mp.coro.upper() == 'HLC':
         transOuterFPM = mp.F3.compact.mask[0, 0]  
@@ -916,7 +911,7 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
     else:
         fpmScaleFac = 1.0
 
-    if(flagEval):  # Higher resolution at final focal plane for eval
+    if flagEval:  # Higher resolution at final focal plane for eval
         dxi = mp.Fend.eval.dxi
         Nxi = mp.Fend.eval.Nxi
         deta = mp.Fend.eval.deta
@@ -943,11 +938,11 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
     pupil = pad_crop(mp.P1.compact.mask, NdmPad)
     Ein = pad_crop(Ein, NdmPad)
 
-    if(mp.flagDM1stop):
+    if mp.flagDM1stop:
         DM1stop = pad_crop(mp.dm1.compact.mask, NdmPad)
     else:
         DM1stop = np.ones((NdmPad, NdmPad))
-    if(mp.flagDM2stop):
+    if mp.flagDM2stop:
         DM2stop = pad_crop(mp.dm2.compact.mask, NdmPad)
     else:
         DM2stop = np.ones((NdmPad, NdmPad))
@@ -1112,11 +1107,12 @@ def compact_general(mp, wvl, Ein, normFac, flagEval, flagScaleFPM=False,
 
     # """  Back to common propagation any coronagraph type   """
     # # Apply the Lyot stop
-    # EP4 = mp.P4.compact.croppedMask*EP4
+    EP4 = pad_crop(EP2eff, mp.P4.compact.Narr)  # DEBUGGING
+    EP4 = mp.P4.compact.croppedMask*EP4
 
     # # MFT to camera
-    # EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
-    EFend = falco.prop.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, dxi, Nxi,
+    EP4 = falco.prop.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)
+    EFend = falco.prop.mft_p2f(EP4, mp.fl, wvl, mp.P2.compact.dx, dxi, Nxi,
                                deta, Neta, mp.centering)
 
     # Don't apply FPM if normalization value is being found

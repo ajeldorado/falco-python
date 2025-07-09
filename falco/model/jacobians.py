@@ -96,7 +96,7 @@ def lyot(mp, iMode, idm):
     Ein = pad_crop(Ein, NdmPad)
 
     # Re-image the apodizer from pupil P3 back to pupil P2.
-    if(mp.flagApod):
+    if mp.flagApod:
         apodReimaged = pad_crop(mp.P3.compact.mask, NdmPad)
         apodReimaged = fp.relay(apodReimaged, NrelayFactor*mp.Nrelay2to3, mp.centering)
     else:
@@ -118,7 +118,7 @@ def lyot(mp, iMode, idm):
         DM1stop = pad_crop(mp.dm1.compact.mask, NdmPad) 
     else:
         DM1stop = np.ones((NdmPad, NdmPad))
-    if(mp.flagDM2stop):
+    if mp.flagDM2stop:
         DM2stop = pad_crop(mp.dm2.compact.mask, NdmPad) 
     else:
         DM2stop = np.ones((NdmPad, NdmPad))
@@ -173,7 +173,7 @@ def lyot(mp, iMode, idm):
             DM2surf = pad_crop(DM2surf, mp.dm1.compact.NdmPad)
         else:
             DM2surf = np.zeros((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad))
-        if(mp.flagDM2stop):
+        if mp.flagDM2stop:
             DM2stop = pad_crop(DM2stop, mp.dm1.compact.NdmPad)
         else:
             DM2stop = np.ones((mp.dm1.compact.NdmPad, mp.dm1.compact.NdmPad))
@@ -197,9 +197,9 @@ def lyot(mp, iMode, idm):
                 y_box = mp.dm1.compact.y_pupPad[y_box_AS_ind] # full pupil y-coordinates of the box
 
                 # Propagate from DM1 to DM2, and then back to P2
-                dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:,:,iact]),NboxPad1AS) # Pad influence function at DM1 for angular spectrum propagation.
-                dEbox = fp.ptp(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
-                dEP2box = fp.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind,x_box_AS_ind)]), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1) ) # back-propagate to DM1
+                dEbox = (surfIntoPhase*2*np.pi*1j/wvl)*pad_crop((mp.dm1.VtoH.reshape(mp.dm1.Nact**2)[iact])*np.squeeze(mp.dm1.compact.inf_datacube[:, :, iact]), NboxPad1AS) # Pad influence function at DM1 for angular spectrum propagation.
+                dEbox = fp.ptp(dEbox*Edm1pad[np.ix_(y_box_AS_ind, x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS, wvl, mp.d_dm1_dm2) # forward propagate to DM2 and apply DM2 E-field
+                dEP2box = fp.ptp(dEbox*Edm2WFEpad[np.ix_(y_box_AS_ind, x_box_AS_ind)]*DM2stop[np.ix_(y_box_AS_ind,x_box_AS_ind)]*np.exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf[np.ix_(y_box_AS_ind, x_box_AS_ind)]), mp.P2.compact.dx*NboxPad1AS, wvl, -1*(mp.d_dm1_dm2 + mp.d_P2_dm1)) # back-propagate to DM1
 #                dEbox = fp.ptp_inf_func(dEbox*Edm1pad[np.ix_(y_box_AS_ind,x_box_AS_ind)], mp.P2.compact.dx*NboxPad1AS,wvl, mp.d_dm1_dm2, mp.dm1.dm_spacing, mp.propMethodPTP) # forward propagate to DM2 and apply DM2 E-field
 #                dEP2box = fp.ptp_inf_func(dEbox.*Edm2WFEpad[np.ix_(y_box_AS_ind,x_box_AS_ind)]*DM2stop(y_box_AS_ind,x_box_AS_ind).*exp(surfIntoPhase*2*np.pi*1j/wvl*DM2surf(y_box_AS_ind,x_box_AS_ind)), mp.P2.compact.dx*NboxPad1AS,wvl,-1*(mp.d_dm1_dm2 + mp.d_P2_dm1), mp.dm1.dm_spacing, mp.propMethodPTP ) # back-propagate to DM1
 
@@ -212,7 +212,6 @@ def lyot(mp, iMode, idm):
                 # # Second, negate the coordinates of the box used.
                 # dEP2box = apodReimaged[indBoxAS]*dEP2box # Apply 180deg-rotated SP mask.
                 # dEP3box = np.rot90(dEP2box, k=NrelayFactor*2*mp.Nrelay2to3) # Forward propagate the cropped box by rotating 180 degrees mp.Nrelay2to3 times.
-
 
                 # Negate and reverse coordinate values to effectively rotate by 180 degrees. No change if 360 degree rotation.
                 # if np.mod(NrelayFactor*mp.Nrelay2to3, 2) == 1:
@@ -247,11 +246,12 @@ def lyot(mp, iMode, idm):
                 #     EP4 = fp.mft_f2p(EF3, mp.fl,wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
                 #     EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)  # Get the correct orientation
 
-                # EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
+                EP4 = pad_crop(EP2eff, mp.P4.compact.Narr)  # DEBUGGING
+                EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
 
                 # # MFT to camera
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering) # Rotate the final image 180 degrees if necessary
-                EFend = fp.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
                 Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 
@@ -341,11 +341,12 @@ def lyot(mp, iMode, idm):
                 #     EP4 = fp.mft_f2p(EF3, mp.fl, wvl, dxiF3, detaF3, mp.P4.compact.dx, mp.P4.compact.Narr, mp.centering)
                 #     EP4 = fp.relay(EP4, NrelayFactor*mp.Nrelay3to4-1, mp.centering)
 
-                # EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
+                EP4 = pad_crop(EP2eff, mp.P4.compact.Narr)  # DEBUGGING
+                EP4 *= mp.P4.compact.croppedMask  # Apply Lyot stop
 
                 # # MFT to detector
-                # EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
-                EFend = fp.mft_p2f(EP2eff, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
+                EP4 = fp.relay(EP4, NrelayFactor*mp.NrelayFend, mp.centering)  # Rotate the final image 180 degrees if necessary
+                EFend = fp.mft_p2f(EP4, mp.fl, wvl, mp.P2.compact.dx, mp.Fend.dxi, mp.Fend.Nxi, mp.Fend.deta, mp.Fend.Neta, mp.centering)
 
                 Gmode[:, Gindex] = EFend[mp.Fend.corr.maskBool]/np.sqrt(mp.Fend.compact.I00[modvar.sbpIndex])
 

@@ -37,8 +37,8 @@ def test_adjoint_model_lc():
     mp.dm1.inf_fn = falco.INFLUENCE_XINETICS
     mp.dm2.inf_fn = falco.INFLUENCE_XINETICS
 
-    mp.dm1.dm_spacing = 1.05*0.9906e-3  # actuator pitch
-    mp.dm2.dm_spacing = 1.05*0.9906e-3  # actuator pitch
+    # mp.dm1.dm_spacing = 1.05*0.9906e-3  # actuator pitch
+    # mp.dm2.dm_spacing = 1.05*0.9906e-3  # actuator pitch
 
 
 
@@ -52,8 +52,7 @@ def test_adjoint_model_lc():
     mp.dm1.V = scalefac*(np.random.rand(mp.dm1.Nact, mp.dm1.Nact)-0.5)
     mp.dm2.V = scalefac*(np.random.rand(mp.dm2.Nact, mp.dm2.Nact)-0.5)
 
-    surf_prysm = falco.dm.gen_surf_from_act(mp.dm1, mp.P2.compact.dx, Nout)
-
+    # surf_prysm = falco.dm.gen_surf_from_act(mp.dm1, mp.P2.compact.dx, Nout)
     # mp.dm1.useDifferentiableModel = False
     # mp.dm2.useDifferentiableModel = False
     # surf_proper = falco.dm.gen_surf_from_act(mp.dm1, mp.P2.compact.dx, Nout)
