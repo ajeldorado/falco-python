@@ -186,7 +186,7 @@ def test_adjoint_model_vc():
 
         # Compute gradient
         EestAll = ev.Eest
-        log10reg = -np.Inf
+        log10reg = -np.inf
         EFendPrev = []
 
         falco.ctrl.init(mp, cvar)
