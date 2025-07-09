@@ -352,7 +352,7 @@ def lyot(mp, imode, idm, iact):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Edm1out = mp.jac.Edm1_list[imode]
+        Edm1 = mp.jac.Edm1_list[imode]
         # Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)
 
         # Two array sizes (at same resolution) of influence functions for MFT
@@ -784,7 +784,7 @@ def vortex(mp, imode, idm, iact):
 
     """ ---------- DM1 ---------- """
     if idm == 1:
-        Edm1out = mp.jac.Edm1_list[imode]
+        Edm1 = mp.jac.Edm1_list[imode]
         Nfft1 = mp.jac.Nfft1_list[imode]
         fftshiftVortex = mp.jac.fftshiftVortexDM1_list[imode]
         # Gmode = np.zeros((mp.Fend.corr.Npix, mp.dm1.Nele), dtype=complex)

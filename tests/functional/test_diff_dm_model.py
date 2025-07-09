@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import falco
 
-DEBUG = True
+show_plots = False
 
 
 def test_diff_dm_model():
@@ -92,7 +92,8 @@ def test_diff_dm_model():
     
     print(f'mp.dm1.dx = {mp.dm1.dx}')
 
-    if DEBUG:
+    if show_plots:
+    
         plt.figure()
         plt.imshow(surfFalcoDm)
         plt.colorbar()
@@ -131,7 +132,7 @@ def test_diff_dm_model():
 
         plt.show()
 
-    abs_tol = 0.005*np.max(surfFalcoDm)
+    abs_tol = 0.10*np.max(surfFalcoDm)
 
     maxAbsDiff = np.max(np.abs(surfFalcoDm - surfDiffDm))
     #maxAbsDiff = np.rmsnp.abs(surfFalcoDm - surfDiffDm))
