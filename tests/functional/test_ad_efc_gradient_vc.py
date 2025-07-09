@@ -7,7 +7,7 @@ import numpy as np
 
 import falco
 
-import config_wfsc_vc as CONFIG
+import config_wfsc_vc_quick as CONFIG
 
 show_plots = False
 

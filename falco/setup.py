@@ -168,6 +168,9 @@ def set_optional_variables(mp):
     # Store final workspace data here
     if not hasattr(mp.path, 'ws'):
         mp.path.ws = os.path.join(mp.path.falco, 'data', 'ws')
+    # Store Jacobians or part of Jacobians
+    if not hasattr(mp.path, 'jac'):
+        mp.path.jac = os.path.join(mp.path.falco, 'data', 'jac')
 
     # Parallel processing
     if not hasattr(mp, "flagParallel"):
@@ -198,7 +201,7 @@ def set_optional_variables(mp):
         mp.est.ItrStartKF = 2  # Which iteration to start the Kalman filter at
     if not hasattr(mp.ctrl, 'flagUseModel'):
         mp.ctrl.flagUseModel = False  # Whether to perform a model-based (vs empirical) grid search for the controller
-    
+
     # Algorithmic Differentiation EFC options
     if not hasattr(mp.ctrl, 'ad'):
         mp.ctrl.ad = falco.config.Object()

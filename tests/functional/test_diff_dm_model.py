@@ -88,7 +88,7 @@ def test_diff_dm_model():
     
     mp.dm1.useDifferentiableModel = True
     surfDiffDm = falco.dm.gen_surf_from_act(mp.dm1, mp.dm1.dx, Narray)
-    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, mp.dm1.VtoH, wfe=False)
+    backprojDiffDm = mp.dm1.differentiableModel.render_backprop(surfDiffDm, wfe=False)
     
     print(f'mp.dm1.dx = {mp.dm1.dx}')
 
