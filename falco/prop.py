@@ -83,6 +83,10 @@ def ptp(E_in, full_width, wavelength, dz):
     check.real_positive_scalar(wavelength, 'wavelength', TypeError)
     check.real_scalar(dz, 'dz', TypeError)
 
+    # Return unchanged if no propagation
+    if dz == 0:
+        return E_in
+
     M, N = E_in.shape
     dx = full_width / N
     N_critical = int(np.floor(wavelength * np.abs(dz) / (dx ** 2)))
