@@ -1242,3 +1242,70 @@ def set_utu_scale_fac(mp):
     mp.ctrl.ad.utu_scale_fac = cvar.EyeNorm
 
     print('mp.ctrl.ad.utu_scale_fac = %.4g' % mp.ctrl.ad.utu_scale_fac)
+
+    def efc_schedule_generator(sched_mat):
+        """
+        Decode the controller scheduling matrix into its components.
+
+        Parameters:
+        -----------
+        sched_mat : numpy.ndarray
+            Control schedule matrix with columns:
+            Column 1: # of iterations,
+            Column 2: log10(regularization),
+            Column 3: which DMs to use (12, 128, 129, or 1289) for control
+            Column 4: flag (0 = false, 1 = true), whether to re-linearize
+            Column 5: flag (0 = false, 1 = true), whether to perform an EFC parameter grid search
+
+        Returns:
+        --------
+        Nitr : int
+            Number of correction iterations
+        relinItrVec : list
+            Iteration numbers at which to relinearize the Jacobian
+        gridSearchItrVec : list
+            Iteration numbers at which to perform grid search
+        log10regSched : numpy.ndarray
+            log10(regularization) at each correction iteration
+        dm_ind_sched : list
+            DM indices for each iteration
+        """
+
+        # Number of correction iterations
+        Nitr = int(np.sum(sched_mat[:, 0]))
+
+        # Create the vectors of
+        # 1) iteration numbers at which to relinearize the Jacobian
+        # 2) log10(regularization) at each correction iteration
+        relinItrVec = []  # Initialize
+        gridSearchItrVec = []  # Initialize
+        log10regSched = np.zeros(Nitr)  # Initialize
+        dmIndList = np.zeros(Nitr)  # Initialize this temporary variable
+        ItCounter = 1
+
+        for ii in range(sched_mat.shape[0]):
+            if sched_mat[ii, 3] == 1:  # When to re-linearize
+                relinItrVec.append(ItCounter)
+
+            if sched_mat[ii, 4] == 1:  # When to re-do the empirical EFC grid search
+                gridSearchItrVec.append(ItCounter)
+
+            if sched_mat[ii, 0] != 0:
+                # Make the vector of regularizations at each iteration
+                log10regSched[ItCounter - 1:(ItCounter + int(sched_mat[ii, 0]) - 1)] = sched_mat[ii, 1]
+                dmIndList[ItCounter - 1:(ItCounter + int(sched_mat[ii, 0]) - 1)] = sched_mat[ii, 2]
+
+            ItCounter = ItCounter + int(sched_mat[ii, 0])
+
+        # Store DM number index vectors as cells since they can vary in length
+        dm_ind_sched = []
+        for Itr in range(Nitr):
+            dm_ind = []
+            numAsStr = str(int(dmIndList[Itr]))
+            for ii in range(len(numAsStr)):
+                dm_ind.append(int(numAsStr[ii]))
+            dm_ind_sched.append(dm_ind)
+
+        return Nitr, relinItrVec, gridSearchItrVec, log10regSched, dm_ind_sched
+
+
