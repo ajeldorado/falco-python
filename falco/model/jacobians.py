@@ -186,8 +186,9 @@ def precomp(mp):
         Edm1 *= Edm1WFE*DM1stop*np.exp(surfIntoPhase*2*np.pi*1j*DM1surf/wvl)
 
         # Two array sizes (at same resolution) of influence functions for MFT and angular spectrum
-        NboxPad2AS = int(mp.dm2.compact.NboxAS)
-        mp.dm2.compact.xy_box_lowerLeft_AS = mp.dm2.compact.xy_box_lowerLeft - (NboxPad2AS-mp.dm2.compact.Nbox)/2 # Account for the padding of the influence function boxes
+        if 2 in mp.dm_ind:
+            NboxPad2AS = int(mp.dm2.compact.NboxAS)
+            mp.dm2.compact.xy_box_lowerLeft_AS = mp.dm2.compact.xy_box_lowerLeft - (NboxPad2AS-mp.dm2.compact.Nbox)/2  # Account for the padding of the influence function boxes
 
         apodReimaged = pad_crop(apodReimaged, mp.dm2.compact.NdmPad)
         DM2stopPad = pad_crop(DM2stop, mp.dm2.compact.NdmPad)
