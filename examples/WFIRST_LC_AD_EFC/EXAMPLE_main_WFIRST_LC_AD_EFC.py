@@ -41,6 +41,15 @@ mp.Nwpsbp = 1
 # mp.dm1.surfFitMethod = 'lsq'
 # mp.dm2.surfFitMethod = 'lsq'
 
+mp.ctrl.sched_mat = np.array([
+    [1, -2, 12, 1, 0],
+    [1, -2, 12, 1, 0],
+    [1, -4, 12, 1, 0],
+    [1, -4, 12, 1, 0],
+    [1, -2, 12, 1, 0],
+    ])
+mp.Nitr, mp.relinItrVec, mp.gridSearchItrVec, mp.ctrl.log10regSchedIn, mp.dm_ind_sched = falco.ctrl.efc_schedule_generator(mp.ctrl.sched_mat)
+
 
 # %% Set up the workspace
 
