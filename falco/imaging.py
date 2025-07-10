@@ -392,8 +392,6 @@ def get_sbp_image(mp, si, tb = None):
     if mp.flagSim:
         Isbp = get_sim_sbp_image(mp, si)
     else:
-        if type(tb) is not TestbedInterface:
-            raise TypeError('Input "tb" must be of type TestbedInterface')
         tb.dm.apply(mp.dm1.V)
         Isbp = tb.get_sbp_image(si)
 
