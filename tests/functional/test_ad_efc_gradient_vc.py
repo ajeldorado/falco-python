@@ -187,7 +187,10 @@ def test_adjoint_model_vc():
         # Compute gradient
         EestAll = ev.Eest
         log10reg = -np.inf
-        EFendPrev = []
+        EFend_list = []
+        Edm1post_list = []
+        Edm2pre_list = []
+        DM2surf_list = []
 
         falco.ctrl.init(mp, cvar)
 
@@ -200,10 +203,15 @@ def test_adjoint_model_vc():
             modvar.starIndex = mp.jac.star_inds[iMode]
 
             # Calculate E-Field for previous EFC iteration
-            EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False,
-                                        useFPM=True, forRevGradModel=False)
-            EFendPrev.append(EFend)
-        total_cost, u_bar_out = falco.model.compact_reverse_gradient(du, mp, EestAll, EFendPrev, log10reg)
+            EFend, Edm1post, Edm2pre, DM1surf, DM2surf = falco.model.compact(
+                mp, modvar, isNorm=True, isEvalMode=False, useFPM=True, forRevGradModel=True)
+            EFend_list.append(EFend)
+            Edm1post_list.append(Edm1post)
+            Edm2pre_list.append(Edm2pre)
+            DM2surf_list.append(DM2surf)
+            
+        total_cost, u_bar_out = falco.model.compact_reverse_gradient(
+            du, log10reg, mp, EestAll, EFend_list, Edm1post_list, Edm2pre_list, DM2surf_list)
 
         u1_bar_out = u_bar_out[0:mp.dm1.NactTotal]
         u2_bar_out = u_bar_out[mp.dm1.NactTotal::]

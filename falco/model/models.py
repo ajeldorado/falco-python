@@ -422,7 +422,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     return Eout
 
 
-def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
+def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm1post_list, Edm2pre_list, DM2surf_list):
     """
     Simplified (aka compact) model used by estimator and controller.
 
@@ -488,10 +488,9 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     dDM2Vvec[mp.dm2.act_ele] = command_vec[mp.ctrl.uLegend == 2]
     dv_dm1 = dDM1Vvec.reshape((mp.dm1.Nact, mp.dm1.Nact))
     dv_dm2 = dDM2Vvec.reshape((mp.dm2.Nact, mp.dm2.Nact))
-    # mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    # mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
-    total_cost = 0  # initialize
+    # initialize
+    total_cost = 0
     normFacADweightedSum = 0
 
     for imode in range(mp.jac.Nmode):
@@ -505,17 +504,18 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         kk = mirrorFac*2*np.pi/wvl
         I00 = mp.Fend.compact.I00[modvar.sbpIndex]
         # normFac = mp.Fend.compact.I00[modvar.sbpIndex]
+        # print(f'normFacAD = {normFacAD}')
         # normFacFull = np.mean(mp.Fend.full.I00[modvar.sbpIndex, :])
         EestVec = EestAll[:, imode]
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
-        Eest2D[mp.Fend.corr.maskBool] = EestVec  # * np.sqrt(normFacFull)  # Remove normalization
+        Eest2D[mp.Fend.corr.maskBool] = EestVec
         normFacAD = np.sum(np.abs(EestVec)**2)
-        # print(f'normFacAD = {normFacAD}')
 
-        # Get model-based E-field before deltas
-        EFendA, Edm1post, Edm2pre, DM1surf, DM2surf = compact(
-           mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM,
-           forRevGradModel=True)
+        # Get model-based E-field before deltas. Should be pre-computed for speed.
+        EFendA = EFend_list[imode]
+        Edm1post = Edm1post_list[imode]
+        Edm2pre = Edm2pre_list[imode]
+        DM2surf = DM2surf_list[imode]
 
         # Get model-based E-field With delta DM commands applied.
         mp.dm1.V = mp.dm1.V0 + dv_dm1
@@ -528,11 +528,9 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         mp.dm2.V = mp.dm2.V0.copy()
 
         # Compute the delta E-field from the latest commands (model new - model old).
-        # EFendA = EFendPrev[imode]
         dEend = EFendB - EFendA
 
         # DH = EFend[mp.Fend.corr.maskBool]
-        # Eest2D = EFendA  # DEBUGGING
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.abs(DH)**2)

@@ -954,7 +954,10 @@ def _ad_efc(ni, vals_list, mp, cvar):
         bounds[cvar.uLegend == 2, 0] = dm2lb[mp.dm2.act_ele]
         bounds[cvar.uLegend == 2, 1] = dm2ub[mp.dm2.act_ele]
 
-    EFendPrev = []
+    EFend_list = []
+    Edm1post_list = []
+    Edm2pre_list = []
+    DM2surf_list = []
     for iMode in range(mp.jac.Nmode):
 
         modvar = falco.config.ModelVariables()
@@ -964,14 +967,18 @@ def _ad_efc(ni, vals_list, mp, cvar):
         modvar.starIndex = mp.jac.star_inds[iMode]
 
         # Calculate E-Field for previous EFC iteration
-        EFend = falco.model.compact(mp, modvar, isNorm=True, isEvalMode=False,
-                                    useFPM=True, forRevGradModel=False)
-        EFendPrev.append(EFend)
+        EFend, Edm1post, Edm2pre, DM1surf, DM2surf = falco.model.compact(
+            mp, modvar, isNorm=True, isEvalMode=False, useFPM=True, forRevGradModel=True)
+        EFend_list.append(EFend)
+        Edm1post_list.append(Edm1post)
+        Edm2pre_list.append(Edm2pre)
+        DM2surf_list.append(DM2surf)
 
     t0 = time.time()
 
     u_sol = scipy.optimize.minimize(
-        falco.model.compact_reverse_gradient, dm0, args=(mp, cvar.Eest, EFendPrev, log10reg),
+        falco.model.compact_reverse_gradient, dm0, args=(
+            log10reg, mp, cvar.Eest, EFend_list, Edm1post_list, Edm2pre_list, DM2surf_list),
         method='L-BFGS-B', jac=True, bounds=bounds,
         tol=None, callback=None,
         options={'disp': None,
@@ -987,7 +994,6 @@ def _ad_efc(ni, vals_list, mp, cvar):
     duVec = u_sol.x
     print(u_sol.success)
     print(u_sol.nit)
-
     '''
     def optim_cost_func(Vdm):
         #cost function for L-BFGS
