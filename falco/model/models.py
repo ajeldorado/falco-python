@@ -610,8 +610,8 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         Edm1_grad = falco.prop.ptp(Edm2_grad, mp.P2.compact.dx*Edm2_grad.shape[0], wvl, -mp.d_dm1_dm2)
         surf_dm1_bar = -kk*np.imag(Edm1_grad * np.conj(Edm1post))
 
-        surf_dm2_bar_total += mp.jac.weights[imode] * surf_dm2_bar
-        surf_dm1_bar_total += mp.jac.weights[imode] * surf_dm1_bar
+        surf_dm2_bar_total += surf_dm2_bar
+        surf_dm1_bar_total += surf_dm1_bar
 
     # # Calculate DM penalty term component of cost function
     # utu_coefs = normFacADweightedSum * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
