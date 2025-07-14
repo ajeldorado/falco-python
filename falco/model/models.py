@@ -613,11 +613,11 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         surf_dm2_bar_total += surf_dm2_bar
         surf_dm1_bar_total += surf_dm1_bar
 
-    # # Calculate DM penalty term component of cost function
-    # utu_coefs = normFacADweightedSum * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
-    # total_cost += utu_coefs * np.sum(command_vec**2)
-    # # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
-    # # print('utu_coefs = %.4g' % utu_coefs)
+    # Calculate DM penalty term component of cost function
+    utu_coefs = mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)  # * normFacADweightedSum *
+    total_cost += utu_coefs * np.sum(command_vec**2)
+    # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
+    # print('utu_coefs = %.4g' % utu_coefs)
 
     if mp.dm1.useDifferentiableModel and mp.dm2.useDifferentiableModel:
         Vout1 = mp.dm1.differentiableModel.render_backprop(
@@ -633,6 +633,7 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
                                Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),
                               axis=None)
+    gradient += 2 * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)*gradient
 
     return total_cost, gradient
 
