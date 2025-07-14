@@ -187,6 +187,7 @@ def test_adjoint_model_vc():
         # Compute gradient
         EestAll = ev.Eest
         log10reg = -np.inf
+        mp.ctrl.ad.utu_scale_fac = 1  # not used when log10reg = -np.inf
         EFend_list = []
         Edm1post_list = []
         Edm2pre_list = []

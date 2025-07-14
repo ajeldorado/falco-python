@@ -983,7 +983,7 @@ def _ad_efc(ni, vals_list, mp, cvar):
         tol=None, callback=None,
         options={'disp': None,
                  'ftol': 1e-99,
-                 'gtol': 1e-10,
+                 'gtol': 1e-99,
                  'maxls': 20,
                  'maxiter': mp.ctrl.ad.maxiter,
                  'maxfun': mp.ctrl.ad.maxfun,

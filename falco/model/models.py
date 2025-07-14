@@ -491,7 +491,7 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
 
     # initialize
     total_cost = 0
-    normFacADweightedSum = 0
+    # normFacADweightedSum = 0
 
     for imode in range(mp.jac.Nmode):
         modvar = falco.config.ModelVariables()
@@ -536,7 +536,7 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         int_in_dh = np.sum(np.abs(DH)**2)
         # print(f'int_in_dh = {int_in_dh}')
         total_cost += mp.jac.weights[imode] * int_in_dh
-        normFacADweightedSum += mp.jac.weights[imode] / normFacAD
+        # normFacADweightedSum += mp.jac.weights[imode] / normFacAD
 
         # Gradient
         Fend_masked = mp.jac.weights[imode]*2/np.sqrt(I00)*EdhNew*mp.Fend.corr.maskBool
@@ -614,10 +614,10 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         surf_dm1_bar_total += surf_dm1_bar
 
     # Calculate DM penalty term component of cost function
-    utu_coefs = mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)  # * normFacADweightedSum *
-    total_cost += utu_coefs * np.sum(command_vec**2)
+    utu_coef = mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)  # * normFacADweightedSum
+    total_cost += utu_coef * np.sum(command_vec**2)
     # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
-    # print('utu_coefs = %.4g' % utu_coefs)
+    # print('utu_coef = %.4g' % utu_coef)
 
     if mp.dm1.useDifferentiableModel and mp.dm2.useDifferentiableModel:
         Vout1 = mp.dm1.differentiableModel.render_backprop(
@@ -633,7 +633,7 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
                                Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),
                               axis=None)
-    gradient += 2 * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)*gradient
+    gradient += 2 * utu_coef * gradient  # * normFacADweightedSum
 
     return total_cost, gradient
 
