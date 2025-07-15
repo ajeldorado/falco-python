@@ -124,7 +124,7 @@ def loop(mp, out, tb = None):
 
         # Send a copy of jacStruct so that spatial weights don't show up 
         # outside the controller or get applied multiple times.
-        falco.ctrl.wrapper(mp, cvar, copy(jacStruct))
+        falco.ctrl.wrapper(mp, cvar, copy(jacStruct), tb=tb)
 
         # Store key data in out object
         out.log10regHist[Itr] = cvar.log10regUsed
