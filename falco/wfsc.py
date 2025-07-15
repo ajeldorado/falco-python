@@ -201,8 +201,8 @@ def loop(mp, out, tb = None):
     # Save out the data from the workspace
     if mp.flagSaveWS:
         del cvar
-        del G
-        del h
+        #del G
+        #del h
         del jacStruct
 
         # Don't bother saving the large 2-D, floating point maps.
@@ -218,24 +218,24 @@ def loop(mp, out, tb = None):
 
         mp.P1.full.E = 1
         mp.P1.compact.E = 1
-        mp.dm1.full.mask = 1
+        #mp.dm1.full.mask = 1
         mp.dm1.compact.mask = 1
-        mp.dm2.full.mask = 1
+        #mp.dm2.full.mask = 1
         mp.dm2.compact.mask = 1
         mp.complexTransFull = 1
         mp.complexTransCompact = 1
 
         mp.dm1.compact.inf_datacube = 0
         mp.dm2.compact.inf_datacube = 0
-        mp.dm8.compact.inf_datacube = 0
-        mp.dm9.compact.inf_datacube = 0
-        mp.dm8.inf_datacube = 0
-        mp.dm9.inf_datacube = 0
+        #mp.dm8.compact.inf_datacube = 0
+        #mp.dm9.compact.inf_datacube = 0
+        #mp.dm8.inf_datacube = 0
+        #mp.dm9.inf_datacube = 0
 
         fnAll = mp.path.ws + mp.runLabel + '_all.pkl'
         print('Saving entire workspace to file ' + fnAll + '...', end='')
-        with open(fnAll, 'wb') as f:
-            pickle.dump(mp, f)
+        #with open(fnAll, 'wb') as f:
+         #   pickle.dump(mp, f)
 
         print('done.\n\n')
     else:
