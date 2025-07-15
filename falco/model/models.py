@@ -509,7 +509,7 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         EestVec = EestAll[:, imode]
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
         Eest2D[mp.Fend.corr.maskBool] = EestVec
-        normFacAD = np.sum(np.abs(EestVec)**2)
+        # normFacAD = np.sum(np.abs(EestVec)**2)
 
         # Get model-based E-field before deltas. Should be pre-computed for speed.
         EFendA = EFend_list[imode]
@@ -534,7 +534,6 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.abs(DH)**2)
-        # print(f'int_in_dh = {int_in_dh}')
         total_cost += mp.jac.weights[imode] * int_in_dh
         # normFacADweightedSum += mp.jac.weights[imode] / normFacAD
 
@@ -614,7 +613,7 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
         surf_dm1_bar_total += surf_dm1_bar
 
     # Calculate DM penalty term component of cost function
-    utu_coef = mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)  # * normFacADweightedSum
+    utu_coef = mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
     total_cost += utu_coef * np.sum(command_vec**2)
     # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
     # print('utu_coef = %.4g' % utu_coef)
@@ -628,12 +627,12 @@ def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm
     else:
         raise ValueError('mp.dm1.useDifferentiableModel and mp.dm2.useDifferentiableModel must be True for AD-EFC.')
 
-    Vout1 *= mp.dm1.VtoH
-    Vout2 *= mp.dm2.VtoH
+    Vout1 *= mp.dm1.VtoH * np.conj(~mp.dm1.dead_map)
+    Vout2 *= mp.dm2.VtoH * np.conj(~mp.dm2.dead_map)
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
                                Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),
                               axis=None)
-    gradient += 2 * utu_coef * gradient  # * normFacADweightedSum
+    gradient += 2 * utu_coef * gradient
 
     return total_cost, gradient
 
