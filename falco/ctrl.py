@@ -14,7 +14,7 @@ import scipy.optimize
 import falco
 
 
-def wrapper(mp, cvar, jacStruct):
+def wrapper(mp, cvar, jacStruct, tb=None):
     """
     Outermost wrapper function for all the controller functions.
 
@@ -98,7 +98,7 @@ def wrapper(mp, cvar, jacStruct):
         print('Control beginning ...')
         # Established, conventional controllers
         if mp.controller.lower() == 'plannedefc':
-            dDM = _planned_efc(mp, cvar)
+            dDM = _planned_efc(mp, cvar, tb=tb)
         elif mp.controller.lower() == 'gridsearchefc':
             dDM = _grid_search_efc(mp, cvar)
 
@@ -556,7 +556,7 @@ def _planned_ad_efc(mp, cvar):
     return dDM
 
 
-def _planned_efc(mp, cvar):
+def _planned_efc(mp, cvar, tb=None):
     """
     Perform a scheduled/planned set of EFC iterations.
 
@@ -627,7 +627,7 @@ def _planned_efc(mp, cvar):
 
         for ni in range(Nvals):
 
-            [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar)
+            [InormVec[ni], dDM_temp] = _efc(ni, vals_list, mp, cvar, tb=tb)
             ImCube[ni, :, :] = dDM_temp.Itotal
 
             # delta voltage commands
@@ -703,7 +703,7 @@ def _planned_efc(mp, cvar):
         vals_list = [(x, y) for y in np.array([cvar.latestBestDMfac])
                      for x in np.array([log10regSchedOut])]
 
-        [cvar.cMin, dDM] = _efc(ni, vals_list, mp, cvar)
+        [cvar.cMin, dDM] = _efc(ni, vals_list, mp, cvar, tb=tb)
         cvar.Im = np.squeeze(dDM.Itotal)
         if mp.ctrl.flagUseModel:
             print(('Model expects scheduled log10(reg) = %.1f\t to give ' +
@@ -800,7 +800,7 @@ def efc_schedule_generator(scheduleMatrix):
     return Nitr, relinItrVec, gridSearchItrVec, log10regSched, dm_ind_sched
 
 
-def _efc(ni, vals_list, mp, cvar):
+def _efc(ni, vals_list, mp, cvar, tb=None):
     """
     Compute the main EFC equation. Called by a wrapper controller function.
 
@@ -856,7 +856,7 @@ def _efc(ni, vals_list, mp, cvar):
         Itotal = falco.imaging.get_expected_summed_image(mp, cvar, dDM)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
     else:  # Get actual image from full model or testbed
-        Itotal = falco.imaging.get_summed_image(mp)
+        Itotal = falco.imaging.get_summed_image(mp, tb=tb)
         InormAvg = np.mean(Itotal[mp.Fend.corr.maskBool])
     dDM.Itotal = Itotal
 
