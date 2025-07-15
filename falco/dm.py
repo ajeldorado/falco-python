@@ -77,7 +77,7 @@ def gen_surf_from_act(dm, dx, Nout):
         dm = discretize_surf(dm, dm.HminStepMethod)
         heightMap = dm.VtoH*dm.Vquantized
     else:  # Quantization not desired; send raw, continuous voltages
-        heightMap = dm.VtoH*dm.V
+        heightMap = dm.VtoH * dm.V
 
     if hasattr(dm, 'orientation'):
         if dm.orientation.lower() == 'rot0':
@@ -903,6 +903,15 @@ def enforce_constraints(dm):
     """
     # 1) Find actuators that exceed min and max values. Any actuators reaching
     # those limits are added to the pinned actuator list.
+
+    # Create dead actuator map if it doesn't exist already
+    if not hasattr(dm, 'dead_map'):
+        dm.dead_map = np.zeros((dm.Nact, dm.Nact), dtype=bool)  # initialize
+        for ii in dm.dead:
+            dm.dead_map.ravel()[ii] = True
+
+    # Apply dead actuator map
+    dm.V = dm.V * ~dm.dead_map
 
     # Min voltage limit
     Vtotal = dm.V + dm.biasMap

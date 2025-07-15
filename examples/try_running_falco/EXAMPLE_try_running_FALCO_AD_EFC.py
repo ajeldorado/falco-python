@@ -52,10 +52,9 @@ mp.ctrl.ad.maxiter = 30
 mp.ctrl.ad.iprint = 10
 mp.ctrl.ad.maxfun = 1000000
 
-
-mp.ctrl.log10regVec = np.array([-6, ])
-
-
+mp.ctrl.log10regVec = [0, ]
+mp.ctrl.ad.maxiter = 30  # 50
+mp.ctrl.ad.iprint = 5
 
 # %% Perform the Wavefront Sensing and Control
 

@@ -422,7 +422,7 @@ def full_Fourier(mp, wvl, Ein, normFac, flagScaleFPM=False):
     return Eout
 
 
-def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
+def compact_reverse_gradient(command_vec, log10reg, mp, EestAll, EFend_list, Edm1post_list, Edm2pre_list, DM2surf_list):
     """
     Simplified (aka compact) model used by estimator and controller.
 
@@ -488,11 +488,10 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     dDM2Vvec[mp.dm2.act_ele] = command_vec[mp.ctrl.uLegend == 2]
     dv_dm1 = dDM1Vvec.reshape((mp.dm1.Nact, mp.dm1.Nact))
     dv_dm2 = dDM2Vvec.reshape((mp.dm2.Nact, mp.dm2.Nact))
-    # mp.dm1.V += command_vec[0:mp.dm1.NactTotal].reshape([mp.dm1.Nact, mp.dm1.Nact])
-    # mp.dm2.V += command_vec[mp.dm2.NactTotal::].reshape([mp.dm2.Nact, mp.dm2.Nact])
 
-    total_cost = 0  # initialize
-    normFacADweightedSum = 0
+    # initialize
+    total_cost = 0
+    # normFacADweightedSum = 0
 
     for imode in range(mp.jac.Nmode):
         modvar = falco.config.ModelVariables()
@@ -505,17 +504,18 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         kk = mirrorFac*2*np.pi/wvl
         I00 = mp.Fend.compact.I00[modvar.sbpIndex]
         # normFac = mp.Fend.compact.I00[modvar.sbpIndex]
+        # print(f'normFacAD = {normFacAD}')
         # normFacFull = np.mean(mp.Fend.full.I00[modvar.sbpIndex, :])
         EestVec = EestAll[:, imode]
         Eest2D = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
-        Eest2D[mp.Fend.corr.maskBool] = EestVec  # * np.sqrt(normFacFull)  # Remove normalization
-        normFacAD = np.sum(np.abs(EestVec)**2)
-        # print(f'normFacAD = {normFacAD}')
+        Eest2D[mp.Fend.corr.maskBool] = EestVec
+        # normFacAD = np.sum(np.abs(EestVec)**2)
 
-        # Get model-based E-field before deltas
-        EFendA, Edm1post, Edm2pre, DM1surf, DM2surf = compact(
-           mp, modvar, isNorm=True, isEvalMode=isEvalMode, useFPM=useFPM,
-           forRevGradModel=True)
+        # Get model-based E-field before deltas. Should be pre-computed for speed.
+        EFendA = EFend_list[imode]
+        Edm1post = Edm1post_list[imode]
+        Edm2pre = Edm2pre_list[imode]
+        DM2surf = DM2surf_list[imode]
 
         # Get model-based E-field With delta DM commands applied.
         mp.dm1.V = mp.dm1.V0 + dv_dm1
@@ -528,17 +528,14 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         mp.dm2.V = mp.dm2.V0.copy()
 
         # Compute the delta E-field from the latest commands (model new - model old).
-        # EFendA = EFendPrev[imode]
         dEend = EFendB - EFendA
 
         # DH = EFend[mp.Fend.corr.maskBool]
-        # Eest2D = EFendA  # DEBUGGING
         EdhNew = Eest2D + dEend
         DH = EdhNew[mp.Fend.corr.maskBool]
         int_in_dh = np.sum(np.abs(DH)**2)
-        # print(f'int_in_dh = {int_in_dh}')
         total_cost += mp.jac.weights[imode] * int_in_dh
-        normFacADweightedSum += mp.jac.weights[imode] / normFacAD
+        # normFacADweightedSum += mp.jac.weights[imode] / normFacAD
 
         # Gradient
         Fend_masked = mp.jac.weights[imode]*2/np.sqrt(I00)*EdhNew*mp.Fend.corr.maskBool
@@ -612,14 +609,14 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
         Edm1_grad = falco.prop.ptp(Edm2_grad, mp.P2.compact.dx*Edm2_grad.shape[0], wvl, -mp.d_dm1_dm2)
         surf_dm1_bar = -kk*np.imag(Edm1_grad * np.conj(Edm1post))
 
-        surf_dm2_bar_total += mp.jac.weights[imode] * surf_dm2_bar
-        surf_dm1_bar_total += mp.jac.weights[imode] * surf_dm1_bar
+        surf_dm2_bar_total += surf_dm2_bar
+        surf_dm1_bar_total += surf_dm1_bar
 
-    # # Calculate DM penalty term component of cost function
-    # utu_coefs = normFacADweightedSum * mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
-    # total_cost += utu_coefs * np.sum(command_vec**2)
-    # # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
-    # # print('utu_coefs = %.4g' % utu_coefs)
+    # Calculate DM penalty term component of cost function
+    utu_coef = mp.ctrl.ad.utu_scale_fac * 10.0**(log10reg)
+    total_cost += utu_coef * np.sum(command_vec**2)
+    # print('normFacADweightedSum = %.4g' % normFacADweightedSum)
+    # print('utu_coef = %.4g' % utu_coef)
 
     if mp.dm1.useDifferentiableModel and mp.dm2.useDifferentiableModel:
         Vout1 = mp.dm1.differentiableModel.render_backprop(
@@ -630,11 +627,12 @@ def compact_reverse_gradient(command_vec, mp, EestAll, EFendPrev, log10reg):
     else:
         raise ValueError('mp.dm1.useDifferentiableModel and mp.dm2.useDifferentiableModel must be True for AD-EFC.')
 
-    Vout1 *= mp.dm1.VtoH
-    Vout2 *= mp.dm2.VtoH
+    Vout1 *= mp.dm1.VtoH * np.conj(~mp.dm1.dead_map)
+    Vout2 *= mp.dm2.VtoH * np.conj(~mp.dm2.dead_map)
     gradient = np.concatenate((Vout1.reshape([mp.dm1.NactTotal])[mp.dm1.act_ele],
                                Vout2.reshape([mp.dm2.NactTotal])[mp.dm2.act_ele]),
                               axis=None)
+    gradient += 2 * utu_coef * gradient
 
     return total_cost, gradient
 

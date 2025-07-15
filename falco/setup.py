@@ -312,6 +312,8 @@ def set_optional_variables(mp):
         mp.dm1.orientation = 'rot0'  # Change to mp.dm1.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
     if not hasattr(mp.dm1, 'fitType'):
         mp.dm1.fitType = 'linear'  # Type of response for displacement vs voltage. Options are 'linear', 'quadratic', and 'fourier2'.
+    if not hasattr(mp.dm1, 'dead'):
+        mp.dm1.dead = []  # Linear indices of dead actuators
     if not hasattr(mp.dm1, 'pinned'):
         mp.dm1.pinned = np.array([])  # Indices of pinned actuators
     if not hasattr(mp.dm1, 'Vpinned'):
@@ -346,6 +348,8 @@ def set_optional_variables(mp):
         mp.dm2.orientation = 'rot0'  # Change to mp.dm2.V orientation before generating DM surface. Options: rot0, rot90, rot180, rot270, flipxrot0, flipxrot90, flipxrot180, flipxrot270
     if not hasattr(mp.dm2, 'fitType'):
         mp.dm2.fitType = 'linear'  # Type of response for displacement vs voltage. Options are 'linear', 'quadratic', and 'fourier2'.
+    if not hasattr(mp.dm2, 'dead'):
+        mp.dm2.dead = []  # Linear indices of dead actuators
     if not hasattr(mp.dm2, 'pinned'):
         mp.dm2.pinned = np.array([])  # Indices of pinned actuators
     if not hasattr(mp.dm2, 'Vpinned'):
@@ -1260,7 +1264,14 @@ def falco_configure_dm1_and_dm2(mp):
         mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
     if not hasattr(mp.dm2, 'V'):
         mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
-    pass
+
+    # Dead actuator 2-D maps
+    mp.dm1.dead_map = np.zeros((mp.dm1.Nact, mp.dm1.Nact), dtype=bool)
+    mp.dm2.dead_map = np.zeros((mp.dm2.Nact, mp.dm2.Nact), dtype=bool)
+    for ii in mp.dm1.dead:
+        mp.dm1.dead_map.ravel()[ii] = True
+    for ii in mp.dm2.dead:
+        mp.dm2.dead_map.ravel()[ii] = True
 
     # Initialize the number of elements used per DM
     if np.any(mp.dm_ind == 1):
@@ -1296,7 +1307,7 @@ def falco_gen_dm_stops(mp):
     if mp.flagDM2stop:
         mp.dm2.full.mask = falco.mask.falco_gen_DM_stop(mp.P2.full.dx, mp.dm2.Dstop, mp.centering)
         mp.dm2.compact.mask = falco.mask.falco_gen_DM_stop(mp.P2.compact.dx, mp.dm2.Dstop, mp.centering)
-    
+
     return None
 
 

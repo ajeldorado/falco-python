@@ -229,6 +229,18 @@ def lyot(mp, imode, idm, iact):
         specified Zernike mode, DM number, subband, and star.
 
     """
+    # Return zeros immediately if it's a dead actuator
+    if idm == 1:
+        if iact in mp.dm1.dead:
+            EFend = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
+            Gchunk = EFend[mp.Fend.corr.maskBool]
+            return Gchunk
+    if idm == 2:
+        if iact in mp.dm2.dead:
+            EFend = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
+            Gchunk = EFend[mp.Fend.corr.maskBool]
+            return Gchunk
+
     modvar = falco.config.ModelVariables()
     modvar.sbpIndex = mp.jac.sbp_inds[imode]
     modvar.zernIndex = mp.jac.zern_inds[imode]
@@ -657,6 +669,18 @@ def vortex(mp, imode, idm, iact):
         specified Zernike mode, DM number, subband, and star.
 
     """
+    # Return zeros immediately if it's a dead actuator
+    if idm == 1:
+        if iact in mp.dm1.dead:
+            EFend = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
+            Gchunk = EFend[mp.Fend.corr.maskBool]
+            return Gchunk
+    if idm == 2:
+        if iact in mp.dm2.dead:
+            EFend = np.zeros_like(mp.Fend.corr.maskBool, dtype=complex)
+            Gchunk = EFend[mp.Fend.corr.maskBool]
+            return Gchunk
+
     modvar = falco.config.ModelVariables()
     modvar.sbpIndex = mp.jac.sbp_inds[imode]
     modvar.zernIndex = mp.jac.zern_inds[imode]
