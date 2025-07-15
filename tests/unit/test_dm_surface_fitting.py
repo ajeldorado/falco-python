@@ -45,6 +45,7 @@ class TestSurface(unittest.TestCase):
         mp.dm1.edgeBuffer = 1  # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
 
         mp.dm1.fitType = 'linear'
+        mp.dm1.dead = []
         mp.dm1.pinned = np.array([])
         mp.dm1.Vpinned = np.zeros_like(mp.dm1.pinned)
         mp.dm1.tied = np.zeros((0, 2))
