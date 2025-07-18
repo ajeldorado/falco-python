@@ -40,6 +40,7 @@ def wfsc_progress(mp, out, ev, Itr, ImSimOffaxis):
         fig.suptitle(mp.coro+': Iteration %d' % Itr)
 
         im1 = ax1.imshow(np.log10(Im), cmap='magma', interpolation='none',
+                         origin='lower',
                          extent=[np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL),
                                  np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL)])
         ax1.set_title('Stellar PSF: NI=%.2e' % out.InormHist[Itr])
@@ -49,6 +50,7 @@ def wfsc_progress(mp, out, ev, Itr, ImSimOffaxis):
         im3 = ax3.imshow(ImSimOffaxis/np.max(ImSimOffaxis),
                          cmap=plt.cm.get_cmap('Blues'),
                          interpolation='none',
+                         origin='lower',
                          extent=[np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL),
                                  np.min(mp.Fend.xisDL), np.max(mp.Fend.xisDL)])
         ax3.set_title('Off-axis Thput = %.2f%%' % (100*out.thput[Itr]))
@@ -56,12 +58,12 @@ def wfsc_progress(mp, out, ev, Itr, ImSimOffaxis):
         # cbar3.set_ticks(np.array([0.0, 0.5, 1.0]))
         # cbar3.set_ticklabels(['0', '0.5', '1'])
 
-        im2 = ax2.imshow(1e9*DM1surf, cmap='viridis')
+        im2 = ax2.imshow(1e9*DM1surf, origin='lower', cmap='viridis')
         ax2.set_title('DM1 Surface (nm)')
         ax2.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)
         # cbar2 = fig.colorbar(im2, ax=ax2)
 
-        im4 = ax4.imshow(1e9*DM2surf, cmap='viridis')
+        im4 = ax4.imshow(1e9*DM2surf, origin='lower', cmap='viridis')
         ax4.set_title('DM2 Surface (nm)')
         ax4.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)
         # cbar4 = fig.colorbar(im4, ax=ax4)
