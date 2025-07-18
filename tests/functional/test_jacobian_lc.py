@@ -5,75 +5,133 @@ import os
 
 import falco
 
-import config_wfsc_lc as CONFIG
+import config_wfsc_lc_quick as CONFIG
 
 
 def test_jacobian_lc():
     """Lyot Jacobian test using FFTs between DMs."""
-    mp = deepcopy(CONFIG.mp)
-    mp.runLabel = 'test_lc'
 
-    mp.path = falco.config.Object()
-    LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
-    mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
-    _ = falco.setup.flesh_out_workspace(mp)
+    # Create a Generator instance with a seed
+    rng1 = np.random.default_rng(seed=42)
+    rng2 = np.random.default_rng(seed=7)
 
-    # Fast Jacobian calculation
-    mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
-    mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
-    jacStruct = falco.model.jacobian(mp)  # Get structure containing Jacobians
+    for case_num in range(6):
 
-    G1fastAll = jacStruct.G1
-    G2fastAll = jacStruct.G2
-    Nind = 20
-    subinds = np.ix_(np.arange(3, 20*4, 4).astype(int))
-    absG1sum = np.sum(np.abs(G1fastAll), axis=1)
-    indG1 = np.nonzero(absG1sum > 1e-2*np.max(absG1sum))[0]
-    indG1subset = indG1[subinds]  # Take a 20-actuator subset
-    absG2sum = np.sum(np.abs(G2fastAll), axis=1)
-    indG2 = np.nonzero(absG2sum > 1e-2*np.max(absG2sum))[0]
-    indG2subset = indG2[subinds]  # Take a 20-actuator subset
-    G1fast = np.squeeze(G1fastAll[:, indG1subset])
-    G2fast = np.squeeze(G2fastAll[:, indG2subset])
+        mp = deepcopy(CONFIG.mp)
+        mp.runLabel = 'test_vc'
 
-    # Compute Jacobian via differencing (slower)
-    modvar = falco.config.ModelVariables()
-    modvar.whichSource = 'star'
-    modvar.sbpIndex = 0
-    modvar.starIndex = 0
-    Eunpoked2D = falco.model.compact(mp, modvar)
-    Eunpoked = Eunpoked2D[mp.Fend.corr.maskBool]
-    DeltaV = 1e-4
-    G1slow = np.zeros((mp.Fend.corr.Npix, Nind), dtype=complex)
-    G2slow = np.zeros((mp.Fend.corr.Npix, Nind), dtype=complex)
+        if case_num == 0:
+            mp.flagRotation = False  # Whether to rotate 180 degrees between conjugate planes in the compact model
+            mp.NrelayFend = 0  # How many times to rotate the final image by 180 degrees
+        elif case_num == 1:
+            mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact model
+            mp.Nrelay1to2 = 0
+            mp.Nrelay2to3 = 0
+            mp.Nrelay3to4 = 0
+            mp.NrelayFend = 0  # How many times to rotate the final image by 180 degrees
+        elif case_num == 2:
+            mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact model
+            mp.Nrelay1to2 = 1
+            mp.Nrelay2to3 = 0
+            mp.Nrelay3to4 = 0
+            mp.NrelayFend = 0  # How many times to rotate the final image by 180 degrees
+        elif case_num == 3:
+            mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact model
+            mp.Nrelay1to2 = 0
+            mp.Nrelay2to3 = 1
+            mp.Nrelay3to4 = 0
+            mp.NrelayFend = 0  # How many times to rotate the final image by 180 degrees
+        elif case_num == 4:
+            mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact model
+            mp.Nrelay1to2 = 0
+            mp.Nrelay2to3 = 0
+            mp.Nrelay3to4 = 1
+            mp.NrelayFend = 0  # How many times to rotate the final image by 180 degrees
+        elif case_num == 5:
+            mp.flagRotation = True  # Whether to rotate 180 degrees between conjugate planes in the compact model
+            mp.Nrelay1to2 = 0
+            mp.Nrelay2to3 = 0
+            mp.Nrelay3to4 = 0
+            mp.NrelayFend = 1  # How many times to rotate the final image by 180 degrees
+        else:
+            raise ValueError('Case not defined.')
+        
+        print('\n*** NEW TEST CASE ***')
+        print(f'mp.flagRotation = {mp.flagRotation}')
+        print(f'mp.Nrelay1to2 = {mp.Nrelay1to2}')
+        print(f'mp.Nrelay2to3 = {mp.Nrelay2to3}')
+        print(f'mp.Nrelay3to4 = {mp.Nrelay3to4}')
+        print(f'mp.NrelayFend = {mp.NrelayFend}')
+        print('')
 
-    for ii in range(Nind):
-        # DM1
-        mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
-        mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
-        mp.dm1.V[np.unravel_index(indG1subset[ii], mp.dm1.V.shape)] = DeltaV
-        Epoked2D = falco.model.compact(mp, modvar)
-        Epoked = Epoked2D[mp.Fend.corr.maskBool]
-        G1slow[:, ii] = (Epoked - Eunpoked) / DeltaV
+        mp = deepcopy(CONFIG.mp)
+        mp.runLabel = 'test_lc'
 
-        # DM2
-        mp.dm1.V = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
-        mp.dm2.V = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
-        mp.dm2.V[np.unravel_index(indG2subset[ii], mp.dm2.V.shape)] = DeltaV
-        Epoked2D = falco.model.compact(mp, modvar)
-        Epoked = Epoked2D[mp.Fend.corr.maskBool]
-        G2slow[:, ii] = (Epoked - Eunpoked) / DeltaV
+        scalefac = 1  # 0.5
+        dm1v0 = scalefac*(rng1.random((mp.dm1.Nact, mp.dm1.Nact))-0.5)
+        dm2v0 = scalefac*(rng2.random((mp.dm2.Nact, mp.dm2.Nact))-0.5)
 
-    # Tests
-    rmsNormErrorDM1 = (np.sqrt(np.sum(np.abs(G1slow - G1fast)**2) /
-                               np.sum(np.abs(G1slow)**2)))
-    rmsNormErrorDM2 = (np.sqrt(np.sum(np.abs(G2slow - G2fast)**2) /
-                               np.sum(np.abs(G2slow)**2)))
+        mp.path = falco.config.Object()
+        LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
+        mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
+        _ = falco.setup.flesh_out_workspace(mp)
 
-    print('rmsNormErrorDM1 = %.3f' % rmsNormErrorDM1)
-    print('rmsNormErrorDM2 = %.3f' % rmsNormErrorDM2)
-    assert rmsNormErrorDM1 < 0.01
-    assert rmsNormErrorDM2 < 0.01
+        # Fast Jacobian calculation
+        mp.dm1.V = dm1v0.copy()  # np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+        mp.dm2.V = dm2v0.copy()  # np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+        jacStruct = falco.model.jacobian(mp)  # Get structure containing Jacobians
+
+        G1fastAll = jacStruct.G1
+        G2fastAll = jacStruct.G2
+        Nind = 20
+        subinds = np.ix_(np.arange(3, 20*4, 4).astype(int))
+        absG1sum = np.sum(np.abs(G1fastAll), axis=1)
+        indG1 = np.nonzero(absG1sum > 1e-2*np.max(absG1sum))[0]
+        indG1subset = indG1[subinds]  # Take a 20-actuator subset
+        absG2sum = np.sum(np.abs(G2fastAll), axis=1)
+        indG2 = np.nonzero(absG2sum > 1e-2*np.max(absG2sum))[0]
+        indG2subset = indG2[subinds]  # Take a 20-actuator subset
+        G1fast = np.squeeze(G1fastAll[:, indG1subset])
+        G2fast = np.squeeze(G2fastAll[:, indG2subset])
+
+        # Compute Jacobian via differencing (slower)
+        modvar = falco.config.ModelVariables()
+        modvar.whichSource = 'star'
+        modvar.sbpIndex = 0
+        modvar.starIndex = 0
+        Eunpoked2D = falco.model.compact(mp, modvar)
+        Eunpoked = Eunpoked2D[mp.Fend.corr.maskBool]
+        DeltaV = 1e-4
+        G1slow = np.zeros((mp.Fend.corr.Npix, Nind), dtype=complex)
+        G2slow = np.zeros((mp.Fend.corr.Npix, Nind), dtype=complex)
+
+        for ii in range(Nind):
+            # DM1
+            mp.dm1.V = dm1v0.copy()  # np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+            mp.dm2.V = dm2v0.copy()  # np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+            mp.dm1.V[np.unravel_index(indG1subset[ii], mp.dm1.V.shape)] += DeltaV
+            Epoked2D = falco.model.compact(mp, modvar)
+            Epoked = Epoked2D[mp.Fend.corr.maskBool]
+            G1slow[:, ii] = (Epoked - Eunpoked) / DeltaV
+
+            # DM2
+            mp.dm1.V = dm1v0.copy()  # np.zeros((mp.dm1.Nact, mp.dm1.Nact))
+            mp.dm2.V = dm2v0.copy()  # np.zeros((mp.dm2.Nact, mp.dm2.Nact))
+            mp.dm2.V[np.unravel_index(indG2subset[ii], mp.dm2.V.shape)] += DeltaV
+            Epoked2D = falco.model.compact(mp, modvar)
+            Epoked = Epoked2D[mp.Fend.corr.maskBool]
+            G2slow[:, ii] = (Epoked - Eunpoked) / DeltaV
+
+        # Tests
+        rmsNormErrorDM1 = (np.sqrt(np.sum(np.abs(G1slow - G1fast)**2) /
+                                np.sum(np.abs(G1slow)**2)))
+        rmsNormErrorDM2 = (np.sqrt(np.sum(np.abs(G2slow - G2fast)**2) /
+                                np.sum(np.abs(G2slow)**2)))
+
+        print('rmsNormErrorDM1 = %.3f' % rmsNormErrorDM1)
+        print('rmsNormErrorDM2 = %.3f' % rmsNormErrorDM2)
+        assert rmsNormErrorDM1 < 0.01
+        assert rmsNormErrorDM2 < 0.01
 
 
 def test_jacobian_lc_no_fpm():
