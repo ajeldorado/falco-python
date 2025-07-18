@@ -33,7 +33,6 @@ mp.Nwpsbp = 1          # Number of wavelengths to used to approximate an image i
 
 mp.Nitr = 3  # Number of wavefront control iterations
 
-mp.Fend.sides = 'top'
 
 # %% Perform the Wavefront Sensing and Control
 
