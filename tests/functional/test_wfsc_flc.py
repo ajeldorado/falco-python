@@ -12,7 +12,7 @@ import config_wfsc_flc as CONFIG
 def test_wfsc_flc():
 
     mp = deepcopy(CONFIG.mp)
-    mp.flagPlot = True #False
+    mp.flagPlot = False
     LOCAL_PATH = os.path.dirname(os.path.abspath(__file__))
     mp.path.falco = os.path.dirname(os.path.dirname(LOCAL_PATH))
 
