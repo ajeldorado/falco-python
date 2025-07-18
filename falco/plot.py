@@ -317,7 +317,7 @@ def pairwise_probes(mp, ev, dDMVplus, ampSq2Dcube, iSubband):
             for row in range(Npairs):
                 ax = axs[row, col]
                 ax.set_title(titles[col])
-                ax.invert_yaxis()
+                # ax.invert_yaxis()
                 ax.set_box_aspect(1)
                 if row != Npairs-1:
                     ax.tick_params(labelbottom=False, bottom=False)

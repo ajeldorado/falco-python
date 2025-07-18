@@ -240,7 +240,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     Itr = ev.Itr
     whichDM = mp.est.probe.whichDM
 
-    # # Reset "ev" if not using a Kalman filter. 
+    # # Reset "ev" if not using a Kalman filter.
     # if mp.estimator != 'pwp-kf':
     #     # ev = falco.config.Object()
     #     ev.dm1 = falco.config.Object()
@@ -293,12 +293,12 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
     # Store the initial DM commands
     if np.any(mp.dm_ind == 1):
-        DM1Vnom = mp.dm1.V
+        DM1Vnom = mp.dm1.V.copy()
     else:
         DM1Vnom = np.zeros((mp.dm1.Nact, mp.dm1.Nact))
 
     if np.any(mp.dm_ind == 2):
-        DM2Vnom = mp.dm2.V
+        DM2Vnom = mp.dm2.V.copy()
     else:
         DM2Vnom = np.zeros((mp.dm2.Nact, mp.dm2.Nact))
 
@@ -323,7 +323,9 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     for k in range(Npairs-1):
         probePhaseVec = np.append(probePhaseVec, probePhaseVec[-1]-(Npairs-1))
         probePhaseVec = np.append(probePhaseVec, probePhaseVec[-1]+Npairs)
+    # print(f'probePhaseVec = {probePhaseVec}')
     probePhaseVec = probePhaseVec*np.pi/(Npairs)
+    print(f'probePhaseVec = {probePhaseVec}')
 
     # Only for square probe region centered on the star
     if mp.estimator in ('pairwise', 'pairwise-square', 'pwp-bp-square'):
@@ -378,8 +380,8 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
             # Measure current contrast level average
             # Reset DM commands to the unprobed state:
-            mp.dm1.V = DM1Vnom
-            mp.dm2.V = DM2Vnom
+            mp.dm1.V = DM1Vnom.copy()
+            mp.dm2.V = DM2Vnom.copy()
             # Separate out image values at DH pixels and delta DM voltage settings
             Iplus = np.zeros((mp.Fend.corr.Npix, Npairs))
             Iminus = np.zeros((mp.Fend.corr.Npix, Npairs))
@@ -391,7 +393,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             # Compute probe shapes and take probed images:
 
             # Take initial, unprobed image (for unprobed DM settings).
-            whichImage = 1
+            whichImage = 0
             I0 = falco.imaging.get_sbp_image(mp, iSubband)
             I0vec = I0[mp.Fend.corr.maskBool]  # Vectorize the dark hole
 
@@ -402,9 +404,9 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
                 # Store values for first image and its DM commands
                 ev.imageArray[:, :, whichImage, iSubband] = I0
                 if np.any(mp.dm_ind == 1):
-                    ev.dm1.Vall[:, :, whichImage, iSubband] = mp.dm1.V
+                    ev.dm1.Vall[:, :, whichImage, iSubband] = mp.dm1.V.copy()
                 if np.any(mp.dm_ind == 2):
-                    ev.dm2.Vall[:, :, whichImage, iSubband] = mp.dm2.V
+                    ev.dm2.Vall[:, :, whichImage, iSubband] = mp.dm2.V.copy()
 
             # Compute the average Inorm in the scoring and correction regions
             ev.corr = falco.config.Object()
@@ -502,7 +504,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             ampSq[ampSq < 0] = 0  # If probe amplitude is zero, set amp = 0
             amp = np.sqrt(ampSq)  # E-field amplitudes, dimensions: [mp.Fend.corr.Npix, Npairs]
             isnonzero = np.all(amp, 1)
-            zAll = ((Iplus-Iminus)/4).T  # Measurement vector, dimensions: [Npairs,mp.Fend.corr.Npix]
+            zAll = ((Iplus-Iminus)/4).T  # Measurement vector, dimensions: [Npairs, mp.Fend.corr.Npix]
             ampSq2Dcube = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.est.probe.Npairs))
             for iProbe in range(Npairs):  # Display the actual probe intensity
                 ampSq2D = np.zeros((mp.Fend.Neta, mp.Fend.Nxi))
@@ -544,9 +546,9 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
                 # For unprobed field based on model:
                 if np.any(mp.dm_ind == 1):
-                    mp.dm1.V = DM1Vnom
+                    mp.dm1.V = DM1Vnom.copy()
                 if np.any(mp.dm_ind == 2):
-                    mp.dm2.V = DM2Vnom
+                    mp.dm2.V = DM2Vnom.copy()
 
                 E0 = falco.model.compact(mp, modvar)
                 E0vec = E0[mp.Fend.corr.maskBool]
@@ -578,8 +580,8 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
                 dphdm = np.zeros((mp.Fend.corr.Npix, Npairs))  # phases
                 for iProbe in range(Npairs):
                     dphdm[:, iProbe] = np.arctan2(
-                        np.imag(dEplus[:, iProbe]) - np.imag(dEminus[:, iProbe]),
-                        np.real(dEplus[:, iProbe]) - np.real(dEminus[:, iProbe]))
+                        np.imag(dEplus[:, iProbe] - dEminus[:, iProbe]),
+                        np.real(dEplus[:, iProbe] - dEminus[:, iProbe]))
 
             # Batch process the measurements to estimate the electric field in the
             # dark hole. Done pixel by pixel.
@@ -592,23 +594,45 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
                 Eest = np.zeros((mp.Fend.corr.Npix,), dtype=complex)
                 zerosCounter = 0  # number of zeroed-out dark hole pixels
+                partialCounter = 0  # number of pixels with >=2 but <Npairs usable probe pairs.
                 for ipix in range(mp.Fend.corr.Npix):
 
                     if mp.est.flagUseJac:
                         dE = dEplus[ipix, :].T
                         H = np.array([np.real(dE), np.imag(dE)])
+                        Epix = np.linalg.pinv(H) @ zAll[:, ipix]  # Batch processing
                     else:
+                        allProbeInds = np.arange(Npairs, dtype=int)
+                        goodProbeInds = allProbeInds[amp[ipix, :] > 0]
+                        NpairsGood = len(goodProbeInds)
+
                         H = np.zeros([Npairs, 2])  # Observation matrix
-                        # Leave Eest for a pixel as zero if any probe amp is 0
-                        if isnonzero[ipix] == 1:
-                            for iProbe in range(Npairs):
-                                H[iProbe, :] = amp[ipix, iProbe] * \
-                                    np.array([np.cos(dphdm[ipix, iProbe]),
-                                              np.sin(dphdm[ipix, iProbe])])
-                        else:
+
+                        # If <2 probe pairs had good measurements, can't do pinv. Leave Eest as zero.
+                        if NpairsGood < 2:
+                            zerosCounter = zerosCounter + 1
+                            Epix = np.zeros((2, 1))
                             zerosCounter += 1
 
-                    Epix = np.linalg.pinv(H) @ zAll[:, ipix]  # Batch processing
+                        # Otherwise, use the 2+ good probe pair measurements for that pixel
+                        else:
+                            for iProbe in range(Npairs):
+                                H[iProbe, :] = amp[ipix, iProbe] * np.array([
+                                    np.cos(dphdm[ipix, iProbe]), np.sin(dphdm[ipix, iProbe])])
+
+                            Epix = np.linalg.pinv(H[goodProbeInds, :]) @ zAll[goodProbeInds, ipix]  # Batch processing
+
+                            # Record how many pixels didn't use all the probe pairs
+                            if NpairsGood < Npairs:
+                                partialCounter = partialCounter + 1
+
+                        # # Leave Eest for a pixel as zero if any probe amp is 0
+                        # if isnonzero[ipix] == 1:
+                        #     for iProbe in range(Npairs):
+                        #         H[iProbe, :] = amp[ipix, iProbe] * \
+                        #             np.array([np.cos(dphdm[ipix, iProbe]),
+                        #                       np.sin(dphdm[ipix, iProbe])])
+
                     Eest[ipix] = Epix[0] + 1j*Epix[1]
 
                 # If estimate is too bright, the estimate was probably bad.
@@ -616,6 +640,9 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
                 print('%d of %d pixels were given zero probe amplitude.' %
                       (zerosCounter, mp.Fend.corr.Npix))
+                if Npairs > 2:  # Only possible for Npairs > 2
+                    print('%d of %d pixels threw out at least one probe pair.' %
+                          (partialCounter, mp.Fend.corr.Npix))
 
                 # Initialize the state and state covariance estimates for the
                 # Kalman filter. The state is the real and imag parts of the
