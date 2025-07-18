@@ -73,7 +73,7 @@ def test_jacobian_vc_fft():
         mp.jac.mftToVortex = False
 
         scalefac = 1  # 0.5
-        dm1v0  = scalefac*(rng1.random((mp.dm1.Nact, mp.dm1.Nact))-0.5)
+        dm1v0 = scalefac*(rng1.random((mp.dm1.Nact, mp.dm1.Nact))-0.5)
         dm2v0 = scalefac*(rng2.random((mp.dm2.Nact, mp.dm2.Nact))-0.5)
 
         inputs = {
