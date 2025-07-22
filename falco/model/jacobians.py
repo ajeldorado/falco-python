@@ -121,12 +121,12 @@ def precomp(mp):
         pupil = pad_crop(mp.P1.compact.mask, NdmPad)
         Ein = pad_crop(Ein, NdmPad)
 
-        # Re-image the apodizer from pupil P3 back to pupil P2.
-        if mp.flagApod:
-            apodReimaged = pad_crop(mp.P3.compact.mask, NdmPad)
-            apodReimaged = fp.relay(apodReimaged, NrelayFactor*mp.Nrelay2to3, mp.centering)
-        else:
-            apodReimaged = np.ones((NdmPad, NdmPad))
+        # # Re-image the apodizer from pupil P3 back to pupil P2.
+        # if mp.flagApod:
+        #     apodReimaged = pad_crop(mp.P3.compact.mask, NdmPad)
+        #     apodReimaged = fp.relay(apodReimaged, NrelayFactor*mp.Nrelay2to3, mp.centering)
+        # else:
+        #     apodReimaged = np.ones((NdmPad, NdmPad))
 
         # Compute the DM surfaces for the current DM commands
         if any(mp.dm_ind == 1):
@@ -190,7 +190,7 @@ def precomp(mp):
             NboxPad2AS = int(mp.dm2.compact.NboxAS)
             mp.dm2.compact.xy_box_lowerLeft_AS = mp.dm2.compact.xy_box_lowerLeft - (NboxPad2AS-mp.dm2.compact.Nbox)/2  # Account for the padding of the influence function boxes
 
-        apodReimaged = pad_crop(apodReimaged, mp.dm2.compact.NdmPad)
+        # apodReimaged = pad_crop(apodReimaged, mp.dm2.compact.NdmPad)
         DM2stopPad = pad_crop(DM2stop, mp.dm2.compact.NdmPad)
         Edm2WFEpad = pad_crop(Edm2WFE, mp.dm2.compact.NdmPad)
 

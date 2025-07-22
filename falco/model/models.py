@@ -1124,50 +1124,62 @@ def jacobian(mp):
         #     for p in processes:
         #         p.join()
 
-        #     results_Jac = [output.get() for p in processes]
+        #     results_tuple = [output.get() for p in processes]
 
         #     # Reorder Jacobian by mode and DM from the list
         #     for ii in range(mp.jac.Nmode*mp.dm_ind.size):
         #         imode = results_order[ii][0]
         #         idm = results_order[ii][1]
         #         if idm == 1:
-        #             jacStruct.G1[:, :, imode] = results_Jac[ii]
+        #             jacStruct.G1[:, :, imode] = results_tuple[ii]
         #         if idm == 2:
-        #             jacStruct.G2[:, :, imode] = results_Jac[ii]
+        #             jacStruct.G2[:, :, imode] = results_tuple[ii]
 
         print('Computing control Jacobian matrices in parallel...', end='')
         # pool = multiprocessing.Pool(processes=mp.Nthreads)
 
         with falco.util.TicToc():
-            results_order = [(imode, idm) for idm in mp.dm_ind for imode in range(mp.jac.Nmode)]
+            # results_order = [(imode, idm) for idm in mp.dm_ind for imode in range(mp.jac.Nmode)]
 
-            # # OLD WAY: with multiprocessing.Pool.starmap()
-            # results = pool.starmap(
-            #     _jac_middle_layer,
-            #     [(mp, imode, idm)for imode, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))])
-            # results_Jac = results
-            # pool.close()
-            # pool.join()
+            # # # OLD WAY: with multiprocessing.Pool.starmap()
+            # # results = pool.starmap(
+            # #     _jac_middle_layer,
+            # #     [(mp, imode, idm)for imode, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))])
+            # # results_tuple = results
+            # # pool.close()
+            # # pool.join()
+
+            # with PoolExecutor(max_workers=mp.Nthreads) as executor:
+            #     result = executor.map(
+            #         lambda p: _jac_middle_layer(*p),
+            #         [(mp, imode, idm, iact)for imode, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))]
+            #     )
+            # results_tuple = tuple(result)
+
+            results_order_dm1 = [(imode, idm, iact) for iact in mp.dm1.act_ele for idm in [1, ] for imode in range(mp.jac.Nmode)]
+            results_order_dm2 = [(imode, idm, iact) for iact in mp.dm2.act_ele for idm in [2, ] for imode in range(mp.jac.Nmode)]
+            results_order = results_order_dm1 + results_order_dm2
 
             with PoolExecutor(max_workers=mp.Nthreads) as executor:
                 result = executor.map(
                     lambda p: _jac_middle_layer(*p),
-                    [(mp, imode, idm)for imode, idm in zip(*map(np.ravel, np.meshgrid(np.arange(mp.jac.Nmode, dtype=int), mp.dm_ind)))]
+                    [(mp, imode, idm, iact) for imode, idm, iact in results_order]
                 )
-            results_Jac = tuple(result)
+            results_tuple = tuple(result)
 
             # Reorder Jacobian by mode and DM from the list
-            for ii in range(mp.jac.Nmode*mp.dm_ind.size):
+            for ii in range(len(results_order)):
                 imode = results_order[ii][0]
                 idm = results_order[ii][1]
+                iact = results_order[ii][2]
                 if idm == 1:
-                    jacStruct.G1[:, :, imode] = results_Jac[ii]
+                    jacStruct.G1[:, iact, imode] = results_tuple[ii]
                 if idm == 2:
-                    jacStruct.G2[:, :, imode] = results_Jac[ii]
+                    jacStruct.G2[:, iact, imode] = results_tuple[ii]
                 if idm == 8:
-                    jacStruct.G8[:, :, imode] = results_Jac[ii]
+                    jacStruct.G8[:, iact, imode] = results_tuple[ii]
                 if idm == 9:
-                    jacStruct.G9[:, :, imode] = results_Jac[ii]
+                    jacStruct.G9[:, iact, imode] = results_tuple[ii]
 
             print('done.')
 
@@ -1177,16 +1189,20 @@ def jacobian(mp):
             for imode in range(mp.jac.Nmode):
                 if any(mp.dm_ind == 1):
                     print('mode%ddm%d...' % (imode, 1), end='')
-                    jacStruct.G1[:, :, imode] = _jac_middle_layer(mp, imode, 1)
+                    for index, iact in enumerate(mp.dm1.act_ele):
+                        jacStruct.G1[:, index, imode] = _jac_middle_layer(mp, imode, 1, iact)
                 if any(mp.dm_ind == 2):
                     print('mode%ddm%d...' % (imode, 2), end='')
-                    jacStruct.G2[:, :, imode] = _jac_middle_layer(mp, imode, 2)
-                # if any(mp.dm_ind == 8):
-                #     print('mode%ddm%d...' % (imode, 8), end='')
-                #     jacStruct.G8[:, :, imode] = _jac_middle_layer(mp, imode, 8)
-                # if any(mp.dm_ind == 9):
-                #     print('mode%ddm%d...' % (imode, 9), end='')
-                #     jacStruct.G9[:, :, imode] = _jac_middle_layer(mp, imode, 9)
+                    for index, iact in enumerate(mp.dm2.act_ele):
+                        jacStruct.G2[:, index, imode] = _jac_middle_layer(mp, imode, 2, iact)
+                if any(mp.dm_ind == 8):
+                    print('mode%ddm%d...' % (imode, 8), end='')
+                    for index, iact in enumerate(mp.dm8.act_ele):
+                        jacStruct.G8[:, :, imode] = _jac_middle_layer(mp, imode, 8, iact)
+                if any(mp.dm_ind == 9):
+                    print('mode%ddm%d...' % (imode, 9), end='')
+                    for index, iact in enumerate(mp.dm9.act_ele):
+                        jacStruct.G9[:, :, imode] = _jac_middle_layer(mp, imode, 9, iact)
             print('done.')
 
     # TIED ACTUATORS
@@ -1284,7 +1300,7 @@ def reassemble_jac_from_slices(mp):
     return jacStruct
 
 
-def _jac_middle_layer(mp, imode, idm):
+def _jac_middle_layer(mp, imode, idm, iact):
     """
     Select which optical layout's Jacobian model to use and get E-field.
 
@@ -1301,26 +1317,29 @@ def _jac_middle_layer(mp, imode, idm):
     """
     if mp.layout.lower() in ('fourier', 'proper', 'fpm_scale'):
 
-        if idm == 1:
-            Nele = mp.dm1.Nele
-            act_ele = mp.dm1.act_ele
-        elif idm == 2:
-            Nele = mp.dm2.Nele
-            act_ele = mp.dm2.act_ele
-        jacMode = np.zeros((mp.Fend.corr.Npix, Nele), dtype=complex)
+        # if idm == 1:
+        #     Nele = mp.dm1.Nele
+        #     act_ele = mp.dm1.act_ele
+        # elif idm == 2:
+        #     Nele = mp.dm2.Nele
+        #     act_ele = mp.dm2.act_ele
+        # jacMode = np.zeros((mp.Fend.corr.Npix, Nele), dtype=complex)
 
         if mp.coro.upper() in ('LC', 'APLC', 'HLC', 'FLC', 'SPLC'):
-            for index, iact in enumerate(act_ele):
-                jacMode[:, index] = jacobians.lyot(mp, imode, idm, iact)
+            jacModeAct = jacobians.lyot(mp, imode, idm, iact)
+            # for index, iact in enumerate(act_ele):
+            #     jacMode[:, index] = jacobians.lyot(mp, imode, idm, iact)
 
         elif mp.coro.upper() in ('VC', 'AVC', 'VORTEX'):
-            for index, iact in enumerate(act_ele):
-                jacMode[:, index] = jacobians.vortex(mp, imode, idm, iact)
+            jacModeAct = jacobians.vortex(mp, imode, idm, iact)
+            # for index, iact in enumerate(act_ele):
+            #     jacMode[:, index] = jacobians.vortex(mp, imode, idm, iact)
 
     elif mp.layout.lower() in ('wfirst_phaseb_proper', 'roman_phasec_proper'):
         if mp.coro.upper() in ('HLC', 'SPC', 'SPLC'):
-            for index, iact in enumerate(act_ele):
-                jacMode[:, index] = jacobians.lyot(mp, imode, idm, iact)
+            jacModeAct = jacobians.lyot(mp, imode, idm, iact)
+            # for index, iact in enumerate(act_ele):
+            #     jacMode[:, index] = jacobians.lyot(mp, imode, idm, iact)
         else:
             raise ValueError('%s not recognized as value for mp.coro' %
                              mp.coro)
@@ -1328,7 +1347,7 @@ def _jac_middle_layer(mp, imode, idm):
     else:
         raise ValueError('mp.layout.lower not recognized')
 
-    return jacMode
+    return jacModeAct
 
 
 
