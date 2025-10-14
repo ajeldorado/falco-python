@@ -215,8 +215,8 @@ def loop(mp, out):
     # Save out the data from the workspace
     if mp.flagSaveWS:
         del cvar
-        del G
-        del h
+        # del G
+        # del h
         del jacStruct
 
         # Don't bother saving the large 2-D, floating point maps.
@@ -232,7 +232,7 @@ def loop(mp, out):
 
         mp.P1.full.E = 1
         mp.P1.compact.E = 1
-        mp.dm1.full.mask = 1
+        # mp.dm1.full.mask = 1
         mp.dm1.compact.mask = 1
         mp.dm2.full.mask = 1
         mp.dm2.compact.mask = 1
@@ -241,8 +241,8 @@ def loop(mp, out):
 
         mp.dm1.compact.inf_datacube = 0
         mp.dm2.compact.inf_datacube = 0
-        mp.dm8.compact.inf_datacube = 0
-        mp.dm9.compact.inf_datacube = 0
+        # mp.dm8.compact.inf_datacube = 0
+        # mp.dm9.compact.inf_datacube = 0
         mp.dm8.inf_datacube = 0
         mp.dm9.inf_datacube = 0
 

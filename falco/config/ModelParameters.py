@@ -4,11 +4,12 @@ from pathlib import Path
 
 import numpy
 from numpy import inf
+import astropy
 
 import falco
 from falco.config.yaml_loader import object_constructor, load_from_str
 from falco.util import _spec_arg
-from falco.config import Probe, ProbeSchedule, Object
+from falco.config import Probe, ProbeSchedule, Object, Drift
 
 
 class ModelParameters(Object):
@@ -251,11 +252,12 @@ class ModelParameters(Object):
 
         data = load_from_str(
             text,
-            {'np': numpy, 'falco': falco, 'math': math},
+            {'np': numpy, 'falco': falco, 'math': math, 'astropy': astropy},
             context,
             {
                 "!Probe": object_constructor(Probe),
-                "!ProbeSchedule": object_constructor(ProbeSchedule)
+                "!ProbeSchedule": object_constructor(ProbeSchedule),
+                "!Drift": object_constructor(Drift)
             }
         )
 

@@ -108,9 +108,9 @@ def save_ekf_data(mp, ev, DM1Vdither, DM2Vdither):
 
 
     # TODO: move to plot_progress_iact
-    fits.writeto(os.path.join(mp.path.config, f'drift_command_it{ev.Itr}.fits'), drift, overwrite=True)
-    fits.writeto(os.path.join(mp.path.config, f'dither_command_it{ev.Itr}.fits'), dither, overwrite=True)
-    fits.writeto(os.path.join(mp.path.config, f'efc_command_it{ev.Itr-1}.fits'), efc, overwrite=True)
+    fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'drift_command_it{ev.Itr}.fits'), drift, overwrite=True)
+    fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'dither_command_it{ev.Itr}.fits'), dither, overwrite=True)
+    fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'efc_command_it{ev.Itr-1}.fits'), efc, overwrite=True)
     
     if ev.Itr == 0:
         dz_init = np.zeros((mp.dm1.Nact, mp.dm1.Nact, len(mp.dm_ind)))
@@ -121,7 +121,7 @@ def save_ekf_data(mp, ev, DM1Vdither, DM2Vdither):
         elif len(mp.dm_ind) > 2:
             dz_init[:, :, 1] = mp.dm2.V_dz
         
-        fits.writeto(os.path.join(mp.path.config, 'dark_zone_command_0_pwp.fits'), dz_init, overwrite=True)
+        fits.writeto(os.path.join(mp.path.brief, mp.runLabel, 'dark_zone_command_0_pwp.fits'), dz_init, overwrite=True)
 
 
 def est_ekf_dzm(mp, ev, jacStruct=None):
