@@ -11,7 +11,12 @@ Major contributions and testing were provided by Garreth Ruane, Luis Marchen, Sa
 ### DOCUMENTATION
 
 * The only non-standard library you need is PROPER, available only via download here: https://sourceforge.net/projects/proper-library/
-* To get started, add PROPER and falco-python to your PYTHONPATH. Then try running some scripts in the falco-python/examples/ folder starting with EXAMPLE_main* or demo_*.
+* To get started, add PROPER and falco-python to your PYTHONPATH.
+* cd into falco-python home directory and run:
+```
+python -m pip install .
+```
+* Then try running some scripts in the falco-python/examples/ folder starting with EXAMPLE_main* or demo_*.
 * Documentation on specific usage cases is available at the Matlab version's Github Wiki at https://github.com/ajeldorado/falco-matlab/wiki.
 * For an overview of FALCO and its uses, refer to the SPIE conference paper "Fast Linearized Coronagraph Optimizer (FALCO) I: A software toolbox for rapid coronagraphic design and wavefront correction".
 DOI: 10.1117/12.2313812
