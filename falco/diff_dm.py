@@ -4,10 +4,17 @@ import numpy as np
 
 import os
 
+from scipy.interpolate import RectBivariateSpline
 from scipy import ndimage
+try:
+    from scipy.ndimage import map_coordinates
+except:
+    from scipy.ndimage.interpolation import map_coordinates
 
-from falco import fftutils, util, proper
+from falco import fftutils, util, proper, mask, check
 from astropy.io import fits
+
+
 
 # the functions:
 #   make_rotation_matrix
@@ -417,7 +424,120 @@ def prepare_actuator_lattice(shape, Nact, sep, dtype):
     }
 
 
+def spline_resample(array_in, zoom):
+    """
+    Translate, rotate, and downsample a pixel-centered mask.
+
+    Parameters
+    ----------
+    array_in : np.ndarray
+        2-D, pixel-centered array containing the pupil mask.
+    zoom : int/float or tuple of two ints/floats
+
+    Returns
+    -------
+    arrayOut : np.ndarray
+        2-D, even-sized, square array containing the resized mask.
+    """
+    check.twoD_array(array_in, 'array_in', TypeError)
+    # check.real_positive_scalar(nBeamIn, 'nBeamIn', TypeError)
+
+    # if mag <= 0:
+    #     raise ValueError('This function is for downsampling only.')
+    # else:
+    #     if array_in.shape[0] % 2 == 0:  # if in an even-sized array
+    #         # Crop assuming mask is pixel centered with row 0 and column 0 empty.
+    #         array_in = array_in[1::, 1::]
+
+    if zoom == 1:
+        return array_in
+
+    if isinstance(zoom, (float, int)):
+        zoom = (zoom, zoom)
+    elif not isinstance(zoom, tuple):
+        zoom = tuple(float(zoom) for zoom in zoom)
+
+    array_in = util.pad_crop(array_in, int(np.max(array_in.shape)))
+
+    # Array sizes
+    narray_in = array_in.shape[0]
+    narray_out = util.ceil_odd(narray_in*np.max(zoom)+2)
+    # 2 pixels added to guarantee the offset mask is fully contained in
+    # the output array.
+    nBeamIn = 1  # Only relative values matter
+    nBeamOutX = nBeamIn*zoom[1]
+    nBeamOutY = nBeamIn*zoom[0]
+    dxIn = 1./nBeamIn
+    dYin = 1./nBeamIn
+    dxOut = 1./nBeamOutX
+    dyOut = 1./nBeamOutY
+
+    # array-centered coordinates of input matrix [pupil diameters]
+    x0 = np.arange(-(narray_in-1.)/2., (narray_in)/2., 1)*dxIn
+    y0 = np.arange(-(narray_in-1.)/2., (narray_in)/2., 1)*dYin
+
+    if False: #zoom[0] < 1 and zoom[1] < 1:
+        [X0, Y0] = np.meshgrid(x0, y0)
+        R2 = X0**2 + Y0**2
+        Window = np.zeros_like(R2)
+        Window[R2 <= (dxOut/2.)**2 + (dyOut/2.)**2] = 1
+        # R0 = np.sqrt(X0**2 + Y0**2)
+        # Window = 0*R0
+        # Window[R0 <= dxOut/2.] = 1
+        Window = Window/np.sum(Window)
+
+        # To get good grayscale edges, convolve with the correct window
+        # before downsampling.
+        f_window = np.fft.ifft2(np.fft.ifftshift(Window))*narray_in
+        f_array_in = np.fft.ifft2(np.fft.ifftshift(array_in))*narray_in
+        A = np.fft.fftshift(np.fft.fft2(f_window*f_array_in))
+        A = np.real(A)
+    else:
+        A = array_in
+
+    x1 = (np.arange(-(narray_out-1.)/2., narray_out/2., 1) - 0)*dxOut
+    y1 = (np.arange(-(narray_out-1.)/2., narray_out/2., 1) - 0)*dyOut
+
+    # RectBivariateSpline is faster in 2-D than interp2d
+    interp_spline = RectBivariateSpline(y0, x0, A)
+    Atemp = interp_spline(y1, x1)
+
+    arrayOut = Atemp
+
+    # arrayOut = np.zeros((narray_out+1, narray_out+1))
+    # arrayOut[1::, 1::] = np.real(Atemp)
+
+    return arrayOut
+
+
+def map_resample(f, zoom):
+    print(f'zoom = {zoom}')
+    if zoom == 1:
+        return f
+
+    if isinstance(zoom, (float, int)):
+        zoom = (zoom, zoom)
+    elif not isinstance(zoom, tuple):
+        zoom = tuple(float(zoom) for zoom in zoom)
+
+    N0 = util.ceil_odd(np.max(f.shape) + np.max(zoom) + 1)
+    f = util.pad_crop(f, N0)
+
+    M = int(util.ceil_odd(N0*zoom[0]+1))
+    N = int(util.ceil_odd(N0*zoom[1]+1))
+
+    x = (np.arange(N, dtype=np.float64) - np.floor(N/2))/zoom[1] + np.floor(N0/2)
+    y = (np.arange(M, dtype=np.float64) - np.floor(M/2))/zoom[0] + np.floor(N0/2)
+    xygrid = np.meshgrid(x, y)
+    fprime = map_coordinates(f.T, xygrid, order=3, mode="nearest")
+
+    # fprime = proper.prop_magnify(f, zoom, size_out0=N1, AMP_CONSERVE=True)
+
+    return fprime
+
+
 def fourier_resample(f, zoom):
+    print(f'zoom = {zoom}')
     if zoom == 1:
         return f
 
@@ -676,7 +796,8 @@ class DM:
             warped *= (2*self.obliquity)
 
         if self.upsample != 1:
-            warped = fourier_resample(warped, self.upsample)
+            # warped = fourier_resample(warped, self.upsample)
+            warped = spline_resample(warped, self.upsample)
 
         self.Nintermediate = warped.shape
         warped = util.pad_crop(warped, Nout)
@@ -724,7 +845,8 @@ class DM:
         protograd = util.pad_crop(protograd, self.Nintermediate)
         if self.upsample != 1:
             upsample = self.ifn.shape[0]/protograd.shape[0]
-            protograd = fourier_resample(protograd, upsample)
+            # protograd = fourier_resample(protograd, upsample)
+            protograd = spline_resample(protograd, upsample)
             protograd /= upsample**2
 
         if wfe:
