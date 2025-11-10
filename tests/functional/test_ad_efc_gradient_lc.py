@@ -9,7 +9,7 @@ import falco
 
 import config_wfsc_lc_quick as CONFIG
 
-show_plots = True
+show_plots = False
 
 
 def test_adjoint_model_lc():

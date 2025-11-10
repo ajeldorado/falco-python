@@ -511,7 +511,7 @@ def spline_resample(array_in, zoom):
 
 
 def map_resample(f, zoom):
-    print(f'zoom = {zoom}')
+    # print(f'zoom = {zoom}')
     if zoom == 1:
         return f
 
@@ -796,8 +796,8 @@ class DM:
             warped *= (2*self.obliquity)
 
         if self.upsample != 1:
-            # warped = fourier_resample(warped, self.upsample)
-            warped = spline_resample(warped, self.upsample)
+            warped = fourier_resample(warped, self.upsample)
+            # warped = spline_resample(warped, self.upsample)
 
         self.Nintermediate = warped.shape
         warped = util.pad_crop(warped, Nout)
@@ -845,8 +845,8 @@ class DM:
         protograd = util.pad_crop(protograd, self.Nintermediate)
         if self.upsample != 1:
             upsample = self.ifn.shape[0]/protograd.shape[0]
-            # protograd = fourier_resample(protograd, upsample)
-            protograd = spline_resample(protograd, upsample)
+            protograd = fourier_resample(protograd, upsample)
+            # protograd = spline_resample(protograd, upsample)
             protograd /= upsample**2
 
         if wfe:
