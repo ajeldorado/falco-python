@@ -367,7 +367,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
     for iStar in range(mp.compact.star.count):
 
-        modvar = falco.config.ModelVariables() # Initialize the new structure
+        modvar = falco.config.ModelVariables()  # Initialize the new structure
         modvar.starIndex = iStar
         modvar.whichSource = 'star'
 
@@ -375,7 +375,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
             modvar.sbpIndex = iSubband
             print('Wavelength: %u/%u ... ' % (iSubband, mp.Nsbp-1))
-            modeIndex = iStar*mp.Nsbp + iSubband #(iStar-1)*mp.Nsbp + iSubband
+            modeIndex = iStar*mp.Nsbp + iSubband
             print('Mode: %u/%u ... ' % (modeIndex, mp.jac.Nmode-1))
 
             # Measure current contrast level average
@@ -503,7 +503,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
             ampSq = (Iplus+Iminus)/2 - np.tile(I0vec.reshape((-1, 1)), (1, Npairs))  # square of probe E-field amplitudes
             ampSq[ampSq < 0] = 0  # If probe amplitude is zero, set amp = 0
             amp = np.sqrt(ampSq)  # E-field amplitudes, dimensions: [mp.Fend.corr.Npix, Npairs]
-            isnonzero = np.all(amp, 1)
+            # isnonzero = np.all(amp, 1)
             zAll = ((Iplus-Iminus)/4).T  # Measurement vector, dimensions: [Npairs, mp.Fend.corr.Npix]
             ampSq2Dcube = np.zeros((mp.Fend.Neta, mp.Fend.Nxi, mp.est.probe.Npairs))
             for iProbe in range(Npairs):  # Display the actual probe intensity
