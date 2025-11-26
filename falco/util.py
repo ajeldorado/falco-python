@@ -521,7 +521,7 @@ def offcenter_crop(arrayIn, centerRow, centerCol, nRowOut, nColOut):
     x_pad = int(np.max((colPadPre, colPadPost)))
 
     arrayPadded = pad_crop(arrayIn, (nRowIn+2*y_pad,
-                                      nColIn+2*x_pad))
+                                     nColIn+2*x_pad))
 
     centerCol += x_pad
     centerRow += y_pad

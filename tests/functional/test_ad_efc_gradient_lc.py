@@ -242,11 +242,13 @@ def test_adjoint_model_lc():
             plt.figure(51)
             plt.imshow(ratio1*mask1)
             plt.colorbar()
+            plt.clim(0.8, 1.2)
             plt.title('ratio1')
 
             plt.figure(52)
             plt.imshow(ratio2*mask2)
             plt.colorbar()
+            plt.clim(0.8, 1.2)
             plt.title('ratio2')
 
             plt.show()

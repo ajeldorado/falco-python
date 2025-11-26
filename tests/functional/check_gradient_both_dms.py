@@ -10,7 +10,7 @@ import falco
 from falco.util import pad_crop
 
 
-show_plots = False
+show_plots = True
 
 n_pupil = 50
 n_pupil_total = n_pupil*n_pupil
@@ -108,7 +108,7 @@ def jac_model(masks, u1, u2, which_dm, du):
     elif which_dm == 2:
         e_dm2 = falco.prop.ptp(e_dm1, dx_pupil_m*n_pupil_pad, lam, d_dm1_dm2)
         e_dm2 *= np.exp(1j*kk*u2_pad)
-        de_dm2 =  (1j*kk*du_pad) * e_dm2
+        de_dm2 = (1j*kk*du_pad) * e_dm2
         de_dm1_eff = falco.prop.ptp(de_dm2, dx_pupil_m*n_pupil_pad, lam, -d_dm1_dm2)
 
     else:
@@ -158,7 +158,6 @@ def reverse_model(masks, u1, u2, du1, du2, Eest2D, I00):
     e_dm2_grad *= np.conj(np.exp(1j*kk*u2_pad))
     phase_dm2_bar = -kk*np.imag(e_dm2_grad * np.conj(e_dm2_pre))
 
-    
     e_dm1_grad = falco.prop.ptp(e_dm2_grad, dx_pupil_m*n_pupil_pad, lam, -d_dm1_dm2)
     phase_dm1_bar = -kk*np.imag(e_dm1_grad * np.conj(e_dm1_post))
 
