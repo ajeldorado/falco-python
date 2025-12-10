@@ -9,6 +9,7 @@ import falco
 from falco.config.yaml_loader import object_constructor, load_from_str
 from falco.util import _spec_arg
 from falco.config import Probe, ProbeSchedule, Object
+import astropy
 
 
 class ModelParameters(Object):
@@ -251,7 +252,7 @@ class ModelParameters(Object):
 
         data = load_from_str(
             text,
-            {'np': numpy, 'falco': falco, 'math': math},
+            {'np': numpy, 'falco': falco, 'math': math, 'astropy': astropy},
             context,
             {
                 "!Probe": object_constructor(Probe),

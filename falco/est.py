@@ -9,7 +9,7 @@ import falco
 from . import check
 
 
-def wrapper(mp, ev, jacStruct):
+def wrapper(mp, ev, jacStruct, tb = None):
     """
     Select and run the chosen estimator.
 
@@ -23,6 +23,8 @@ def wrapper(mp, ev, jacStruct):
         Structure containing estimation variables.
     jacStruct : ModelParameters
         Structure containing control Jacobians for each specified DM.
+    tb : falco.config.TestbedInterface or None
+        (Optional) Control interface for a physical testbed.
 
     Returns
     -------
@@ -33,15 +35,15 @@ def wrapper(mp, ev, jacStruct):
 
         falco.est.perfect(mp, ev)
         with falco.util.TicToc('Getting updated summed image'):
-            ev.Im = falco.imaging.get_summed_image(mp)
+            ev.Im = falco.imaging.get_summed_image(mp, tb)
 
     elif mp.estimator in ['pairwise', 'pairwise-square', 'pairwise-rect',
                           'pwp-bp-square', 'pwp-bp', 'pwp-kf']:
 
         if mp.est.flagUseJac:  # Send in the Jacobian if true
-            falco.est.pairwise_probing(mp, ev, jacStruct=jacStruct)
+            falco.est.pairwise_probing(mp, ev, jacStruct=jacStruct, tb=tb)
         else:  # Otherwise don't pass the Jacobian
-            falco.est.pairwise_probing(mp, ev)
+            falco.est.pairwise_probing(mp, ev, tb=tb)
 
     return None
 
@@ -219,7 +221,7 @@ def _est_perfect_Efield_with_Zernikes_in_parallel(mp, ilist, inds_list):
     return E2D
 
 
-def pairwise_probing(mp, ev, jacStruct=np.array([])):
+def pairwise_probing(mp, ev, jacStruct=np.array([]), tb = None):
     """
     Estimate the dark hole E-field with pair-wise probing.
 
@@ -230,6 +232,8 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
     ev : falco.config.Object()
     jacStruct : array_like, optional
         Array containing the control Jacobian. Default is an empty array.
+    tb : falco.config.TestbedInterface or None
+        (Optional) Control interface for a physical testbed.
 
     Returns
     -------
@@ -394,7 +398,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
 
             # Take initial, unprobed image (for unprobed DM settings).
             whichImage = 0
-            I0 = falco.imaging.get_sbp_image(mp, iSubband)
+            I0 = falco.imaging.get_sbp_image(mp, iSubband, tb)
             I0vec = I0[mp.Fend.corr.maskBool]  # Vectorize the dark hole
 
             # Image already includes all stars, so don't sum over star loop
@@ -460,7 +464,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([])):
                     mp.dm2.V = DM2Vnom + dDM2Vprobe
 
                 # Take probed image
-                Im = falco.imaging.get_sbp_image(mp, iSubband)
+                Im = falco.imaging.get_sbp_image(mp, iSubband, tb)
 
                 # ImNonneg = Im
                 # ImNonneg[Im < 0] = 0
