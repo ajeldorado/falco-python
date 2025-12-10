@@ -4,7 +4,6 @@ import multiprocessing
 from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 # from concurrent.futures import ProcessPoolExecutor as PoolExecutor
 import matplotlib.pyplot as plt
-from pyHCIT_hwControl.interface import TestbedInterface
 
 import falco
 from falco import check
@@ -258,7 +257,7 @@ def get_summed_image(mp, tb = None):
     ----------
     mp: falco.config.ModelParameters
         Structure of model parameters
-    tb: pyHCIT_hwControl.interface.TestbedInterface
+    tb: falco.config.TestbedInterface
         (Optional) control interface for a physical testbed
 
     Returns
@@ -376,7 +375,7 @@ def get_sbp_image(mp, si, tb = None):
         Structure of model parameters
     si: int
         Index of sub-bandpass for which to take the image
-    tb: pyHCIT_hwControl.interface.TestbedInterface or None
+    tb: falco.config.TestbedInterface or None
         (Optional) Control interface for a physical testbed
 
     Returns

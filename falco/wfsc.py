@@ -19,7 +19,7 @@ def loop(mp, out, tb = None):
         Structure of model parameters
     out : falco.config.Object
         Output variables
-    tb : pyHCIT_hwControl.interface.TestbedInterface or None
+    tb : falco.config.TestbedInterface or None
         (Optional) Control interface for a physical testbed.
 
     Returns

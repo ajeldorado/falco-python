@@ -23,7 +23,7 @@ def wrapper(mp, ev, jacStruct, tb = None):
         Structure containing estimation variables.
     jacStruct : ModelParameters
         Structure containing control Jacobians for each specified DM.
-    tb : pyHCIT_hwControl.interface.TestbedInterface or None
+    tb : falco.config.TestbedInterface or None
         (Optional) Control interface for a physical testbed.
 
     Returns
@@ -232,7 +232,7 @@ def pairwise_probing(mp, ev, jacStruct=np.array([]), tb = None):
     ev : falco.config.Object()
     jacStruct : array_like, optional
         Array containing the control Jacobian. Default is an empty array.
-    tb : pyHCIT_hwControl.interface.TestbedInterface or None
+    tb : falco.config.TestbedInterface or None
         (Optional) Control interface for a physical testbed.
 
     Returns
