@@ -3,6 +3,7 @@ Python implementation of initialize_ekf_matrices function from FALCO MATLAB.
 """
 
 import numpy as np
+from astropy.io import fits
 
 import falco
 from .est_utils import rearrange_jacobians
@@ -119,12 +120,19 @@ def initialize_ekf_matrices(mp, ev, sbp_texp):
     # if self.drift_dm == 'boston':
     ev.Q = {}
     ev.P = {}
-    for iSubband in range(mp.Nsbp):
-        G_reordered = ev.G_tot_drift[:, :, iSubband].T
-        dm_drift_covariance = np.eye(G_reordered.shape[0]) * (mp.drift.presumed_dm_std ** 2)
-        ev.Q[iSubband] = np.array([G_reordered[:, i * ev.BS:(i + 1) * ev.BS].T.dot(dm_drift_covariance).dot(G_reordered[:, i * ev.BS:(i + 1) * ev.BS]) for i in range(ev.SL // ev.BS)]) * sbp_texp[iSubband] * (ev.e_scaling[iSubband] ** 2)
+    if mp.drift.dm_drift:
+        if mp.drift.type.lower() == 'rand_walk':
+            for iSubband in range(mp.Nsbp):
+                G_reordered = ev.G_tot_drift[:, :, iSubband].T
+                dm_drift_covariance = np.eye(G_reordered.shape[0]) * (mp.drift.presumed_dm_std ** 2)
+                ev.Q[iSubband] = np.array([G_reordered[:, i * ev.BS:(i + 1) * ev.BS].T.dot(dm_drift_covariance).dot(G_reordered[:, i * ev.BS:(i + 1) * ev.BS]) for i in range(ev.SL // ev.BS)]) * sbp_texp[iSubband] * (ev.e_scaling[iSubband] ** 2)
 
-        ev.P[iSubband] = np.zeros_like(ev.Q[iSubband])
+                ev.P[iSubband] = np.zeros_like(ev.Q[iSubband])
+    elif mp.drift.pupil_drift:
+        for iSubband in range(mp.Nsbp):
+            # TODO: make this wavelength dependent
+            ev.Q[iSubband] = mp.drift.Q_init
+            ev.P[iSubband] = np.zeros_like(ev.Q[iSubband])
 
     # Initialize state vector
     ev.x_hat = np.zeros((ev.SL, mp.Nsbp))  # Units: sqrt(counts)
@@ -139,6 +147,7 @@ def initialize_ekf_matrices(mp, ev, sbp_texp):
         except (AttributeError, IndexError):
             # MATLAB: E_hat = zeros(ev.SL/ev.BS,1);
             E_hat = np.zeros(int(ev.SL / ev.BS), dtype=complex)
+            # E_hat = (1e-11) * np.ones(int(ev.SL / ev.BS), dtype=complex)
 
         # Save initial ev state:
         # MATLAB: ev.x_hat0(1:ev.SS:end,iSubband) = real(E_hat) * ev.e_scaling(iSubband) * sqrt(sbp_texp(iSubband));

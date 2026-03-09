@@ -180,7 +180,7 @@ def loop(mp, out):
             print('Previous Measured NI:\t\t\t %.2e ' % (out.InormHist[Itr]))
 
         # Save just the 'out' object to a pickle file
-        fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+        fnSnippet = os.path.join(mp.path.brief, mp.runLabel, (mp.runLabel + '_snippet.pkl'))
         print('Saving data snippet to:\n\t%s  ...' % (fnSnippet), end='')
         with open(fnSnippet, 'wb') as f:
             pickle.dump(out, f)
@@ -246,7 +246,7 @@ def loop(mp, out):
         mp.dm8.inf_datacube = 0
         mp.dm9.inf_datacube = 0
 
-        fnAll = mp.path.ws + mp.runLabel + '_all.pkl'
+        fnAll = os.path.join(mp.path.brief, mp.runLabel, f'{mp.runLabel}_all.pkl')
         print('Saving entire workspace to file ' + fnAll + '...', end='')
         with open(fnAll, 'wb') as f:
             pickle.dump(mp, f)

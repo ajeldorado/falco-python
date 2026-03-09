@@ -9,6 +9,7 @@ import os
 import time
 import numpy as np
 import astropy.io.fits as fits
+import matplotlib.pyplot as plt
 import falco
 
 from .est_utils import get_dm_command_vector
@@ -108,7 +109,8 @@ def save_ekf_data(mp, ev, DM1Vdither, DM2Vdither):
 
 
     # TODO: move to plot_progress_iact
-    fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'drift_command_it{ev.Itr}.fits'), drift, overwrite=True)
+    if mp.drift.dm_drift:
+        fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'drift_command_it{ev.Itr}.fits'), drift, overwrite=True)
     fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'dither_command_it{ev.Itr}.fits'), dither, overwrite=True)
     fits.writeto(os.path.join(mp.path.brief, mp.runLabel, f'efc_command_it{ev.Itr-1}.fits'), efc, overwrite=True)
     
@@ -289,7 +291,28 @@ def est_ekf_dzm(mp, ev, jacStruct=None):
     
     I0vec = y_measured / ev.peak_psf_counts[:, np.newaxis].T
     ev.IincoEst = I0vec - np.abs(ev.Eest)**2  # incoherent light
-    
+
+    Iest = np.abs(ev.Eest)**2
+    tmp = np.zeros((ev.imageArray.shape[0], ev.imageArray.shape[1]))
+    tmp[mp.Fend.corr.maskBool] = Iest.flatten()
+    # plt.figure()
+    # plt.subplot(1,3,1)
+    # plt.imshow(np.log10(np.abs(tmp)))
+    # plt.colorbar()
+    # plt.title(f'Iest itr {ev.Itr}')
+    #
+    # plt.subplot(1, 3, 2)
+    # plt.imshow(np.log10(np.abs(ev.imageArray[:,:,0,0])))
+    # plt.colorbar()
+    # plt.title('Im')
+    #
+    # plt.subplot(1, 3, 3)
+    # plt.imshow(np.log10(np.abs(tmp - ev.imageArray[:, :, 0, 0])))
+    # plt.colorbar()
+    # plt.title('Iest-Im')
+    # plt.show()
+
+
     # Other data to save out
     ev.ampSqMean = np.mean(I0vec)  # Mean probe intensity
     

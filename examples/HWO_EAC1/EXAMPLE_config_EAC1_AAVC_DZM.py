@@ -157,6 +157,7 @@ mp.dm1.zrot = 0                # clocking of DM surface [degrees]
 mp.dm1.xc = (32/2 - 1/2)       # x-center location of DM surface [actuator widths]
 mp.dm1.yc = (32/2 - 1/2)       # y-center location of DM surface [actuator widths]
 mp.dm1.edgeBuffer = 1          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
+mp.dm1.useDifferentiableModel = False;
 
 # DM2 parameters
 mp.dm2.Nact = 32               # # of actuators across DM array
@@ -167,6 +168,7 @@ mp.dm2.zrot = 0                 # clocking of DM surface [degrees]
 mp.dm2.xc = (32/2 - 1/2)        # x-center location of DM surface [actuator widths]
 mp.dm2.yc = (32/2 - 1/2)        # y-center location of DM surface [actuator widths]
 mp.dm2.edgeBuffer = 1          # max radius (in actuator spacings) outside of beam on DM surface to compute influence functions for. [actuator widths]
+mp.dm2.useDifferentiableModel = False;
 
 #  Aperture stops at DMs
 mp.flagDM1stop = False   # Whether to apply an iris or not
@@ -194,12 +196,12 @@ mp.Fend.FOV = 15.  # half-width of the field of view in both dimensions [lambda0
 
 # Correction and scoring region definition
 mp.Fend.corr = falco.config.Object()
-mp.Fend.corr.Rin = 2.0   # inner radius of dark hole correction region [lambda0/D]
+mp.Fend.corr.Rin = 2.7   # inner radius of dark hole correction region [lambda0/D]
 mp.Fend.corr.Rout = 15  # outer radius of dark hole correction region [lambda0/D]
 mp.Fend.corr.ang = 180  # angular opening of dark hole correction region [degrees]
 #
 mp.Fend.score = falco.config.Object()
-mp.Fend.score.Rin = 2.0  # inner radius of dark hole scoring region [lambda0/D]
+mp.Fend.score.Rin = 2.7  # inner radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.Rout = 15  # outer radius of dark hole scoring region [lambda0/D]
 mp.Fend.score.ang = 180  # angular opening of dark hole scoring region [degrees]
 
@@ -260,13 +262,12 @@ inputs = {"centering": mp.centering}
 
 # Full model:
 inputs["Nbeam"] = mp.P1.full.Nbeam
-mp.P1.full.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
+mp.P1.full.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
 
 # Compact model
 inputs["Nbeam"] = mp.P1.compact.Nbeam
-mp.P1.compact.mask = falco.util.pad_crop(
-    falco.mask.falco_gen_pupil_LUVOIR_B(inputs),
-    2**(falco.util.nextpow2(inputs["Nbeam"])))
+mp.P1.compact.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
+
 
 
 # %% "Apodizer" (P3) Definition and Generation
@@ -279,13 +280,13 @@ inputs = {"OD": 0.84}
 # Full model only
 inputs["Nbeam"] = mp.P1.full.Nbeam
 inputs["Npad"] = 2**(falco.util.nextpow2(mp.P1.full.Nbeam))
-mp.P3.full.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
+mp.P3.full.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
 
 
 # Compact model only
 inputs["Nbeam"] = mp.P1.compact.Nbeam
 inputs["Npad"] = 2**(falco.util.nextpow2(mp.P1.compact.Nbeam))
-mp.P3.compact.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
+mp.P3.compact.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
 
 
 # %% Lyot stop (P4) Definition and Generation
@@ -301,13 +302,13 @@ inputs["OD"] = mp.P4.ODnorm
 # Full model
 inputs["Nbeam"] = mp.P4.full.Nbeam
 inputs["Npad"] = 2**(falco.util.nextpow2(mp.P4.full.Nbeam))
-mp.P4.full.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
+mp.P4.full.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
 
 
 # Compact model
 inputs["Nbeam"] = mp.P4.compact.Nbeam
 inputs["Npad"] = 2**(falco.util.nextpow2(mp.P4.compact.Nbeam))
-mp.P4.compact.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
+mp.P4.compact.mask = astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
 
 
 

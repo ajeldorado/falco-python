@@ -215,11 +215,11 @@ fl: 1.  # [meters] Focal length value used for all FTs in the compact model. Don
 P1:
   compact:
     Nbeam: 513
-    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
+    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
 
   full:
     Nbeam: 513
-    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
+    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/pupil_stopped_82.7_513_gen_avc.fits')[0].data
   IDnorm: 0.00  # ID of the central obscuration [diameter]. Used only for computing the RMS DM surface from the ID to the OD of the pupil. OD is assumed to be 1.
   ODnorm: 1.00  # Outer diameter of the telescope [diameter]
   D: 7.2  # circumscribed telescope diameter [meters]. Used only for converting milliarcseconds to lambda0/D or vice-versa.
@@ -230,17 +230,17 @@ P2:
 P3:
   D: !eval mp.dm1.Nact*mp.dm1.dm_spacing
   full:
-    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
+    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
   compact:
-    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
+    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/ap_eac1b_aavc_fast_optimize_cds_513_15_ls0.81_ps0.827_dz48_ch6_375_ch2iter1999.fits')[0].data
 
 P4:
   full:
     Nbeam: !eval mp.P1.full.Nbeam # P4 size must be the same as P1 for Vortex.
-    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
+    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
   compact:
     Nbeam: !eval mp.P1.compact.Nbeam # P4 size must be the same as P1 for Vortex.
-    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\gitub_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
+    mask: !eval astropy.io.fits.open(r'C:\Users\sredmond\Documents\github_repos\falco-python\data\HWO\EAC1/lyot_stop_81_513_gen_avc.fits')[0].data
   D: !eval mp.P2.D
   #TODO: change this to load
 

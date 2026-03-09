@@ -93,3 +93,26 @@ def get_dm_command_vector(mp, command1, command2):
     comm_vector = np.concatenate((comm1, comm2))
 
     return comm_vector
+
+
+def get_e_field(mp):
+    Eest = np.zeros((mp.Fend.corr.Npix, mp.jac.Nmode), dtype=complex)
+    modvar = falco.config.ModelVariables()
+
+    for iMode in range(mp.jac.Nmode):
+        modvar.sbpIndex = mp.jac.sbp_inds[iMode]
+        modvar.zernIndex = mp.jac.zern_inds[iMode]
+        modvar.starIndex = mp.jac.star_inds[iMode]
+        modvar.whichSource = 'star'
+
+        # Take the mean over the wavelengths within the sub-bandpass
+        EmatSubband = np.zeros((mp.Fend.Neta, mp.Fend.Nxi), dtype=complex)
+        for wi in range(mp.Nwpsbp):
+            modvar.wpsbpIndex = wi
+            E2D = falco.model.full(mp, modvar)
+            EmatSubband += mp.full.lambda_weights[wi] * E2D
+
+        Eest[:, iMode] = EmatSubband[mp.Fend.corr.maskBool]
+
+    return Eest
+

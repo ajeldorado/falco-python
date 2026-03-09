@@ -1,7 +1,12 @@
-from falco.config import init_from_mat as ifm
+from . import config
+from . import model
+from . import proper
+from . import wfsc
+
+from .config import init_from_mat as ifm  # ← CHANGED: Use relative import
 from .setup import *
 from .util import *
-# from .configs  import *
+from .config  import *
 from .imaging import *
 from .dm import *
 from .diff_dm import *
