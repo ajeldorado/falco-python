@@ -16,6 +16,7 @@ from .hexsegmirror import *
 from .thinfilm import *
 from .zern import *
 from . import model
+from . import serialize
 from ._globals import INFLUENCE_XINETICS
 from ._globals import INFLUENCE_BMC_KILO
 from ._globals import INFLUENCE_BMC_2K

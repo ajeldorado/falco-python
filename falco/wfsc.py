@@ -3,7 +3,6 @@ from copy import copy
 import numpy as np
 import os
 import time
-import pickle
 import matplotlib.pyplot as plt
 
 import falco
@@ -163,11 +162,10 @@ def loop(mp, out):
         else:
             print('Previous Measured NI:\t\t\t %.2e ' % (out.InormHist[Itr]))
 
-        # Save just the 'out' object to a pickle file
-        fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+        # Save just the 'out' object
+        fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet'))
         print('Saving data snippet to:\n\t%s  ...' % (fnSnippet), end='')
-        with open(fnSnippet, 'wb') as f:
-            pickle.dump(out, f)
+        falco.serialize.save(out, fnSnippet)
         print('done.', end='\n\n')
 
         # END OF ESTIMATION + CONTROL LOOP
@@ -189,11 +187,10 @@ def loop(mp, out):
         ev.Im = cvar.Im
         # plot_progress(mp, out, Itr, ImSimOffaxis, cvar.Im)
 
-    # Save just the 'out' object to a pickle file
-    fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet.pkl'))
+    # Save just the 'out' object
+    fnSnippet = os.path.join(mp.path.brief, (mp.runLabel + '_snippet'))
     print('\nSaving data snippet to:\n\t%s...' % (fnSnippet), end='')
-    with open(fnSnippet, 'wb') as f:
-        pickle.dump(out, f)
+    falco.serialize.save(out, fnSnippet)
     print('done.\n')
 
     # Save out the data from the workspace
@@ -230,11 +227,9 @@ def loop(mp, out):
         mp.dm8.inf_datacube = 0
         mp.dm9.inf_datacube = 0
 
-        fnAll = mp.path.ws + mp.runLabel + '_all.pkl'
+        fnAll = mp.path.ws + mp.runLabel + '_all'
         print('Saving entire workspace to file ' + fnAll + '...', end='')
-        with open(fnAll, 'wb') as f:
-            pickle.dump(mp, f)
-
+        falco.serialize.save(mp, fnAll)
         print('done.\n\n')
     else:
         print('Entire workspace NOT saved because mp.flagSaveWS==False')

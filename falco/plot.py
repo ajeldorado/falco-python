@@ -1,6 +1,5 @@
 """FALCO plotting."""
 import numpy as np
-import pickle
 import matplotlib.pyplot as plt
 
 # from . import check
@@ -138,24 +137,31 @@ def plot_trial_output(out):
 
 def plot_trial_output_from_pickle(fnPickle):
     """
-    Plot a FALCO trial's pickled output data.
+    Plot a FALCO trial's output data.
 
     Parameters
     ----------
     fnPickle : str
-        Filename of pickle containing performance data from the FALCO trial.
+        Filename containing performance data from the FALCO trial.
+        Can be either legacy pickle format (.pkl) or new HDF5+JSON format (.h5/.json).
 
     Returns
     -------
     None
     """
+    import pickle
+    from pathlib import Path
 
-    # with np.load(fnPickle, allow_pickle=True) as data:
-    #     out = data['out']
-    # out = pickle.load(fnPickle)
+    # Determine file format and load accordingly
+    filepath = Path(fnPickle)
 
-    with open(fnPickle, 'rb') as pickle_file:
-        out = pickle.load(pickle_file)
+    if filepath.suffix == '.pkl':
+        # Legacy pickle format - still supported for backward compatibility
+        with open(fnPickle, 'rb') as pickle_file:
+            out = pickle.load(pickle_file)
+    else:
+        # New HDF5+JSON format
+        out = falco.serialize.load(fnPickle)
 
     plot_trial_output(out)
 
