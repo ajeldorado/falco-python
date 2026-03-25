@@ -35,7 +35,7 @@ def test_basic_serialization():
         # Verify files were created
         assert os.path.exists(filepath + '.h5'), "HDF5 file not created"
         assert os.path.exists(filepath + '.json'), "JSON file not created"
-        print("  ✓ Files created")
+        print("  [OK] Files created")
 
         # Load
         print(f"  Loading from {filepath}...")
@@ -51,9 +51,9 @@ def test_basic_serialization():
         assert loaded.nested_object.value == 100, "Nested object mismatch"
         assert np.allclose(loaded.nested_object.array, np.array([10, 20, 30])), "Nested object array mismatch"
 
-        print("  ✓ All data verified")
+        print("  [OK] All data verified")
 
-    print("✓ Basic serialization test passed!\n")
+    print("[PASS] Basic serialization test passed!\n")
 
 
 def test_load_as_dict():
@@ -79,9 +79,9 @@ def test_load_as_dict():
         assert loaded['value'] == 123, "Value mismatch"
         assert np.allclose(loaded['array'], np.array([1, 2, 3])), "Array mismatch"
 
-        print("  ✓ Dict loading verified")
+        print("  [OK] Dict loading verified")
 
-    print("✓ Load as dict test passed!\n")
+    print("[PASS] Load as dict test passed!\n")
 
 
 def test_large_arrays():
@@ -112,7 +112,7 @@ def test_large_arrays():
         print(f"  Compressed HDF5: {h5_size / 1e6:.2f} MB")
         print(f"  Compression ratio: {uncompressed_size / h5_size:.2f}x")
 
-    print("✓ Large array test passed!\n")
+    print("[PASS] Large array test passed!\n")
 
 
 if __name__ == '__main__':

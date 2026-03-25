@@ -9,6 +9,7 @@ cycler==0.12.1
 deepmerge==2.0
 docutils==0.21.2
 fonttools==4.55.0
+h5py>=3.0.0
 idna==3.10
 imagesize==1.4.1
 iniconfig==2.0.0
